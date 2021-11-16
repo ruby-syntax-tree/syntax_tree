@@ -47,6 +47,14 @@ class ParseTree < Ripper
       @end_char = end_char
     end
 
+    def ==(other)
+      other.is_a?(Location) &&
+        start_line == other.start_line &&
+        start_char == other.start_char &&
+        end_line == other.end_line &&
+        end_char == other.end_char
+    end
+
     def to(other)
       Location.new(
         start_line: start_line,
@@ -341,7 +349,7 @@ class ParseTree < Ripper
     end
 
     def to_json(*opts)
-      { type: :@CHAR, value: value, loc: location }.to_json(*opts)
+      { type: :CHAR, value: value, loc: location }.to_json(*opts)
     end
   end
 
@@ -448,7 +456,7 @@ class ParseTree < Ripper
     end
 
     def to_json(*opts)
-      { type: :@__end__, value: value, loc: location }.to_json(*opts)
+      { type: :__end__, value: value, loc: location }.to_json(*opts)
     end
   end
 
@@ -1307,7 +1315,7 @@ class ParseTree < Ripper
     end
 
     def to_json(*opts)
-      { type: :@backref, value: value, loc: location }.to_json(*opts)
+      { type: :backref, value: value, loc: location }.to_json(*opts)
     end
   end
 
@@ -1348,7 +1356,7 @@ class ParseTree < Ripper
     end
 
     def to_json(*opts)
-      { type: :@backtick, value: value, loc: location }.to_json(*opts)
+      { type: :backtick, value: value, loc: location }.to_json(*opts)
     end
   end
 
@@ -2181,18 +2189,6 @@ class ParseTree < Ripper
       @value = value
       @location = location
     end
-
-    def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('comma')
-        q.breakable
-        q.pp(value)
-      end
-    end
-
-    def to_json(*opts)
-      { type: :@comma, value: value, loc: location }.to_json(*opts)
-    end
   end
 
   # :call-seq:
@@ -2296,7 +2292,7 @@ class ParseTree < Ripper
 
     def pretty_print(q)
       q.group(2, '(', ')') do
-        q.text('case')
+        q.text('command_call')
 
         q.breakable
         q.pp(receiver)
@@ -2354,6 +2350,7 @@ class ParseTree < Ripper
     # [boolean] whether or not there is code on the same line as this comment.
     # If there is, then inline will be true.
     attr_reader :inline
+    alias inline? inline
 
     # [Location] the location of this node
     attr_reader :location
@@ -2374,7 +2371,7 @@ class ParseTree < Ripper
 
     def to_json(*opts)
       {
-        type: :@comment,
+        type: :comment,
         value: value.force_encoding('UTF-8'),
         inline: inline,
         loc: location
@@ -2433,7 +2430,7 @@ class ParseTree < Ripper
     end
 
     def to_json(*opts)
-      { type: :@const, value: value, loc: location }.to_json(*opts)
+      { type: :const, value: value, loc: location }.to_json(*opts)
     end
   end
 
@@ -2620,7 +2617,7 @@ class ParseTree < Ripper
     end
 
     def to_json(*opts)
-      { type: :@cvar, value: value, loc: location }.to_json(*opts)
+      { type: :cvar, value: value, loc: location }.to_json(*opts)
     end
   end
 
@@ -2639,7 +2636,7 @@ class ParseTree < Ripper
 
   # Def represents defining a regular method on the current self object.
   #
-  #     def method(param) do result end
+  #     def method(param) result end
   #
   class Def
     # [Backtick | Const | Ident | Keyword | Op] the name of the method
@@ -2713,7 +2710,7 @@ class ParseTree < Ripper
 
     def pretty_print(q)
       q.group(2, '(', ')') do
-        q.text('defsl')
+        q.text('def_endless')
 
         q.breakable
         q.pp(name)
@@ -2728,7 +2725,7 @@ class ParseTree < Ripper
 
     def to_json(*opts)
       {
-        type: :defsl,
+        type: :def_endless,
         name: name,
         paren: paren,
         stmt: statement,
@@ -2842,7 +2839,7 @@ class ParseTree < Ripper
 
   # Defs represents defining a singleton method on an object.
   #
-  #     def object.method(param) do result end
+  #     def object.method(param) result end
   #
   class Defs
     # [untyped] the target where the method is being defined
@@ -3367,6 +3364,10 @@ class ParseTree < Ripper
       @location = location
     end
 
+    def inline?
+      false
+    end
+
     def pretty_print(q)
       q.group(2, '(', ')') do
         q.text('embdoc')
@@ -3377,7 +3378,7 @@ class ParseTree < Ripper
     end
 
     def to_json(*opts)
-      { type: :@embdoc, value: value, loc: location }.to_json(*opts)
+      { type: :embdoc, value: value, loc: location }.to_json(*opts)
     end
   end
 
@@ -3437,19 +3438,6 @@ class ParseTree < Ripper
       @value = value
       @location = location
     end
-
-    def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('embexpr_beg')
-
-        q.breakable
-        q.pp(value)
-      end
-    end
-
-    def to_json(*opts)
-      { type: :@embexpr_beg, value: value, loc: location }.to_json(*opts)
-    end
   end
 
   # :call-seq:
@@ -3481,19 +3469,6 @@ class ParseTree < Ripper
     def initialize(value:, location:)
       @value = value
       @location = location
-    end
-
-    def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('embexpr_end')
-
-        q.breakable
-        q.pp(value)
-      end
-    end
-
-    def to_json(*opts)
-      { type: :@embexpr_end, value: value, loc: location }.to_json(*opts)
     end
   end
 
@@ -3528,19 +3503,6 @@ class ParseTree < Ripper
     def initialize(value:, location:)
       @value = value
       @location = location
-    end
-
-    def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('embvar')
-
-        q.breakable
-        q.pp(value)
-      end
-    end
-
-    def to_json(*opts)
-      { type: :@embvar, value: value, loc: location }.to_json(*opts)
     end
   end
 
@@ -3797,7 +3759,7 @@ class ParseTree < Ripper
     end
 
     def to_json(*opts)
-      { type: :@float, value: value, loc: location }.to_json(*opts)
+      { type: :float, value: value, loc: location }.to_json(*opts)
     end
   end
 
@@ -4007,7 +3969,7 @@ class ParseTree < Ripper
     end
 
     def to_json(*opts)
-      { type: :@gvar, value: value, loc: location }.to_json(*opts)
+      { type: :gvar, value: value, loc: location }.to_json(*opts)
     end
   end
 
@@ -4156,7 +4118,7 @@ class ParseTree < Ripper
     end
 
     def to_json(*opts)
-      { type: :@heredoc_beg, value: value, loc: location }.to_json(*opts)
+      { type: :heredoc_beg, value: value, loc: location }.to_json(*opts)
     end
   end
 
@@ -4314,7 +4276,7 @@ class ParseTree < Ripper
 
     def to_json(*opts)
       {
-        type: :@ident,
+        type: :ident,
         value: value.force_encoding('UTF-8'),
         loc: location
       }.to_json(*opts)
@@ -4556,7 +4518,7 @@ class ParseTree < Ripper
     end
 
     def to_json(*opts)
-      { type: :@imaginary, value: value, loc: location }.to_json(*opts)
+      { type: :imaginary, value: value, loc: location }.to_json(*opts)
     end
   end
 
@@ -4678,7 +4640,7 @@ class ParseTree < Ripper
     end
 
     def to_json(*opts)
-      { type: :@int, value: value, loc: location }.to_json(*opts)
+      { type: :int, value: value, loc: location }.to_json(*opts)
     end
   end
 
@@ -4721,7 +4683,7 @@ class ParseTree < Ripper
     end
 
     def to_json(*opts)
-      { type: :@ivar, value: value, loc: location }.to_json(*opts)
+      { type: :ivar, value: value, loc: location }.to_json(*opts)
     end
   end
 
@@ -4773,7 +4735,7 @@ class ParseTree < Ripper
     end
 
     def to_json(*opts)
-      { type: :@kw, value: value, loc: location }.to_json(*opts)
+      { type: :kw, value: value, loc: location }.to_json(*opts)
     end
   end
 
@@ -4866,7 +4828,7 @@ class ParseTree < Ripper
     end
 
     def to_json(*opts)
-      { type: :@label, value: value, loc: location }.to_json(*opts)
+      { type: :label, value: value, loc: location }.to_json(*opts)
     end
   end
 
@@ -4900,19 +4862,6 @@ class ParseTree < Ripper
     def initialize(value:, location:)
       @value = value
       @location = location
-    end
-
-    def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('label_end')
-
-        q.breakable
-        q.pp(value)
-      end
-    end
-
-    def to_json(*opts)
-      { type: :@label_end, value: value, loc: location }.to_json(*opts)
     end
   end
 
@@ -5019,7 +4968,7 @@ class ParseTree < Ripper
     end
 
     def to_json(*opts)
-      { type: :@lbrace, value: value, loc: location }.to_json(*opts)
+      { type: :lbrace, value: value, loc: location }.to_json(*opts)
     end
   end
 
@@ -5047,19 +4996,6 @@ class ParseTree < Ripper
     def initialize(value:, location:)
       @value = value
       @location = location
-    end
-
-    def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('lbracket')
-
-        q.breakable
-        q.pp(value)
-      end
-    end
-
-    def to_json(*opts)
-      { type: :@lbracket, value: value, loc: location }.to_json(*opts)
     end
   end
 
@@ -5099,7 +5035,7 @@ class ParseTree < Ripper
     end
 
     def to_json(*opts)
-      { type: :@lparen, value: value, loc: location }.to_json(*opts)
+      { type: :lparen, value: value, loc: location }.to_json(*opts)
     end
   end
 
@@ -5822,7 +5758,7 @@ class ParseTree < Ripper
     end
 
     def to_json(*opts)
-      { type: :@op, value: value, loc: location }.to_json(*opts)
+      { type: :op, value: value, loc: location }.to_json(*opts)
     end
   end
 
@@ -6203,7 +6139,7 @@ class ParseTree < Ripper
     end
 
     def to_json(*opts)
-      { type: :@period, value: value, loc: location }.to_json(*opts)
+      { type: :period, value: value, loc: location }.to_json(*opts)
     end
   end
 
@@ -6326,19 +6262,6 @@ class ParseTree < Ripper
       @value = value
       @location = location
     end
-
-    def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('qsymbols_beg')
-
-        q.breakable
-        q.pp(value)
-      end
-    end
-
-    def to_json(*opts)
-      { type: :@qsymbols_beg, value: value, loc: location }.to_json(*opts)
-    end
   end
 
   # :call-seq:
@@ -6419,19 +6342,6 @@ class ParseTree < Ripper
       @value = value
       @location = location
     end
-
-    def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('qwords_beg')
-
-        q.breakable
-        q.pp(value)
-      end
-    end
-
-    def to_json(*opts)
-      { type: :@qwords_beg, value: value, loc: location }.to_json(*opts)
-    end
   end
 
   # :call-seq:
@@ -6455,11 +6365,11 @@ class ParseTree < Ripper
     QWords.new(elements: [], location: qwords_beg.location)
   end
 
-  # Rational represents the use of a rational number literal.
+  # RationalLiteral represents the use of a rational number literal.
   #
   #     1r
   #
-  class Rational
+  class RationalLiteral
     # [String] the rational number literal
     attr_reader :value
 
@@ -6481,15 +6391,15 @@ class ParseTree < Ripper
     end
 
     def to_json(*opts)
-      { type: :@rational, value: value, loc: location }.to_json(*opts)
+      { type: :rational, value: value, loc: location }.to_json(*opts)
     end
   end
 
   # :call-seq:
-  #   on_rational: (String value) -> Rational
+  #   on_rational: (String value) -> RationalLiteral
   def on_rational(value)
     node =
-      Rational.new(
+      RationalLiteral.new(
         value: value,
         location: Location.token(line: lineno, char: char_pos, size: value.size)
       )
@@ -6509,19 +6419,6 @@ class ParseTree < Ripper
     def initialize(value:, location:)
       @value = value
       @location = location
-    end
-
-    def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('rbrace')
-
-        q.breakable
-        q.pp(value)
-      end
-    end
-
-    def to_json(*opts)
-      { type: :@rbrace, value: value, loc: location }.to_json(*opts)
     end
   end
 
@@ -6549,19 +6446,6 @@ class ParseTree < Ripper
     def initialize(value:, location:)
       @value = value
       @location = location
-    end
-
-    def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('rbracket')
-
-        q.breakable
-        q.pp(value)
-      end
-    end
-
-    def to_json(*opts)
-      { type: :@rbracket, value: value, loc: location }.to_json(*opts)
     end
   end
 
@@ -6638,21 +6522,6 @@ class ParseTree < Ripper
       @parts = parts
       @location = location
     end
-
-    def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('regexp')
-
-        q.breakable
-        q.group(2, '(', ')') { q.seplist(parts) { |part| q.pp(part) } }
-      end
-    end
-
-    def to_json(*opts)
-      { type: :regexp, beging: beginning, parts: parts, loc: location }.to_json(
-        *opts
-      )
-    end
   end
 
   # :call-seq:
@@ -6687,19 +6556,6 @@ class ParseTree < Ripper
     def initialize(value:, location:)
       @value = value
       @location = location
-    end
-
-    def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('regexp_beg')
-
-        q.breakable
-        q.pp(value)
-      end
-    end
-
-    def to_json(*opts)
-      { type: :@regexp_beg, value: value, loc: location }.to_json(*opts)
     end
   end
 
@@ -6736,19 +6592,6 @@ class ParseTree < Ripper
     def initialize(value:, location:)
       @value = value
       @location = location
-    end
-
-    def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('regexp_end')
-
-        q.breakable
-        q.pp(value)
-      end
-    end
-
-    def to_json(*opts)
-      { type: :@regexp_end, value: value, loc: location }.to_json(*opts)
     end
   end
 
@@ -7219,19 +7062,6 @@ class ParseTree < Ripper
       @value = value
       @location = location
     end
-
-    def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('rparen')
-
-        q.breakable
-        q.pp(value)
-      end
-    end
-
-    def to_json(*opts)
-      { type: :@rparen, value: value, loc: location }.to_json(*opts)
-    end
   end
 
   # :call-seq:
@@ -7402,7 +7232,7 @@ class ParseTree < Ripper
     end
 
     def to_json(*opts)
-      { type: :stmts, body: body, loc: location }.to_json(*opts)
+      { type: :statements, body: body, loc: location }.to_json(*opts)
     end
 
     private
@@ -7410,7 +7240,7 @@ class ParseTree < Ripper
     def attach_comments(start_char, end_char)
       attachable =
         parser.comments.select do |comment|
-          comment.is_a?(Comment) && !comment.inline &&
+          !comment.inline? &&
             start_char <= comment.location.start_char &&
             end_char >= comment.location.end_char &&
             !comment.value.include?('prettier-ignore')
@@ -7448,19 +7278,6 @@ class ParseTree < Ripper
     def initialize(parts:, location:)
       @parts = parts
       @location = location
-    end
-
-    def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('string')
-
-        q.breakable
-        q.group(2, '(', ')') { q.seplist(parts) { |part| q.pp(part) } }
-      end
-    end
-
-    def to_json(*opts)
-      { type: :string, parts: parts, loc: location }.to_json(*opts)
     end
   end
 
@@ -7766,19 +7583,6 @@ class ParseTree < Ripper
       @value = value
       @location = location
     end
-
-    def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('symbeg')
-
-        q.breakable
-        q.pp(value)
-      end
-    end
-
-    def to_json(*opts)
-      { type: :@symbeg, value: value, loc: location }.to_json(*opts)
-    end
   end
 
   # symbeg is a token that represents the beginning of a symbol literal.
@@ -7811,19 +7615,6 @@ class ParseTree < Ripper
     def initialize(value:, location:)
       @value = value
       @location = location
-    end
-
-    def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('symbol')
-
-        q.breakable
-        q.pp(value)
-      end
-    end
-
-    def to_json(*opts)
-      { type: :symbol, value: value, loc: location }.to_json(*opts)
     end
   end
 
@@ -7947,19 +7738,6 @@ class ParseTree < Ripper
       @value = value
       @location = location
     end
-
-    def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('symbols_beg')
-
-        q.breakable
-        q.pp(value)
-      end
-    end
-
-    def to_json(*opts)
-      { type: :@symbols_beg, value: value, loc: location }.to_json(*opts)
-    end
   end
 
   # :call-seq:
@@ -7999,19 +7777,6 @@ class ParseTree < Ripper
       @value = value
       @location = location
     end
-
-    def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('tlambda')
-
-        q.breakable
-        q.pp(value)
-      end
-    end
-
-    def to_json(*opts)
-      { type: :@tlambda, value: value, loc: location }.to_json(*opts)
-    end
   end
 
   # :call-seq:
@@ -8043,19 +7808,6 @@ class ParseTree < Ripper
     def initialize(value:, location:)
       @value = value
       @location = location
-    end
-
-    def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('tlambeg')
-
-        q.breakable
-        q.pp(value)
-      end
-    end
-
-    def to_json(*opts)
-      { type: :@tlambeg, value: value, loc: location }.to_json(*opts)
     end
   end
 
@@ -8180,19 +7932,6 @@ class ParseTree < Ripper
       @value = value
       @location = location
     end
-
-    def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('tstring_beg')
-
-        q.breakable
-        q.pp(value)
-      end
-    end
-
-    def to_json(*opts)
-      { type: :@tstring_beg, value: value, loc: location }.to_json(*opts)
-    end
   end
 
   # :call-seq:
@@ -8239,7 +7978,7 @@ class ParseTree < Ripper
 
     def to_json(*opts)
       {
-        type: :@tstring_content,
+        type: :tstring_content,
         value: value.force_encoding('UTF-8'),
         loc: location
       }.to_json(*opts)
@@ -8275,19 +8014,6 @@ class ParseTree < Ripper
     def initialize(value:, location:)
       @value = value
       @location = location
-    end
-
-    def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('tstring_end')
-
-        q.breakable
-        q.pp(value)
-      end
-    end
-
-    def to_json(*opts)
-      { type: :@tstring_end, value: value, loc: location }.to_json(*opts)
     end
   end
 
@@ -8335,8 +8061,7 @@ class ParseTree < Ripper
 
     def to_json(*opts)
       {
-        type: :unary,
-        op: :not,
+        type: :not,
         value: statement,
         paren: parentheses,
         loc: location
@@ -8822,7 +8547,7 @@ class ParseTree < Ripper
 
   # VarRef represents a variable reference.
   #
-  #     variable
+  #     true
   #
   # This can be a plain local variable like the example above. It can also be a
   # constant, a class variable, a global variable, an instance variable, a
@@ -9163,7 +8888,7 @@ class ParseTree < Ripper
   # Word represents an element within a special array literal that accepts
   # interpolation.
   #
-  #     %w[a#{b}c xyz]
+  #     %W[a#{b}c xyz]
   #
   # In the example above, there would be two Word nodes within a parent Words
   # node.
@@ -9269,19 +8994,6 @@ class ParseTree < Ripper
       @value = value
       @location = location
     end
-
-    def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('words_beg')
-
-        q.breakable
-        q.pp(value)
-      end
-    end
-
-    def to_json(*opts)
-      { type: :@words_beg, value: value, loc: location }.to_json(*opts)
-    end
   end
 
   # :call-seq:
@@ -9324,19 +9036,6 @@ class ParseTree < Ripper
     def initialize(parts:, location:)
       @parts = parts
       @location = location
-    end
-
-    def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('xstring')
-
-        q.breakable
-        q.group(2, '(', ')') { q.seplist(parts) { |part| q.pp(part) } }
-      end
-    end
-
-    def to_json(*opts)
-      { type: :xstring, parts: parts, loc: location }.to_json(*opts)
     end
   end
 
