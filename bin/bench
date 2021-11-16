@@ -4,7 +4,7 @@
 require 'bundler/setup'
 require 'benchmark/ips'
 
-require_relative '../lib/parse_tree'
+require_relative '../lib/syntax_tree'
 require 'ruby_parser'
 require 'parser/current'
 
@@ -15,7 +15,7 @@ def compare(filepath)
   source = File.read(filepath)
 
   Benchmark.ips do |x|
-    x.report('parse_tree') { ParseTree.new(source).parse }
+    x.report('syntax_tree') { SyntaxTree.new(source).parse }
     x.report('parser') { Parser::CurrentRuby.parse(source) }
     x.report('ruby_parser') { RubyParser.new.parse(source) }
     x.compare!
@@ -25,12 +25,12 @@ end
 filepaths = ARGV
 
 # If the user didn't supply any files to parse to benchmark, then we're going to
-# default to parsing this file and the main parse_tree file (a small and large
+# default to parsing this file and the main syntax_tree file (a small and large
 # file).
 if filepaths.empty?
   filepaths = [
     File.expand_path('bench', __dir__),
-    File.expand_path('../lib/parse_tree.rb', __dir__)
+    File.expand_path('../lib/syntax_tree.rb', __dir__)
   ]
 end
 

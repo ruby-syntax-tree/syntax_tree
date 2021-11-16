@@ -4,21 +4,21 @@ require 'simplecov'
 SimpleCov.start
 
 $LOAD_PATH.unshift(File.expand_path('../lib', __dir__))
-require 'parse_tree'
+require 'syntax_tree'
 
 require 'json'
 require 'pp'
 require 'minitest/autorun'
 
-class ParseTree
-  class ParseTreeTest < Minitest::Test
+class SyntaxTree
+  class SyntaxTreeTest < Minitest::Test
     def test_multibyte
-      assign = ParseTree.new('🎉 + 🎉').parse.statements.body.first
+      assign = SyntaxTree.new('🎉 + 🎉').parse.statements.body.first
       assert_equal(5, assign.location.end_char)
     end
 
     def test_parse_error
-      assert_raises(ParseError) { ParseTree.new('<>').parse }
+      assert_raises(ParseError) { SyntaxTree.new('<>').parse }
     end
 
     def test_next_statement_start
@@ -28,7 +28,7 @@ class ParseTree
         end
       SOURCE
 
-      bodystmt = ParseTree.new(source).parse.statements.body.first.bodystmt
+      bodystmt = SyntaxTree.new(source).parse.statements.body.first.bodystmt
       assert_equal(20, bodystmt.location.start_char)
     end
 
@@ -746,7 +746,7 @@ class ParseTree
     end
 
     def test_program
-      parser = ParseTree.new('variable')
+      parser = SyntaxTree.new('variable')
       program = parser.parse
       refute(parser.error?)
 
@@ -1034,7 +1034,7 @@ class ParseTree
 
       # Parse the example, get the outputted parse tree, and assert that it was
       # able to successfully parse.
-      parser = ParseTree.new(source)
+      parser = SyntaxTree.new(source)
       program = parser.parse
       refute(parser.error?)
 

@@ -1,9 +1,9 @@
 # frozen_string_literal: true
 
 require 'ripper'
-require_relative 'parse_tree/version'
+require_relative 'syntax_tree/version'
 
-class ParseTree < Ripper
+class SyntaxTree < Ripper
   # Represents a line in the source. If this class is being used, it means that
   # every character in the string is 1 byte in length, so we can just return the
   # start of the line + the index.
@@ -7165,7 +7165,7 @@ class ParseTree < Ripper
   # propagate that onto void_stmt nodes inside the stmts in order to make sure
   # all comments get printed appropriately.
   class Statements
-    # [ParseTree] the parser that created this node
+    # [SyntaxTree] the parser that created this node
     attr_reader :parser
 
     # [Array[untyped]] the list of expressions contained within this node

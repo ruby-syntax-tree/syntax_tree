@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    parse_tree (0.1.0)
+    syntax_tree (0.1.0)
 
 GEM
   remote: https://rubygems.org/
@@ -30,7 +30,7 @@ DEPENDENCIES
   benchmark-ips
   bundler
   minitest
-  parse_tree!
+  syntax_tree!
   parser
   rake
   ruby_parser

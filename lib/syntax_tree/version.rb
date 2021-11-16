@@ -2,6 +2,6 @@
 
 require 'ripper'
 
-class ParseTree < Ripper
+class SyntaxTree < Ripper
   VERSION = '0.1.0'
 end
