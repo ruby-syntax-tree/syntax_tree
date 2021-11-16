@@ -12,6 +12,10 @@ require 'minitest/autorun'
 
 class SyntaxTree
   class SyntaxTreeTest < Minitest::Test
+    # --------------------------------------------------------------------------
+    # Tests for behavior
+    # --------------------------------------------------------------------------
+
     def test_multibyte
       assign = SyntaxTree.new('🎉 + 🎉').parse.statements.body.first
       assert_equal(5, assign.location.end_char)
@@ -35,6 +39,10 @@ class SyntaxTree
     def test_version
       refute_nil(VERSION)
     end
+
+    # --------------------------------------------------------------------------
+    # Tests for nodes
+    # --------------------------------------------------------------------------
 
     def test_BEGIN
       assert_node(BEGINBlock, 'BEGIN', 'BEGIN {}')
