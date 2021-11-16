@@ -49,10 +49,8 @@ class SyntaxTree < Ripper
     end
 
     def ==(other)
-      other.is_a?(Location) &&
-        start_line == other.start_line &&
-        start_char == other.start_char &&
-        end_line == other.end_line &&
+      other.is_a?(Location) && start_line == other.start_line &&
+        start_char == other.start_char && end_line == other.end_line &&
         end_char == other.end_char
     end
 
@@ -1532,9 +1530,7 @@ class SyntaxTree < Ripper
     # `operator` object would be `:<`. However, on JRuby, it's an `@op` node,
     # so here we're going to explicitly convert it into the same normalized
     # form.
-    unless operator.is_a?(Symbol)
-      operator = tokens.delete(operator).value
-    end
+    operator = tokens.delete(operator).value unless operator.is_a?(Symbol)
 
     Binary.new(
       left: left,
@@ -2067,9 +2063,7 @@ class SyntaxTree < Ripper
         location: keyword.location.to(consequent.location)
       )
     else
-      operator =
-        find_token(Kw, 'in', consume: false) ||
-          find_token(Op, '=>')
+      operator = find_token(Kw, 'in', consume: false) || find_token(Op, '=>')
 
       RAssign.new(
         value: value,
@@ -7254,8 +7248,7 @@ class SyntaxTree < Ripper
     def attach_comments(start_char, end_char)
       attachable =
         parser.comments.select do |comment|
-          !comment.inline? &&
-            start_char <= comment.location.start_char &&
+          !comment.inline? && start_char <= comment.location.start_char &&
             end_char >= comment.location.end_char &&
             !comment.value.include?('prettier-ignore')
         end
