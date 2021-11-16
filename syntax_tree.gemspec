@@ -1,16 +1,17 @@
 # frozen_string_literal: true
 
-require_relative 'lib/ripper/parse_tree/version'
+require_relative 'lib/syntax_tree/version'
 
 Gem::Specification.new do |spec|
-  spec.name          = 'template'
-  spec.version       = Ripper::ParseTree::VERSION
+  spec.name          = 'syntax_tree'
+  spec.version       = SyntaxTree::VERSION
   spec.authors       = ['Kevin Newton']
   spec.email         = ['kddnewton@gmail.com']
 
   spec.summary       = 'A parser based on ripper'
-  spec.homepage      = 'https://github.com/kddnewton/ripper-parse_tree'
+  spec.homepage      = 'https://github.com/kddnewton/syntax_tree'
   spec.license       = 'MIT'
+  spec.metadata      = { 'rubygems_mfa_required' => 'true' }
 
   spec.files         = Dir.chdir(__dir__) do
     `git ls-files -z`.split("\x0").reject do |f|

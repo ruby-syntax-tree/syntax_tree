@@ -1,14 +1,16 @@
-# Template
+# SyntaxTree
 
-[![Build Status](https://github.com/kddnewton/ripper-parse_tree/workflows/Main/badge.svg)](https://github.com/kddnewton/ripper-parse_tree/actions)
-[![Gem Version](https://img.shields.io/gem/v/ripper-parse_tree.svg)](https://rubygems.org/gems/ripper-parse_tree)
+[![Build Status](https://github.com/kddnewton/syntax_tree/workflows/Main/badge.svg)](https://github.com/kddnewton/syntax_tree/actions)
+[![Gem Version](https://img.shields.io/gem/v/syntax_tree.svg)](https://rubygems.org/gems/syntax_tree)
+
+A fast ripper subclass used for generating syntax trees from Ruby code.
 
 ## Installation
 
 Add this line to your application's Gemfile:
 
 ```ruby
-gem 'ripper-parse_tree'
+gem 'syntax_tree'
 ```
 
 And then execute:
@@ -17,9 +19,31 @@ And then execute:
 
 Or install it yourself as:
 
-    $ gem install ripper-parse_tree
+    $ gem install syntax_tree
 
 ## Usage
+
+From code:
+
+```ruby
+require 'syntax_tree'
+
+parser = SyntaxTree.new(source)
+
+node = parser.parse
+raise if parser.error?
+
+pp node
+```
+
+From the CLI:
+
+```sh
+$ stree program.rb
+(program
+  (statements
+    ...
+```
 
 ## Development
 
@@ -29,7 +53,7 @@ To install this gem onto your local machine, run `bundle exec rake install`. To 
 
 ## Contributing
 
-Bug reports and pull requests are welcome on GitHub at https://github.com/kddeisz/ripper-parse_tree. This project is intended to be a safe, welcoming space for collaboration, and contributors are expected to adhere to the [code of conduct](https://github.com/kddnewton/ripper-parse_tree/blob/main/CODE_OF_CONDUCT.md).
+Bug reports and pull requests are welcome on GitHub at https://github.com/kddnewton/syntax_tree. This project is intended to be a safe, welcoming space for collaboration, and contributors are expected to adhere to the [code of conduct](https://github.com/kddnewton/syntax_tree/blob/main/CODE_OF_CONDUCT.md).
 
 ## License
 
@@ -37,4 +61,4 @@ The gem is available as open source under the terms of the [MIT License](https:/
 
 ## Code of Conduct
 
-Everyone interacting in the Template project's codebases, issue trackers, chat rooms and mailing lists is expected to follow the [code of conduct](https://github.com/kddeisz/ripper-parse_tree/blob/main/CODE_OF_CONDUCT.md).
+Everyone interacting in the syntax_tree project's codebases, issue trackers, chat rooms and mailing lists is expected to follow the [code of conduct](https://github.com/kddnewton/syntax_tree/blob/main/CODE_OF_CONDUCT.md).

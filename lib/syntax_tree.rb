@@ -1,8 +1,9 @@
 # frozen_string_literal: true
 
 require 'ripper'
+require_relative 'syntax_tree/version'
 
-class Ripper::ParseTree < Ripper
+class SyntaxTree < Ripper
   # Represents a line in the source. If this class is being used, it means that
   # every character in the string is 1 byte in length, so we can just return the
   # start of the line + the index.
@@ -45,6 +46,12 @@ class Ripper::ParseTree < Ripper
       @start_char = start_char
       @end_line = end_line
       @end_char = end_char
+    end
+
+    def ==(other)
+      other.is_a?(Location) && start_line == other.start_line &&
+        start_char == other.start_char && end_line == other.end_line &&
+        end_char == other.end_char
     end
 
     def to(other)
@@ -92,8 +99,8 @@ class Ripper::ParseTree < Ripper
   # array and attach them to themselves.
   attr_accessor :comments
 
-  def initialize(source, *args)
-    super(source, *args)
+  def initialize(source, *)
+    super
 
     # We keep the source around so that we can refer back to it when we're
     # generating the AST. Sometimes it's easier to just reference the source
@@ -161,10 +168,9 @@ class Ripper::ParseTree < Ripper
   end
 
   def self.parse(source)
-    builder = new(source)
-
-    response = builder.parse
-    response unless builder.error?
+    parser = new(source)
+    response = parser.parse
+    response unless parser.error?
   end
 
   private
@@ -277,17 +283,28 @@ class Ripper::ParseTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(lbrace:, statements:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(lbrace:, statements:, location:, comments: [])
       @lbrace = lbrace
       @statements = statements
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [lbrace, statements]
     end
 
     def pretty_print(q)
       q.group(2, '(', ')') do
         q.text('BEGIN')
+
         q.breakable
         q.pp(statements)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
@@ -296,7 +313,8 @@ class Ripper::ParseTree < Ripper
         type: :BEGIN,
         lbrace: lbrace,
         stmts: statements,
-        loc: location
+        loc: location,
+        cmts: comments
       }.to_json(*opts)
     end
   end
@@ -334,21 +352,32 @@ class Ripper::ParseTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(value:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(value:, location:, comments: [])
       @value = value
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      []
     end
 
     def pretty_print(q)
       q.group(2, '(', ')') do
         q.text('CHAR')
+
         q.breakable
         q.pp(value)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :@CHAR, value: value, loc: location }.to_json(*opts)
+      { type: :CHAR, value: value, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
@@ -384,22 +413,33 @@ class Ripper::ParseTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(lbrace:, statements:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(lbrace:, statements:, location:, comments: [])
       @lbrace = lbrace
       @statements = statements
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [lbrace, statements]
     end
 
     def pretty_print(q)
       q.group(2, '(', ')') do
         q.text('END')
+
         q.breakable
         q.pp(statements)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :END, lbrace: lbrace, stmts: statements, loc: location }.to_json(
+      { type: :END, lbrace: lbrace, stmts: statements, loc: location, cmts: comments }.to_json(
         *opts
       )
     end
@@ -441,21 +481,32 @@ class Ripper::ParseTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(value:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(value:, location:, comments: [])
       @value = value
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      []
     end
 
     def pretty_print(q)
       q.group(2, '(', ')') do
         q.text('__end__')
+
         q.breakable
         q.pp(value)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :@__end__, value: value, loc: location }.to_json(*opts)
+      { type: :__end__, value: value, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
@@ -490,24 +541,36 @@ class Ripper::ParseTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(left:, right:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(left:, right:, location:, comments: [])
       @left = left
       @right = right
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [left, right]
     end
 
     def pretty_print(q)
       q.group(2, '(', ')') do
         q.text('alias')
+
         q.breakable
         q.pp(left)
+
         q.breakable
         q.pp(right)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :alias, left: left, right: right, loc: location }.to_json(*opts)
+      { type: :alias, left: left, right: right, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
@@ -543,25 +606,37 @@ class Ripper::ParseTree < Ripper
     # [untyped] the value being indexed
     attr_reader :collection
 
-    # [nil | Args | ArgsAddBlock] the value being passed within the brackets
+    # [nil | Args] the value being passed within the brackets
     attr_reader :index
 
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(collection:, index:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(collection:, index:, location:, comments: [])
       @collection = collection
       @index = index
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [collection, index]
     end
 
     def pretty_print(q)
       q.group(2, '(', ')') do
         q.text('aref')
+
         q.breakable
         q.pp(collection)
+
         q.breakable
         q.pp(index)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
@@ -570,13 +645,14 @@ class Ripper::ParseTree < Ripper
         type: :aref,
         collection: collection,
         index: index,
-        loc: location
+        loc: location,
+        cmts: comments
       }.to_json(*opts)
     end
   end
 
   # :call-seq:
-  #   on_aref: (untyped collection, (nil | Args | ArgsAddBlock) index) -> ARef
+  #   on_aref: (untyped collection, (nil | Args) index) -> ARef
   def on_aref(collection, index)
     find_token(LBracket)
     rbracket = find_token(RBracket)
@@ -599,25 +675,37 @@ class Ripper::ParseTree < Ripper
     # [untyped] the value being indexed
     attr_reader :collection
 
-    # [nil | ArgsAddBlock] the value being passed within the brackets
+    # [nil | Args] the value being passed within the brackets
     attr_reader :index
 
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(collection:, index:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(collection:, index:, location:, comments: [])
       @collection = collection
       @index = index
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [collection, index]
     end
 
     def pretty_print(q)
       q.group(2, '(', ')') do
         q.text('aref_field')
+
         q.breakable
         q.pp(collection)
+
         q.breakable
         q.pp(index)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
@@ -626,7 +714,8 @@ class Ripper::ParseTree < Ripper
         type: :aref_field,
         collection: collection,
         index: index,
-        loc: location
+        loc: location,
+        cmts: comments
       }.to_json(*opts)
     end
   end
@@ -634,7 +723,7 @@ class Ripper::ParseTree < Ripper
   # :call-seq:
   #   on_aref_field: (
   #     untyped collection,
-  #     (nil | ArgsAddBlock) index
+  #     (nil | Args) index
   #   ) -> ARefField
   def on_aref_field(collection, index)
     find_token(LBracket)
@@ -656,42 +745,52 @@ class Ripper::ParseTree < Ripper
   #
   #     method(argument)
   #
-  # In the example above, there would be an ArgParen node around the
-  # ArgsAddBlock node that represents the set of arguments being sent to the
-  # method method. The argument child node can be +nil+ if no arguments were
-  # passed, as in:
+  # In the example above, there would be an ArgParen node around the Args node
+  # that represents the set of arguments being sent to the method method. The
+  # argument child node can be +nil+ if no arguments were passed, as in:
   #
   #     method()
   #
   class ArgParen
-    # [nil | Args | ArgsAddBlock | ArgsForward] the arguments inside the
+    # [nil | Args | ArgsForward] the arguments inside the
     # parentheses
     attr_reader :arguments
 
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(arguments:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(arguments:, location:, comments: [])
       @arguments = arguments
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [arguments]
     end
 
     def pretty_print(q)
       q.group(2, '(', ')') do
         q.text('arg_paren')
+
         q.breakable
         q.pp(arguments)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :arg_paren, args: arguments, loc: location }.to_json(*opts)
+      { type: :arg_paren, args: arguments, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
   # :call-seq:
   #   on_arg_paren: (
-  #     (nil | Args | ArgsAddBlock | ArgsForward) arguments
+  #     (nil | Args | ArgsForward) arguments
   #   ) -> ArgParen
   def on_arg_paren(arguments)
     lparen = find_token(LParen)
@@ -719,41 +818,45 @@ class Ripper::ParseTree < Ripper
   #     method(first, second, third)
   #
   class Args
-    # Array[untyped] the arguments that this node wraps
+    # [Array[ untyped ]] the arguments that this node wraps
     attr_reader :parts
 
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(parts:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(parts:, location:, comments: [])
       @parts = parts
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      parts
     end
 
     def pretty_print(q)
       q.group(2, '(', ')') do
         q.text('args')
+
         q.breakable
         q.group(2, '(', ')') { q.seplist(parts) { |part| q.pp(part) } }
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :args, parts: parts, loc: location }.to_json(*opts)
+      { type: :args, parts: parts, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
   # :call-seq:
-  #   on_args_add: ((Args | ArgsAddStar) arguments, untyped argument) -> Args
+  #   on_args_add: (Args arguments, untyped argument) -> Args
   def on_args_add(arguments, argument)
-    if arguments.is_a?(ArgsAddStar)
-      # If we're adding an argument after a splatted argument, then it's going
-      # to come in through this path.
-      Args.new(
-        parts: [arguments, argument],
-        location: arguments.location.to(argument.location)
-      )
-    elsif arguments.parts.empty?
+    if arguments.parts.empty?
       # If this is the first argument being passed into the list of arguments,
       # then we're going to use the bounds of the argument to override the
       # parent node's location since this will be more accurate.
@@ -768,118 +871,126 @@ class Ripper::ParseTree < Ripper
     end
   end
 
-  # ArgsAddBlock represents a list of arguments and potentially a block
-  # argument. ArgsAddBlock is commonly seen being passed to any method where you
-  # use parentheses (wrapped in an ArgParen node). It’s also used to pass
-  # arguments to the various control-flow keywords like +return+.
+  # ArgBlock represents using a block operator on an expression.
   #
-  #     method(argument, &block)
+  #     method(&expression)
   #
-  class ArgsAddBlock
-    # [Args | ArgsAddStar] the arguments before the optional block
-    attr_reader :arguments
-
-    # [nil | untyped] the optional block argument
-    attr_reader :block
+  class ArgBlock
+    # [untyped] the expression being turned into a block
+    attr_reader :value
 
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(arguments:, block:, location:)
-      @arguments = arguments
-      @block = block
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(value:, location:, comments: [])
+      @value = value
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [value]
     end
 
     def pretty_print(q)
       q.group(2, '(', ')') do
-        q.text('args_add_block')
+        q.text('arg_block')
+
         q.breakable
-        q.pp(arguments)
-        q.breakable
-        q.pp(block)
+        q.pp(value)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      {
-        type: :args_add_block,
-        args: arguments,
-        block: block,
-        loc: location
-      }.to_json(*opts)
+      { type: :arg_block, value: value, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
   # :call-seq:
   #   on_args_add_block: (
-  #     (Args | ArgsAddStar) arguments,
+  #     Args arguments,
   #     (false | untyped) block
-  #   ) -> ArgsAddBlock
+  #   ) -> Args
   def on_args_add_block(arguments, block)
-    ending = block || arguments
+    return arguments unless block
 
-    ArgsAddBlock.new(
-      arguments: arguments,
-      block: block || nil,
-      location: arguments.location.to(ending.location)
+    arg_block =
+      ArgBlock.new(
+        value: block,
+        location: find_token(Op, '&').location.to(block.location)
+      )
+
+    Args.new(
+      parts: arguments.parts << arg_block,
+      location: arguments.location.to(arg_block.location)
     )
   end
 
-  # ArgsAddStar represents adding a splat of values to a list of arguments.
+  # Star represents using a splat operator on an expression.
   #
-  #     method(prefix, *arguments, suffix)
+  #     method(*arguments)
   #
-  class ArgsAddStar
-    # [Args | ArgsAddStar] the arguments before the starred argument
-    attr_reader :arguments
-
-    # [untyped] the expression being starred
-    attr_reader :star
+  class ArgStar
+    # [nil | untyped] the expression being splatted
+    attr_reader :value
 
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(arguments:, star:, location:)
-      @arguments = arguments
-      @star = star
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(value:, location:, comments: [])
+      @value = value
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [value]
     end
 
     def pretty_print(q)
       q.group(2, '(', ')') do
-        q.text('args_add_star')
+        q.text('arg_star')
+
         q.breakable
-        q.pp(arguments)
-        q.breakable
-        q.pp(star)
+        q.pp(value)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      {
-        type: :args_add_star,
-        args: arguments,
-        star: star,
-        loc: location
-      }.to_json(*opts)
+      { type: :arg_star, value: value, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
   # :call-seq:
-  #   on_args_add_star: (
-  #     (Args | ArgsAddStar) arguments,
-  #     untyped star
-  #   ) -> ArgsAddStar
-  def on_args_add_star(arguments, star)
+  #   on_args_add_star: (Args arguments, untyped star) -> Args
+  def on_args_add_star(arguments, argument)
     beginning = find_token(Op, '*')
-    ending = star || beginning
+    ending = argument || beginning
 
-    ArgsAddStar.new(
-      arguments: arguments,
-      star: star,
-      location: beginning.location.to(ending.location)
-    )
+    location =
+      if arguments.parts.empty?
+        ending.location
+      else
+        arguments.location.to(ending.location)
+      end
+
+    arg_star =
+      ArgStar.new(
+        value: argument,
+        location: beginning.location.to(ending.location)
+      )
+
+    Args.new(parts: arguments.parts << arg_star, location: location)
   end
 
   # ArgsForward represents forwarding all kinds of arguments onto another method
@@ -906,21 +1017,32 @@ class Ripper::ParseTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(value:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(value:, location:, comments: [])
       @value = value
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      []
     end
 
     def pretty_print(q)
       q.group(2, '(', ')') do
         q.text('args_forward')
+
         q.breakable
         q.pp(value)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :args_forward, value: value, loc: location }.to_json(*opts)
+      { type: :args_forward, value: value, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
@@ -950,41 +1072,50 @@ class Ripper::ParseTree < Ripper
   #     %W[one two three]
   #
   # Every line in the example above produces an ArrayLiteral node. In order, the
-  # child contents node of this ArrayLiteral node would be nil, Args,
-  # ArgsAddStar, QSymbols, QWords, Symbols, and Words.
+  # child contents node of this ArrayLiteral node would be nil, Args, QSymbols,
+  # QWords, Symbols, and Words.
   class ArrayLiteral
-    # [nil | Args | ArgsAddStar | Qsymbols | Qwords | Symbols | Words] the
+    # [nil | Args | QSymbols | QWords | Symbols | Words] the
     # contents of the array
     attr_reader :contents
 
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(contents:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(contents:, location:, comments: [])
       @contents = contents
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [contents]
     end
 
     def pretty_print(q)
       q.group(2, '(', ')') do
         q.text('array')
+
         q.breakable
         q.pp(contents)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :array, cnts: contents, loc: location }.to_json(*opts)
+      { type: :array, cnts: contents, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
   # :call-seq:
-  #   on_array: (
-  #     (nil | Args | ArgsAddStar | Qsymbols | Qwords | Symbols | Words)
-  #       contents
-  #   ) -> ArrayLiteral
+  #   on_array: ((nil | Args) contents) ->
+  #     ArrayLiteral | QSymbols | QWords | Symbols | Words
   def on_array(contents)
-    if !contents || contents.is_a?(Args) || contents.is_a?(ArgsAddStar)
+    if !contents || contents.is_a?(Args)
       lbracket = find_token(LBracket)
       rbracket = find_token(RBracket)
 
@@ -994,13 +1125,11 @@ class Ripper::ParseTree < Ripper
       )
     else
       tstring_end = find_token(TStringEnd)
-      contents =
-        contents.class.new(
-          elements: contents.elements,
-          location: contents.location.to(tstring_end.location)
-        )
 
-      ArrayLiteral.new(contents: contents, location: contents.location)
+      contents.class.new(
+        elements: contents.elements,
+        location: contents.location.to(tstring_end.location)
+      )
     end
   end
 
@@ -1025,27 +1154,35 @@ class Ripper::ParseTree < Ripper
     # [nil | VarRef] the optional constant wrapper
     attr_reader :constant
 
-    # [Array[untyped]] the regular positional arguments that this array pattern
-    # is matching against
+    # [Array[ untyped ]] the regular positional arguments that this array
+    # pattern is matching against
     attr_reader :requireds
 
     # [nil | VarField] the optional starred identifier that grabs up a list of
     # positional arguments
     attr_reader :rest
 
-    # [Array[untyped]] the list of positional arguments occurring after the
+    # [Array[ untyped ]] the list of positional arguments occurring after the
     # optional star if there is one
     attr_reader :posts
 
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(constant:, requireds:, rest:, posts:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(constant:, requireds:, rest:, posts:, location:, comments: [])
       @constant = constant
       @requireds = requireds
       @rest = rest
       @posts = posts
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [constant, *required, rest, *posts]
     end
 
     def pretty_print(q)
@@ -1073,6 +1210,8 @@ class Ripper::ParseTree < Ripper
           q.breakable
           q.group(2, '(', ')') { q.seplist(posts) { |post| q.pp(post) } }
         end
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
@@ -1083,7 +1222,8 @@ class Ripper::ParseTree < Ripper
         reqs: requireds,
         rest: rest,
         posts: posts,
-        loc: location
+        loc: location,
+        cmts: comments
       }.to_json(*opts)
     end
   end
@@ -1114,7 +1254,7 @@ class Ripper::ParseTree < Ripper
   #     variable = value
   #
   class Assign
-    # [ArefField | ConstPathField | Field | TopConstField | VarField] the target
+    # [ARefField | ConstPathField | Field | TopConstField | VarField] the target
     # to assign the result of the expression to
     attr_reader :target
 
@@ -1124,24 +1264,36 @@ class Ripper::ParseTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(target:, value:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(target:, value:, location:, comments: [])
       @target = target
       @value = value
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [target, value]
     end
 
     def pretty_print(q)
       q.group(2, '(', ')') do
         q.text('assign')
+
         q.breakable
         q.pp(target)
+
         q.breakable
         q.pp(value)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :assign, target: target, value: value, loc: location }.to_json(
+      { type: :assign, target: target, value: value, loc: location, cmts: comments }.to_json(
         *opts
       )
     end
@@ -1149,7 +1301,7 @@ class Ripper::ParseTree < Ripper
 
   # :call-seq:
   #   on_assign: (
-  #     (ArefField | ConstPathField | Field | TopConstField | VarField) target,
+  #     (ARefField | ConstPathField | Field | TopConstField | VarField) target,
   #     untyped value
   #   ) -> Assign
   def on_assign(target, value)
@@ -1160,13 +1312,13 @@ class Ripper::ParseTree < Ripper
     )
   end
 
-  # AssocNew represents a key-value pair within a hash. It is a child node of
+  # Assoc represents a key-value pair within a hash. It is a child node of
   # either an AssocListFromArgs or a BareAssocHash.
   #
   #     { key1: value1, key2: value2 }
   #
   # In the above example, the would be two AssocNew nodes.
-  class AssocNew
+  class Assoc
     # [untyped] the key of this pair
     attr_reader :key
 
@@ -1176,35 +1328,43 @@ class Ripper::ParseTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(key:, value:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(key:, value:, location:, comments: [])
       @key = key
       @value = value
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [key, value]
     end
 
     def pretty_print(q)
       q.group(2, '(', ')') do
-        q.text('assoc_new')
+        q.text('assoc')
+
         q.breakable
         q.pp(key)
+
         q.breakable
         q.pp(value)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :assoc_new, key: key, value: value, loc: location }.to_json(*opts)
+      { type: :assoc, key: key, value: value, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
   # :call-seq:
-  #   on_assoc_new: (untyped key, untyped value) -> AssocNew
+  #   on_assoc_new: (untyped key, untyped value) -> Assoc
   def on_assoc_new(key, value)
-    AssocNew.new(
-      key: key,
-      value: value,
-      location: key.location.to(value.location)
-    )
+    Assoc.new(key: key, value: value, location: key.location.to(value.location))
   end
 
   # AssocSplat represents double-splatting a value into a hash (either a hash
@@ -1219,21 +1379,32 @@ class Ripper::ParseTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(value:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(value:, location:, comments: [])
       @value = value
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [value]
     end
 
     def pretty_print(q)
       q.group(2, '(', ')') do
         q.text('assoc_splat')
+
         q.breakable
         q.pp(value)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :assoc_splat, value: value, loc: location }.to_json(*opts)
+      { type: :assoc_splat, value: value, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
@@ -1245,48 +1416,9 @@ class Ripper::ParseTree < Ripper
     AssocSplat.new(value: value, location: operator.location.to(value.location))
   end
 
-  # AssocListFromArgs represents the key-value pairs of a hash literal. Its
-  # parent node is always a hash.
-  #
-  #     { key1: value1, key2: value2 }
-  #
-  class AssocListFromArgs
-    # [Array[AssocNew | AssocSplat]]
-    attr_reader :assocs
-
-    # [Location] the location of this node
-    attr_reader :location
-
-    def initialize(assocs:, location:)
-      @assocs = assocs
-      @location = location
-    end
-
-    def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('assoclist_from_args')
-        q.breakable
-        q.group(2, '(', ')') { q.seplist(assocs) { |assoc| q.pp(assoc) } }
-      end
-    end
-
-    def to_json(*opts)
-      { type: :assoclist_from_args, assocs: assocs, loc: location }.to_json(
-        *opts
-      )
-    end
-  end
-
-  # :call-seq:
-  #   on_assoclist_from_args: (
-  #     Array[AssocNew | AssocSplat] assocs
-  #   ) -> AssocListFromArgs
-  def on_assoclist_from_args(assocs)
-    AssocListFromArgs.new(
-      assocs: assocs,
-      location: assocs[0].location.to(assocs[-1].location)
-    )
-  end
+  # def on_assoclist_from_args(assocs)
+  #   assocs
+  # end
 
   # Backref represents a global variable referencing a matched value. It comes
   # in the form of a $ followed by a positive integer.
@@ -1300,21 +1432,32 @@ class Ripper::ParseTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(value:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(value:, location:, comments: [])
       @value = value
       @location = location
+      @comments = comments
     end
 
+    def child_nodes
+      []
+    end
+    
     def pretty_print(q)
       q.group(2, '(', ')') do
         q.text('backref')
+
         q.breakable
         q.pp(value)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :@backref, value: value, loc: location }.to_json(*opts)
+      { type: :backref, value: value, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
@@ -1341,21 +1484,32 @@ class Ripper::ParseTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(value:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(value:, location:, comments: [])
       @value = value
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      []
     end
 
     def pretty_print(q)
       q.group(2, '(', ')') do
         q.text('backtick')
+
         q.breakable
         q.pp(value)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :@backtick, value: value, loc: location }.to_json(*opts)
+      { type: :backtick, value: value, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
@@ -1379,27 +1533,38 @@ class Ripper::ParseTree < Ripper
   #     method(key1: value1, key2: value2)
   #
   class BareAssocHash
-    # [Array[AssocNew | AssocSplat]]
+    # [Array[ AssocNew | AssocSplat ]]
     attr_reader :assocs
 
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(assocs:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(assocs:, location:, comments: [])
       @assocs = assocs
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      assocs
     end
 
     def pretty_print(q)
       q.group(2, '(', ')') do
         q.text('bare_assoc_hash')
+
         q.breakable
         q.group(2, '(', ')') { q.seplist(assocs) { |assoc| q.pp(assoc) } }
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :bare_assoc_hash, assocs: assocs, loc: location }.to_json(*opts)
+      { type: :bare_assoc_hash, assocs: assocs, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
@@ -1425,21 +1590,32 @@ class Ripper::ParseTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(bodystmt:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(bodystmt:, location:, comments: [])
       @bodystmt = bodystmt
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [bodystmt]
     end
 
     def pretty_print(q)
       q.group(2, '(', ')') do
         q.text('begin')
+
         q.breakable
         q.pp(bodystmt)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :begin, bodystmt: bodystmt, loc: location }.to_json(*opts)
+      { type: :begin, bodystmt: bodystmt, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
@@ -1486,22 +1662,35 @@ class Ripper::ParseTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(left:, operator:, right:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(left:, operator:, right:, location:, comments: [])
       @left = left
       @operator = operator
       @right = right
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [left, right]
     end
 
     def pretty_print(q)
       q.group(2, '(', ')') do
         q.text('binary')
+
         q.breakable
         q.pp(left)
+
         q.breakable
         q.text(operator)
+
         q.breakable
         q.pp(right)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
@@ -1511,7 +1700,8 @@ class Ripper::ParseTree < Ripper
         left: left,
         op: operator,
         right: right,
-        loc: location
+        loc: location,
+        cmts: comments
       }.to_json(*opts)
     end
   end
@@ -1524,9 +1714,7 @@ class Ripper::ParseTree < Ripper
     # `operator` object would be `:<`. However, on JRuby, it's an `@op` node,
     # so here we're going to explicitly convert it into the same normalized
     # form.
-    unless operator.is_a?(Symbol)
-      operator = tokens.delete(operator).value
-    end
+    operator = tokens.delete(operator).value unless operator.is_a?(Symbol)
 
     Binary.new(
       left: left,
@@ -1547,21 +1735,30 @@ class Ripper::ParseTree < Ripper
     # [Params] the parameters being declared with the block
     attr_reader :params
 
-    # [Array[Ident]] the list of block-local variable declarations
+    # [Array[ Ident ]] the list of block-local variable declarations
     attr_reader :locals
 
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(params:, locals:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(params:, locals:, location:, comments: [])
       @params = params
       @locals = locals
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [params, *locals]
     end
 
     def pretty_print(q)
       q.group(2, '(', ')') do
         q.text('block_var')
+
         q.breakable
         q.pp(params)
 
@@ -1569,6 +1766,8 @@ class Ripper::ParseTree < Ripper
           q.breakable
           q.group(2, '(', ')') { q.seplist(locals) { |local| q.pp(local) } }
         end
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
@@ -1577,7 +1776,8 @@ class Ripper::ParseTree < Ripper
         type: :block_var,
         params: params,
         locals: locals,
-        loc: location
+        loc: location,
+        cmts: comments
       }.to_json(*opts)
     end
   end
@@ -1612,21 +1812,32 @@ class Ripper::ParseTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(name:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(name:, location:, comments: [])
       @name = name
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [name]
     end
 
     def pretty_print(q)
       q.group(2, '(', ')') do
         q.text('blockarg')
+
         q.breakable
         q.pp(name)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :blockarg, name: name, loc: location }.to_json(*opts)
+      { type: :blockarg, name: name, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
@@ -1657,18 +1868,16 @@ class Ripper::ParseTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(
-      statements:,
-      rescue_clause:,
-      else_clause:,
-      ensure_clause:,
-      location:
-    )
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(statements:, rescue_clause:, else_clause:, ensure_clause:, location:, comments: [])
       @statements = statements
       @rescue_clause = rescue_clause
       @else_clause = else_clause
       @ensure_clause = ensure_clause
       @location = location
+      @comments = comments
     end
 
     def bind(start_char, end_char)
@@ -1698,9 +1907,14 @@ class Ripper::ParseTree < Ripper
       end
     end
 
+    def child_nodes
+      [statements, rescue_clause, else_clause, ensure_clause]
+    end
+
     def pretty_print(q)
       q.group(2, '(', ')') do
         q.text('bodystmt')
+
         q.breakable
         q.pp(statements)
 
@@ -1718,6 +1932,8 @@ class Ripper::ParseTree < Ripper
           q.breakable
           q.pp(ensure_clause)
         end
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
@@ -1728,7 +1944,8 @@ class Ripper::ParseTree < Ripper
         rsc: rescue_clause,
         els: else_clause,
         ens: ensure_clause,
-        loc: location
+        loc: location,
+        cmts: comments
       }.to_json(*opts)
     end
   end
@@ -1768,11 +1985,19 @@ class Ripper::ParseTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(lbrace:, block_var:, statements:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(lbrace:, block_var:, statements:, location:, comments: [])
       @lbrace = lbrace
       @block_var = block_var
       @statements = statements
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [lbrace, block_var, statements]
     end
 
     def pretty_print(q)
@@ -1786,6 +2011,8 @@ class Ripper::ParseTree < Ripper
 
         q.breakable
         q.pp(statements)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
@@ -1795,7 +2022,8 @@ class Ripper::ParseTree < Ripper
         lbrace: lbrace,
         block_var: block_var,
         stmts: statements,
-        loc: location
+        loc: location,
+        cmts: comments
       }.to_json(*opts)
     end
   end
@@ -1839,37 +2067,48 @@ class Ripper::ParseTree < Ripper
   #     break 1
   #
   class Break
-    # [Args | ArgsAddBlock] the arguments being sent to the keyword
+    # [Args] the arguments being sent to the keyword
     attr_reader :arguments
 
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(arguments:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(arguments:, location:, comments: [])
       @arguments = arguments
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [arguments]
     end
 
     def pretty_print(q)
       q.group(2, '(', ')') do
         q.text('break')
+
         q.breakable
         q.pp(arguments)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :break, args: arguments, loc: location }.to_json(*opts)
+      { type: :break, args: arguments, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
   # :call-seq:
-  #   on_break: ((Args | ArgsAddBlock) arguments) -> Break
+  #   on_break: (Args arguments) -> Break
   def on_break(arguments)
     keyword = find_token(Kw, 'break')
 
     location = keyword.location
-    location = location.to(arguments.location) unless arguments.is_a?(Args)
+    location = location.to(arguments.location) if arguments.parts.any?
 
     Break.new(arguments: arguments, location: location)
   end
@@ -1893,22 +2132,35 @@ class Ripper::ParseTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(receiver:, operator:, message:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(receiver:, operator:, message:, location:, comments: [])
       @receiver = receiver
       @operator = operator
       @message = message
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [receiver, (operator if operator != :'::'), (message if message != :call)]
     end
 
     def pretty_print(q)
       q.group(2, '(', ')') do
         q.text('call')
+
         q.breakable
         q.pp(receiver)
+
         q.breakable
         q.pp(operator)
+
         q.breakable
         q.pp(message)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
@@ -1918,7 +2170,8 @@ class Ripper::ParseTree < Ripper
         receiver: receiver,
         op: operator,
         message: message,
-        loc: location
+        loc: location,
+        cmts: comments
       }.to_json(*opts)
     end
   end
@@ -1968,10 +2221,18 @@ class Ripper::ParseTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(value:, consequent:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(value:, consequent:, location:, comments: [])
       @value = value
       @consequent = consequent
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [value, consequent]
     end
 
     def pretty_print(q)
@@ -1985,11 +2246,13 @@ class Ripper::ParseTree < Ripper
 
         q.breakable
         q.pp(consequent)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :case, value: value, cons: consequent, loc: location }.to_json(
+      { type: :case, value: value, cons: consequent, loc: location, cmts: comments }.to_json(
         *opts
       )
     end
@@ -2014,11 +2277,19 @@ class Ripper::ParseTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(value:, operator:, pattern:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(value:, operator:, pattern:, location:, comments: [])
       @value = value
       @operator = operator
       @pattern = pattern
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [value, operator, pattern]
     end
 
     def pretty_print(q)
@@ -2033,6 +2304,8 @@ class Ripper::ParseTree < Ripper
 
         q.breakable
         q.pp(pattern)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
@@ -2042,7 +2315,8 @@ class Ripper::ParseTree < Ripper
         value: value,
         op: operator,
         pattern: pattern,
-        loc: location
+        loc: location,
+        cmts: comments
       }.to_json(*opts)
     end
   end
@@ -2059,9 +2333,7 @@ class Ripper::ParseTree < Ripper
         location: keyword.location.to(consequent.location)
       )
     else
-      operator =
-        find_token(Kw, 'in', consume: false) ||
-          find_token(Op, '=>')
+      operator = find_token(Kw, 'in', consume: false) || find_token(Op, '=>')
 
       RAssign.new(
         value: value,
@@ -2118,11 +2390,19 @@ class Ripper::ParseTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(constant:, superclass:, bodystmt:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(constant:, superclass:, bodystmt:, location:, comments: [])
       @constant = constant
       @superclass = superclass
       @bodystmt = bodystmt
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [constant, superclass, bodystmt]
     end
 
     def pretty_print(q)
@@ -2139,6 +2419,8 @@ class Ripper::ParseTree < Ripper
 
         q.breakable
         q.pp(bodystmt)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
@@ -2148,7 +2430,8 @@ class Ripper::ParseTree < Ripper
         constant: constant,
         superclass: superclass,
         bodystmt: bodystmt,
-        loc: location
+        loc: location,
+        cmts: comments
       }.to_json(*opts)
     end
   end
@@ -2188,18 +2471,6 @@ class Ripper::ParseTree < Ripper
       @value = value
       @location = location
     end
-
-    def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('comma')
-        q.breakable
-        q.pp(value)
-      end
-    end
-
-    def to_json(*opts)
-      { type: :@comma, value: value, loc: location }.to_json(*opts)
-    end
   end
 
   # :call-seq:
@@ -2225,16 +2496,24 @@ class Ripper::ParseTree < Ripper
     # [Const | Ident] the message being sent to the implicit receiver
     attr_reader :message
 
-    # [Args | ArgsAddBlock] the arguments being sent with the message
+    # [Args] the arguments being sent with the message
     attr_reader :arguments
 
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(message:, arguments:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(message:, arguments:, location:, comments: [])
       @message = message
       @arguments = arguments
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [message, arguments]
     end
 
     def pretty_print(q)
@@ -2246,6 +2525,8 @@ class Ripper::ParseTree < Ripper
 
         q.breakable
         q.pp(arguments)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
@@ -2254,16 +2535,14 @@ class Ripper::ParseTree < Ripper
         type: :command,
         message: message,
         args: arguments,
-        loc: location
+        loc: location,
+        cmts: comments
       }.to_json(*opts)
     end
   end
 
   # :call-seq:
-  #   on_command: (
-  #     (Const | Ident) message,
-  #     (Args | ArgsAddBlock) arguments
-  #   ) -> Command
+  #   on_command: ((Const | Ident) message, Args arguments) -> Command
   def on_command(message, arguments)
     Command.new(
       message: message,
@@ -2287,23 +2566,31 @@ class Ripper::ParseTree < Ripper
     # [Const | Ident | Op] the message being send
     attr_reader :message
 
-    # [Args | ArgsAddBlock] the arguments going along with the message
+    # [Args] the arguments going along with the message
     attr_reader :arguments
 
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(receiver:, operator:, message:, arguments:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(receiver:, operator:, message:, arguments:, location:, comments: [])
       @receiver = receiver
       @operator = operator
       @message = message
       @arguments = arguments
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [receiver, message, arguments]
     end
 
     def pretty_print(q)
       q.group(2, '(', ')') do
-        q.text('case')
+        q.text('command_call')
 
         q.breakable
         q.pp(receiver)
@@ -2316,6 +2603,8 @@ class Ripper::ParseTree < Ripper
 
         q.breakable
         q.pp(arguments)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
@@ -2326,7 +2615,8 @@ class Ripper::ParseTree < Ripper
         op: operator,
         message: message,
         args: arguments,
-        loc: location
+        loc: location,
+        cmts: comments
       }.to_json(*opts)
     end
   end
@@ -2336,7 +2626,7 @@ class Ripper::ParseTree < Ripper
   #     untyped receiver,
   #     (:"::" | Op | Period) operator,
   #     (Const | Ident | Op) message,
-  #     (Args | ArgsAddBlock) arguments
+  #     Args arguments
   #   ) -> CommandCall
   def on_command_call(receiver, operator, message, arguments)
     ending = arguments || message
@@ -2355,12 +2645,31 @@ class Ripper::ParseTree < Ripper
   #     # comment
   #
   class Comment
+    class List
+      # [Array[ Comment ]] the list of comments this list represents
+      attr_reader :comments
+
+      def initialize(comments)
+        @comments = comments
+      end
+
+      def pretty_print(q)
+        return if comments.empty?
+
+        q.breakable
+        q.group(2, '(', ')') do
+          q.seplist(comments) { |comment| q.pp(comment) }
+        end
+      end
+    end
+
     # [String] the contents of the comment
     attr_reader :value
 
     # [boolean] whether or not there is code on the same line as this comment.
     # If there is, then inline will be true.
     attr_reader :inline
+    alias inline? inline
 
     # [Location] the location of this node
     attr_reader :location
@@ -2374,6 +2683,7 @@ class Ripper::ParseTree < Ripper
     def pretty_print(q)
       q.group(2, '(', ')') do
         q.text('comment')
+
         q.breakable
         q.pp(value)
       end
@@ -2381,8 +2691,8 @@ class Ripper::ParseTree < Ripper
 
     def to_json(*opts)
       {
-        type: :@comment,
-        value: value.force_encoding('UTF-8'),
+        type: :comment,
+        value: value.force_encoding('UTF-8')[1..-1],
         inline: inline,
         loc: location
       }.to_json(*opts)
@@ -2395,7 +2705,7 @@ class Ripper::ParseTree < Ripper
     line = lineno
     comment =
       Comment.new(
-        value: value[1..-1].chomp,
+        value: value.chomp,
         inline: value.strip != lines[line - 1],
         location:
           Location.token(line: line, char: char_pos, size: value.size - 1)
@@ -2426,21 +2736,32 @@ class Ripper::ParseTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(value:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(value:, location:, comments: [])
       @value = value
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      []
     end
 
     def pretty_print(q)
       q.group(2, '(', ')') do
         q.text('const')
+
         q.breakable
         q.pp(value)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :@const, value: value, loc: location }.to_json(*opts)
+      { type: :const, value: value, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
@@ -2473,10 +2794,18 @@ class Ripper::ParseTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(parent:, constant:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(parent:, constant:, location:, comments: [])
       @parent = parent
       @constant = constant
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [parent, constant]
     end
 
     def pretty_print(q)
@@ -2488,6 +2817,8 @@ class Ripper::ParseTree < Ripper
 
         q.breakable
         q.pp(constant)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
@@ -2496,7 +2827,8 @@ class Ripper::ParseTree < Ripper
         type: :const_path_field,
         parent: parent,
         constant: constant,
-        loc: location
+        loc: location,
+        cmts: comments
       }.to_json(*opts)
     end
   end
@@ -2525,10 +2857,18 @@ class Ripper::ParseTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(parent:, constant:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(parent:, constant:, location:, comments: [])
       @parent = parent
       @constant = constant
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [parent, constant]
     end
 
     def pretty_print(q)
@@ -2540,6 +2880,8 @@ class Ripper::ParseTree < Ripper
 
         q.breakable
         q.pp(constant)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
@@ -2548,7 +2890,8 @@ class Ripper::ParseTree < Ripper
         type: :const_path_ref,
         parent: parent,
         constant: constant,
-        loc: location
+        loc: location,
+        cmts: comments
       }.to_json(*opts)
     end
   end
@@ -2576,9 +2919,17 @@ class Ripper::ParseTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(constant:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(constant:, location:, comments: [])
       @constant = constant
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [constant]
     end
 
     def pretty_print(q)
@@ -2587,11 +2938,13 @@ class Ripper::ParseTree < Ripper
 
         q.breakable
         q.pp(constant)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :const_ref, constant: constant, loc: location }.to_json(*opts)
+      { type: :const_ref, constant: constant, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
@@ -2612,9 +2965,17 @@ class Ripper::ParseTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(value:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(value:, location:, comments: [])
       @value = value
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      []
     end
 
     def pretty_print(q)
@@ -2623,11 +2984,13 @@ class Ripper::ParseTree < Ripper
 
         q.breakable
         q.pp(value)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :@cvar, value: value, loc: location }.to_json(*opts)
+      { type: :cvar, value: value, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
@@ -2646,10 +3009,10 @@ class Ripper::ParseTree < Ripper
 
   # Def represents defining a regular method on the current self object.
   #
-  #     def method(param) do result end
+  #     def method(param) result end
   #
   class Def
-    # [Backtick | Const | Ident | Keyword | Op] the name of the method
+    # [Backtick | Const | Ident | Kw | Op] the name of the method
     attr_reader :name
 
     # [Params | Paren] the parameter declaration for the method
@@ -2661,11 +3024,19 @@ class Ripper::ParseTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(name:, params:, bodystmt:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(name:, params:, bodystmt:, location:, comments: [])
       @name = name
       @params = params
       @bodystmt = bodystmt
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [name, params, bodystmt]
     end
 
     def pretty_print(q)
@@ -2680,6 +3051,8 @@ class Ripper::ParseTree < Ripper
 
         q.breakable
         q.pp(bodystmt)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
@@ -2689,7 +3062,8 @@ class Ripper::ParseTree < Ripper
         name: name,
         params: params,
         bodystmt: bodystmt,
-        loc: location
+        loc: location,
+        cmts: comments
       }.to_json(*opts)
     end
   end
@@ -2699,7 +3073,7 @@ class Ripper::ParseTree < Ripper
   #     def method = result
   #
   class DefEndless
-    # [Backtick | Const | Ident | Keyword | Op] the name of the method
+    # [Backtick | Const | Ident | Kw | Op] the name of the method
     attr_reader :name
 
     # [Paren] the parameter declaration for the method
@@ -2711,16 +3085,24 @@ class Ripper::ParseTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(name:, paren:, statement:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(name:, paren:, statement:, location:, comments: [])
       @name = name
       @paren = paren
       @statement = statement
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [name, paren, statement]
     end
 
     def pretty_print(q)
       q.group(2, '(', ')') do
-        q.text('defsl')
+        q.text('def_endless')
 
         q.breakable
         q.pp(name)
@@ -2730,23 +3112,26 @@ class Ripper::ParseTree < Ripper
 
         q.breakable
         q.pp(statement)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
       {
-        type: :defsl,
+        type: :def_endless,
         name: name,
         paren: paren,
         stmt: statement,
-        loc: location
+        loc: location,
+        cmts: comments
       }.to_json(*opts)
     end
   end
 
   # :call-seq:
   #   on_def: (
-  #     (Backtick | Const | Ident | Keyword | Op) name,
+  #     (Backtick | Const | Ident | Kw | Op) name,
   #     (Params | Paren) params,
   #     untyped bodystmt
   #   ) -> Def | DefEndless
@@ -2813,9 +3198,17 @@ class Ripper::ParseTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(value:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(value:, location:, comments: [])
       @value = value
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [value]
     end
 
     def pretty_print(q)
@@ -2824,11 +3217,13 @@ class Ripper::ParseTree < Ripper
 
         q.breakable
         q.pp(value)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :defined, value: value, loc: location }.to_json(*opts)
+      { type: :defined, value: value, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
@@ -2849,7 +3244,7 @@ class Ripper::ParseTree < Ripper
 
   # Defs represents defining a singleton method on an object.
   #
-  #     def object.method(param) do result end
+  #     def object.method(param) result end
   #
   class Defs
     # [untyped] the target where the method is being defined
@@ -2858,7 +3253,7 @@ class Ripper::ParseTree < Ripper
     # [Op | Period] the operator being used to declare the method
     attr_reader :operator
 
-    # [Backtick | Const | Ident | Keyword | Op] the name of the method
+    # [Backtick | Const | Ident | Kw | Op] the name of the method
     attr_reader :name
 
     # [Params | Paren] the parameter declaration for the method
@@ -2870,13 +3265,21 @@ class Ripper::ParseTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(target:, operator:, name:, params:, bodystmt:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(target:, operator:, name:, params:, bodystmt:, location:, comments: [])
       @target = target
       @operator = operator
       @name = name
       @params = params
       @bodystmt = bodystmt
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [target, operator, name, params, bodystmt]
     end
 
     def pretty_print(q)
@@ -2897,6 +3300,8 @@ class Ripper::ParseTree < Ripper
 
         q.breakable
         q.pp(bodystmt)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
@@ -2908,7 +3313,8 @@ class Ripper::ParseTree < Ripper
         name: name,
         params: params,
         bodystmt: bodystmt,
-        loc: location
+        loc: location,
+        cmts: comments
       }.to_json(*opts)
     end
   end
@@ -2917,7 +3323,7 @@ class Ripper::ParseTree < Ripper
   #   on_defs: (
   #     untyped target,
   #     (Op | Period) operator,
-  #     (Backtick | Const | Ident | Keyword | Op) name,
+  #     (Backtick | Const | Ident | Kw | Op) name,
   #     (Params | Paren) params,
   #     BodyStmt bodystmt
   #   ) -> Defs
@@ -2979,11 +3385,19 @@ class Ripper::ParseTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(keyword:, block_var:, bodystmt:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(keyword:, block_var:, bodystmt:, location:, comments: [])
       @keyword = keyword
       @block_var = block_var
       @bodystmt = bodystmt
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [keyword, block_var, bodystmt]
     end
 
     def pretty_print(q)
@@ -2997,6 +3411,8 @@ class Ripper::ParseTree < Ripper
 
         q.breakable
         q.pp(bodystmt)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
@@ -3006,7 +3422,8 @@ class Ripper::ParseTree < Ripper
         keyword: keyword,
         block_var: block_var,
         bodystmt: bodystmt,
-        loc: location
+        loc: location,
+        cmts: comments
       }.to_json(*opts)
     end
   end
@@ -3051,10 +3468,18 @@ class Ripper::ParseTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(left:, right:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(left:, right:, location:, comments: [])
       @left = left
       @right = right
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [left, right]
     end
 
     def pretty_print(q)
@@ -3070,11 +3495,13 @@ class Ripper::ParseTree < Ripper
           q.breakable
           q.pp(right)
         end
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :dot2, left: left, right: right, loc: location }.to_json(*opts)
+      { type: :dot2, left: left, right: right, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
@@ -3115,10 +3542,18 @@ class Ripper::ParseTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(left:, right:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(left:, right:, location:, comments: [])
       @left = left
       @right = right
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [left, right]
     end
 
     def pretty_print(q)
@@ -3134,11 +3569,13 @@ class Ripper::ParseTree < Ripper
           q.breakable
           q.pp(right)
         end
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :dot3, left: left, right: right, loc: location }.to_json(*opts)
+      { type: :dot3, left: left, right: right, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
@@ -3167,7 +3604,7 @@ class Ripper::ParseTree < Ripper
   #     { "#{key}": value }
   #
   class DynaSymbol
-    # [Array[StringDVar | StringEmbExpr | TStringContent]] the parts of the
+    # [Array[ StringDVar | StringEmbExpr | TStringContent ]] the parts of the
     # dynamic symbol
     attr_reader :parts
 
@@ -3177,10 +3614,18 @@ class Ripper::ParseTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(parts:, quote:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(parts:, quote:, location:, comments: [])
       @parts = parts
       @quote = quote
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      parts
     end
 
     def pretty_print(q)
@@ -3189,11 +3634,13 @@ class Ripper::ParseTree < Ripper
 
         q.breakable
         q.group(2, '(', ')') { q.seplist(parts) { |part| q.pp(part) } }
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :dyna_symbol, parts: parts, quote: quote, loc: location }.to_json(
+      { type: :dyna_symbol, parts: parts, quote: quote, loc: location, cmts: comments }.to_json(
         *opts
       )
     end
@@ -3238,9 +3685,17 @@ class Ripper::ParseTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(statements:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(statements:, location:, comments: [])
       @statements = statements
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [statements]
     end
 
     def pretty_print(q)
@@ -3249,11 +3704,13 @@ class Ripper::ParseTree < Ripper
 
         q.breakable
         q.pp(statements)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :else, stmts: statements, loc: location }.to_json(*opts)
+      { type: :else, stmts: statements, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
@@ -3300,11 +3757,19 @@ class Ripper::ParseTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(predicate:, statements:, consequent:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(predicate:, statements:, consequent:, location:, comments: [])
       @predicate = predicate
       @statements = statements
       @consequent = consequent
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [predicate, statements, consequent]
     end
 
     def pretty_print(q)
@@ -3321,6 +3786,8 @@ class Ripper::ParseTree < Ripper
           q.breakable
           q.pp(consequent)
         end
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
@@ -3330,7 +3797,8 @@ class Ripper::ParseTree < Ripper
         pred: predicate,
         stmts: statements,
         cons: consequent,
-        loc: location
+        loc: location,
+        cmts: comments
       }.to_json(*opts)
     end
   end
@@ -3374,6 +3842,14 @@ class Ripper::ParseTree < Ripper
       @location = location
     end
 
+    def inline?
+      false
+    end
+
+    def child_nodes
+      []
+    end
+
     def pretty_print(q)
       q.group(2, '(', ')') do
         q.text('embdoc')
@@ -3384,7 +3860,7 @@ class Ripper::ParseTree < Ripper
     end
 
     def to_json(*opts)
-      { type: :@embdoc, value: value, loc: location }.to_json(*opts)
+      { type: :embdoc, value: value, loc: location }.to_json(*opts)
     end
   end
 
@@ -3444,19 +3920,6 @@ class Ripper::ParseTree < Ripper
       @value = value
       @location = location
     end
-
-    def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('embexpr_beg')
-
-        q.breakable
-        q.pp(value)
-      end
-    end
-
-    def to_json(*opts)
-      { type: :@embexpr_beg, value: value, loc: location }.to_json(*opts)
-    end
   end
 
   # :call-seq:
@@ -3488,19 +3951,6 @@ class Ripper::ParseTree < Ripper
     def initialize(value:, location:)
       @value = value
       @location = location
-    end
-
-    def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('embexpr_end')
-
-        q.breakable
-        q.pp(value)
-      end
-    end
-
-    def to_json(*opts)
-      { type: :@embexpr_end, value: value, loc: location }.to_json(*opts)
     end
   end
 
@@ -3536,19 +3986,6 @@ class Ripper::ParseTree < Ripper
       @value = value
       @location = location
     end
-
-    def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('embvar')
-
-        q.breakable
-        q.pp(value)
-      end
-    end
-
-    def to_json(*opts)
-      { type: :@embvar, value: value, loc: location }.to_json(*opts)
-    end
   end
 
   # :call-seq:
@@ -3581,10 +4018,18 @@ class Ripper::ParseTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(keyword:, statements:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(keyword:, statements:, location:, comments: [])
       @keyword = keyword
       @statements = statements
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [keyword, statements]
     end
 
     def pretty_print(q)
@@ -3593,6 +4038,8 @@ class Ripper::ParseTree < Ripper
 
         q.breakable
         q.pp(statements)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
@@ -3601,7 +4048,8 @@ class Ripper::ParseTree < Ripper
         type: :ensure,
         keyword: keyword,
         stmts: statements,
-        loc: location
+        loc: location,
+        cmts: comments
       }.to_json(*opts)
     end
   end
@@ -3643,9 +4091,17 @@ class Ripper::ParseTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(value:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(value:, location:, comments: [])
       @value = value
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      []
     end
 
     def pretty_print(q)
@@ -3654,11 +4110,13 @@ class Ripper::ParseTree < Ripper
 
         q.breakable
         q.pp(value)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :excessed_comma, value: value, loc: location }.to_json(*opts)
+      { type: :excessed_comma, value: value, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
@@ -3687,9 +4145,17 @@ class Ripper::ParseTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(value:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(value:, location:, comments: [])
       @value = value
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [value]
     end
 
     def pretty_print(q)
@@ -3698,11 +4164,13 @@ class Ripper::ParseTree < Ripper
 
         q.breakable
         q.pp(value)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :fcall, value: value, loc: location }.to_json(*opts)
+      { type: :fcall, value: value, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
@@ -3730,11 +4198,19 @@ class Ripper::ParseTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(parent:, operator:, name:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(parent:, operator:, name:, location:, comments: [])
       @parent = parent
       @operator = operator
       @name = name
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [parent, (operator if operator != :'::'), name]
     end
 
     def pretty_print(q)
@@ -3749,6 +4225,8 @@ class Ripper::ParseTree < Ripper
 
         q.breakable
         q.pp(name)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
@@ -3758,7 +4236,8 @@ class Ripper::ParseTree < Ripper
         parent: parent,
         op: operator,
         name: name,
-        loc: location
+        loc: location,
+        cmts: comments
       }.to_json(*opts)
     end
   end
@@ -3789,9 +4268,17 @@ class Ripper::ParseTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(value:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(value:, location:, comments: [])
       @value = value
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      []
     end
 
     def pretty_print(q)
@@ -3800,11 +4287,13 @@ class Ripper::ParseTree < Ripper
 
         q.breakable
         q.pp(value)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :@float, value: value, loc: location }.to_json(*opts)
+      { type: :float, value: value, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
@@ -3835,7 +4324,7 @@ class Ripper::ParseTree < Ripper
     # [VarField] the splat on the left-hand side
     attr_reader :left
 
-    # [Array[untyped]] the list of positional expressions in the pattern that
+    # [Array[ untyped ]] the list of positional expressions in the pattern that
     # are being matched
     attr_reader :values
 
@@ -3845,12 +4334,20 @@ class Ripper::ParseTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(constant:, left:, values:, right:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(constant:, left:, values:, right:, location:, comments: [])
       @constant = constant
       @left = left
       @values = values
       @right = right
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [constant, left, *values, right]
     end
 
     def pretty_print(q)
@@ -3870,6 +4367,8 @@ class Ripper::ParseTree < Ripper
 
         q.breakable
         q.pp(right)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
@@ -3880,7 +4379,8 @@ class Ripper::ParseTree < Ripper
         left: left,
         values: values,
         right: right,
-        loc: location
+        loc: location,
+        cmts: comments
       }.to_json(*opts)
     end
   end
@@ -3911,7 +4411,7 @@ class Ripper::ParseTree < Ripper
   #     end
   #
   class For
-    # [MLHS | MLHSAddStar | VarField] the variable declaration being used to
+    # [MLHS | VarField] the variable declaration being used to
     # pull values out of the object being enumerated
     attr_reader :index
 
@@ -3924,11 +4424,19 @@ class Ripper::ParseTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(index:, collection:, statements:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(index:, collection:, statements:, location:, comments: [])
       @index = index
       @collection = collection
       @statements = statements
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [index, collection, statements]
     end
 
     def pretty_print(q)
@@ -3943,6 +4451,8 @@ class Ripper::ParseTree < Ripper
 
         q.breakable
         q.pp(statements)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
@@ -3952,14 +4462,15 @@ class Ripper::ParseTree < Ripper
         index: index,
         collection: collection,
         stmts: statements,
-        loc: location
+        loc: location,
+        cmts: comments
       }.to_json(*opts)
     end
   end
 
   # :call-seq:
   #   on_for: (
-  #     (MLHS | MLHSAddStar | VarField) value,
+  #     (MLHS | VarField) value,
   #     untyped collection,
   #     Statements statements
   #   ) -> For
@@ -3999,9 +4510,17 @@ class Ripper::ParseTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(value:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(value:, location:, comments: [])
       @value = value
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      []
     end
 
     def pretty_print(q)
@@ -4010,11 +4529,13 @@ class Ripper::ParseTree < Ripper
 
         q.breakable
         q.pp(value)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :@gvar, value: value, loc: location }.to_json(*opts)
+      { type: :gvar, value: value, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
@@ -4036,53 +4557,51 @@ class Ripper::ParseTree < Ripper
   #     { key => value }
   #
   class HashLiteral
-    # [nil | AssocListFromArgs] the contents of the hash
-    attr_reader :contents
+    # [Array[ AssocNew | AssocSplat ]] the optional contents of the hash
+    attr_reader :assocs
 
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(contents:, location:)
-      @contents = contents
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(assocs:, location:, comments: [])
+      @assocs = assocs
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      assocs
     end
 
     def pretty_print(q)
       q.group(2, '(', ')') do
         q.text('hash')
 
-        q.breakable
-        q.pp(contents)
+        if assocs.any?
+          q.breakable
+          q.group(2, '(', ')') { q.seplist(assocs) { |assoc| q.pp(assoc) } }
+        end
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :hash, cnts: contents, loc: location }.to_json(*opts)
+      { type: :hash, assocs: assocs, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
   # :call-seq:
-  #   on_hash: ((nil | AssocListFromArgs) contents) -> HashLiteral
-  def on_hash(contents)
+  #   on_hash: ((nil | Array[AssocNew | AssocSplat]) assocs) -> HashLiteral
+  def on_hash(assocs)
     lbrace = find_token(LBrace)
     rbrace = find_token(RBrace)
 
-    if contents
-      # Here we're going to expand out the location information for the contents
-      # node so that it can grab up any remaining comments inside the hash.
-      location =
-        Location.new(
-          start_line: contents.location.start_line,
-          start_char: lbrace.location.end_char,
-          end_line: contents.location.end_line,
-          end_char: rbrace.location.start_char
-        )
-
-      contents = contents.class.new(assocs: contents.assocs, location: location)
-    end
-
     HashLiteral.new(
-      contents: contents,
+      assocs: assocs || [],
       location: lbrace.location.to(rbrace.location)
     )
   end
@@ -4100,18 +4619,26 @@ class Ripper::ParseTree < Ripper
     # [String] the ending of the heredoc
     attr_reader :ending
 
-    # [Array[StringEmbExpr | StringDVar | TStringContent]] the parts of the
+    # [Array[ StringEmbExpr | StringDVar | TStringContent ]] the parts of the
     # heredoc string literal
     attr_reader :parts
 
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(beginning:, ending: nil, parts: [], location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(beginning:, ending: nil, parts: [], location:, comments: [])
       @beginning = beginning
       @ending = ending
       @parts = parts
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [beginning, *parts]
     end
 
     def pretty_print(q)
@@ -4120,6 +4647,8 @@ class Ripper::ParseTree < Ripper
 
         q.breakable
         q.group(2, '(', ')') { q.seplist(parts) { |part| q.pp(part) } }
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
@@ -4129,7 +4658,8 @@ class Ripper::ParseTree < Ripper
         beging: beginning,
         ending: ending,
         parts: parts,
-        loc: location
+        loc: location,
+        cmts: comments
       }.to_json(*opts)
     end
   end
@@ -4148,9 +4678,17 @@ class Ripper::ParseTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(value:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(value:, location:, comments: [])
       @value = value
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      []
     end
 
     def pretty_print(q)
@@ -4159,11 +4697,13 @@ class Ripper::ParseTree < Ripper
 
         q.breakable
         q.pp(value)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :@heredoc_beg, value: value, loc: location }.to_json(*opts)
+      { type: :heredoc_beg, value: value, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
@@ -4226,8 +4766,8 @@ class Ripper::ParseTree < Ripper
     # [nil | untyped] the optional constant wrapper
     attr_reader :constant
 
-    # [Array[[Label, untyped]]] the set of tuples representing the keywords that
-    # should be matched against in the pattern
+    # [Array[ [Label, untyped] ]] the set of tuples representing the keywords
+    # that should be matched against in the pattern
     attr_reader :keywords
 
     # [nil | VarField] an optional parameter to gather up all remaining keywords
@@ -4236,11 +4776,19 @@ class Ripper::ParseTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(constant:, keywords:, keyword_rest:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(constant:, keywords:, keyword_rest:, location:, comments: [])
       @constant = constant
       @keywords = keywords
       @keyword_rest = keyword_rest
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [constant, *keywords.flatten(1), keyword_rest]
     end
 
     def pretty_print(q)
@@ -4263,6 +4811,8 @@ class Ripper::ParseTree < Ripper
           q.breakable
           q.pp(keyword_rest)
         end
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
@@ -4272,7 +4822,8 @@ class Ripper::ParseTree < Ripper
         constant: constant,
         keywords: keywords,
         kwrest: keyword_rest,
-        loc: location
+        loc: location,
+        cmts: comments
       }.to_json(*opts)
     end
   end
@@ -4306,24 +4857,36 @@ class Ripper::ParseTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(value:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(value:, location:, comments: [])
       @value = value
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      []
     end
 
     def pretty_print(q)
       q.group(2, '(', ')') do
         q.text('ident')
+
         q.breakable
         q.pp(value)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
       {
-        type: :@ident,
+        type: :ident,
         value: value.force_encoding('UTF-8'),
-        loc: location
+        loc: location,
+        cmts: comments
       }.to_json(*opts)
     end
   end
@@ -4359,11 +4922,19 @@ class Ripper::ParseTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(predicate:, statements:, consequent:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(predicate:, statements:, consequent:, location:, comments: [])
       @predicate = predicate
       @statements = statements
       @consequent = consequent
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [predicate, statements, consequent]
     end
 
     def pretty_print(q)
@@ -4380,6 +4951,8 @@ class Ripper::ParseTree < Ripper
           q.breakable
           q.pp(consequent)
         end
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
@@ -4389,7 +4962,8 @@ class Ripper::ParseTree < Ripper
         pred: predicate,
         stmts: statements,
         cons: consequent,
-        loc: location
+        loc: location,
+        cmts: comments
       }.to_json(*opts)
     end
   end
@@ -4431,11 +5005,19 @@ class Ripper::ParseTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(predicate:, truthy:, falsy:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(predicate:, truthy:, falsy:, location:, comments: [])
       @predicate = predicate
       @truthy = truthy
       @falsy = falsy
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [predicate, truthy, falsy]
     end
 
     def pretty_print(q)
@@ -4450,6 +5032,8 @@ class Ripper::ParseTree < Ripper
 
         q.breakable
         q.pp(falsy)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
@@ -4459,7 +5043,8 @@ class Ripper::ParseTree < Ripper
         pred: predicate,
         tthy: truthy,
         flsy: falsy,
-        loc: location
+        loc: location,
+        cmts: comments
       }.to_json(*opts)
     end
   end
@@ -4489,10 +5074,18 @@ class Ripper::ParseTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(statement:, predicate:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(statement:, predicate:, location:, comments: [])
       @statement = statement
       @predicate = predicate
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [statement, predicate]
     end
 
     def pretty_print(q)
@@ -4504,6 +5097,8 @@ class Ripper::ParseTree < Ripper
 
         q.breakable
         q.pp(predicate)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
@@ -4512,7 +5107,8 @@ class Ripper::ParseTree < Ripper
         type: :if_mod,
         stmt: statement,
         pred: predicate,
-        loc: location
+        loc: location,
+        cmts: comments
       }.to_json(*opts)
     end
   end
@@ -4548,9 +5144,17 @@ class Ripper::ParseTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(value:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(value:, location:, comments: [])
       @value = value
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      []
     end
 
     def pretty_print(q)
@@ -4559,11 +5163,13 @@ class Ripper::ParseTree < Ripper
 
         q.breakable
         q.pp(value)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :@imaginary, value: value, loc: location }.to_json(*opts)
+      { type: :imaginary, value: value, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
@@ -4600,11 +5206,19 @@ class Ripper::ParseTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(pattern:, statements:, consequent:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(pattern:, statements:, consequent:, location:, comments: [])
       @pattern = pattern
       @statements = statements
       @consequent = consequent
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [pattern, statements, consequent]
     end
 
     def pretty_print(q)
@@ -4621,6 +5235,8 @@ class Ripper::ParseTree < Ripper
           q.breakable
           q.pp(consequent)
         end
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
@@ -4630,7 +5246,8 @@ class Ripper::ParseTree < Ripper
         pattern: pattern,
         stmts: statements,
         cons: consequent,
-        loc: location
+        loc: location,
+        cmts: comments
       }.to_json(*opts)
     end
   end
@@ -4670,9 +5287,17 @@ class Ripper::ParseTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(value:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(value:, location:, comments: [])
       @value = value
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      []
     end
 
     def pretty_print(q)
@@ -4681,11 +5306,13 @@ class Ripper::ParseTree < Ripper
 
         q.breakable
         q.pp(value)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :@int, value: value, loc: location }.to_json(*opts)
+      { type: :int, value: value, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
@@ -4713,9 +5340,17 @@ class Ripper::ParseTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(value:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(value:, location:, comments: [])
       @value = value
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      []
     end
 
     def pretty_print(q)
@@ -4724,11 +5359,13 @@ class Ripper::ParseTree < Ripper
 
         q.breakable
         q.pp(value)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :@ivar, value: value, loc: location }.to_json(*opts)
+      { type: :ivar, value: value, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
@@ -4765,9 +5402,17 @@ class Ripper::ParseTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(value:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(value:, location:, comments: [])
       @value = value
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      []
     end
 
     def pretty_print(q)
@@ -4776,11 +5421,13 @@ class Ripper::ParseTree < Ripper
 
         q.breakable
         q.pp(value)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :@kw, value: value, loc: location }.to_json(*opts)
+      { type: :kw, value: value, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
@@ -4809,9 +5456,17 @@ class Ripper::ParseTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(name:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(name:, location:, comments: [])
       @name = name
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [name]
     end
 
     def pretty_print(q)
@@ -4820,11 +5475,13 @@ class Ripper::ParseTree < Ripper
 
         q.breakable
         q.pp(name)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :kwrest_param, name: name, loc: location }.to_json(*opts)
+      { type: :kwrest_param, name: name, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
@@ -4857,9 +5514,17 @@ class Ripper::ParseTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(value:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(value:, location:, comments: [])
       @value = value
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      []
     end
 
     def pretty_print(q)
@@ -4869,11 +5534,13 @@ class Ripper::ParseTree < Ripper
         q.breakable
         q.text(':')
         q.text(value[0...-1])
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :@label, value: value, loc: location }.to_json(*opts)
+      { type: :label, value: value, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
@@ -4908,19 +5575,6 @@ class Ripper::ParseTree < Ripper
       @value = value
       @location = location
     end
-
-    def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('label_end')
-
-        q.breakable
-        q.pp(value)
-      end
-    end
-
-    def to_json(*opts)
-      { type: :@label_end, value: value, loc: location }.to_json(*opts)
-    end
   end
 
   # :call-seq:
@@ -4950,10 +5604,18 @@ class Ripper::ParseTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(params:, statements:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(params:, statements:, location:, comments: [])
       @params = params
       @statements = statements
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [params, statements]
     end
 
     def pretty_print(q)
@@ -4965,6 +5627,8 @@ class Ripper::ParseTree < Ripper
 
         q.breakable
         q.pp(statements)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
@@ -4973,7 +5637,8 @@ class Ripper::ParseTree < Ripper
         type: :lambda,
         params: params,
         stmts: statements,
-        loc: location
+        loc: location,
+        cmts: comments
       }.to_json(*opts)
     end
   end
@@ -5011,9 +5676,17 @@ class Ripper::ParseTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(value:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(value:, location:, comments: [])
       @value = value
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      []
     end
 
     def pretty_print(q)
@@ -5022,11 +5695,13 @@ class Ripper::ParseTree < Ripper
 
         q.breakable
         q.pp(value)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :@lbrace, value: value, loc: location }.to_json(*opts)
+      { type: :lbrace, value: value, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
@@ -5055,19 +5730,6 @@ class Ripper::ParseTree < Ripper
       @value = value
       @location = location
     end
-
-    def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('lbracket')
-
-        q.breakable
-        q.pp(value)
-      end
-    end
-
-    def to_json(*opts)
-      { type: :@lbracket, value: value, loc: location }.to_json(*opts)
-    end
   end
 
   # :call-seq:
@@ -5091,9 +5753,17 @@ class Ripper::ParseTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(value:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(value:, location:, comments: [])
       @value = value
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      []
     end
 
     def pretty_print(q)
@@ -5102,11 +5772,13 @@ class Ripper::ParseTree < Ripper
 
         q.breakable
         q.pp(value)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :@lparen, value: value, loc: location }.to_json(*opts)
+      { type: :lparen, value: value, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
@@ -5142,8 +5814,7 @@ class Ripper::ParseTree < Ripper
   #     first, = value
   #
   class MAssign
-    # [Mlhs | MlhsAddPost | MlhsAddStar | MlhsParen] the target of the multiple
-    # assignment
+    # [Mlhs | MlhsParen] the target of the multiple assignment
     attr_reader :target
 
     # [untyped] the value being assigned
@@ -5152,10 +5823,18 @@ class Ripper::ParseTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(target:, value:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(target:, value:, location:, comments: [])
       @target = target
       @value = value
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [target, value]
     end
 
     def pretty_print(q)
@@ -5167,19 +5846,20 @@ class Ripper::ParseTree < Ripper
 
         q.breakable
         q.pp(value)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :massign, target: target, value: value, loc: location }.to_json(*opts)
+      { type: :massign, target: target, value: value, loc: location, cmts: comments }.to_json(
+        *opts
+      )
     end
   end
 
   # :call-seq:
-  #   on_massign: (
-  #     (Mlhs | MlhsAddPost | MlhsAddStar | MlhsParen) target,
-  #     untyped value
-  #   ) -> MAssign
+  #   on_massign: ((Mlhs | MlhsParen) target, untyped value) -> MAssign
   def on_massign(target, value)
     comma_range = target.location.end_char...value.location.start_char
     target.comma = true if source[comma_range].strip.start_with?(',')
@@ -5210,16 +5890,24 @@ class Ripper::ParseTree < Ripper
     # [Call | FCall] the method call
     attr_reader :call
 
-    # [ArgParen | Args | ArgsAddBlock] the arguments to the method call
+    # [ArgParen | Args] the arguments to the method call
     attr_reader :arguments
 
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(call:, arguments:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(call:, arguments:, location:, comments: [])
       @call = call
       @arguments = arguments
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [call, arguments]
     end
 
     def pretty_print(q)
@@ -5231,6 +5919,8 @@ class Ripper::ParseTree < Ripper
 
         q.breakable
         q.pp(arguments)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
@@ -5239,7 +5929,8 @@ class Ripper::ParseTree < Ripper
         type: :method_add_arg,
         call: call,
         args: arguments,
-        loc: location
+        loc: location,
+        cmts: comments
       }.to_json(*opts)
     end
   end
@@ -5247,11 +5938,10 @@ class Ripper::ParseTree < Ripper
   # :call-seq:
   #   on_method_add_arg: (
   #     (Call | FCall) call,
-  #     (ArgParen | Args | ArgsAddBlock) arguments
+  #     (ArgParen | Args) arguments
   #   ) -> MethodAddArg
   def on_method_add_arg(call, arguments)
     location = call.location
-
     location = location.to(arguments.location) unless arguments.is_a?(Args)
 
     MethodAddArg.new(call: call, arguments: arguments, location: location)
@@ -5271,10 +5961,18 @@ class Ripper::ParseTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(call:, block:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(call:, block:, location:, comments: [])
       @call = call
       @block = block
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [call, block]
     end
 
     def pretty_print(q)
@@ -5286,6 +5984,8 @@ class Ripper::ParseTree < Ripper
 
         q.breakable
         q.pp(block)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
@@ -5294,7 +5994,8 @@ class Ripper::ParseTree < Ripper
         type: :method_add_block,
         call: call,
         block: block,
-        loc: location
+        loc: location,
+        cmts: comments
       }.to_json(*opts)
     end
   end
@@ -5318,8 +6019,8 @@ class Ripper::ParseTree < Ripper
   #     first, second, third = value
   #
   class MLHS
-    # Array[ArefField | Field | Identifier | MlhsParen | VarField] the parts of
-    # the left-hand side of a multiple assignment
+    # Array[ARefField | ArgStar | Field | Ident | MlhsParen | VarField] the
+    # parts of the left-hand side of a multiple assignment
     attr_reader :parts
 
     # [boolean] whether or not there is a trailing comma at the end of this
@@ -5330,10 +6031,18 @@ class Ripper::ParseTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(parts:, comma: false, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(parts:, comma: false, location:, comments: [])
       @parts = parts
       @comma = comma
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      parts
     end
 
     def pretty_print(q)
@@ -5342,135 +6051,51 @@ class Ripper::ParseTree < Ripper
 
         q.breakable
         q.group(2, '(', ')') { q.seplist(parts) { |part| q.pp(part) } }
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :mlhs, parts: parts, comma: comma, loc: location }.to_json(*opts)
+      { type: :mlhs, parts: parts, comma: comma, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
   # :call-seq:
   #   on_mlhs_add: (
   #     MLHS mlhs,
-  #     (ArefField | Field | Identifier | MlhsParen | VarField) part
+  #     (ARefField | Field | Ident | MlhsParen | VarField) part
   #   ) -> MLHS
   def on_mlhs_add(mlhs, part)
-    if mlhs.parts.empty?
-      MLHS.new(parts: [part], location: part.location)
-    else
-      MLHS.new(
-        parts: mlhs.parts << part,
-        location: mlhs.location.to(part.location)
-      )
-    end
-  end
+    location =
+      mlhs.parts.empty? ? part.location : mlhs.location.to(part.location)
 
-  # MLHSAddPost represents adding another set of variables onto a list of
-  # assignments after a splat variable within a multiple assignment.
-  #
-  #     left, *middle, right = values
-  #
-  class MLHSAddPost
-    # [MlhsAddStar] the value being starred
-    attr_reader :star
-
-    # [Mlhs] the values after the star
-    attr_reader :mlhs
-
-    # [Location] the location of this node
-    attr_reader :location
-
-    def initialize(star:, mlhs:, location:)
-      @star = star
-      @mlhs = mlhs
-      @location = location
-    end
-
-    def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('mlhs_add_post')
-
-        q.breakable
-        q.pp(star)
-
-        q.breakable
-        q.pp(mlhs)
-      end
-    end
-
-    def to_json(*opts)
-      { type: :mlhs_add_post, star: star, mlhs: mlhs, loc: location }.to_json(
-        *opts
-      )
-    end
+    MLHS.new(parts: mlhs.parts << part, location: location)
   end
 
   # :call-seq:
-  #   on_mlhs_add_post: (MLHSAddStar star, MLHS mlhs) -> MLHSAddPost
-  def on_mlhs_add_post(star, mlhs)
-    MLHSAddPost.new(
-      star: star,
-      mlhs: mlhs,
-      location: star.location.to(mlhs.location)
+  #   on_mlhs_add_post: (MLHS left, MLHS right) -> MLHS
+  def on_mlhs_add_post(left, right)
+    MLHS.new(
+      parts: left.parts + right.parts,
+      location: left.location.to(right.location)
     )
-  end
-
-  # MLHSAddStar represents a splatted variable inside of a multiple assignment
-  # on the left hand side.
-  #
-  #     first, *rest = values
-  #
-  class MLHSAddStar
-    # [MLHS] the values before the starred expression
-    attr_reader :mlhs
-
-    # [nil | ArefField | Field | Identifier | VarField] the expression being
-    # splatted
-    attr_reader :star
-
-    # [Location] the location of this node
-    attr_reader :location
-
-    def initialize(mlhs:, star:, location:)
-      @mlhs = mlhs
-      @star = star
-      @location = location
-    end
-
-    def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('mlhs_add_star')
-
-        q.breakable
-        q.pp(mlhs)
-
-        q.breakable
-        q.pp(star)
-      end
-    end
-
-    def to_json(*opts)
-      { type: :mlhs_add_star, mlhs: mlhs, star: star, loc: location }.to_json(
-        *opts
-      )
-    end
   end
 
   # :call-seq:
   #   on_mlhs_add_star: (
   #     MLHS mlhs,
-  #     (nil | ArefField | Field | Identifier | VarField) part
-  #   ) -> MLHSAddStar
+  #     (nil | ARefField | Field | Ident | VarField) part
+  #   ) -> MLHS
   def on_mlhs_add_star(mlhs, part)
     beginning = find_token(Op, '*')
     ending = part || beginning
 
-    MLHSAddStar.new(
-      mlhs: mlhs,
-      star: part,
-      location: beginning.location.to(ending.location)
-    )
+    location = beginning.location.to(ending.location)
+    arg_star = ArgStar.new(value: part, location: location)
+
+    location = mlhs.location.to(location) unless mlhs.parts.empty?
+    MLHS.new(parts: mlhs.parts << arg_star, location: location)
   end
 
   # :call-seq:
@@ -5485,16 +6110,23 @@ class Ripper::ParseTree < Ripper
   #     (left, right) = value
   #
   class MLHSParen
-    # [Mlhs | MlhsAddPost | MlhsAddStar | MlhsParen] the contents inside of the
-    # parentheses
+    # [Mlhs | MlhsParen] the contents inside of the parentheses
     attr_reader :contents
 
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(contents:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(contents:, location:, comments: [])
       @contents = contents
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [contents]
     end
 
     def pretty_print(q)
@@ -5503,18 +6135,18 @@ class Ripper::ParseTree < Ripper
 
         q.breakable
         q.pp(contents)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :mlhs_paren, cnts: contents, loc: location }.to_json(*opts)
+      { type: :mlhs_paren, cnts: contents, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
   # :call-seq:
-  #   on_mlhs_paren: (
-  #     (Mlhs | MlhsAddPost | MlhsAddStar | MlhsParen) contents
-  #   ) -> MLHSParen
+  #   on_mlhs_paren: ((Mlhs | MlhsParen) contents) -> MLHSParen
   def on_mlhs_paren(contents)
     lparen = find_token(LParen)
     rparen = find_token(RParen)
@@ -5543,10 +6175,18 @@ class Ripper::ParseTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(constant:, bodystmt:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(constant:, bodystmt:, location:, comments: [])
       @constant = constant
       @bodystmt = bodystmt
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [constant, bodystmt]
     end
 
     def pretty_print(q)
@@ -5558,6 +6198,8 @@ class Ripper::ParseTree < Ripper
 
         q.breakable
         q.pp(bodystmt)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
@@ -5566,7 +6208,8 @@ class Ripper::ParseTree < Ripper
         type: :module,
         constant: constant,
         bodystmt: bodystmt,
-        loc: location
+        loc: location,
+        cmts: comments
       }.to_json(*opts)
     end
   end
@@ -5604,9 +6247,17 @@ class Ripper::ParseTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(parts:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(parts:, location:, comments: [])
       @parts = parts
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      parts
     end
 
     def pretty_print(q)
@@ -5615,11 +6266,13 @@ class Ripper::ParseTree < Ripper
 
         q.breakable
         q.group(2, '(', ')') { q.seplist(parts) { |part| q.pp(part) } }
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :mrhs, parts: parts, loc: location }.to_json(*opts)
+      { type: :mrhs, parts: parts, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
@@ -5632,112 +6285,42 @@ class Ripper::ParseTree < Ripper
   # :call-seq:
   #   on_mrhs_add: (MRHS mrhs, untyped part) -> MRHS
   def on_mrhs_add(mrhs, part)
-    if mrhs.is_a?(MRHSNewFromArgs)
-      MRHS.new(
-        parts: [*mrhs.arguments.parts, part],
-        location: mrhs.location.to(part.location)
-      )
-    elsif mrhs.parts.empty?
-      MRHS.new(parts: [part], location: mrhs.location)
-    else
-      MRHS.new(parts: mrhs.parts << part, loc: mrhs.location.to(part.location))
-    end
-  end
-
-  # MRHSAddStar represents using the splat operator to expand out a value on the
-  # right hand side of a multiple assignment.
-  #
-  #     values = first, *rest
-  #
-  class MRHSAddStar
-    # [MRHS | MRHSNewFromArgs] the values before the splatted expression
-    attr_reader :mrhs
-
-    # [untyped] the splatted expression
-    attr_reader :star
-
-    # [Location] the location of this node
-    attr_reader :location
-
-    def initialize(mrhs:, star:, location:)
-      @mrhs = mrhs
-      @star = star
-      @location = location
-    end
-
-    def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('mrhs_add_star')
-
-        q.breakable
-        q.pp(mrhs)
-
-        q.breakable
-        q.pp(star)
+    location =
+      if mrhs.parts.empty?
+        mrhs.location
+      else
+        mrhs.location.to(part.location)
       end
-    end
 
-    def to_json(*opts)
-      { type: :mrhs_add_star, mrhs: mrhs, star: star, loc: location }.to_json(
-        *opts
-      )
-    end
+    MRHS.new(parts: mrhs.parts << part, location: location)
   end
 
   # :call-seq:
-  #   on_mrhs_add_star: (
-  #     (MRHS | MRHSNewFromArgs) mrhs,
-  #     untyped star
-  #   ) -> MRHSAddStar
-  def on_mrhs_add_star(mrhs, star)
+  #   on_mrhs_add_star: (MRHS mrhs, untyped value) -> MRHS
+  def on_mrhs_add_star(mrhs, value)
     beginning = find_token(Op, '*')
-    ending = star || beginning
+    ending = value || beginning
 
-    MRHSAddStar.new(
-      mrhs: mrhs,
-      star: star,
-      location: beginning.location.to(ending.location)
-    )
-  end
-
-  # MRHSNewFromArgs represents the shorthand of a multiple assignment that
-  # allows you to assign values using just commas as opposed to assigning from
-  # an array.
-  #
-  #     values = first, second, third
-  #
-  class MRHSNewFromArgs
-    # [Args | ArgsAddStar] the arguments being used in the assignment
-    attr_reader :arguments
-
-    # [Location] the location of this node
-    attr_reader :location
-
-    def initialize(arguments:, location:)
-      @arguments = arguments
-      @location = location
-    end
-
-    def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('mrhs_new_from_args')
-
-        q.breakable
-        q.pp(arguments)
-      end
-    end
-
-    def to_json(*opts)
-      { type: :mrhs_new_from_args, args: arguments, loc: location }.to_json(
-        *opts
+    arg_star =
+      ArgStar.new(
+        value: value,
+        location: beginning.location.to(ending.location)
       )
-    end
+
+    location =
+      if mrhs.parts.empty?
+        arg_star.location
+      else
+        mrhs.location.to(arg_star.location)
+      end
+
+    MRHS.new(parts: mrhs.parts << arg_star, location: location)
   end
 
   # :call-seq:
-  #   on_mrhs_new_from_args: ((Args | ArgsAddStar) arguments) -> MRHSNewFromArgs
+  #   on_mrhs_new_from_args: (Args arguments) -> MRHS
   def on_mrhs_new_from_args(arguments)
-    MRHSNewFromArgs.new(arguments: arguments, location: arguments.location)
+    MRHS.new(parts: arguments.parts, location: arguments.location)
   end
 
   # Next represents using the +next+ keyword.
@@ -5758,15 +6341,23 @@ class Ripper::ParseTree < Ripper
   #     next(value)
   #
   class Next
-    # [Args | ArgsAddBlock] the arguments passed to the next keyword
+    # [Args] the arguments passed to the next keyword
     attr_reader :arguments
 
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(arguments:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(arguments:, location:, comments: [])
       @arguments = arguments
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [arguments]
     end
 
     def pretty_print(q)
@@ -5775,21 +6366,23 @@ class Ripper::ParseTree < Ripper
 
         q.breakable
         q.pp(arguments)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :next, args: arguments, loc: location }.to_json(*opts)
+      { type: :next, args: arguments, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
   # :call-seq:
-  #   on_next: ((Args | ArgsAddBlock) arguments) -> Next
+  #   on_next: (Args arguments) -> Next
   def on_next(arguments)
     keyword = find_token(Kw, 'next')
 
     location = keyword.location
-    location = location.to(arguments.location) unless arguments.is_a?(Args)
+    location = location.to(arguments.location) if arguments.parts.any?
 
     Next.new(arguments: arguments, location: location)
   end
@@ -5814,9 +6407,17 @@ class Ripper::ParseTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(value:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(value:, location:, comments: [])
       @value = value
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      []
     end
 
     def pretty_print(q)
@@ -5825,11 +6426,13 @@ class Ripper::ParseTree < Ripper
 
         q.breakable
         q.pp(value)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :@op, value: value, loc: location }.to_json(*opts)
+      { type: :op, value: value, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
@@ -5852,7 +6455,7 @@ class Ripper::ParseTree < Ripper
   #     variable += value
   #
   class OpAssign
-    # [ArefField | ConstPathField | Field | TopConstField | VarField] the target
+    # [ARefField | ConstPathField | Field | TopConstField | VarField] the target
     # to assign the result of the expression to
     attr_reader :target
 
@@ -5865,11 +6468,19 @@ class Ripper::ParseTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(target:, operator:, value:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(target:, operator:, value:, location:, comments: [])
       @target = target
       @operator = operator
       @value = value
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [target, operator, value]
     end
 
     def pretty_print(q)
@@ -5884,6 +6495,8 @@ class Ripper::ParseTree < Ripper
 
         q.breakable
         q.pp(value)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
@@ -5893,14 +6506,15 @@ class Ripper::ParseTree < Ripper
         target: target,
         op: operator,
         value: value,
-        loc: location
+        loc: location,
+        cmts: comments
       }.to_json(*opts)
     end
   end
 
   # :call-seq:
   #   on_opassign: (
-  #     (ArefField | ConstPathField | Field | TopConstField | VarField) target,
+  #     (ARefField | ConstPathField | Field | TopConstField | VarField) target,
   #     Op operator,
   #     untyped value
   #   ) -> OpAssign
@@ -5922,21 +6536,23 @@ class Ripper::ParseTree < Ripper
   #     def method(param) end
   #
   class Params
-    # [Array[Ident]] any required parameters
+    # [Array[ Ident ]] any required parameters
     attr_reader :requireds
 
-    # [Array[[Ident, untyped]]] any optional parameters and their default values
+    # [Array[ [ Ident, untyped ] ]] any optional parameters and their default
+    # values
     attr_reader :optionals
 
     # [nil | ArgsForward | ExcessedComma | RestParam] the optional rest
     # parameter
     attr_reader :rest
 
-    # Array[Ident] any positional parameters that exist after a rest parameter
+    # [Array[ Ident ]] any positional parameters that exist after a rest
+    # parameter
     attr_reader :posts
 
-    # Array[[Ident, nil | untyped]] any keyword parameters and their optional
-    # default values
+    # [Array[ [ Ident, nil | untyped ] ]] any keyword parameters and their
+    # optional default values
     attr_reader :keywords
 
     # [nil | :nil | KwRestParam] the optional keyword rest parameter
@@ -5948,16 +6564,10 @@ class Ripper::ParseTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(
-      requireds: [],
-      optionals: [],
-      rest: nil,
-      posts: [],
-      keywords: [],
-      keyword_rest: nil,
-      block: nil,
-      location:
-    )
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(requireds: [], optionals: [], rest: nil, posts: [], keywords: [], keyword_rest: nil, block: nil, location:, comments: [])
       @requireds = requireds
       @optionals = optionals
       @rest = rest
@@ -5966,6 +6576,7 @@ class Ripper::ParseTree < Ripper
       @keyword_rest = keyword_rest
       @block = block
       @location = location
+      @comments = comments
     end
 
     # Params nodes are the most complicated in the tree. Occasionally you want
@@ -5975,6 +6586,18 @@ class Ripper::ParseTree < Ripper
     def empty?
       requireds.empty? && optionals.empty? && !rest && posts.empty? &&
         keywords.empty? && !keyword_rest && !block
+    end
+
+    def child_nodes
+      [
+        *requireds,
+        *optionals.flatten(1),
+        rest,
+        *posts,
+        *keywords.flatten(1),
+        (keyword_rest if keyword_rest != :nil),
+        block
+      ]
     end
 
     def pretty_print(q)
@@ -6036,6 +6659,8 @@ class Ripper::ParseTree < Ripper
           q.breakable
           q.pp(block)
         end
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
@@ -6049,7 +6674,8 @@ class Ripper::ParseTree < Ripper
         keywords: keywords,
         kwrest: keyword_rest,
         block: block,
-        loc: location
+        loc: location,
+        cmts: comments
       }.to_json(*opts)
     end
   end
@@ -6064,15 +6690,7 @@ class Ripper::ParseTree < Ripper
   #     (nil | :nil | KwRestParam) keyword_rest,
   #     (nil | BlockArg) block
   #   ) -> Params
-  def on_params(
-    requireds,
-    optionals,
-    rest,
-    posts,
-    keywords,
-    keyword_rest,
-    block
-  )
+  def on_params(requireds, optionals, rest, posts, keywords, keyword_rest, block)
     parts = [
       *requireds,
       *optionals&.flatten(1),
@@ -6118,10 +6736,18 @@ class Ripper::ParseTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(lparen:, contents:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(lparen:, contents:, location:, comments: [])
       @lparen = lparen
       @contents = contents
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [lparen, contents]
     end
 
     def pretty_print(q)
@@ -6130,11 +6756,13 @@ class Ripper::ParseTree < Ripper
 
         q.breakable
         q.pp(contents)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :paren, lparen: lparen, cnts: contents, loc: location }.to_json(
+      { type: :paren, lparen: lparen, cnts: contents, loc: location, cmts: comments }.to_json(
         *opts
       )
     end
@@ -6195,9 +6823,17 @@ class Ripper::ParseTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(value:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(value:, location:, comments: [])
       @value = value
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      []
     end
 
     def pretty_print(q)
@@ -6206,11 +6842,13 @@ class Ripper::ParseTree < Ripper
 
         q.breakable
         q.pp(value)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :@period, value: value, loc: location }.to_json(*opts)
+      { type: :period, value: value, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
@@ -6228,16 +6866,20 @@ class Ripper::ParseTree < Ripper
     # [Statements] the top-level expressions of the program
     attr_reader :statements
 
-    # [Array[Comment | EmbDoc]] the comments inside the program
-    attr_reader :comments
-
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(statements:, comments:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(statements:, location:, comments: [])
       @statements = statements
-      @comments = comments
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [statements]
     end
 
     def pretty_print(q)
@@ -6246,6 +6888,8 @@ class Ripper::ParseTree < Ripper
 
         q.breakable
         q.pp(statements)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
@@ -6254,7 +6898,8 @@ class Ripper::ParseTree < Ripper
         type: :program,
         stmts: statements,
         comments: comments,
-        loc: location
+        loc: location,
+        cmts: comments
       }.to_json(*opts)
     end
   end
@@ -6273,7 +6918,95 @@ class Ripper::ParseTree < Ripper
     statements.body << @__end__ if @__end__
     statements.bind(0, source.length)
 
-    Program.new(statements: statements, comments: @comments, location: location)
+    program = Program.new(statements: statements, location: location)
+    attach_comments(program, @comments)
+
+    program
+  end
+
+  # Attaches comments to the nodes in the tree that most closely correspond to
+  # the location of the comments.
+  def attach_comments(program, comments)
+    comments.each do |comment|
+      preceding, enclosing, following = nearest_nodes(program, comment)
+
+      if comment.inline?
+        if preceding
+          preceding.comments << comment # leading: false, trailing: true
+        elsif following
+          following.comments << comment # leading: true, trailing: false
+        elsif enclosing
+          enclosing.comments << comment # leading: false, trailing: false
+        else
+          node.comments << comment # leading: false, trailing: false
+        end
+      else
+        # If a comment exists on its own line, prefer a leading comment.
+        if following
+          following.comments << comment # leading: true, trailing: false
+        elsif preceding
+          preceding.comments << comment # leading: false, trailing: true
+        elsif enclosing
+          enclosing.comments << comment # leading: false, trailing: false
+        else
+          node.comments << comment # leading: false, trailing: false
+        end
+      end
+    end
+  end
+
+  # Responsible for finding the nearest nodes to the given comment within the
+  # context of the given encapsulating node.
+  def nearest_nodes(node, comment)
+    comment_start = comment.location.start_char
+    comment_end = comment.location.end_char
+
+    child_nodes = node.child_nodes
+    preceding = nil
+    following = nil
+
+    left = 0
+    right = child_nodes.length
+
+    # This is a custom binary search that finds the nearest nodes to the given
+    # comment. When it finds a node that completely encapsulates the comment, it
+    # recursed downward into the tree.
+    while left < right
+      middle = (left + right) / 2
+      child = child_nodes[middle]
+
+      node_start = child.location.start_char
+      node_end = child.location.end_char
+
+      if node_start <= comment_start && comment_end <= node_end
+        # The comment is completely contained by this child node. Abandon the
+        # binary search at this level.
+        return nearest_nodes(child, comment)
+      end
+
+      if node_end <= comment_start
+        # This child node falls completely before the comment. Because we will
+        # never consider this node or any nodes before it again, this node must
+        # be the closest preceding node we have encountered so far.
+        preceding = child
+        left = middle + 1
+        next
+      end
+
+      if comment_end <= node_start
+        # This child node falls completely after the comment. Because we will
+        # never consider this node or any nodes after it again, this node must
+        # be the closest following node we have encountered so far.
+        following = child
+        right = middle
+        next
+      end
+
+      # This should only happen if there is a bug in this parser.
+      raise 'Comment location overlaps with node location'
+    end
+
+    [preceding, node, following]
   end
 
   # QSymbols represents a symbol literal array without interpolation.
@@ -6281,15 +7014,23 @@ class Ripper::ParseTree < Ripper
   #     %i[one two three]
   #
   class QSymbols
-    # [Array[TStringContent]] the elements of the array
+    # [Array[ TStringContent ]] the elements of the array
     attr_reader :elements
 
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(elements:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(elements:, location:, comments: [])
       @elements = elements
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      []
     end
 
     def pretty_print(q)
@@ -6298,11 +7039,13 @@ class Ripper::ParseTree < Ripper
 
         q.breakable
         q.group(2, '(', ')') { q.seplist(elements) { |element| q.pp(element) } }
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :qsymbols, elems: elements, loc: location }.to_json(*opts)
+      { type: :qsymbols, elems: elements, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
@@ -6333,19 +7076,6 @@ class Ripper::ParseTree < Ripper
       @value = value
       @location = location
     end
-
-    def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('qsymbols_beg')
-
-        q.breakable
-        q.pp(value)
-      end
-    end
-
-    def to_json(*opts)
-      { type: :@qsymbols_beg, value: value, loc: location }.to_json(*opts)
-    end
   end
 
   # :call-seq:
@@ -6374,15 +7104,23 @@ class Ripper::ParseTree < Ripper
   #     %w[one two three]
   #
   class QWords
-    # [Array[TStringContent]] the elements of the array
+    # [Array[ TStringContent ]] the elements of the array
     attr_reader :elements
 
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(elements:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(elements:, location:, comments: [])
       @elements = elements
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      []
     end
 
     def pretty_print(q)
@@ -6391,11 +7129,13 @@ class Ripper::ParseTree < Ripper
 
         q.breakable
         q.group(2, '(', ')') { q.seplist(elements) { |element| q.pp(element) } }
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :qwords, elems: elements, loc: location }.to_json(*opts)
+      { type: :qwords, elems: elements, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
@@ -6426,19 +7166,6 @@ class Ripper::ParseTree < Ripper
       @value = value
       @location = location
     end
-
-    def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('qwords_beg')
-
-        q.breakable
-        q.pp(value)
-      end
-    end
-
-    def to_json(*opts)
-      { type: :@qwords_beg, value: value, loc: location }.to_json(*opts)
-    end
   end
 
   # :call-seq:
@@ -6462,20 +7189,28 @@ class Ripper::ParseTree < Ripper
     QWords.new(elements: [], location: qwords_beg.location)
   end
 
-  # Rational represents the use of a rational number literal.
+  # RationalLiteral represents the use of a rational number literal.
   #
   #     1r
   #
-  class Rational
+  class RationalLiteral
     # [String] the rational number literal
     attr_reader :value
 
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(value:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(value:, location:, comments: [])
       @value = value
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      []
     end
 
     def pretty_print(q)
@@ -6484,19 +7219,21 @@ class Ripper::ParseTree < Ripper
 
         q.breakable
         q.pp(value)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :@rational, value: value, loc: location }.to_json(*opts)
+      { type: :rational, value: value, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
   # :call-seq:
-  #   on_rational: (String value) -> Rational
+  #   on_rational: (String value) -> RationalLiteral
   def on_rational(value)
     node =
-      Rational.new(
+      RationalLiteral.new(
         value: value,
         location: Location.token(line: lineno, char: char_pos, size: value.size)
       )
@@ -6516,19 +7253,6 @@ class Ripper::ParseTree < Ripper
     def initialize(value:, location:)
       @value = value
       @location = location
-    end
-
-    def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('rbrace')
-
-        q.breakable
-        q.pp(value)
-      end
-    end
-
-    def to_json(*opts)
-      { type: :@rbrace, value: value, loc: location }.to_json(*opts)
     end
   end
 
@@ -6557,19 +7281,6 @@ class Ripper::ParseTree < Ripper
       @value = value
       @location = location
     end
-
-    def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('rbracket')
-
-        q.breakable
-        q.pp(value)
-      end
-    end
-
-    def to_json(*opts)
-      { type: :@rbracket, value: value, loc: location }.to_json(*opts)
-    end
   end
 
   # :call-seq:
@@ -6596,9 +7307,17 @@ class Ripper::ParseTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(value:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(value:, location:, comments: [])
       @value = value
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      []
     end
 
     def pretty_print(q)
@@ -6607,11 +7326,13 @@ class Ripper::ParseTree < Ripper
 
         q.breakable
         q.pp(value)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :redo, value: value, loc: location }.to_json(*opts)
+      { type: :redo, value: value, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
@@ -6633,7 +7354,7 @@ class Ripper::ParseTree < Ripper
     # [String] the opening of the regular expression
     attr_reader :beginning
 
-    # [Array[StringDVar | StringEmbExpr | TStringContent]] the parts of the
+    # [Array[ StringDVar | StringEmbExpr | TStringContent ]] the parts of the
     # regular expression
     attr_reader :parts
 
@@ -6644,21 +7365,6 @@ class Ripper::ParseTree < Ripper
       @beginning = beginning
       @parts = parts
       @location = location
-    end
-
-    def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('regexp')
-
-        q.breakable
-        q.group(2, '(', ')') { q.seplist(parts) { |part| q.pp(part) } }
-      end
-    end
-
-    def to_json(*opts)
-      { type: :regexp, beging: beginning, parts: parts, loc: location }.to_json(
-        *opts
-      )
     end
   end
 
@@ -6694,19 +7400,6 @@ class Ripper::ParseTree < Ripper
     def initialize(value:, location:)
       @value = value
       @location = location
-    end
-
-    def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('regexp_beg')
-
-        q.breakable
-        q.pp(value)
-      end
-    end
-
-    def to_json(*opts)
-      { type: :@regexp_beg, value: value, loc: location }.to_json(*opts)
     end
   end
 
@@ -6744,19 +7437,6 @@ class Ripper::ParseTree < Ripper
       @value = value
       @location = location
     end
-
-    def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('regexp_end')
-
-        q.breakable
-        q.pp(value)
-      end
-    end
-
-    def to_json(*opts)
-      { type: :@regexp_end, value: value, loc: location }.to_json(*opts)
-    end
   end
 
   # :call-seq:
@@ -6779,18 +7459,26 @@ class Ripper::ParseTree < Ripper
     # [String] the ending of the regular expression literal
     attr_reader :ending
 
-    # [Array[StringEmbExpr | StringDVar | TStringContent]] the parts of the
+    # [Array[ StringEmbExpr | StringDVar | TStringContent ]] the parts of the
     # regular expression literal
     attr_reader :parts
 
-    # [Locatione] the location of this node
+    # [Location] the location of this node
     attr_reader :location
 
-    def initialize(beginning:, ending:, parts:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(beginning:, ending:, parts:, location:, comments: [])
       @beginning = beginning
       @ending = ending
       @parts = parts
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      parts
     end
 
     def pretty_print(q)
@@ -6799,6 +7487,8 @@ class Ripper::ParseTree < Ripper
 
         q.breakable
         q.group(2, '(', ')') { q.seplist(parts) { |part| q.pp(part) } }
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
@@ -6808,7 +7498,8 @@ class Ripper::ParseTree < Ripper
         beging: beginning,
         ending: ending,
         parts: parts,
-        loc: location
+        loc: location,
+        cmts: comments
       }.to_json(*opts)
     end
   end
@@ -6856,10 +7547,18 @@ class Ripper::ParseTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(exceptions:, variable:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(exceptions:, variable:, location:, comments: [])
       @exceptions = exceptions
       @variable = variable
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [*exceptions, variable]
     end
 
     def pretty_print(q)
@@ -6871,6 +7570,8 @@ class Ripper::ParseTree < Ripper
 
         q.breakable
         q.pp(variable)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
@@ -6879,7 +7580,8 @@ class Ripper::ParseTree < Ripper
         type: :rescue_ex,
         extns: exceptions,
         var: variable,
-        loc: location
+        loc: location,
+        cmts: comments
       }.to_json(*opts)
     end
   end
@@ -6903,11 +7605,15 @@ class Ripper::ParseTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(exception:, statements:, consequent:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(exception:, statements:, consequent:, location:, comments: [])
       @exception = exception
       @statements = statements
       @consequent = consequent
       @location = location
+      @comments = comments
     end
 
     def bind_end(end_char)
@@ -6927,6 +7633,10 @@ class Ripper::ParseTree < Ripper
       end
     end
 
+    def child_nodes
+      [exception, statements, consequent]
+    end
+
     def pretty_print(q)
       q.group(2, '(', ')') do
         q.text('rescue')
@@ -6943,6 +7653,8 @@ class Ripper::ParseTree < Ripper
           q.breakable
           q.pp(consequent)
         end
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
@@ -6952,7 +7664,8 @@ class Ripper::ParseTree < Ripper
         extn: exception,
         stmts: statements,
         cons: consequent,
-        loc: location
+        loc: location,
+        cmts: comments
       }.to_json(*opts)
     end
   end
@@ -7020,10 +7733,18 @@ class Ripper::ParseTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(statement:, value:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(statement:, value:, location:, comments: [])
       @statement = statement
       @value = value
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [statement, value]
     end
 
     def pretty_print(q)
@@ -7035,13 +7756,19 @@ class Ripper::ParseTree < Ripper
 
         q.breakable
         q.pp(value)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :rescue_mod, stmt: statement, value: value, loc: location }.to_json(
-        *opts
-      )
+      {
+        type: :rescue_mod,
+        stmt: statement,
+        value: value,
+        loc: location,
+        cmts: comments
+      }.to_json(*opts)
     end
   end
 
@@ -7069,9 +7796,17 @@ class Ripper::ParseTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(name:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(name:, location:, comments: [])
       @name = name
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [name]
     end
 
     def pretty_print(q)
@@ -7080,11 +7815,13 @@ class Ripper::ParseTree < Ripper
 
         q.breakable
         q.pp(name)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :rest_param, name: name, loc: location }.to_json(*opts)
+      { type: :rest_param, name: name, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
@@ -7108,9 +7845,17 @@ class Ripper::ParseTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(value:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(value:, location:, comments: [])
       @value = value
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      []
     end
 
     def pretty_print(q)
@@ -7119,11 +7864,13 @@ class Ripper::ParseTree < Ripper
 
         q.breakable
         q.pp(value)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :retry, value: value, loc: location }.to_json(*opts)
+      { type: :retry, value: value, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
@@ -7140,15 +7887,23 @@ class Ripper::ParseTree < Ripper
   #     return value
   #
   class Return
-    # [Args | ArgsAddBlock] the arguments being passed to the keyword
+    # [Args] the arguments being passed to the keyword
     attr_reader :arguments
 
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(arguments:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(arguments:, location:, comments: [])
       @arguments = arguments
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [arguments]
     end
 
     def pretty_print(q)
@@ -7157,16 +7912,18 @@ class Ripper::ParseTree < Ripper
 
         q.breakable
         q.pp(arguments)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :return, args: arguments, loc: location }.to_json(*opts)
+      { type: :return, args: arguments, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
   # :call-seq:
-  #   on_return: ((Args | ArgsAddBlock) arguments) -> Return
+  #   on_return: (Args arguments) -> Return
   def on_return(arguments)
     keyword = find_token(Kw, 'return')
 
@@ -7187,9 +7944,17 @@ class Ripper::ParseTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(value:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(value:, location:, comments: [])
       @value = value
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      []
     end
 
     def pretty_print(q)
@@ -7198,11 +7963,13 @@ class Ripper::ParseTree < Ripper
 
         q.breakable
         q.pp(value)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :return0, value: value, loc: location }.to_json(*opts)
+      { type: :return0, value: value, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
@@ -7225,19 +7992,6 @@ class Ripper::ParseTree < Ripper
     def initialize(value:, location:)
       @value = value
       @location = location
-    end
-
-    def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('rparen')
-
-        q.breakable
-        q.pp(value)
-      end
-    end
-
-    def to_json(*opts)
-      { type: :@rparen, value: value, loc: location }.to_json(*opts)
     end
   end
 
@@ -7271,10 +8025,18 @@ class Ripper::ParseTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(target:, bodystmt:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(target:, bodystmt:, location:, comments: [])
       @target = target
       @bodystmt = bodystmt
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [target, bodystmt]
     end
 
     def pretty_print(q)
@@ -7286,6 +8048,8 @@ class Ripper::ParseTree < Ripper
 
         q.breakable
         q.pp(bodystmt)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
@@ -7294,7 +8058,8 @@ class Ripper::ParseTree < Ripper
         type: :sclass,
         target: target,
         bodystmt: bodystmt,
-        loc: location
+        loc: location,
+        cmts: comments
       }.to_json(*opts)
     end
   end
@@ -7341,19 +8106,23 @@ class Ripper::ParseTree < Ripper
   # propagate that onto void_stmt nodes inside the stmts in order to make sure
   # all comments get printed appropriately.
   class Statements
-    # [Ripper::ParseTree] the parser that created this node
+    # [SyntaxTree] the parser that created this node
     attr_reader :parser
 
-    # [Array[untyped]] the list of expressions contained within this node
+    # [Array[ untyped ]] the list of expressions contained within this node
     attr_reader :body
 
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(parser:, body:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(parser:, body:, location:, comments: [])
       @parser = parser
       @body = body
       @location = location
+      @comments = comments
     end
 
     def bind(start_char, end_char)
@@ -7399,17 +8168,23 @@ class Ripper::ParseTree < Ripper
       self
     end
 
+    def child_nodes
+      body
+    end
+
     def pretty_print(q)
       q.group(2, '(', ')') do
         q.text('statements')
 
         q.breakable
         q.seplist(body) { |statement| q.pp(statement) }
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :stmts, body: body, loc: location }.to_json(*opts)
+      { type: :statements, body: body, loc: location, cmts: comments }.to_json(*opts)
     end
 
     private
@@ -7417,8 +8192,7 @@ class Ripper::ParseTree < Ripper
     def attach_comments(start_char, end_char)
       attachable =
         parser.comments.select do |comment|
-          comment.is_a?(Comment) && !comment.inline &&
-            start_char <= comment.location.start_char &&
+          !comment.inline? && start_char <= comment.location.start_char &&
             end_char >= comment.location.end_char &&
             !comment.value.include?('prettier-ignore')
         end
@@ -7445,7 +8219,7 @@ class Ripper::ParseTree < Ripper
   #     "string"
   #
   class StringContent
-    # [Array[StringEmbExpr | StringDVar | TStringContent]] the parts of the
+    # [Array[ StringEmbExpr | StringDVar | TStringContent ]] the parts of the
     # string
     attr_reader :parts
 
@@ -7455,19 +8229,6 @@ class Ripper::ParseTree < Ripper
     def initialize(parts:, location:)
       @parts = parts
       @location = location
-    end
-
-    def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('string')
-
-        q.breakable
-        q.group(2, '(', ')') { q.seplist(parts) { |part| q.pp(part) } }
-      end
-    end
-
-    def to_json(*opts)
-      { type: :string, parts: parts, loc: location }.to_json(*opts)
     end
   end
 
@@ -7499,10 +8260,18 @@ class Ripper::ParseTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(left:, right:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(left:, right:, location:, comments: [])
       @left = left
       @right = right
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [left, right]
     end
 
     def pretty_print(q)
@@ -7514,11 +8283,13 @@ class Ripper::ParseTree < Ripper
 
         q.breakable
         q.pp(right)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :string_concat, left: left, right: right, loc: location }.to_json(
+      { type: :string_concat, left: left, right: right, loc: location, cmts: comments }.to_json(
         *opts
       )
     end
@@ -7559,9 +8330,17 @@ class Ripper::ParseTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(variable:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(variable:, location:, comments: [])
       @variable = variable
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [variable]
     end
 
     def pretty_print(q)
@@ -7570,11 +8349,13 @@ class Ripper::ParseTree < Ripper
 
         q.breakable
         q.pp(variable)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :string_dvar, var: variable, loc: location }.to_json(*opts)
+      { type: :string_dvar, var: variable, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
@@ -7602,10 +8383,18 @@ class Ripper::ParseTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(statements:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(statements:, location:, comments: [])
       @statements = statements
       @location = location
+      @comments = comments
     end
+
+    def child_nodes
+      [statements]
+    end 
 
     def pretty_print(q)
       q.group(2, '(', ')') do
@@ -7613,11 +8402,13 @@ class Ripper::ParseTree < Ripper
 
         q.breakable
         q.pp(statements)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :string_embexpr, stmts: statements, loc: location }.to_json(*opts)
+      { type: :string_embexpr, stmts: statements, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
@@ -7643,7 +8434,7 @@ class Ripper::ParseTree < Ripper
   #     "string"
   #
   class StringLiteral
-    # [Array[StringEmbExpr | StringDVar | TStringContent]] the parts of the
+    # [Array[ StringEmbExpr | StringDVar | TStringContent ]] the parts of the
     # string literal
     attr_reader :parts
 
@@ -7653,10 +8444,18 @@ class Ripper::ParseTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(parts:, quote:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(parts:, quote:, location:, comments: [])
       @parts = parts
       @quote = quote
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      parts
     end
 
     def pretty_print(q)
@@ -7665,6 +8464,8 @@ class Ripper::ParseTree < Ripper
 
         q.breakable
         q.group(2, '(', ')') { q.seplist(parts) { |part| q.pp(part) } }
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
@@ -7673,7 +8474,8 @@ class Ripper::ParseTree < Ripper
         type: :string_literal,
         parts: parts,
         quote: quote,
-        loc: location
+        loc: location,
+        cmts: comments
       }.to_json(*opts)
     end
   end
@@ -7710,15 +8512,23 @@ class Ripper::ParseTree < Ripper
   #     super(value)
   #
   class Super
-    # [ArgParen | Args | ArgsAddBlock] the arguments to the keyword
+    # [ArgParen | Args] the arguments to the keyword
     attr_reader :arguments
 
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(arguments:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(arguments:, location:, comments: [])
       @arguments = arguments
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [arguments]
     end
 
     def pretty_print(q)
@@ -7727,16 +8537,18 @@ class Ripper::ParseTree < Ripper
 
         q.breakable
         q.pp(arguments)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :super, args: arguments, loc: location }.to_json(*opts)
+      { type: :super, args: arguments, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
   # :call-seq:
-  #   on_super: ((ArgParen | Args | ArgsAddBlock) arguments) -> Super
+  #   on_super: ((ArgParen | Args) arguments) -> Super
   def on_super(arguments)
     keyword = find_token(Kw, 'super')
 
@@ -7773,19 +8585,6 @@ class Ripper::ParseTree < Ripper
       @value = value
       @location = location
     end
-
-    def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('symbeg')
-
-        q.breakable
-        q.pp(value)
-      end
-    end
-
-    def to_json(*opts)
-      { type: :@symbeg, value: value, loc: location }.to_json(*opts)
-    end
   end
 
   # symbeg is a token that represents the beginning of a symbol literal.
@@ -7819,19 +8618,6 @@ class Ripper::ParseTree < Ripper
       @value = value
       @location = location
     end
-
-    def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('symbol')
-
-        q.breakable
-        q.pp(value)
-      end
-    end
-
-    def to_json(*opts)
-      { type: :symbol, value: value, loc: location }.to_json(*opts)
-    end
   end
 
   # :call-seq:
@@ -7857,9 +8643,17 @@ class Ripper::ParseTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(value:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(value:, location:, comments: [])
       @value = value
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [value]
     end
 
     def pretty_print(q)
@@ -7868,11 +8662,13 @@ class Ripper::ParseTree < Ripper
 
         q.breakable
         q.pp(value)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :symbol_literal, value: value, loc: location }.to_json(*opts)
+      { type: :symbol_literal, value: value, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
@@ -7901,15 +8697,23 @@ class Ripper::ParseTree < Ripper
   #     %I[one two three]
   #
   class Symbols
-    # [Array[Word]] the words in the symbol array literal
+    # [Array[ Word ]] the words in the symbol array literal
     attr_reader :elements
 
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(elements:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(elements:, location:, comments: [])
       @elements = elements
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      []
     end
 
     def pretty_print(q)
@@ -7918,11 +8722,13 @@ class Ripper::ParseTree < Ripper
 
         q.breakable
         q.group(2, '(', ')') { q.seplist(elements) { |element| q.pp(element) } }
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :symbols, elems: elements, loc: location }.to_json(*opts)
+      { type: :symbols, elems: elements, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
@@ -7953,19 +8759,6 @@ class Ripper::ParseTree < Ripper
     def initialize(value:, location:)
       @value = value
       @location = location
-    end
-
-    def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('symbols_beg')
-
-        q.breakable
-        q.pp(value)
-      end
-    end
-
-    def to_json(*opts)
-      { type: :@symbols_beg, value: value, loc: location }.to_json(*opts)
     end
   end
 
@@ -8006,19 +8799,6 @@ class Ripper::ParseTree < Ripper
       @value = value
       @location = location
     end
-
-    def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('tlambda')
-
-        q.breakable
-        q.pp(value)
-      end
-    end
-
-    def to_json(*opts)
-      { type: :@tlambda, value: value, loc: location }.to_json(*opts)
-    end
   end
 
   # :call-seq:
@@ -8051,19 +8831,6 @@ class Ripper::ParseTree < Ripper
       @value = value
       @location = location
     end
-
-    def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('tlambeg')
-
-        q.breakable
-        q.pp(value)
-      end
-    end
-
-    def to_json(*opts)
-      { type: :@tlambeg, value: value, loc: location }.to_json(*opts)
-    end
   end
 
   # :call-seq:
@@ -8092,9 +8859,17 @@ class Ripper::ParseTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(constant:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(constant:, location:, comments: [])
       @constant = constant
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [constant]
     end
 
     def pretty_print(q)
@@ -8103,11 +8878,13 @@ class Ripper::ParseTree < Ripper
 
         q.breakable
         q.pp(constant)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :top_const_field, constant: constant, loc: location }.to_json(
+      { type: :top_const_field, constant: constant, loc: location, cmts: comments }.to_json(
         *opts
       )
     end
@@ -8136,9 +8913,17 @@ class Ripper::ParseTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(constant:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(constant:, location:, comments: [])
       @constant = constant
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [constant]
     end
 
     def pretty_print(q)
@@ -8147,11 +8932,13 @@ class Ripper::ParseTree < Ripper
 
         q.breakable
         q.pp(constant)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :top_const_ref, constant: constant, loc: location }.to_json(*opts)
+      { type: :top_const_ref, constant: constant, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
@@ -8187,19 +8974,6 @@ class Ripper::ParseTree < Ripper
       @value = value
       @location = location
     end
-
-    def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('tstring_beg')
-
-        q.breakable
-        q.pp(value)
-      end
-    end
-
-    def to_json(*opts)
-      { type: :@tstring_beg, value: value, loc: location }.to_json(*opts)
-    end
   end
 
   # :call-seq:
@@ -8230,9 +9004,17 @@ class Ripper::ParseTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(value:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(value:, location:, comments: [])
       @value = value
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      []
     end
 
     def pretty_print(q)
@@ -8241,14 +9023,17 @@ class Ripper::ParseTree < Ripper
 
         q.breakable
         q.pp(value)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
       {
-        type: :@tstring_content,
+        type: :tstring_content,
         value: value.force_encoding('UTF-8'),
-        loc: location
+        loc: location,
+        cmts: comments
       }.to_json(*opts)
     end
   end
@@ -8283,19 +9068,6 @@ class Ripper::ParseTree < Ripper
       @value = value
       @location = location
     end
-
-    def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('tstring_end')
-
-        q.breakable
-        q.pp(value)
-      end
-    end
-
-    def to_json(*opts)
-      { type: :@tstring_end, value: value, loc: location }.to_json(*opts)
-    end
   end
 
   # :call-seq:
@@ -8325,10 +9097,18 @@ class Ripper::ParseTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(statement:, parentheses:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(statement:, parentheses:, location:, comments: [])
       @statement = statement
       @parentheses = parentheses
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [statement]
     end
 
     def pretty_print(q)
@@ -8337,16 +9117,18 @@ class Ripper::ParseTree < Ripper
 
         q.breakable
         q.pp(statement)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
       {
-        type: :unary,
-        op: :not,
+        type: :not,
         value: statement,
         paren: parentheses,
-        loc: location
+        loc: location,
+        cmts: comments
       }.to_json(*opts)
     end
   end
@@ -8366,10 +9148,18 @@ class Ripper::ParseTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(operator:, statement:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(operator:, statement:, location:, comments: [])
       @operator = operator
       @statement = statement
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [statement]
     end
 
     def pretty_print(q)
@@ -8381,11 +9171,13 @@ class Ripper::ParseTree < Ripper
 
         q.breakable
         q.pp(statement)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :unary, op: operator, value: statement, loc: location }.to_json(
+      { type: :unary, op: operator, value: statement, loc: location, cmts: comments }.to_json(
         *opts
       )
     end
@@ -8442,15 +9234,23 @@ class Ripper::ParseTree < Ripper
   #     undef method
   #
   class Undef
-    # [Array[DynaSymbol | SymbolLiteral]] the symbols to undefine
+    # [Array[ DynaSymbol | SymbolLiteral ]] the symbols to undefine
     attr_reader :symbols
 
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(symbols:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(symbols:, location:, comments: [])
       @symbols = symbols
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      symbols
     end
 
     def pretty_print(q)
@@ -8459,11 +9259,13 @@ class Ripper::ParseTree < Ripper
 
         q.breakable
         q.group(2, '(', ')') { q.seplist(symbols) { |symbol| q.pp(symbol) } }
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :undef, syms: symbols, loc: location }.to_json(*opts)
+      { type: :undef, syms: symbols, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
@@ -8496,11 +9298,19 @@ class Ripper::ParseTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(predicate:, statements:, consequent:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(predicate:, statements:, consequent:, location:, comments: [])
       @predicate = predicate
       @statements = statements
       @consequent = consequent
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [predicate, statements, consequent]
     end
 
     def pretty_print(q)
@@ -8517,6 +9327,8 @@ class Ripper::ParseTree < Ripper
           q.breakable
           q.pp(consequent)
         end
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
@@ -8526,7 +9338,8 @@ class Ripper::ParseTree < Ripper
         pred: predicate,
         stmts: statements,
         cons: consequent,
-        loc: location
+        loc: location,
+        cmts: comments
       }.to_json(*opts)
     end
   end
@@ -8565,10 +9378,18 @@ class Ripper::ParseTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(statement:, predicate:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(statement:, predicate:, location:, comments: [])
       @statement = statement
       @predicate = predicate
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [statement, predicate]
     end
 
     def pretty_print(q)
@@ -8580,6 +9401,8 @@ class Ripper::ParseTree < Ripper
 
         q.breakable
         q.pp(predicate)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
@@ -8588,7 +9411,8 @@ class Ripper::ParseTree < Ripper
         type: :unless_mod,
         stmt: statement,
         pred: predicate,
-        loc: location
+        loc: location,
+        cmts: comments
       }.to_json(*opts)
     end
   end
@@ -8620,10 +9444,18 @@ class Ripper::ParseTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(predicate:, statements:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(predicate:, statements:, location:, comments: [])
       @predicate = predicate
       @statements = statements
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [predicate, statements]
     end
 
     def pretty_print(q)
@@ -8635,6 +9467,8 @@ class Ripper::ParseTree < Ripper
 
         q.breakable
         q.pp(statements)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
@@ -8643,7 +9477,8 @@ class Ripper::ParseTree < Ripper
         type: :until,
         pred: predicate,
         stmts: statements,
-        loc: location
+        loc: location,
+        cmts: comments
       }.to_json(*opts)
     end
   end
@@ -8686,10 +9521,18 @@ class Ripper::ParseTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(statement:, predicate:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(statement:, predicate:, location:, comments: [])
       @statement = statement
       @predicate = predicate
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [statement, predicate]
     end
 
     def pretty_print(q)
@@ -8701,6 +9544,8 @@ class Ripper::ParseTree < Ripper
 
         q.breakable
         q.pp(predicate)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
@@ -8709,7 +9554,8 @@ class Ripper::ParseTree < Ripper
         type: :until_mod,
         stmt: statement,
         pred: predicate,
-        loc: location
+        loc: location,
+        cmts: comments
       }.to_json(*opts)
     end
   end
@@ -8741,10 +9587,18 @@ class Ripper::ParseTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(left:, right:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(left:, right:, location:, comments: [])
       @left = left
       @right = right
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [left, right]
     end
 
     def pretty_print(q)
@@ -8756,11 +9610,13 @@ class Ripper::ParseTree < Ripper
 
         q.breakable
         q.pp(right)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :var_alias, left: left, right: right, loc: location }.to_json(
+      { type: :var_alias, left: left, right: right, loc: location, cmts: comments }.to_json(
         *opts
       )
     end
@@ -8791,9 +9647,17 @@ class Ripper::ParseTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(value:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(value:, location:, comments: [])
       @value = value
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [value]
     end
 
     def pretty_print(q)
@@ -8802,11 +9666,13 @@ class Ripper::ParseTree < Ripper
 
         q.breakable
         q.pp(value)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :var_field, value: value, loc: location }.to_json(*opts)
+      { type: :var_field, value: value, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
@@ -8829,7 +9695,7 @@ class Ripper::ParseTree < Ripper
 
   # VarRef represents a variable reference.
   #
-  #     variable
+  #     true
   #
   # This can be a plain local variable like the example above. It can also be a
   # constant, a class variable, a global variable, an instance variable, a
@@ -8842,9 +9708,17 @@ class Ripper::ParseTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(value:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(value:, location:, comments: [])
       @value = value
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [value]
     end
 
     def pretty_print(q)
@@ -8853,11 +9727,13 @@ class Ripper::ParseTree < Ripper
 
         q.breakable
         q.pp(value)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :var_ref, value: value, loc: location }.to_json(*opts)
+      { type: :var_ref, value: value, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
@@ -8879,9 +9755,17 @@ class Ripper::ParseTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(value:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(value:, location:, comments: [])
       @value = value
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [value]
     end
 
     def pretty_print(q)
@@ -8890,11 +9774,13 @@ class Ripper::ParseTree < Ripper
 
         q.breakable
         q.pp(value)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :access_ctrl, value: value, loc: location }.to_json(*opts)
+      { type: :access_ctrl, value: value, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
@@ -8910,9 +9796,17 @@ class Ripper::ParseTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(value:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(value:, location:, comments: [])
       @value = value
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [value]
     end
 
     def pretty_print(q)
@@ -8921,11 +9815,13 @@ class Ripper::ParseTree < Ripper
 
         q.breakable
         q.pp(value)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :vcall, value: value, loc: location }.to_json(*opts)
+      { type: :vcall, value: value, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
@@ -8953,16 +9849,23 @@ class Ripper::ParseTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(location:, comments: [])
       @location = location
+      @comments = comments
     end
 
     def pretty_print(q)
-      q.group(2, '(', ')') { q.text('void_stmt') }
+      q.group(2, '(', ')') do
+        q.text('void_stmt')
+        q.pp(Comment::List.new(comments))
+      end
     end
 
     def to_json(*opts)
-      { type: :void_stmt, loc: location }.to_json(*opts)
+      { type: :void_stmt, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
@@ -8991,11 +9894,19 @@ class Ripper::ParseTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(arguments:, statements:, consequent:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(arguments:, statements:, consequent:, location:, comments: [])
       @arguments = arguments
       @statements = statements
       @consequent = consequent
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [arguments, statements, consequent]
     end
 
     def pretty_print(q)
@@ -9012,6 +9923,8 @@ class Ripper::ParseTree < Ripper
           q.breakable
           q.pp(consequent)
         end
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
@@ -9021,7 +9934,8 @@ class Ripper::ParseTree < Ripper
         args: arguments,
         stmts: statements,
         cons: consequent,
-        loc: location
+        loc: location,
+        cmts: comments
       }.to_json(*opts)
     end
   end
@@ -9061,10 +9975,18 @@ class Ripper::ParseTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(predicate:, statements:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(predicate:, statements:, location:, comments: [])
       @predicate = predicate
       @statements = statements
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [predicate, statements]
     end
 
     def pretty_print(q)
@@ -9076,6 +9998,8 @@ class Ripper::ParseTree < Ripper
 
         q.breakable
         q.pp(statements)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
@@ -9084,7 +10008,8 @@ class Ripper::ParseTree < Ripper
         type: :while,
         pred: predicate,
         stmts: statements,
-        loc: location
+        loc: location,
+        cmts: comments
       }.to_json(*opts)
     end
   end
@@ -9127,10 +10052,18 @@ class Ripper::ParseTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(statement:, predicate:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(statement:, predicate:, location:, comments: [])
       @statement = statement
       @predicate = predicate
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [statement, predicate]
     end
 
     def pretty_print(q)
@@ -9142,6 +10075,8 @@ class Ripper::ParseTree < Ripper
 
         q.breakable
         q.pp(predicate)
+      
+        q.pp(Comment::List.new(comments))
       end
     end
 
@@ -9150,7 +10085,8 @@ class Ripper::ParseTree < Ripper
         type: :while_mod,
         stmt: statement,
         pred: predicate,
-        loc: location
+        loc: location,
+        cmts: comments
       }.to_json(*opts)
     end
   end
@@ -9170,20 +10106,29 @@ class Ripper::ParseTree < Ripper
   # Word represents an element within a special array literal that accepts
   # interpolation.
   #
-  #     %w[a#{b}c xyz]
+  #     %W[a#{b}c xyz]
   #
   # In the example above, there would be two Word nodes within a parent Words
   # node.
   class Word
-    # [Array[StringEmbExpr | StringDVar | TStringContent]] the parts of the word
+    # [Array[ StringEmbExpr | StringDVar | TStringContent ]] the parts of the
+    # word
     attr_reader :parts
 
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(parts:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(parts:, location:, comments: [])
       @parts = parts
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      parts
     end
 
     def pretty_print(q)
@@ -9192,11 +10137,13 @@ class Ripper::ParseTree < Ripper
 
         q.breakable
         q.group(2, '(', ')') { q.seplist(parts) { |part| q.pp(part) } }
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :word, parts: parts, loc: location }.to_json(*opts)
+      { type: :word, parts: parts, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
@@ -9223,15 +10170,23 @@ class Ripper::ParseTree < Ripper
   #     %W[one two three]
   #
   class Words
-    # [Array[Word]] the elements of this array
+    # [Array[ Word ]] the elements of this array
     attr_reader :elements
 
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(elements:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(elements:, location:, comments: [])
       @elements = elements
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      []
     end
 
     def pretty_print(q)
@@ -9240,11 +10195,13 @@ class Ripper::ParseTree < Ripper
 
         q.breakable
         q.group(2, '(', ')') { q.seplist(elements) { |element| q.pp(element) } }
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :words, elems: elements, loc: location }.to_json(*opts)
+      { type: :words, elems: elements, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
@@ -9275,19 +10232,6 @@ class Ripper::ParseTree < Ripper
     def initialize(value:, location:)
       @value = value
       @location = location
-    end
-
-    def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('words_beg')
-
-        q.breakable
-        q.pp(value)
-      end
-    end
-
-    def to_json(*opts)
-      { type: :@words_beg, value: value, loc: location }.to_json(*opts)
     end
   end
 
@@ -9321,7 +10265,7 @@ class Ripper::ParseTree < Ripper
   #     `ls`
   #
   class XString
-    # [Array[StringEmbExpr | StringDVar | TStringContent]] the parts of the
+    # [Array[ StringEmbExpr | StringDVar | TStringContent ]] the parts of the
     # xstring
     attr_reader :parts
 
@@ -9331,19 +10275,6 @@ class Ripper::ParseTree < Ripper
     def initialize(parts:, location:)
       @parts = parts
       @location = location
-    end
-
-    def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('xstring')
-
-        q.breakable
-        q.group(2, '(', ')') { q.seplist(parts) { |part| q.pp(part) } }
-      end
-    end
-
-    def to_json(*opts)
-      { type: :xstring, parts: parts, loc: location }.to_json(*opts)
     end
   end
 
@@ -9379,16 +10310,24 @@ class Ripper::ParseTree < Ripper
   #     `ls`
   #
   class XStringLiteral
-    # [Array[StringEmbExpr | StringDVar | TStringContent]] the parts of the
+    # [Array[ StringEmbExpr | StringDVar | TStringContent ]] the parts of the
     # xstring
     attr_reader :parts
 
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(parts:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(parts:, location:, comments: [])
       @parts = parts
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      parts
     end
 
     def pretty_print(q)
@@ -9397,11 +10336,13 @@ class Ripper::ParseTree < Ripper
 
         q.breakable
         q.group(2, '(', ')') { q.seplist(parts) { |part| q.pp(part) } }
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :xstring_literal, parts: parts, loc: location }.to_json(*opts)
+      { type: :xstring_literal, parts: parts, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
@@ -9432,15 +10373,23 @@ class Ripper::ParseTree < Ripper
   #     yield value
   #
   class Yield
-    # [ArgsAddBlock | Paren] the arguments passed to the yield
+    # [Args | Paren] the arguments passed to the yield
     attr_reader :arguments
 
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(arguments:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(arguments:, location:, comments: [])
       @arguments = arguments
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [arguments]
     end
 
     def pretty_print(q)
@@ -9449,16 +10398,18 @@ class Ripper::ParseTree < Ripper
 
         q.breakable
         q.pp(arguments)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :yield, args: arguments, loc: location }.to_json(*opts)
+      { type: :yield, args: arguments, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
   # :call-seq:
-  #   on_yield: ((ArgsAddBlock | Paren) arguments) -> Yield
+  #   on_yield: ((Args | Paren) arguments) -> Yield
   def on_yield(arguments)
     keyword = find_token(Kw, 'yield')
 
@@ -9479,9 +10430,17 @@ class Ripper::ParseTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(value:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(value:, location:, comments: [])
       @value = value
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      []
     end
 
     def pretty_print(q)
@@ -9490,11 +10449,13 @@ class Ripper::ParseTree < Ripper
 
         q.breakable
         q.pp(value)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :yield0, value: value, loc: location }.to_json(*opts)
+      { type: :yield0, value: value, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
@@ -9514,12 +10475,20 @@ class Ripper::ParseTree < Ripper
     # [String] the value of the keyword
     attr_reader :value
 
-    # [Location] the location of the node
+    # [Location] the location of this node
     attr_reader :location
 
-    def initialize(value:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(value:, location:, comments: [])
       @value = value
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      []
     end
 
     def pretty_print(q)
@@ -9528,11 +10497,13 @@ class Ripper::ParseTree < Ripper
 
         q.breakable
         q.pp(value)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :zsuper, value: value, loc: location }.to_json(*opts)
+      { type: :zsuper, value: value, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
