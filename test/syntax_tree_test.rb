@@ -17,12 +17,12 @@ class SyntaxTree
     # --------------------------------------------------------------------------
 
     def test_multibyte
-      assign = SyntaxTree.new('🎉 + 🎉').parse.statements.body.first
+      assign = SyntaxTree.parse('🎉 + 🎉').statements.body.first
       assert_equal(5, assign.location.end_char)
     end
 
     def test_parse_error
-      assert_raises(ParseError) { SyntaxTree.new('<>').parse }
+      assert_raises(ParseError) { SyntaxTree.parse('<>') }
     end
 
     def test_next_statement_start
@@ -32,7 +32,7 @@ class SyntaxTree
         end
       SOURCE
 
-      bodystmt = SyntaxTree.new(source).parse.statements.body.first.bodystmt
+      bodystmt = SyntaxTree.parse(source).statements.body.first.bodystmt
       assert_equal(20, bodystmt.location.start_char)
     end
 

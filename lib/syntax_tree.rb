@@ -101,8 +101,8 @@ class SyntaxTree < Ripper
   # array and attach them to themselves.
   attr_accessor :comments
 
-  def initialize(source)
-    super(source)
+  def initialize(source, *)
+    super
 
     # We keep the source around so that we can refer back to it when we're
     # generating the AST. Sometimes it's easier to just reference the source
@@ -167,6 +167,12 @@ class SyntaxTree < Ripper
 
       last_index += line.size
     end
+  end
+
+  def self.parse(source)
+    parser = new(source)
+    response = parser.parse
+    response unless parser.error?
   end
 
   private
