@@ -3,6 +3,8 @@
 [![Build Status](https://github.com/kddnewton/syntax_tree/workflows/Main/badge.svg)](https://github.com/kddnewton/syntax_tree/actions)
 [![Gem Version](https://img.shields.io/gem/v/syntax_tree.svg)](https://rubygems.org/gems/syntax_tree)
 
+A fast ripper subclass used for generating syntax trees from Ruby code.
+
 ## Installation
 
 Add this line to your application's Gemfile:
@@ -20,6 +22,17 @@ Or install it yourself as:
     $ gem install syntax_tree
 
 ## Usage
+
+```ruby
+require 'syntax_tree'
+
+parser = SyntaxTree.new(source)
+
+node = parser.parse
+raise if parser.error?
+
+pp node
+```
 
 ## Development
 

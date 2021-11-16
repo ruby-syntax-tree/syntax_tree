@@ -7,7 +7,7 @@ GEM
   remote: https://rubygems.org/
   specs:
     ast (2.4.2)
-    benchmark-ips (2.9.1)
+    benchmark-ips (2.9.2)
     docile (1.4.0)
     minitest (5.14.4)
     parser (3.0.2.0)
@@ -30,11 +30,11 @@ DEPENDENCIES
   benchmark-ips
   bundler
   minitest
-  syntax_tree!
   parser
   rake
   ruby_parser
   simplecov
+  syntax_tree!
 
 BUNDLED WITH
    2.2.15
