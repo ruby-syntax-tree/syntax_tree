@@ -11,7 +11,7 @@ Gem::Specification.new do |spec|
   spec.summary       = 'A parser based on ripper'
   spec.homepage      = 'https://github.com/kddnewton/syntax_tree'
   spec.license       = 'MIT'
-  spec.metadata      = { "rubygems_mfa_required" => true }
+  spec.metadata      = { 'rubygems_mfa_required' => 'true' }
 
   spec.files         = Dir.chdir(__dir__) do
     `git ls-files -z`.split("\x0").reject do |f|
