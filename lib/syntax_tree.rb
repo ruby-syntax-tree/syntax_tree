@@ -727,7 +727,7 @@ class SyntaxTree < Ripper
   #     method(first, second, third)
   #
   class Args
-    # Array[untyped] the arguments that this node wraps
+    # [Array[ untyped ]] the arguments that this node wraps
     attr_reader :parts
 
     # [Location] the location of this node
@@ -961,7 +961,7 @@ class SyntaxTree < Ripper
   # child contents node of this ArrayLiteral node would be nil, Args,
   # ArgsAddStar, QSymbols, QWords, Symbols, and Words.
   class ArrayLiteral
-    # [nil | Args | ArgsAddStar | Qsymbols | Qwords | Symbols | Words] the
+    # [nil | Args | ArgsAddStar | QSymbols | QWords | Symbols | Words] the
     # contents of the array
     attr_reader :contents
 
@@ -988,7 +988,7 @@ class SyntaxTree < Ripper
 
   # :call-seq:
   #   on_array: (
-  #     (nil | Args | ArgsAddStar | Qsymbols | Qwords | Symbols | Words)
+  #     (nil | Args | ArgsAddStar | QSymbols | QWords | Symbols | Words)
   #       contents
   #   ) -> ArrayLiteral
   def on_array(contents)
@@ -1033,15 +1033,15 @@ class SyntaxTree < Ripper
     # [nil | VarRef] the optional constant wrapper
     attr_reader :constant
 
-    # [Array[untyped]] the regular positional arguments that this array pattern
-    # is matching against
+    # [Array[ untyped ]] the regular positional arguments that this array
+    # pattern is matching against
     attr_reader :requireds
 
     # [nil | VarField] the optional starred identifier that grabs up a list of
     # positional arguments
     attr_reader :rest
 
-    # [Array[untyped]] the list of positional arguments occurring after the
+    # [Array[ untyped ]] the list of positional arguments occurring after the
     # optional star if there is one
     attr_reader :posts
 
@@ -1122,7 +1122,7 @@ class SyntaxTree < Ripper
   #     variable = value
   #
   class Assign
-    # [ArefField | ConstPathField | Field | TopConstField | VarField] the target
+    # [ARefField | ConstPathField | Field | TopConstField | VarField] the target
     # to assign the result of the expression to
     attr_reader :target
 
@@ -1157,7 +1157,7 @@ class SyntaxTree < Ripper
 
   # :call-seq:
   #   on_assign: (
-  #     (ArefField | ConstPathField | Field | TopConstField | VarField) target,
+  #     (ARefField | ConstPathField | Field | TopConstField | VarField) target,
   #     untyped value
   #   ) -> Assign
   def on_assign(target, value)
@@ -1259,7 +1259,7 @@ class SyntaxTree < Ripper
   #     { key1: value1, key2: value2 }
   #
   class AssocListFromArgs
-    # [Array[AssocNew | AssocSplat]]
+    # [Array[ AssocNew | AssocSplat ]]
     attr_reader :assocs
 
     # [Location] the location of this node
@@ -1387,7 +1387,7 @@ class SyntaxTree < Ripper
   #     method(key1: value1, key2: value2)
   #
   class BareAssocHash
-    # [Array[AssocNew | AssocSplat]]
+    # [Array[ AssocNew | AssocSplat ]]
     attr_reader :assocs
 
     # [Location] the location of this node
@@ -1555,7 +1555,7 @@ class SyntaxTree < Ripper
     # [Params] the parameters being declared with the block
     attr_reader :params
 
-    # [Array[Ident]] the list of block-local variable declarations
+    # [Array[ Ident ]] the list of block-local variable declarations
     attr_reader :locals
 
     # [Location] the location of this node
@@ -2646,7 +2646,7 @@ class SyntaxTree < Ripper
   #     def method(param) result end
   #
   class Def
-    # [Backtick | Const | Ident | Keyword | Op] the name of the method
+    # [Backtick | Const | Ident | Kw | Op] the name of the method
     attr_reader :name
 
     # [Params | Paren] the parameter declaration for the method
@@ -2696,7 +2696,7 @@ class SyntaxTree < Ripper
   #     def method = result
   #
   class DefEndless
-    # [Backtick | Const | Ident | Keyword | Op] the name of the method
+    # [Backtick | Const | Ident | Kw | Op] the name of the method
     attr_reader :name
 
     # [Paren] the parameter declaration for the method
@@ -2743,7 +2743,7 @@ class SyntaxTree < Ripper
 
   # :call-seq:
   #   on_def: (
-  #     (Backtick | Const | Ident | Keyword | Op) name,
+  #     (Backtick | Const | Ident | Kw | Op) name,
   #     (Params | Paren) params,
   #     untyped bodystmt
   #   ) -> Def | DefEndless
@@ -2855,7 +2855,7 @@ class SyntaxTree < Ripper
     # [Op | Period] the operator being used to declare the method
     attr_reader :operator
 
-    # [Backtick | Const | Ident | Keyword | Op] the name of the method
+    # [Backtick | Const | Ident | Kw | Op] the name of the method
     attr_reader :name
 
     # [Params | Paren] the parameter declaration for the method
@@ -2914,7 +2914,7 @@ class SyntaxTree < Ripper
   #   on_defs: (
   #     untyped target,
   #     (Op | Period) operator,
-  #     (Backtick | Const | Ident | Keyword | Op) name,
+  #     (Backtick | Const | Ident | Kw | Op) name,
   #     (Params | Paren) params,
   #     BodyStmt bodystmt
   #   ) -> Defs
@@ -3164,7 +3164,7 @@ class SyntaxTree < Ripper
   #     { "#{key}": value }
   #
   class DynaSymbol
-    # [Array[StringDVar | StringEmbExpr | TStringContent]] the parts of the
+    # [Array[ StringDVar | StringEmbExpr | TStringContent ]] the parts of the
     # dynamic symbol
     attr_reader :parts
 
@@ -3797,7 +3797,7 @@ class SyntaxTree < Ripper
     # [VarField] the splat on the left-hand side
     attr_reader :left
 
-    # [Array[untyped]] the list of positional expressions in the pattern that
+    # [Array[ untyped ]] the list of positional expressions in the pattern that
     # are being matched
     attr_reader :values
 
@@ -4062,7 +4062,7 @@ class SyntaxTree < Ripper
     # [String] the ending of the heredoc
     attr_reader :ending
 
-    # [Array[StringEmbExpr | StringDVar | TStringContent]] the parts of the
+    # [Array[ StringEmbExpr | StringDVar | TStringContent ]] the parts of the
     # heredoc string literal
     attr_reader :parts
 
@@ -4188,8 +4188,8 @@ class SyntaxTree < Ripper
     # [nil | untyped] the optional constant wrapper
     attr_reader :constant
 
-    # [Array[[Label, untyped]]] the set of tuples representing the keywords that
-    # should be matched against in the pattern
+    # [Array[ [Label, untyped] ]] the set of tuples representing the keywords
+    # that should be matched against in the pattern
     attr_reader :keywords
 
     # [nil | VarField] an optional parameter to gather up all remaining keywords
@@ -5107,7 +5107,9 @@ class SyntaxTree < Ripper
     end
 
     def to_json(*opts)
-      { type: :massign, target: target, value: value, loc: location }.to_json(*opts)
+      { type: :massign, target: target, value: value, loc: location }.to_json(
+        *opts
+      )
     end
   end
 
@@ -5254,7 +5256,7 @@ class SyntaxTree < Ripper
   #     first, second, third = value
   #
   class MLHS
-    # Array[ArefField | Field | Identifier | MlhsParen | VarField] the parts of
+    # Array[ARefField | Field | Ident | MlhsParen | VarField] the parts of
     # the left-hand side of a multiple assignment
     attr_reader :parts
 
@@ -5289,7 +5291,7 @@ class SyntaxTree < Ripper
   # :call-seq:
   #   on_mlhs_add: (
   #     MLHS mlhs,
-  #     (ArefField | Field | Identifier | MlhsParen | VarField) part
+  #     (ARefField | Field | Ident | MlhsParen | VarField) part
   #   ) -> MLHS
   def on_mlhs_add(mlhs, part)
     if mlhs.parts.empty?
@@ -5361,7 +5363,7 @@ class SyntaxTree < Ripper
     # [MLHS] the values before the starred expression
     attr_reader :mlhs
 
-    # [nil | ArefField | Field | Identifier | VarField] the expression being
+    # [nil | ARefField | Field | Ident | VarField] the expression being
     # splatted
     attr_reader :star
 
@@ -5396,7 +5398,7 @@ class SyntaxTree < Ripper
   # :call-seq:
   #   on_mlhs_add_star: (
   #     MLHS mlhs,
-  #     (nil | ArefField | Field | Identifier | VarField) part
+  #     (nil | ARefField | Field | Ident | VarField) part
   #   ) -> MLHSAddStar
   def on_mlhs_add_star(mlhs, part)
     beginning = find_token(Op, '*')
@@ -5788,7 +5790,7 @@ class SyntaxTree < Ripper
   #     variable += value
   #
   class OpAssign
-    # [ArefField | ConstPathField | Field | TopConstField | VarField] the target
+    # [ARefField | ConstPathField | Field | TopConstField | VarField] the target
     # to assign the result of the expression to
     attr_reader :target
 
@@ -5836,7 +5838,7 @@ class SyntaxTree < Ripper
 
   # :call-seq:
   #   on_opassign: (
-  #     (ArefField | ConstPathField | Field | TopConstField | VarField) target,
+  #     (ARefField | ConstPathField | Field | TopConstField | VarField) target,
   #     Op operator,
   #     untyped value
   #   ) -> OpAssign
@@ -5858,21 +5860,23 @@ class SyntaxTree < Ripper
   #     def method(param) end
   #
   class Params
-    # [Array[Ident]] any required parameters
+    # [Array[ Ident ]] any required parameters
     attr_reader :requireds
 
-    # [Array[[Ident, untyped]]] any optional parameters and their default values
+    # [Array[ [ Ident, untyped ] ]] any optional parameters and their default
+    # values
     attr_reader :optionals
 
     # [nil | ArgsForward | ExcessedComma | RestParam] the optional rest
     # parameter
     attr_reader :rest
 
-    # Array[Ident] any positional parameters that exist after a rest parameter
+    # [Array[ Ident ]] any positional parameters that exist after a rest
+    # parameter
     attr_reader :posts
 
-    # Array[[Ident, nil | untyped]] any keyword parameters and their optional
-    # default values
+    # [Array[ [ Ident, nil | untyped ] ]] any keyword parameters and their
+    # optional default values
     attr_reader :keywords
 
     # [nil | :nil | KwRestParam] the optional keyword rest parameter
@@ -6164,7 +6168,7 @@ class SyntaxTree < Ripper
     # [Statements] the top-level expressions of the program
     attr_reader :statements
 
-    # [Array[Comment | EmbDoc]] the comments inside the program
+    # [Array[ Comment | EmbDoc ]] the comments inside the program
     attr_reader :comments
 
     # [Location] the location of this node
@@ -6217,7 +6221,7 @@ class SyntaxTree < Ripper
   #     %i[one two three]
   #
   class QSymbols
-    # [Array[TStringContent]] the elements of the array
+    # [Array[ TStringContent ]] the elements of the array
     attr_reader :elements
 
     # [Location] the location of this node
@@ -6297,7 +6301,7 @@ class SyntaxTree < Ripper
   #     %w[one two three]
   #
   class QWords
-    # [Array[TStringContent]] the elements of the array
+    # [Array[ TStringContent ]] the elements of the array
     attr_reader :elements
 
     # [Location] the location of this node
@@ -6517,7 +6521,7 @@ class SyntaxTree < Ripper
     # [String] the opening of the regular expression
     attr_reader :beginning
 
-    # [Array[StringDVar | StringEmbExpr | TStringContent]] the parts of the
+    # [Array[ StringDVar | StringEmbExpr | TStringContent ]] the parts of the
     # regular expression
     attr_reader :parts
 
@@ -6622,7 +6626,7 @@ class SyntaxTree < Ripper
     # [String] the ending of the regular expression literal
     attr_reader :ending
 
-    # [Array[StringEmbExpr | StringDVar | TStringContent]] the parts of the
+    # [Array[ StringEmbExpr | StringDVar | TStringContent ]] the parts of the
     # regular expression literal
     attr_reader :parts
 
@@ -6882,9 +6886,12 @@ class SyntaxTree < Ripper
     end
 
     def to_json(*opts)
-      { type: :rescue_mod, stmt: statement, value: value, loc: location }.to_json(
-        *opts
-      )
+      {
+        type: :rescue_mod,
+        stmt: statement,
+        value: value,
+        loc: location
+      }.to_json(*opts)
     end
   end
 
@@ -7174,7 +7181,7 @@ class SyntaxTree < Ripper
     # [SyntaxTree] the parser that created this node
     attr_reader :parser
 
-    # [Array[untyped]] the list of expressions contained within this node
+    # [Array[ untyped ]] the list of expressions contained within this node
     attr_reader :body
 
     # [Location] the location of this node
@@ -7275,7 +7282,7 @@ class SyntaxTree < Ripper
   #     "string"
   #
   class StringContent
-    # [Array[StringEmbExpr | StringDVar | TStringContent]] the parts of the
+    # [Array[ StringEmbExpr | StringDVar | TStringContent ]] the parts of the
     # string
     attr_reader :parts
 
@@ -7460,7 +7467,7 @@ class SyntaxTree < Ripper
   #     "string"
   #
   class StringLiteral
-    # [Array[StringEmbExpr | StringDVar | TStringContent]] the parts of the
+    # [Array[ StringEmbExpr | StringDVar | TStringContent ]] the parts of the
     # string literal
     attr_reader :parts
 
@@ -7692,7 +7699,7 @@ class SyntaxTree < Ripper
   #     %I[one two three]
   #
   class Symbols
-    # [Array[Word]] the words in the symbol array literal
+    # [Array[ Word ]] the words in the symbol array literal
     attr_reader :elements
 
     # [Location] the location of this node
@@ -8167,7 +8174,7 @@ class SyntaxTree < Ripper
   #     undef method
   #
   class Undef
-    # [Array[DynaSymbol | SymbolLiteral]] the symbols to undefine
+    # [Array[ DynaSymbol | SymbolLiteral ]] the symbols to undefine
     attr_reader :symbols
 
     # [Location] the location of this node
@@ -8900,7 +8907,8 @@ class SyntaxTree < Ripper
   # In the example above, there would be two Word nodes within a parent Words
   # node.
   class Word
-    # [Array[StringEmbExpr | StringDVar | TStringContent]] the parts of the word
+    # [Array[ StringEmbExpr | StringDVar | TStringContent ]] the parts of the
+    # word
     attr_reader :parts
 
     # [Location] the location of this node
@@ -8948,7 +8956,7 @@ class SyntaxTree < Ripper
   #     %W[one two three]
   #
   class Words
-    # [Array[Word]] the elements of this array
+    # [Array[ Word ]] the elements of this array
     attr_reader :elements
 
     # [Location] the location of this node
@@ -9033,7 +9041,7 @@ class SyntaxTree < Ripper
   #     `ls`
   #
   class XString
-    # [Array[StringEmbExpr | StringDVar | TStringContent]] the parts of the
+    # [Array[ StringEmbExpr | StringDVar | TStringContent ]] the parts of the
     # xstring
     attr_reader :parts
 
@@ -9078,7 +9086,7 @@ class SyntaxTree < Ripper
   #     `ls`
   #
   class XStringLiteral
-    # [Array[StringEmbExpr | StringDVar | TStringContent]] the parts of the
+    # [Array[ StringEmbExpr | StringDVar | TStringContent ]] the parts of the
     # xstring
     attr_reader :parts
 
