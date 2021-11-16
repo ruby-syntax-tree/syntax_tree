@@ -23,6 +23,8 @@ Or install it yourself as:
 
 ## Usage
 
+From code:
+
 ```ruby
 require 'syntax_tree'
 
@@ -32,6 +34,15 @@ node = parser.parse
 raise if parser.error?
 
 pp node
+```
+
+From the CLI:
+
+```sh
+$ stree program.rb
+(program
+  (statements
+    ...
 ```
 
 ## Development
