@@ -1,12 +1,12 @@
 PATH
   remote: .
   specs:
-    template (0.1.0)
+    parse_tree (0.1.0)
 
 GEM
   remote: https://rubygems.org/
   specs:
-    docile (1.3.5)
+    docile (1.4.0)
     minitest (5.14.4)
     rake (13.0.6)
     simplecov (0.21.2)
@@ -14,17 +14,17 @@ GEM
       simplecov-html (~> 0.11)
       simplecov_json_formatter (~> 0.1)
     simplecov-html (0.12.3)
-    simplecov_json_formatter (0.1.2)
+    simplecov_json_formatter (0.1.3)
 
 PLATFORMS
-  ruby
+  x86_64-darwin-19
 
 DEPENDENCIES
   bundler
   minitest
+  parse_tree!
   rake
   simplecov
-  template!
 
 BUNDLED WITH
-   2.2.3
+   2.2.15

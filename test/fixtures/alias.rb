@@ -1,3 +1,4 @@
+%
 alias foo bar
 %
 alias << push

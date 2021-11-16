@@ -2,7 +2,7 @@
 
 require 'test_helper'
 
-class Ripper::ParseTree < Ripper
+class ParseTree < Ripper
   class AliasTest < Minitest::Test
     def test_alias
       assert_node(Alias, 'alias foo bar')

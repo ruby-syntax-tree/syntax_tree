@@ -2,7 +2,7 @@
 
 require 'ripper'
 
-class Ripper::ParseTree < Ripper
+class ParseTree < Ripper
   # Represents a line in the source. If this class is being used, it means that
   # every character in the string is 1 byte in length, so we can just return the
   # start of the line + the index.
@@ -92,8 +92,8 @@ class Ripper::ParseTree < Ripper
   # array and attach them to themselves.
   attr_accessor :comments
 
-  def initialize(source, *)
-    super
+  def initialize(source)
+    super(source)
 
     # We keep the source around so that we can refer back to it when we're
     # generating the AST. Sometimes it's easier to just reference the source
@@ -7334,7 +7334,7 @@ class Ripper::ParseTree < Ripper
   # propagate that onto void_stmt nodes inside the stmts in order to make sure
   # all comments get printed appropriately.
   class Statements
-    # [Ripper::ParseTree] the parser that created this node
+    # [ParseTree] the parser that created this node
     attr_reader :parser
 
     # [Array[untyped]] the list of expressions contained within this node

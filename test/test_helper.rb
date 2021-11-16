@@ -4,7 +4,7 @@ require 'simplecov'
 SimpleCov.start
 
 $LOAD_PATH.unshift(File.expand_path('../lib', __dir__))
-require 'ripper/parse_tree'
+require 'parse_tree'
 
 require 'minitest/autorun'
 
@@ -16,7 +16,7 @@ class Minitest::Test
       .readlines(File.expand_path("fixtures/#{filename}", __dir__))
       .slice_before { |line| line == "%\n" }
       .each do |example|
-        refute_nil(parse_tree(example))
+        refute_nil(parse_tree(example.join[2..-1]))
       end
   end
 
@@ -51,7 +51,7 @@ class Minitest::Test
   end
 
   def parse_tree(source)
-    parser = Ripper::ParseTree.new(source)
+    parser = ParseTree.new(source)
     response = parser.parse
     response.statements.body.first unless parser.error?
   end

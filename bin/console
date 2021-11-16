@@ -2,7 +2,7 @@
 # frozen_string_literal: true
 
 require 'bundler/setup'
-require 'ripper/parse_tree'
+require 'parse_tree'
 
 require 'irb'
 IRB.start(__FILE__)
