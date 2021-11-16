@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'ripper'
+require_relative 'parse_tree/version'
 
 class ParseTree < Ripper
   # Represents a line in the source. If this class is being used, it means that

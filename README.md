@@ -1,4 +1,4 @@
-# Template
+# ParseTree
 
 [![Build Status](https://github.com/kddnewton/parse_tree/workflows/Main/badge.svg)](https://github.com/kddnewton/parse_tree/actions)
 [![Gem Version](https://img.shields.io/gem/v/parse_tree.svg)](https://rubygems.org/gems/parse_tree)
