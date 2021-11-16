@@ -92,8 +92,8 @@ class Ripper::ParseTree < Ripper
   # array and attach them to themselves.
   attr_accessor :comments
 
-  def initialize(source, *args)
-    super(source, *args)
+  def initialize(source, *)
+    super
 
     # We keep the source around so that we can refer back to it when we're
     # generating the AST. Sometimes it's easier to just reference the source
@@ -158,13 +158,6 @@ class Ripper::ParseTree < Ripper
 
       last_index += line.size
     end
-  end
-
-  def self.parse(source)
-    builder = new(source)
-
-    response = builder.parse
-    response unless builder.error?
   end
 
   private
