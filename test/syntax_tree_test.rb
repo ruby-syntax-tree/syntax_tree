@@ -144,10 +144,6 @@ class SyntaxTree
       assert_node(ArrayLiteral, 'array', '[1]')
     end
 
-    def test_array_qwords
-      assert_node(ArrayLiteral, 'array', '%w[1]')
-    end
-
     def test_aryptn
       source = <<~SOURCE
         case [1, 2, 3]
@@ -762,11 +758,11 @@ class SyntaxTree
     end
 
     def test_qsymbols
-      assert_node(QSymbols, 'qsymbols', '%i[one two three]', &:contents)
+      assert_node(QSymbols, 'qsymbols', '%i[one two three]')
     end
 
     def test_qwords
-      assert_node(QWords, 'qwords', '%w[one two three]', &:contents)
+      assert_node(QWords, 'qwords', '%w[one two three]')
     end
 
     def test_rational
@@ -881,7 +877,7 @@ class SyntaxTree
     end
 
     def test_symbols
-      assert_node(Symbols, 'symbols', '%I[one two three]', &:contents)
+      assert_node(Symbols, 'symbols', '%I[one two three]')
     end
 
     def test_top_const_field
@@ -980,12 +976,12 @@ class SyntaxTree
     def test_word
       at = location(chars: 3..7)
       assert_node(Word, 'word', '%W[word]', at: at) do |node|
-        node.contents.elements.first
+        node.elements.first
       end
     end
 
     def test_words
-      assert_node(Words, 'words', '%W[one two three]', &:contents)
+      assert_node(Words, 'words', '%W[one two three]')
     end
 
     def test_xstring_literal
