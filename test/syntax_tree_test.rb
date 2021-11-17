@@ -118,11 +118,11 @@ class SyntaxTree
       end
     end
 
-    def test_star
+    def test_arg_star
       source = 'method(prefix, *arguments, suffix)'
 
       at = location(chars: 15..25)
-      assert_node(Star, 'star', source, at: at) do |node|
+      assert_node(ArgStar, 'arg_star', source, at: at) do |node|
         node.arguments.arguments.arguments.parts[1]
       end
     end
