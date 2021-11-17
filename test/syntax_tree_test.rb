@@ -166,11 +166,11 @@ class SyntaxTree
       assert_node(Assign, 'assign', 'variable = value')
     end
 
-    def test_assoc_new
+    def test_assoc
       source = '{ key1: value1, key2: value2 }'
 
       at = location(chars: 2..14)
-      assert_node(AssocNew, 'assoc_new', source, at: at) do |node|
+      assert_node(Assoc, 'assoc', source, at: at) do |node|
         node.contents.assocs.first
       end
     end
