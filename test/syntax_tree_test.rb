@@ -663,15 +663,8 @@ class SyntaxTree
     def test_mlhs_add_post
       source = 'left, *middle, right = values'
 
-      at = location(chars: 6..20)
+      at = location(chars: 0..20)
       assert_node(MLHSAddPost, 'mlhs_add_post', source, at: at, &:target)
-    end
-
-    def test_mlhs_add_star
-      source = 'first, *rest = values'
-
-      at = location(chars: 7..12)
-      assert_node(MLHSAddStar, 'mlhs_add_star', source, at: at, &:target)
     end
 
     def test_mlhs_paren
