@@ -1191,11 +1191,7 @@ class SyntaxTree < Ripper
   # :call-seq:
   #   on_assoc_new: (untyped key, untyped value) -> Assoc
   def on_assoc_new(key, value)
-    Assoc.new(
-      key: key,
-      value: value,
-      location: key.location.to(value.location)
-    )
+    Assoc.new(key: key, value: value, location: key.location.to(value.location))
   end
 
   # AssocSplat represents double-splatting a value into a hash (either a hash
@@ -1236,48 +1232,9 @@ class SyntaxTree < Ripper
     AssocSplat.new(value: value, location: operator.location.to(value.location))
   end
 
-  # AssocListFromArgs represents the key-value pairs of a hash literal. Its
-  # parent node is always a hash.
-  #
-  #     { key1: value1, key2: value2 }
-  #
-  class AssocListFromArgs
-    # [Array[ AssocNew | AssocSplat ]]
-    attr_reader :assocs
-
-    # [Location] the location of this node
-    attr_reader :location
-
-    def initialize(assocs:, location:)
-      @assocs = assocs
-      @location = location
-    end
-
-    def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('assoclist_from_args')
-        q.breakable
-        q.group(2, '(', ')') { q.seplist(assocs) { |assoc| q.pp(assoc) } }
-      end
-    end
-
-    def to_json(*opts)
-      { type: :assoclist_from_args, assocs: assocs, loc: location }.to_json(
-        *opts
-      )
-    end
-  end
-
-  # :call-seq:
-  #   on_assoclist_from_args: (
-  #     Array[AssocNew | AssocSplat] assocs
-  #   ) -> AssocListFromArgs
-  def on_assoclist_from_args(assocs)
-    AssocListFromArgs.new(
-      assocs: assocs,
-      location: assocs[0].location.to(assocs[-1].location)
-    )
-  end
+  # def on_assoclist_from_args(assocs)
+  #   assocs
+  # end
 
   # Backref represents a global variable referencing a matched value. It comes
   # in the form of a $ followed by a positive integer.
@@ -3977,14 +3934,14 @@ class SyntaxTree < Ripper
   #     { key => value }
   #
   class HashLiteral
-    # [nil | AssocListFromArgs] the contents of the hash
-    attr_reader :contents
+    # [Array[ AssocNew | AssocSplat ]] the optional contents of the hash
+    attr_reader :assocs
 
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(contents:, location:)
-      @contents = contents
+    def initialize(assocs:, location:)
+      @assocs = assocs
       @location = location
     end
 
@@ -3992,38 +3949,26 @@ class SyntaxTree < Ripper
       q.group(2, '(', ')') do
         q.text('hash')
 
-        q.breakable
-        q.pp(contents)
+        if assocs.any?
+          q.breakable
+          q.group(2, '(', ')') { q.seplist(assocs) { |assoc| q.pp(assoc) } }
+        end
       end
     end
 
     def to_json(*opts)
-      { type: :hash, cnts: contents, loc: location }.to_json(*opts)
+      { type: :hash, assocs: assocs, loc: location }.to_json(*opts)
     end
   end
 
   # :call-seq:
-  #   on_hash: ((nil | AssocListFromArgs) contents) -> HashLiteral
-  def on_hash(contents)
+  #   on_hash: ((nil | Array[AssocNew | AssocSplat]) assocs) -> HashLiteral
+  def on_hash(assocs)
     lbrace = find_token(LBrace)
     rbrace = find_token(RBrace)
 
-    if contents
-      # Here we're going to expand out the location information for the contents
-      # node so that it can grab up any remaining comments inside the hash.
-      location =
-        Location.new(
-          start_line: contents.location.start_line,
-          start_char: lbrace.location.end_char,
-          end_line: contents.location.end_line,
-          end_char: rbrace.location.start_char
-        )
-
-      contents = contents.class.new(assocs: contents.assocs, location: location)
-    end
-
     HashLiteral.new(
-      contents: contents,
+      assocs: assocs || [],
       location: lbrace.location.to(rbrace.location)
     )
   end
@@ -5270,11 +5215,7 @@ class SyntaxTree < Ripper
   #   ) -> MLHS
   def on_mlhs_add(mlhs, part)
     location =
-      if mlhs.parts.empty?
-        part.location
-      else
-        mlhs.location.to(part.location)
-      end
+      mlhs.parts.empty? ? part.location : mlhs.location.to(part.location)
 
     MLHS.new(parts: mlhs.parts << part, location: location)
   end
@@ -5460,112 +5401,42 @@ class SyntaxTree < Ripper
   # :call-seq:
   #   on_mrhs_add: (MRHS mrhs, untyped part) -> MRHS
   def on_mrhs_add(mrhs, part)
-    if mrhs.is_a?(MRHSNewFromArgs)
-      MRHS.new(
-        parts: [*mrhs.arguments.parts, part],
-        location: mrhs.location.to(part.location)
-      )
-    elsif mrhs.parts.empty?
-      MRHS.new(parts: [part], location: mrhs.location)
-    else
-      MRHS.new(parts: mrhs.parts << part, loc: mrhs.location.to(part.location))
-    end
-  end
-
-  # MRHSAddStar represents using the splat operator to expand out a value on the
-  # right hand side of a multiple assignment.
-  #
-  #     values = first, *rest
-  #
-  class MRHSAddStar
-    # [MRHS | MRHSNewFromArgs] the values before the splatted expression
-    attr_reader :mrhs
-
-    # [untyped] the splatted expression
-    attr_reader :star
-
-    # [Location] the location of this node
-    attr_reader :location
-
-    def initialize(mrhs:, star:, location:)
-      @mrhs = mrhs
-      @star = star
-      @location = location
-    end
-
-    def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('mrhs_add_star')
-
-        q.breakable
-        q.pp(mrhs)
-
-        q.breakable
-        q.pp(star)
+    location =
+      if mrhs.parts.empty?
+        mrhs.location
+      else
+        mrhs.location.to(part.location)
       end
-    end
 
-    def to_json(*opts)
-      { type: :mrhs_add_star, mrhs: mrhs, star: star, loc: location }.to_json(
-        *opts
-      )
-    end
+    MRHS.new(parts: mrhs.parts << part, location: location)
   end
 
   # :call-seq:
-  #   on_mrhs_add_star: (
-  #     (MRHS | MRHSNewFromArgs) mrhs,
-  #     untyped star
-  #   ) -> MRHSAddStar
-  def on_mrhs_add_star(mrhs, star)
+  #   on_mrhs_add_star: (MRHS mrhs, untyped value) -> MRHS
+  def on_mrhs_add_star(mrhs, value)
     beginning = find_token(Op, '*')
-    ending = star || beginning
+    ending = value || beginning
 
-    MRHSAddStar.new(
-      mrhs: mrhs,
-      star: star,
-      location: beginning.location.to(ending.location)
-    )
-  end
-
-  # MRHSNewFromArgs represents the shorthand of a multiple assignment that
-  # allows you to assign values using just commas as opposed to assigning from
-  # an array.
-  #
-  #     values = first, second, third
-  #
-  class MRHSNewFromArgs
-    # [Args] the arguments being used in the assignment
-    attr_reader :arguments
-
-    # [Location] the location of this node
-    attr_reader :location
-
-    def initialize(arguments:, location:)
-      @arguments = arguments
-      @location = location
-    end
-
-    def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('mrhs_new_from_args')
-
-        q.breakable
-        q.pp(arguments)
-      end
-    end
-
-    def to_json(*opts)
-      { type: :mrhs_new_from_args, args: arguments, loc: location }.to_json(
-        *opts
+    arg_star =
+      ArgStar.new(
+        value: value,
+        location: beginning.location.to(ending.location)
       )
-    end
+
+    location =
+      if mrhs.parts.empty?
+        arg_star.location
+      else
+        mrhs.location.to(arg_star.location)
+      end
+
+    MRHS.new(parts: mrhs.parts << arg_star, location: location)
   end
 
   # :call-seq:
-  #   on_mrhs_new_from_args: (Args arguments) -> MRHSNewFromArgs
+  #   on_mrhs_new_from_args: (Args arguments) -> MRHS
   def on_mrhs_new_from_args(arguments)
-    MRHSNewFromArgs.new(arguments: arguments, location: arguments.location)
+    MRHS.new(parts: arguments.parts, location: arguments.location)
   end
 
   # Next represents using the +next+ keyword.

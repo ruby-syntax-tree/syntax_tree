@@ -167,7 +167,7 @@ class SyntaxTree
 
       at = location(chars: 2..14)
       assert_node(Assoc, 'assoc', source, at: at) do |node|
-        node.contents.assocs.first
+        node.assocs.first
       end
     end
 
@@ -176,16 +176,8 @@ class SyntaxTree
 
       at = location(chars: 2..9)
       assert_node(AssocSplat, 'assoc_splat', source, at: at) do |node|
-        node.contents.assocs.first
+        node.assocs.first
       end
-    end
-
-    def test_assoclist_from_args
-      type = 'assoclist_from_args'
-      source = '{ key1: value1, key2: value2 }'
-
-      at = location(chars: 1..29)
-      assert_node(AssocListFromArgs, type, source, at: at, &:contents)
     end
 
     def test_backref
@@ -408,7 +400,7 @@ class SyntaxTree
 
       at = location(chars: 2..11)
       assert_node(DynaSymbol, 'dyna_symbol', source, at: at) do |node|
-        node.contents.assocs.first.key
+        node.assocs.first.key
       end
     end
 
@@ -605,7 +597,7 @@ class SyntaxTree
 
       at = location(chars: 2..6)
       assert_node(Label, 'label', source, at: at) do |node|
-        node.contents.assocs.first.key
+        node.assocs.first.key
       end
     end
 
@@ -689,8 +681,8 @@ class SyntaxTree
     def test_mrhs_add_star
       source = 'values = first, *rest'
 
-      at = location(chars: 16..21)
-      assert_node(MRHSAddStar, 'mrhs_add_star', source, at: at, &:value)
+      at = location(chars: 9..21)
+      assert_node(MRHS, 'mrhs', source, at: at, &:value)
     end
 
     def test_next
