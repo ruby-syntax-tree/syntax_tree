@@ -1,0 +1,4 @@
+%
+not foo
+%
+not(foo)

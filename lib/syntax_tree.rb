@@ -1,7 +1,25 @@
 # frozen_string_literal: true
 
-require 'ripper'
-require_relative 'syntax_tree/version'
+require "pp"
+require "prettyprint"
+require "ripper"
+require "stringio"
+
+require_relative "syntax_tree/version"
+
+# If PrettyPrint::Assign isn't defined, then we haven't gotten the updated
+# version of prettyprint. In that case we'll define our own. This is going to
+# overwrite a bunch of methods, so silencing them as well.
+unless PrettyPrint.const_defined?(:Align)
+  verbose = $VERBOSE
+  $VERBOSE = nil
+
+  begin
+    require_relative "syntax_tree/prettyprint"
+  ensure
+    $VERBOSE = verbose
+  end
+end
 
 class SyntaxTree < Ripper
   # Represents a line in the source. If this class is being used, it means that
@@ -25,11 +43,9 @@ class SyntaxTree < Ripper
     def initialize(start, line)
       @indices = []
 
-      line
-        .each_char
-        .with_index(start) do |char, index|
-          char.bytesize.times { @indices << index }
-        end
+      line.each_char.with_index(start) do |char, index|
+        char.bytesize.times { @indices << index }
+      end
     end
 
     def [](byteindex)
@@ -50,7 +66,8 @@ class SyntaxTree < Ripper
 
     def ==(other)
       other.is_a?(Location) && start_line == other.start_line &&
-        start_char == other.start_char && end_line == other.end_line &&
+        start_char == other.start_char &&
+        end_line == other.end_line &&
         end_char == other.end_char
     end
 
@@ -93,11 +110,77 @@ class SyntaxTree < Ripper
     end
   end
 
-  attr_reader :source, :lines, :tokens
+  # A slightly enhanced PP that knows how to format recursively including
+  # comments.
+  class Formatter < PP
+    attr_reader :stack, :quote
 
-  # This is an attr_accessor so Stmts objects can grab comments out of this
-  # array and attach them to themselves.
-  attr_accessor :comments
+    def initialize(*)
+      super
+      @stack = []
+      @quote = "\""
+    end
+
+    def format(node)
+      stack << node
+      doc = nil
+
+      # If there are comments, then we're going to format them around the node
+      # so that they get printed properly.
+      if node.comments.any?
+        leading, trailing = node.comments.partition(&:leading?)
+
+        # Print all comments that were found before the node.
+        leading.each do |comment|
+          comment.format(self)
+          breakable(force: true)
+        end
+
+        doc = node.format(self)
+
+        # Print all comments that were found after the node.
+        trailing.each do |comment|
+          line_suffix do
+            text(" ")
+            comment.format(self)
+            break_parent
+          end
+        end
+      else
+        doc = node.format(self)
+      end
+
+      stack.pop
+      doc
+    end
+
+    def format_each(nodes)
+      nodes.each { |node| format(node) }
+    end
+
+    def parent
+      stack[-2]
+    end
+
+    def parents
+      stack[0...-1].reverse_each
+    end
+  end
+
+  # [String] the source being parsed
+  attr_reader :source
+
+  # [Array[ String ]] the list of lines in the source
+  attr_reader :lines
+
+  # [Array[ untyped ]] a running list of tokens that have been found in the
+  # source. This list changes a lot as certain nodes will "consume" these tokens
+  # to determine their bounds.
+  attr_reader :tokens
+
+  # [Array[ Comment | EmbDoc ]] the list of comments that have been found while
+  # parsing the source.
+  attr_reader :comments
 
   def initialize(source, *)
     super
@@ -112,7 +195,7 @@ class SyntaxTree < Ripper
     # check if certain lines contain certain characters. For example, we'll use
     # this to generate the content that goes after the __END__ keyword. Or we'll
     # use this to check if a comment has other content on its line.
-    @lines = source.split("\n")
+    @lines = source.split(/\r?\n/)
 
     # This is the full set of comments that have been found by the parser. It's
     # a running list. At the end of every block of statements, they will go in
@@ -173,6 +256,16 @@ class SyntaxTree < Ripper
     response unless parser.error?
   end
 
+  def self.format(source)
+    output = []
+
+    formatter = Formatter.new(output)
+    parse(source).format(formatter)
+
+    formatter.flush
+    output.join
+  end
+
   private
 
   # ----------------------------------------------------------------------------
@@ -231,7 +324,7 @@ class SyntaxTree < Ripper
   def find_colon2_before(const)
     index =
       tokens.rindex do |token|
-        token.is_a?(Op) && token.value == '::' &&
+        token.is_a?(Op) && token.value == "::" &&
           token.location.start_char < const.location.start_char
       end
 
@@ -252,7 +345,7 @@ class SyntaxTree < Ripper
   def find_next_statement_start(position)
     remaining = source[position..-1]
 
-    if remaining.sub(/\A +/, '')[0] == '#'
+    if remaining.sub(/\A +/, "")[0] == "#"
       return position + remaining.index("\n")
     end
 
@@ -297,9 +390,22 @@ class SyntaxTree < Ripper
       [lbrace, statements]
     end
 
+    def format(q)
+      q.group do
+        q.text("BEGIN ")
+        q.format(lbrace)
+        q.indent do
+          q.breakable
+          q.format(statements)
+        end
+        q.breakable
+        q.text("}")
+      end
+    end
+
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('BEGIN')
+      q.group(2, "(", ")") do
+        q.text("BEGIN")
 
         q.breakable
         q.pp(statements)
@@ -330,7 +436,7 @@ class SyntaxTree < Ripper
       rbrace.location.start_char
     )
 
-    keyword = find_token(Kw, 'BEGIN')
+    keyword = find_token(Kw, "BEGIN")
 
     BEGINBlock.new(
       lbrace: lbrace,
@@ -365,9 +471,19 @@ class SyntaxTree < Ripper
       []
     end
 
+    def format(q)
+      if value.length != 2
+        q.text(value)
+      else
+        q.text(q.quote)
+        q.text(value[1])
+        q.text(q.quote)
+      end
+    end
+
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('CHAR')
+      q.group(2, "(", ")") do
+        q.text("CHAR")
 
         q.breakable
         q.pp(value)
@@ -377,21 +493,19 @@ class SyntaxTree < Ripper
     end
 
     def to_json(*opts)
-      { type: :CHAR, value: value, loc: location, cmts: comments }.to_json(*opts)
+      { type: :CHAR, value: value, loc: location, cmts: comments }.to_json(
+        *opts
+      )
     end
   end
 
   # :call-seq:
   #   on_CHAR: (String value) -> CHAR
   def on_CHAR(value)
-    node =
-      CHAR.new(
-        value: value,
-        location: Location.token(line: lineno, char: char_pos, size: value.size)
-      )
-
-    tokens << node
-    node
+    CHAR.new(
+      value: value,
+      location: Location.token(line: lineno, char: char_pos, size: value.size)
+    )
   end
 
   # ENDBlock represents the use of the +END+ keyword, which hooks into the
@@ -427,9 +541,22 @@ class SyntaxTree < Ripper
       [lbrace, statements]
     end
 
+    def format(q)
+      q.group do
+        q.text("END ")
+        q.format(lbrace)
+        q.indent do
+          q.breakable
+          q.format(statements)
+        end
+        q.breakable
+        q.text("}")
+      end
+    end
+
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('END')
+      q.group(2, "(", ")") do
+        q.text("END")
 
         q.breakable
         q.pp(statements)
@@ -439,9 +566,13 @@ class SyntaxTree < Ripper
     end
 
     def to_json(*opts)
-      { type: :END, lbrace: lbrace, stmts: statements, loc: location, cmts: comments }.to_json(
-        *opts
-      )
+      {
+        type: :END,
+        lbrace: lbrace,
+        stmts: statements,
+        loc: location,
+        cmts: comments
+      }.to_json(*opts)
     end
   end
 
@@ -456,7 +587,7 @@ class SyntaxTree < Ripper
       rbrace.location.start_char
     )
 
-    keyword = find_token(Kw, 'END')
+    keyword = find_token(Kw, "END")
 
     ENDBlock.new(
       lbrace: lbrace,
@@ -494,9 +625,15 @@ class SyntaxTree < Ripper
       []
     end
 
+    def format(q)
+      q.text("__END__")
+      q.breakable(force: true)
+      q.text(value)
+    end
+
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('__end__')
+      q.group(2, "(", ")") do
+        q.text("__end__")
 
         q.breakable
         q.pp(value)
@@ -506,7 +643,9 @@ class SyntaxTree < Ripper
     end
 
     def to_json(*opts)
-      { type: :__end__, value: value, loc: location, cmts: comments }.to_json(*opts)
+      { type: :__end__, value: value, loc: location, cmts: comments }.to_json(
+        *opts
+      )
     end
   end
 
@@ -532,6 +671,31 @@ class SyntaxTree < Ripper
   # symbols (note that this includes dynamic symbols like
   # :"left-#{middle}-right").
   class Alias
+    class AliasArgumentFormatter
+      # [DynaSymbol | SymbolLiteral] the argument being passed to alias
+      attr_reader :argument
+
+      def initialize(argument)
+        @argument = argument
+      end
+
+      def comments
+        if argument.is_a?(SymbolLiteral)
+          argument.comments + argument.value.comments
+        else
+          argument.comments
+        end
+      end
+
+      def format(q)
+        if argument.is_a?(SymbolLiteral)
+          q.format(argument.value)
+        else
+          q.format(argument)
+        end
+      end
+    end
+
     # [DynaSymbol | SymbolLiteral] the new name of the method
     attr_reader :left
 
@@ -555,9 +719,25 @@ class SyntaxTree < Ripper
       [left, right]
     end
 
+    def format(q)
+      keyword = "alias "
+      left_argument = AliasArgumentFormatter.new(left)
+
+      q.group do
+        q.text(keyword)
+        q.format(left_argument)
+        q.group do
+          q.nest(keyword.length) do
+            q.breakable(force: left_argument.comments.any?)
+            q.format(AliasArgumentFormatter.new(right))
+          end
+        end
+      end
+    end
+
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('alias')
+      q.group(2, "(", ")") do
+        q.text("alias")
 
         q.breakable
         q.pp(left)
@@ -570,7 +750,13 @@ class SyntaxTree < Ripper
     end
 
     def to_json(*opts)
-      { type: :alias, left: left, right: right, loc: location, cmts: comments }.to_json(*opts)
+      {
+        type: :alias,
+        left: left,
+        right: right,
+        loc: location,
+        cmts: comments
+      }.to_json(*opts)
     end
   end
 
@@ -580,7 +766,7 @@ class SyntaxTree < Ripper
   #     (DynaSymbol | SymbolLiteral) right
   #   ) -> Alias
   def on_alias(left, right)
-    keyword = find_token(Kw, 'alias')
+    keyword = find_token(Kw, "alias")
 
     Alias.new(
       left: left,
@@ -626,9 +812,26 @@ class SyntaxTree < Ripper
       [collection, index]
     end
 
+    def format(q)
+      q.group do
+        q.format(collection)
+        q.text("[")
+
+        if index
+          q.indent do
+            q.breakable("")
+            q.format(index)
+          end
+          q.breakable("")
+        end
+
+        q.text("]")
+      end
+    end
+
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('aref')
+      q.group(2, "(", ")") do
+        q.text("aref")
 
         q.breakable
         q.pp(collection)
@@ -695,9 +898,26 @@ class SyntaxTree < Ripper
       [collection, index]
     end
 
+    def format(q)
+      q.group do
+        q.format(collection)
+        q.text("[")
+
+        if index
+          q.indent do
+            q.breakable("")
+            q.format(index)
+          end
+          q.breakable("")
+        end
+
+        q.text("]")
+      end
+    end
+
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('aref_field')
+      q.group(2, "(", ")") do
+        q.text("aref_field")
 
         q.breakable
         q.pp(collection)
@@ -772,9 +992,24 @@ class SyntaxTree < Ripper
       [arguments]
     end
 
+    def format(q)
+      unless arguments
+        q.text("()")
+        return
+      end
+
+      q.group(0, "(", ")") do
+        q.indent do
+          q.breakable("")
+          q.format(arguments)
+        end
+        q.breakable("")
+      end
+    end
+
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('arg_paren')
+      q.group(2, "(", ")") do
+        q.text("arg_paren")
 
         q.breakable
         q.pp(arguments)
@@ -784,7 +1019,12 @@ class SyntaxTree < Ripper
     end
 
     def to_json(*opts)
-      { type: :arg_paren, args: arguments, loc: location, cmts: comments }.to_json(*opts)
+      {
+        type: :arg_paren,
+        args: arguments,
+        loc: location,
+        cmts: comments
+      }.to_json(*opts)
     end
   end
 
@@ -837,19 +1077,25 @@ class SyntaxTree < Ripper
       parts
     end
 
+    def format(q)
+      q.seplist(parts) { |part| q.format(part) }
+    end
+
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('args')
+      q.group(2, "(", ")") do
+        q.text("args")
 
         q.breakable
-        q.group(2, '(', ')') { q.seplist(parts) { |part| q.pp(part) } }
+        q.group(2, "(", ")") { q.seplist(parts) { |part| q.pp(part) } }
 
         q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :args, parts: parts, loc: location, cmts: comments }.to_json(*opts)
+      { type: :args, parts: parts, loc: location, cmts: comments }.to_json(
+        *opts
+      )
     end
   end
 
@@ -895,9 +1141,14 @@ class SyntaxTree < Ripper
       [value]
     end
 
+    def format(q)
+      q.text("&")
+      q.format(value)
+    end
+
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('arg_block')
+      q.group(2, "(", ")") do
+        q.text("arg_block")
 
         q.breakable
         q.pp(value)
@@ -907,7 +1158,9 @@ class SyntaxTree < Ripper
     end
 
     def to_json(*opts)
-      { type: :arg_block, value: value, loc: location, cmts: comments }.to_json(*opts)
+      { type: :arg_block, value: value, loc: location, cmts: comments }.to_json(
+        *opts
+      )
     end
   end
 
@@ -922,7 +1175,7 @@ class SyntaxTree < Ripper
     arg_block =
       ArgBlock.new(
         value: block,
-        location: find_token(Op, '&').location.to(block.location)
+        location: find_token(Op, "&").location.to(block.location)
       )
 
     Args.new(
@@ -955,9 +1208,14 @@ class SyntaxTree < Ripper
       [value]
     end
 
+    def format(q)
+      q.text("*")
+      q.format(value) if value
+    end
+
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('arg_star')
+      q.group(2, "(", ")") do
+        q.text("arg_star")
 
         q.breakable
         q.pp(value)
@@ -967,14 +1225,16 @@ class SyntaxTree < Ripper
     end
 
     def to_json(*opts)
-      { type: :arg_star, value: value, loc: location, cmts: comments }.to_json(*opts)
+      { type: :arg_star, value: value, loc: location, cmts: comments }.to_json(
+        *opts
+      )
     end
   end
 
   # :call-seq:
   #   on_args_add_star: (Args arguments, untyped star) -> Args
   def on_args_add_star(arguments, argument)
-    beginning = find_token(Op, '*')
+    beginning = find_token(Op, "*")
     ending = argument || beginning
 
     location =
@@ -1030,9 +1290,13 @@ class SyntaxTree < Ripper
       []
     end
 
+    def format(q)
+      q.text(value)
+    end
+
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('args_forward')
+      q.group(2, "(", ")") do
+        q.text("args_forward")
 
         q.breakable
         q.pp(value)
@@ -1042,14 +1306,19 @@ class SyntaxTree < Ripper
     end
 
     def to_json(*opts)
-      { type: :args_forward, value: value, loc: location, cmts: comments }.to_json(*opts)
+      {
+        type: :args_forward,
+        value: value,
+        loc: location,
+        cmts: comments
+      }.to_json(*opts)
     end
   end
 
   # :call-seq:
   #   on_args_forward: () -> ArgsForward
   def on_args_forward
-    op = find_token(Op, '...')
+    op = find_token(Op, "...")
 
     ArgsForward.new(value: op.value, location: op.location)
   end
@@ -1060,23 +1329,55 @@ class SyntaxTree < Ripper
     Args.new(parts: [], location: Location.fixed(line: lineno, char: char_pos))
   end
 
-  # ArrayLiteral represents any form of an array literal, and contains myriad
-  # child nodes because of the special array literal syntax like %w and %i.
+  # ArrayLiteral represents an array literal, which can optionally contain
+  # elements.
   #
   #     []
   #     [one, two, three]
-  #     [*one_two_three]
-  #     %i[one two three]
-  #     %w[one two three]
-  #     %I[one two three]
-  #     %W[one two three]
   #
-  # Every line in the example above produces an ArrayLiteral node. In order, the
-  # child contents node of this ArrayLiteral node would be nil, Args, QSymbols,
-  # QWords, Symbols, and Words.
   class ArrayLiteral
-    # [nil | Args | QSymbols | QWords | Symbols | Words] the
-    # contents of the array
+    class QWordsFormatter
+      # [Args] the contents of the array
+      attr_reader :contents
+
+      def initialize(contents)
+        @contents = contents
+      end
+
+      def format(q)
+        q.group(0, "%w[", "]") do
+          q.indent do
+            q.breakable("")
+            q.seplist(contents.parts, -> { q.breakable }) do |part|
+              q.format(part.parts.first)
+            end
+          end
+          q.breakable("")
+        end
+      end
+    end
+
+    class QSymbolsFormatter
+      # [Args] the contents of the array
+      attr_reader :contents
+
+      def initialize(contents)
+        @contents = contents
+      end
+
+      def format(q)
+        q.group(0, "%i[", "]") do
+          q.indent do
+            q.breakable("")
+            q.seplist(contents.parts, -> { q.breakable }) do |part|
+              q.format(part.value)
+            end
+          end
+        end
+      end
+    end
+
+    # [nil | Args] the contents of the array
     attr_reader :contents
 
     # [Location] the location of this node
@@ -1095,9 +1396,34 @@ class SyntaxTree < Ripper
       [contents]
     end
 
+    def format(q)
+      unless contents
+        q.text("[]")
+        return
+      end
+
+      if qwords?
+        QWordsFormatter.new(contents).format(q)
+        return
+      end
+
+      if qsymbols?
+        QSymbolsFormatter.new(contents).format(q)
+        return
+      end
+
+      q.group(0, "[", "]") do
+        q.indent do
+          q.breakable("")
+          q.format(contents)
+        end
+        q.breakable("")
+      end
+    end
+
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('array')
+      q.group(2, "(", ")") do
+        q.text("array")
 
         q.breakable
         q.pp(contents)
@@ -1107,7 +1433,28 @@ class SyntaxTree < Ripper
     end
 
     def to_json(*opts)
-      { type: :array, cnts: contents, loc: location, cmts: comments }.to_json(*opts)
+      { type: :array, cnts: contents, loc: location, cmts: comments }.to_json(
+        *opts
+      )
+    end
+
+    private
+
+    def qwords?
+      contents && contents.comments.empty? && contents.parts.length > 1 &&
+        contents.parts.all? do |part|
+          part.is_a?(StringLiteral) && part.comments.empty? &&
+            part.parts.length == 1 &&
+            part.parts.first.is_a?(TStringContent) &&
+            !part.parts.first.value.match?(/[\s\\\]]/)
+        end
+    end
+
+    def qsymbols?
+      contents && contents.comments.empty? && contents.parts.length > 1 &&
+        contents.parts.all? do |part|
+          part.is_a?(SymbolLiteral) && part.comments.empty?
+        end
     end
   end
 
@@ -1151,6 +1498,24 @@ class SyntaxTree < Ripper
   # and an optional array of positional matches that occur after the splat.
   # All of the in clauses above would create an AryPtn node.
   class AryPtn
+    class RestFormatter
+      # [VarField] the identifier that represents the remaining positionals
+      attr_reader :value
+
+      def initialize(value)
+        @value = value
+      end
+
+      def comments
+        value.comments
+      end
+
+      def format(q)
+        q.text("*")
+        q.format(value)
+      end
+    end
+
     # [nil | VarRef] the optional constant wrapper
     attr_reader :constant
 
@@ -1172,7 +1537,14 @@ class SyntaxTree < Ripper
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(constant:, requireds:, rest:, posts:, location:, comments: [])
+    def initialize(
+      constant:,
+      requireds:,
+      rest:,
+      posts:,
+      location:,
+      comments: []
+    )
       @constant = constant
       @requireds = requireds
       @rest = rest
@@ -1185,9 +1557,32 @@ class SyntaxTree < Ripper
       [constant, *required, rest, *posts]
     end
 
+    def format(q)
+      parts = [*requireds]
+      parts << RestFormatter.new(rest) if rest
+      parts += posts
+
+      if constant
+        q.format(constant)
+        q.text("[")
+        q.seplist(parts) { |part| q.format(part) }
+        q.text("]")
+        return
+      end
+
+      parent = q.parent
+      if parts.length == 1 || PATTERNS.any? { |pattern| parent.is_a?(pattern) }
+        q.text("[")
+        q.seplist(parts) { |part| q.format(part) }
+        q.text("]")
+      else
+        q.seplist(parts) { |part| q.format(part) }
+      end
+    end
+
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('aryptn')
+      q.group(2, "(", ")") do
+        q.text("aryptn")
 
         if constant
           q.breakable
@@ -1196,7 +1591,7 @@ class SyntaxTree < Ripper
 
         if requireds.any?
           q.breakable
-          q.group(2, '(', ')') do
+          q.group(2, "(", ")") do
             q.seplist(requireds) { |required| q.pp(required) }
           end
         end
@@ -1208,7 +1603,7 @@ class SyntaxTree < Ripper
 
         if posts.any?
           q.breakable
-          q.group(2, '(', ')') { q.seplist(posts) { |post| q.pp(post) } }
+          q.group(2, "(", ")") { q.seplist(posts) { |post| q.pp(post) } }
         end
 
         q.pp(Comment::List.new(comments))
@@ -1278,9 +1673,26 @@ class SyntaxTree < Ripper
       [target, value]
     end
 
+    def format(q)
+      q.group do
+        q.format(target)
+        q.text(" =")
+
+        if skip_indent?
+          q.text(" ")
+          q.format(value)
+        else
+          q.indent do
+            q.breakable
+            q.format(value)
+          end
+        end
+      end
+    end
+
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('assign')
+      q.group(2, "(", ")") do
+        q.text("assign")
 
         q.breakable
         q.pp(target)
@@ -1293,9 +1705,22 @@ class SyntaxTree < Ripper
     end
 
     def to_json(*opts)
-      { type: :assign, target: target, value: value, loc: location, cmts: comments }.to_json(
-        *opts
-      )
+      {
+        type: :assign,
+        target: target,
+        value: value,
+        loc: location,
+        cmts: comments
+      }.to_json(*opts)
+    end
+
+    private
+
+    def skip_indent?
+      target.is_a?(ARefField) || value.is_a?(ArrayLiteral) ||
+        value.is_a?(HashLiteral) ||
+        value.is_a?(Heredoc) ||
+        value.is_a?(Lambda)
     end
   end
 
@@ -1342,9 +1767,21 @@ class SyntaxTree < Ripper
       [key, value]
     end
 
+    def format(q)
+      contents = -> do
+        q.parent.format_key(q, key)
+        q.indent do
+          q.breakable
+          q.format(value)
+        end
+      end
+
+      value.is_a?(HashLiteral) ? contents.call : q.group(&contents)
+    end
+
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('assoc')
+      q.group(2, "(", ")") do
+        q.text("assoc")
 
         q.breakable
         q.pp(key)
@@ -1357,7 +1794,13 @@ class SyntaxTree < Ripper
     end
 
     def to_json(*opts)
-      { type: :assoc, key: key, value: value, loc: location, cmts: comments }.to_json(*opts)
+      {
+        type: :assoc,
+        key: key,
+        value: value,
+        loc: location,
+        cmts: comments
+      }.to_json(*opts)
     end
   end
 
@@ -1392,9 +1835,14 @@ class SyntaxTree < Ripper
       [value]
     end
 
+    def format(q)
+      q.text("**")
+      q.format(value)
+    end
+
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('assoc_splat')
+      q.group(2, "(", ")") do
+        q.text("assoc_splat")
 
         q.breakable
         q.pp(value)
@@ -1404,14 +1852,19 @@ class SyntaxTree < Ripper
     end
 
     def to_json(*opts)
-      { type: :assoc_splat, value: value, loc: location, cmts: comments }.to_json(*opts)
+      {
+        type: :assoc_splat,
+        value: value,
+        loc: location,
+        cmts: comments
+      }.to_json(*opts)
     end
   end
 
   # :call-seq:
   #   on_assoc_splat: (untyped value) -> AssocSplat
   def on_assoc_splat(value)
-    operator = find_token(Op, '**')
+    operator = find_token(Op, "**")
 
     AssocSplat.new(value: value, location: operator.location.to(value.location))
   end
@@ -1444,10 +1897,14 @@ class SyntaxTree < Ripper
     def child_nodes
       []
     end
-    
+
+    def format(q)
+      q.text(value)
+    end
+
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('backref')
+      q.group(2, "(", ")") do
+        q.text("backref")
 
         q.breakable
         q.pp(value)
@@ -1457,21 +1914,19 @@ class SyntaxTree < Ripper
     end
 
     def to_json(*opts)
-      { type: :backref, value: value, loc: location, cmts: comments }.to_json(*opts)
+      { type: :backref, value: value, loc: location, cmts: comments }.to_json(
+        *opts
+      )
     end
   end
 
   # :call-seq:
   #   on_backref: (String value) -> Backref
   def on_backref(value)
-    node =
-      Backref.new(
-        value: value,
-        location: Location.token(line: lineno, char: char_pos, size: value.size)
-      )
-
-    tokens << node
-    node
+    Backref.new(
+      value: value,
+      location: Location.token(line: lineno, char: char_pos, size: value.size)
+    )
   end
 
   # Backtick represents the use of the ` operator. It's usually found being used
@@ -1497,9 +1952,13 @@ class SyntaxTree < Ripper
       []
     end
 
+    def format(q)
+      q.text(value)
+    end
+
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('backtick')
+      q.group(2, "(", ")") do
+        q.text("backtick")
 
         q.breakable
         q.pp(value)
@@ -1509,7 +1968,9 @@ class SyntaxTree < Ripper
     end
 
     def to_json(*opts)
-      { type: :backtick, value: value, loc: location, cmts: comments }.to_json(*opts)
+      { type: :backtick, value: value, loc: location, cmts: comments }.to_json(
+        *opts
+      )
     end
   end
 
@@ -1524,6 +1985,86 @@ class SyntaxTree < Ripper
 
     tokens << node
     node
+  end
+
+  # This module is responsible for formatting the assocs contained within a
+  # hash or bare hash. It first determines if every key in the hash can use
+  # labels. If it can, it uses labels. Otherwise it uses hash rockets.
+  module HashFormatter
+    class Base
+      # [HashLiteral | BareAssocHash] the source of the assocs
+      attr_reader :container
+
+      def initialize(container)
+        @container = container
+      end
+
+      def comments
+        container.comments
+      end
+
+      def format(q)
+        q.seplist(container.assocs) { |assoc| q.format(assoc) }
+      end
+    end
+
+    class Labels < Base
+      def format_key(q, key)
+        case key
+        when Label
+          q.format(key)
+        when SymbolLiteral
+          q.format(key.value)
+          q.text(":")
+        when DynaSymbol
+          q.format(key)
+          q.text(":")
+        end
+      end
+    end
+
+    class Rockets < Base
+      def format_key(q, key)
+        case key
+        when Label
+          q.text(":")
+          q.text(key.value.chomp(":"))
+        when DynaSymbol
+          q.text(":")
+          q.format(key)
+        else
+          q.format(key)
+        end
+
+        q.text(" =>")
+      end
+    end
+
+    def self.for(container)
+      labels =
+        container.assocs.all? do |assoc|
+          next true if assoc.is_a?(AssocSplat)
+
+          case assoc.key
+          when Label
+            true
+          when SymbolLiteral
+            # When attempting to convert a hash rocket into a hash label,
+            # you need to take care because only certain patterns are
+            # allowed. Ruby source says that they have to match keyword
+            # arguments to methods, but don't specify what that is. After
+            # some experimentation, it looks like it's:
+            value = assoc.key.value.value
+            value.match?(/^[_A-Za-z]/) && !value.end_with?("=")
+          when DynaSymbol
+            true
+          else
+            false
+          end
+        end
+
+      (labels ? Labels : Rockets).new(container)
+    end
   end
 
   # BareAssocHash represents a hash of contents being passed as a method
@@ -1552,19 +2093,28 @@ class SyntaxTree < Ripper
       assocs
     end
 
+    def format(q)
+      q.format(HashFormatter.for(self))
+    end
+
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('bare_assoc_hash')
+      q.group(2, "(", ")") do
+        q.text("bare_assoc_hash")
 
         q.breakable
-        q.group(2, '(', ')') { q.seplist(assocs) { |assoc| q.pp(assoc) } }
+        q.group(2, "(", ")") { q.seplist(assocs) { |assoc| q.pp(assoc) } }
 
         q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :bare_assoc_hash, assocs: assocs, loc: location, cmts: comments }.to_json(*opts)
+      {
+        type: :bare_assoc_hash,
+        assocs: assocs,
+        loc: location,
+        cmts: comments
+      }.to_json(*opts)
     end
   end
 
@@ -1603,9 +2153,23 @@ class SyntaxTree < Ripper
       [bodystmt]
     end
 
+    def format(q)
+      q.text("begin")
+
+      unless bodystmt.empty?
+        q.indent do
+          q.breakable(force: true) unless bodystmt.statements.empty?
+          q.format(bodystmt)
+        end
+      end
+
+      q.breakable(force: true)
+      q.text("end")
+    end
+
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('begin')
+      q.group(2, "(", ")") do
+        q.text("begin")
 
         q.breakable
         q.pp(bodystmt)
@@ -1615,20 +2179,25 @@ class SyntaxTree < Ripper
     end
 
     def to_json(*opts)
-      { type: :begin, bodystmt: bodystmt, loc: location, cmts: comments }.to_json(*opts)
+      {
+        type: :begin,
+        bodystmt: bodystmt,
+        loc: location,
+        cmts: comments
+      }.to_json(*opts)
     end
   end
 
   # :call-seq:
   #   on_begin: (BodyStmt bodystmt) -> Begin
   def on_begin(bodystmt)
-    keyword = find_token(Kw, 'begin')
+    keyword = find_token(Kw, "begin")
     end_char =
       if bodystmt.rescue_clause || bodystmt.ensure_clause ||
            bodystmt.else_clause
         bodystmt.location.end_char
       else
-        find_token(Kw, 'end').location.end_char
+        find_token(Kw, "end").location.end_char
       end
 
     bodystmt.bind(keyword.location.end_char, end_char)
@@ -1653,7 +2222,7 @@ class SyntaxTree < Ripper
     # [untyped] the left-hand side of the expression
     attr_reader :left
 
-    # [String] the operator used between the two expressions
+    # [Symbol] the operator used between the two expressions
     attr_reader :operator
 
     # [untyped] the right-hand side of the expression
@@ -1677,9 +2246,24 @@ class SyntaxTree < Ripper
       [left, right]
     end
 
+    def format(q)
+      power = operator == :**
+
+      q.group do
+        q.group { q.format(left) }
+        q.text(" ") unless power
+        q.text(operator)
+
+        q.indent do
+          q.breakable(power ? "" : " ")
+          q.format(right)
+        end
+      end
+    end
+
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('binary')
+      q.group(2, "(", ")") do
+        q.text("binary")
 
         q.breakable
         q.pp(left)
@@ -1724,6 +2308,52 @@ class SyntaxTree < Ripper
     )
   end
 
+  # This module will remove any breakables from the list of contents so that no
+  # newlines are present in the output.
+  module RemoveBreaks
+    class << self
+      def call(doc)
+        marker = Object.new
+        stack = [doc]
+
+        while stack.any?
+          doc = stack.pop
+
+          if doc == marker
+            stack.pop
+            next
+          end
+
+          stack += [doc, marker]
+
+          case doc
+          when PrettyPrint::Align, PrettyPrint::Indent, PrettyPrint::Group
+            doc.contents.map! { |child| remove_breaks(child) }
+            stack += doc.contents.reverse
+          when PrettyPrint::IfBreak
+            doc.flat_contents.map! { |child| remove_breaks(child) }
+            stack += doc.flat_contents.reverse
+          end
+        end
+      end
+
+      private
+
+      def remove_breaks(doc)
+        case doc
+        when PrettyPrint::Breakable
+          text = PrettyPrint::Text.new
+          text.add(object: doc.force? ? "; " : doc.separator, width: doc.width)
+          text
+        when PrettyPrint::IfBreak
+          PrettyPrint::Align.new(indent: 0, contents: doc.flat_contents)
+        else
+          doc
+        end
+      end
+    end
+  end
+
   # BlockVar represents the parameters being declared for a block. Effectively
   # this node is everything contained within the pipes. This includes all of the
   # various parameter types, as well as block-local variable declarations.
@@ -1755,16 +2385,28 @@ class SyntaxTree < Ripper
       [params, *locals]
     end
 
+    def format(q)
+      q.group(0, "|", "|") do
+        doc = q.format(params)
+        RemoveBreaks.call(doc)
+
+        if locals.any?
+          q.text("; ")
+          q.seplist(locals, -> { q.text(", ") }) { |local| q.format(local) }
+        end
+      end
+    end
+
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('block_var')
+      q.group(2, "(", ")") do
+        q.text("block_var")
 
         q.breakable
         q.pp(params)
 
         if locals.any?
           q.breakable
-          q.group(2, '(', ')') { q.seplist(locals) { |local| q.pp(local) } }
+          q.group(2, "(", ")") { q.seplist(locals) { |local| q.pp(local) } }
         end
 
         q.pp(Comment::List.new(comments))
@@ -1825,9 +2467,14 @@ class SyntaxTree < Ripper
       [name]
     end
 
+    def format(q)
+      q.text("&")
+      q.format(name)
+    end
+
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('blockarg')
+      q.group(2, "(", ")") do
+        q.text("blockarg")
 
         q.breakable
         q.pp(name)
@@ -1837,14 +2484,16 @@ class SyntaxTree < Ripper
     end
 
     def to_json(*opts)
-      { type: :blockarg, name: name, loc: location, cmts: comments }.to_json(*opts)
+      { type: :blockarg, name: name, loc: location, cmts: comments }.to_json(
+        *opts
+      )
     end
   end
 
   # :call-seq:
   #   on_blockarg: (Ident name) -> BlockArg
   def on_blockarg(name)
-    operator = find_token(Op, '&')
+    operator = find_token(Op, "&")
 
     BlockArg.new(name: name, location: operator.location.to(name.location))
   end
@@ -1871,7 +2520,14 @@ class SyntaxTree < Ripper
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(statements:, rescue_clause:, else_clause:, ensure_clause:, location:, comments: [])
+    def initialize(
+      statements:,
+      rescue_clause:,
+      else_clause:,
+      ensure_clause:,
+      location:,
+      comments: []
+    )
       @statements = statements
       @rescue_clause = rescue_clause
       @else_clause = else_clause
@@ -1907,13 +2563,46 @@ class SyntaxTree < Ripper
       end
     end
 
+    def empty?
+      statements.empty? && !rescue_clause && !else_clause && !ensure_clause
+    end
+
     def child_nodes
       [statements, rescue_clause, else_clause, ensure_clause]
     end
 
+    def format(q)
+      q.group do
+        q.format(statements) unless statements.empty?
+
+        if rescue_clause
+          q.nest(-2) do
+            q.breakable(force: true)
+            q.format(rescue_clause)
+          end
+        end
+
+        if else_clause
+          q.nest(-2) do
+            q.breakable(force: true)
+            q.text("else")
+          end
+          q.breakable(force: true)
+          q.format(else_clause)
+        end
+
+        if ensure_clause
+          q.nest(-2) do
+            q.breakable(force: true)
+            q.format(ensure_clause)
+          end
+        end
+      end
+    end
+
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('bodystmt')
+      q.group(2, "(", ")") do
+        q.text("bodystmt")
 
         q.breakable
         q.pp(statements)
@@ -1967,6 +2656,86 @@ class SyntaxTree < Ripper
     )
   end
 
+  # Responsible for formatting either a BraceBlock or a DoBlock.
+  class BlockFormatter
+    class BlockOpenFormatter
+      # [String] the actual output that should be printed
+      attr_reader :text
+
+      # [LBrace | Keyword] the node that is being represented
+      attr_reader :node
+
+      def initialize(text, node)
+        @text = text
+        @node = node
+      end
+
+      def comments
+        node.comments
+      end
+
+      def format(q)
+        q.text(text)
+      end
+    end
+
+    # [BraceBlock | DoBlock] the block node to be formatted
+    attr_reader :node
+
+    # [LBrace | Keyword] the node that opens the block
+    attr_reader :block_open
+
+    # [BodyStmt | Statements] the statements inside the block
+    attr_reader :statements
+
+    def initialize(node, block_open, statements)
+      @node = node
+      @block_open = block_open
+      @statements = statements
+    end
+
+    def format(q)
+      q.group do
+        q.text(" ")
+
+        q.if_break do
+          q.format(BlockOpenFormatter.new("do", block_open))
+
+          if node.block_var
+            q.text(" ")
+            q.format(node.block_var)
+          end
+
+          unless statements.empty?
+            q.indent do
+              q.breakable
+              q.format(statements)
+            end
+          end
+
+          q.breakable
+          q.text("end")
+        end.if_flat do
+          q.format(BlockOpenFormatter.new("{", block_open))
+
+          if node.block_var
+            q.breakable
+            q.format(node.block_var)
+            q.breakable
+          end
+
+          unless statements.empty?
+            q.breakable unless node.block_var
+            q.format(statements)
+            q.breakable
+          end
+
+          q.text("}")
+        end
+      end
+    end
+  end
+
   # BraceBlock represents passing a block to a method call using the { }
   # operators.
   #
@@ -2000,9 +2769,13 @@ class SyntaxTree < Ripper
       [lbrace, block_var, statements]
     end
 
+    def format(q)
+      BlockFormatter.new(self, lbrace, statements).format(q)
+    end
+
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('brace_block')
+      q.group(2, "(", ")") do
+        q.text("brace_block")
 
         if block_var
           q.breakable
@@ -2058,6 +2831,37 @@ class SyntaxTree < Ripper
     )
   end
 
+  # Formats either a Break or Next node.
+  class FlowControlFormatter
+    # [String] the keyword to print
+    attr_reader :keyword
+
+    # [Break | Next] the node being formatted
+    attr_reader :node
+
+    def initialize(keyword, node)
+      @keyword = keyword
+      @node = node
+    end
+
+    def format(q)
+      arguments = node.arguments
+
+      q.group do
+        q.text(keyword)
+
+        if arguments.parts.any?
+          if arguments.parts.length == 1 && arguments.parts.first.is_a?(Paren)
+            q.format(arguments)
+          else
+            q.text(" ")
+            q.nest(keyword.length + 1) { q.format(arguments) }
+          end
+        end
+      end
+    end
+  end
+
   # Break represents using the +break+ keyword.
   #
   #     break
@@ -2086,9 +2890,13 @@ class SyntaxTree < Ripper
       [arguments]
     end
 
+    def format(q)
+      FlowControlFormatter.new("break", self).format(q)
+    end
+
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('break')
+      q.group(2, "(", ")") do
+        q.text("break")
 
         q.breakable
         q.pp(arguments)
@@ -2098,19 +2906,44 @@ class SyntaxTree < Ripper
     end
 
     def to_json(*opts)
-      { type: :break, args: arguments, loc: location, cmts: comments }.to_json(*opts)
+      { type: :break, args: arguments, loc: location, cmts: comments }.to_json(
+        *opts
+      )
     end
   end
 
   # :call-seq:
   #   on_break: (Args arguments) -> Break
   def on_break(arguments)
-    keyword = find_token(Kw, 'break')
+    keyword = find_token(Kw, "break")
 
     location = keyword.location
     location = location.to(arguments.location) if arguments.parts.any?
 
     Break.new(arguments: arguments, location: location)
+  end
+
+  # Wraps a call operator (which can be a string literal :: or an Op node or a
+  # Period node) and formats it when called.
+  class CallOperatorFormatter
+    # [:"::" | Op | Period] the operator being formatted
+    attr_reader :operator
+
+    def initialize(operator)
+      @operator = operator
+    end
+
+    def comments
+      operator == :"::" ? [] : operator.comments
+    end
+
+    def format(q)
+      if operator == :"::" || (operator.is_a?(Op) && operator.value == "::")
+        q.text(".")
+      else
+        operator.format(q)
+      end
+    end
   end
 
   # Call represents a method call. This node doesn't contain the arguments being
@@ -2144,12 +2977,24 @@ class SyntaxTree < Ripper
     end
 
     def child_nodes
-      [receiver, (operator if operator != :'::'), (message if message != :call)]
+      [receiver, (operator if operator != :"::"), (message if message != :call)]
+    end
+
+    def format(q)
+      q.group do
+        q.format(receiver)
+        q.group do
+          q.indent do
+            q.format(CallOperatorFormatter.new(operator))
+            q.format(message) if message != :call
+          end
+        end
+      end
     end
 
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('call')
+      q.group(2, "(", ")") do
+        q.text("call")
 
         q.breakable
         q.pp(receiver)
@@ -2235,9 +3080,22 @@ class SyntaxTree < Ripper
       [value, consequent]
     end
 
+    def format(q)
+      q.group(0, "case", "end") do
+        if value
+          q.text(" ")
+          q.format(value)
+        end
+
+        q.breakable(force: true)
+        q.format(consequent)
+        q.breakable(force: true)
+      end
+    end
+
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('case')
+      q.group(2, "(", ")") do
+        q.text("case")
 
         if value
           q.breakable
@@ -2252,9 +3110,13 @@ class SyntaxTree < Ripper
     end
 
     def to_json(*opts)
-      { type: :case, value: value, cons: consequent, loc: location, cmts: comments }.to_json(
-        *opts
-      )
+      {
+        type: :case,
+        value: value,
+        cons: consequent,
+        loc: location,
+        cmts: comments
+      }.to_json(*opts)
     end
   end
 
@@ -2292,9 +3154,23 @@ class SyntaxTree < Ripper
       [value, operator, pattern]
     end
 
+    def format(q)
+      q.group do
+        q.format(value)
+        q.text(" ")
+        q.format(operator)
+        q.group do
+          q.indent do
+            q.breakable
+            q.format(pattern)
+          end
+        end
+      end
+    end
+
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('rassign')
+      q.group(2, "(", ")") do
+        q.text("rassign")
 
         q.breakable
         q.pp(value)
@@ -2324,7 +3200,7 @@ class SyntaxTree < Ripper
   # :call-seq:
   #   on_case: (untyped value, untyped consequent) -> Case | RAssign
   def on_case(value, consequent)
-    if keyword = find_token(Kw, 'case', consume: false)
+    if keyword = find_token(Kw, "case", consume: false)
       tokens.delete(keyword)
 
       Case.new(
@@ -2333,7 +3209,7 @@ class SyntaxTree < Ripper
         location: keyword.location.to(consequent.location)
       )
     else
-      operator = find_token(Kw, 'in', consume: false) || find_token(Op, '=>')
+      operator = find_token(Kw, "in", consume: false) || find_token(Op, "=>")
 
       RAssign.new(
         value: value,
@@ -2405,9 +3281,43 @@ class SyntaxTree < Ripper
       [constant, superclass, bodystmt]
     end
 
+    def format(q)
+      declaration = -> do
+        q.group do
+          q.text("class ")
+          q.format(constant)
+
+          if superclass
+            q.text(" < ")
+            q.format(superclass)
+          end
+        end
+      end
+
+      if bodystmt.empty?
+        q.group do
+          declaration.call
+          q.breakable(force: true)
+          q.text("end")
+        end
+      else
+        q.group do
+          declaration.call
+
+          q.indent do
+            q.breakable(force: true)
+            q.format(bodystmt)
+          end
+
+          q.breakable(force: true)
+          q.text("end")
+        end
+      end
+    end
+
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('class')
+      q.group(2, "(", ")") do
+        q.text("class")
 
         q.breakable
         q.pp(constant)
@@ -2443,8 +3353,8 @@ class SyntaxTree < Ripper
   #     BodyStmt bodystmt
   #   ) -> ClassDeclaration
   def on_class(constant, superclass, bodystmt)
-    beginning = find_token(Kw, 'class')
-    ending = find_token(Kw, 'end')
+    beginning = find_token(Kw, "class")
+    ending = find_token(Kw, "end")
 
     bodystmt.bind(
       find_next_statement_start((superclass || constant).location.end_char),
@@ -2516,9 +3426,17 @@ class SyntaxTree < Ripper
       [message, arguments]
     end
 
+    def format(q)
+      q.group do
+        q.format(message)
+        q.text(" ")
+        q.nest(message.value.length + 1) { q.format(arguments) }
+      end
+    end
+
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('command')
+      q.group(2, "(", ")") do
+        q.text("command")
 
         q.breakable
         q.pp(message)
@@ -2575,7 +3493,14 @@ class SyntaxTree < Ripper
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(receiver:, operator:, message:, arguments:, location:, comments: [])
+    def initialize(
+      receiver:,
+      operator:,
+      message:,
+      arguments:,
+      location:,
+      comments: []
+    )
       @receiver = receiver
       @operator = operator
       @message = message
@@ -2588,9 +3513,25 @@ class SyntaxTree < Ripper
       [receiver, message, arguments]
     end
 
+    def format(q)
+      q.group do
+        doc = q.format(receiver)
+        q.format(CallOperatorFormatter.new(operator))
+        q.format(message)
+        q.text(" ")
+
+        width = doc_width(doc)
+        if width > (q.maxwidth / 2) || width < 2
+          q.indent { q.format(arguments) }
+        else
+          q.nest(width) { q.format(arguments) }
+        end
+      end
+    end
+
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('command_call')
+      q.group(2, "(", ")") do
+        q.text("command_call")
 
         q.breakable
         q.pp(receiver)
@@ -2618,6 +3559,33 @@ class SyntaxTree < Ripper
         loc: location,
         cmts: comments
       }.to_json(*opts)
+    end
+
+    private
+
+    # This is a somewhat naive method that is attempting to sum up the width of
+    # the doc nodes that make up the given doc node. This is used to align
+    # content.
+    def doc_width(parent)
+      queue = [parent]
+      width = 0
+
+      until queue.empty?
+        doc = queue.shift
+
+        case doc
+        when PrettyPrint::Text
+          width += doc.width
+        when PrettyPrint::Indent, PrettyPrint::Align, PrettyPrint::Group
+          queue += doc.contents.reverse
+        when PrettyPrint::IfBreak
+          queue += doc.flat_contents.reverse
+        when PrettyPrint::Breakable
+          width = doc.force? ? 0 : width + doc.width
+        end
+      end
+
+      width
     end
   end
 
@@ -2657,9 +3625,7 @@ class SyntaxTree < Ripper
         return if comments.empty?
 
         q.breakable
-        q.group(2, '(', ')') do
-          q.seplist(comments) { |comment| q.pp(comment) }
-        end
+        q.group(2, "(", ")") { q.seplist(comments) { |comment| q.pp(comment) } }
       end
     end
 
@@ -2678,11 +3644,38 @@ class SyntaxTree < Ripper
       @value = value
       @inline = inline
       @location = location
+
+      @leading = false
+      @trailing = false
+    end
+
+    def leading!
+      @leading = true
+    end
+
+    def leading?
+      @leading
+    end
+
+    def trailing!
+      @trailing = true
+    end
+
+    def trailing?
+      @trailing
+    end
+
+    def comments
+      []
+    end
+
+    def format(q)
+      q.text(value)
     end
 
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('comment')
+      q.group(2, "(", ")") do
+        q.text("comment")
 
         q.breakable
         q.pp(value)
@@ -2692,7 +3685,7 @@ class SyntaxTree < Ripper
     def to_json(*opts)
       {
         type: :comment,
-        value: value.force_encoding('UTF-8')[1..-1],
+        value: value.force_encoding("UTF-8"),
         inline: inline,
         loc: location
       }.to_json(*opts)
@@ -2706,7 +3699,7 @@ class SyntaxTree < Ripper
     comment =
       Comment.new(
         value: value.chomp,
-        inline: value.strip != lines[line - 1],
+        inline: value.strip != lines[line - 1].strip,
         location:
           Location.token(line: line, char: char_pos, size: value.size - 1)
       )
@@ -2749,9 +3742,13 @@ class SyntaxTree < Ripper
       []
     end
 
+    def format(q)
+      q.text(value)
+    end
+
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('const')
+      q.group(2, "(", ")") do
+        q.text("const")
 
         q.breakable
         q.pp(value)
@@ -2761,21 +3758,19 @@ class SyntaxTree < Ripper
     end
 
     def to_json(*opts)
-      { type: :const, value: value, loc: location, cmts: comments }.to_json(*opts)
+      { type: :const, value: value, loc: location, cmts: comments }.to_json(
+        *opts
+      )
     end
   end
 
   # :call-seq:
   #   on_const: (String value) -> Const
   def on_const(value)
-    node =
-      Const.new(
-        value: value,
-        location: Location.token(line: lineno, char: char_pos, size: value.size)
-      )
-
-    tokens << node
-    node
+    Const.new(
+      value: value,
+      location: Location.token(line: lineno, char: char_pos, size: value.size)
+    )
   end
 
   # ConstPathField represents the child node of some kind of assignment. It
@@ -2808,9 +3803,15 @@ class SyntaxTree < Ripper
       [parent, constant]
     end
 
+    def format(q)
+      q.format(parent)
+      q.text("::")
+      q.format(constant)
+    end
+
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('const_path_field')
+      q.group(2, "(", ")") do
+        q.text("const_path_field")
 
         q.breakable
         q.pp(parent)
@@ -2871,9 +3872,15 @@ class SyntaxTree < Ripper
       [parent, constant]
     end
 
+    def format(q)
+      q.format(parent)
+      q.text("::")
+      q.format(constant)
+    end
+
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('const_path_ref')
+      q.group(2, "(", ")") do
+        q.text("const_path_ref")
 
         q.breakable
         q.pp(parent)
@@ -2932,9 +3939,13 @@ class SyntaxTree < Ripper
       [constant]
     end
 
+    def format(q)
+      q.format(constant)
+    end
+
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('const_ref')
+      q.group(2, "(", ")") do
+        q.text("const_ref")
 
         q.breakable
         q.pp(constant)
@@ -2944,7 +3955,12 @@ class SyntaxTree < Ripper
     end
 
     def to_json(*opts)
-      { type: :const_ref, constant: constant, loc: location, cmts: comments }.to_json(*opts)
+      {
+        type: :const_ref,
+        constant: constant,
+        loc: location,
+        cmts: comments
+      }.to_json(*opts)
     end
   end
 
@@ -2978,9 +3994,13 @@ class SyntaxTree < Ripper
       []
     end
 
+    def format(q)
+      q.text(value)
+    end
+
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('cvar')
+      q.group(2, "(", ")") do
+        q.text("cvar")
 
         q.breakable
         q.pp(value)
@@ -2990,21 +4010,19 @@ class SyntaxTree < Ripper
     end
 
     def to_json(*opts)
-      { type: :cvar, value: value, loc: location, cmts: comments }.to_json(*opts)
+      { type: :cvar, value: value, loc: location, cmts: comments }.to_json(
+        *opts
+      )
     end
   end
 
   # :call-seq:
   #   on_cvar: (String value) -> CVar
   def on_cvar(value)
-    node =
-      CVar.new(
-        value: value,
-        location: Location.token(line: lineno, char: char_pos, size: value.size)
-      )
-
-    tokens << node
-    node
+    CVar.new(
+      value: value,
+      location: Location.token(line: lineno, char: char_pos, size: value.size)
+    )
   end
 
   # Def represents defining a regular method on the current self object.
@@ -3039,9 +4057,36 @@ class SyntaxTree < Ripper
       [name, params, bodystmt]
     end
 
+    def format(q)
+      q.group do
+        q.group do
+          q.text("def ")
+          q.format(name)
+
+          if params.is_a?(Params) && !params.empty?
+            q.text("(")
+            q.format(params)
+            q.text(")")
+          else
+            q.format(params)
+          end
+        end
+
+        unless bodystmt.empty?
+          q.indent do
+            q.breakable(force: true)
+            q.format(bodystmt)
+          end
+        end
+
+        q.breakable(force: true)
+        q.text("end")
+      end
+    end
+
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('def')
+      q.group(2, "(", ")") do
+        q.text("def")
 
         q.breakable
         q.pp(name)
@@ -3076,7 +4121,7 @@ class SyntaxTree < Ripper
     # [Backtick | Const | Ident | Kw | Op] the name of the method
     attr_reader :name
 
-    # [Paren] the parameter declaration for the method
+    # [nil | Paren] the parameter declaration for the method
     attr_reader :paren
 
     # [untyped] the expression to be executed by the method
@@ -3100,15 +4145,32 @@ class SyntaxTree < Ripper
       [name, paren, statement]
     end
 
+    def format(q)
+      q.group do
+        q.text("def ")
+        q.format(name)
+        q.format(paren) if paren && !paren.contents.empty?
+        q.text(" =")
+        q.group do
+          q.indent do
+            q.breakable
+            q.format(statement)
+          end
+        end
+      end
+    end
+
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('def_endless')
+      q.group(2, "(", ")") do
+        q.text("def_endless")
 
         q.breakable
         q.pp(name)
 
-        q.breakable
-        q.pp(paren)
+        if paren
+          q.breakable
+          q.pp(paren)
+        end
 
         q.breakable
         q.pp(statement)
@@ -3132,7 +4194,7 @@ class SyntaxTree < Ripper
   # :call-seq:
   #   on_def: (
   #     (Backtick | Const | Ident | Kw | Op) name,
-  #     (Params | Paren) params,
+  #     (nil | Params | Paren) params,
   #     untyped bodystmt
   #   ) -> Def | DefEndless
   def on_def(name, params, bodystmt)
@@ -3142,7 +4204,7 @@ class SyntaxTree < Ripper
 
     # Find the beginning of the method definition, which works for single-line
     # and normal method definitions.
-    beginning = find_token(Kw, 'def')
+    beginning = find_token(Kw, "def")
 
     # If we don't have a bodystmt node, then we have a single-line method
     unless bodystmt.is_a?(BodyStmt)
@@ -3172,7 +4234,7 @@ class SyntaxTree < Ripper
       params = Params.new(location: location)
     end
 
-    ending = find_token(Kw, 'end')
+    ending = find_token(Kw, "end")
     bodystmt.bind(
       find_next_statement_start(params.location.end_char),
       ending.location.start_char
@@ -3211,9 +4273,19 @@ class SyntaxTree < Ripper
       [value]
     end
 
+    def format(q)
+      q.group(0, "defined?(", ")") do
+        q.indent do
+          q.breakable("")
+          q.format(value)
+        end
+        q.breakable("")
+      end
+    end
+
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('defined')
+      q.group(2, "(", ")") do
+        q.text("defined")
 
         q.breakable
         q.pp(value)
@@ -3223,18 +4295,20 @@ class SyntaxTree < Ripper
     end
 
     def to_json(*opts)
-      { type: :defined, value: value, loc: location, cmts: comments }.to_json(*opts)
+      { type: :defined, value: value, loc: location, cmts: comments }.to_json(
+        *opts
+      )
     end
   end
 
   # :call-seq:
   #   on_defined: (untyped value) -> Defined
   def on_defined(value)
-    beginning = find_token(Kw, 'defined?')
+    beginning = find_token(Kw, "defined?")
     ending = value
 
     range = beginning.location.end_char...value.location.start_char
-    if source[range].include?('(')
+    if source[range].include?("(")
       find_token(LParen)
       ending = find_token(RParen)
     end
@@ -3268,7 +4342,15 @@ class SyntaxTree < Ripper
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(target:, operator:, name:, params:, bodystmt:, location:, comments: [])
+    def initialize(
+      target:,
+      operator:,
+      name:,
+      params:,
+      bodystmt:,
+      location:,
+      comments: []
+    )
       @target = target
       @operator = operator
       @name = name
@@ -3282,9 +4364,38 @@ class SyntaxTree < Ripper
       [target, operator, name, params, bodystmt]
     end
 
+    def format(q)
+      q.group do
+        q.group do
+          q.text("def ")
+          q.format(target)
+          q.format(CallOperatorFormatter.new(operator))
+          q.format(name)
+
+          if params.is_a?(Params) && !params.empty?
+            q.text("(")
+            q.format(params)
+            q.text(")")
+          else
+            q.format(params)
+          end
+        end
+
+        unless bodystmt.empty?
+          q.indent do
+            q.breakable(force: true)
+            q.format(bodystmt)
+          end
+        end
+
+        q.breakable(force: true)
+        q.text("end")
+      end
+    end
+
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('defs')
+      q.group(2, "(", ")") do
+        q.text("defs")
 
         q.breakable
         q.pp(target)
@@ -3348,8 +4459,8 @@ class SyntaxTree < Ripper
       params = Params.new(location: location)
     end
 
-    beginning = find_token(Kw, 'def')
-    ending = find_token(Kw, 'end')
+    beginning = find_token(Kw, "def")
+    ending = find_token(Kw, "end")
 
     bodystmt.bind(
       find_next_statement_start(params.location.end_char),
@@ -3400,9 +4511,13 @@ class SyntaxTree < Ripper
       [keyword, block_var, bodystmt]
     end
 
+    def format(q)
+      BlockFormatter.new(self, keyword, bodystmt).format(q)
+    end
+
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('do_block')
+      q.group(2, "(", ")") do
+        q.text("do_block")
 
         if block_var
           q.breakable
@@ -3431,8 +4546,8 @@ class SyntaxTree < Ripper
   # :call-seq:
   #   on_do_block: (BlockVar block_var, BodyStmt bodystmt) -> DoBlock
   def on_do_block(block_var, bodystmt)
-    beginning = find_token(Kw, 'do')
-    ending = find_token(Kw, 'end')
+    beginning = find_token(Kw, "do")
+    ending = find_token(Kw, "end")
 
     bodystmt.bind(
       find_next_statement_start((block_var || beginning).location.end_char),
@@ -3445,6 +4560,34 @@ class SyntaxTree < Ripper
       bodystmt: bodystmt,
       location: beginning.location.to(ending.location)
     )
+  end
+
+  # Responsible for formatting Dot2 and Dot3 nodes.
+  class DotFormatter
+    # [String] the operator to display
+    attr_reader :operator
+
+    # [Dot2 | Dot3] the node that is being formatter
+    attr_reader :node
+
+    def initialize(operator, node)
+      @operator = operator
+      @node = node
+    end
+
+    def format(q)
+      parent = q.parent
+      space = parent.is_a?(If) || parent.is_a?(Unless)
+
+      left = node.left
+      right = node.right
+
+      q.format(left) if left
+      q.text(" ") if space
+      q.text(operator)
+      q.text(" ") if space
+      q.format(right) if right
+    end
   end
 
   # Dot2 represents using the .. operator between two expressions. Usually this
@@ -3482,9 +4625,13 @@ class SyntaxTree < Ripper
       [left, right]
     end
 
+    def format(q)
+      DotFormatter.new("..", self).format(q)
+    end
+
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('dot2')
+      q.group(2, "(", ")") do
+        q.text("dot2")
 
         if left
           q.breakable
@@ -3501,14 +4648,20 @@ class SyntaxTree < Ripper
     end
 
     def to_json(*opts)
-      { type: :dot2, left: left, right: right, loc: location, cmts: comments }.to_json(*opts)
+      {
+        type: :dot2,
+        left: left,
+        right: right,
+        loc: location,
+        cmts: comments
+      }.to_json(*opts)
     end
   end
 
   # :call-seq:
   #   on_dot2: ((nil | untyped) left, (nil | untyped) right) -> Dot2
   def on_dot2(left, right)
-    operator = find_token(Op, '..')
+    operator = find_token(Op, "..")
 
     beginning = left || operator
     ending = right || operator
@@ -3556,9 +4709,13 @@ class SyntaxTree < Ripper
       [left, right]
     end
 
+    def format(q)
+      DotFormatter.new("...", self).format(q)
+    end
+
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('dot3')
+      q.group(2, "(", ")") do
+        q.text("dot3")
 
         if left
           q.breakable
@@ -3575,14 +4732,20 @@ class SyntaxTree < Ripper
     end
 
     def to_json(*opts)
-      { type: :dot3, left: left, right: right, loc: location, cmts: comments }.to_json(*opts)
+      {
+        type: :dot3,
+        left: left,
+        right: right,
+        loc: location,
+        cmts: comments
+      }.to_json(*opts)
     end
   end
 
   # :call-seq:
   #   on_dot3: ((nil | untyped) left, (nil | untyped) right) -> Dot3
   def on_dot3(left, right)
-    operator = find_token(Op, '...')
+    operator = find_token(Op, "...")
 
     beginning = left || operator
     ending = right || operator
@@ -3592,6 +4755,47 @@ class SyntaxTree < Ripper
       right: right,
       location: beginning.location.to(ending.location)
     )
+  end
+
+  # Responsible for providing information about quotes to be used for strings
+  # and dynamic symbols.
+  module Quotes
+    # The matching pairs of quotes that can be used with % literals.
+    PAIRS = { "(" => ")", "[" => "]", "{" => "}", "<" => ">" }.freeze
+
+    # If there is some part of this string that matches an escape sequence or
+    # that contains the interpolation pattern ("#{"), then we are locked into
+    # whichever quote the user chose. (If they chose single quotes, then double
+    # quoting would activate the escape sequence, and if they chose double
+    # quotes, then single quotes would deactivate it.)
+    def self.locked?(node)
+      node.parts.any? do |part|
+        part.is_a?(TStringContent) && part.value.match?(/#[@${]|[\\]/)
+      end
+    end
+
+    # Find the matching closing quote for the given opening quote.
+    def self.matching(quote)
+      PAIRS.fetch(quote) { quote }
+    end
+
+    # Escape and unescape single and double quotes as needed to be able to
+    # enclose +content+ with +enclosing+.
+    def self.normalize(content, enclosing)
+      return content if enclosing != "\"" && enclosing != "'"
+
+      content.gsub(/\\([\s\S])|(['"])/) do
+        _match, escaped, quote = Regexp.last_match.to_a
+
+        if quote == enclosing
+          "\\#{quote}"
+        elsif quote
+          quote
+        else
+          "\\#{escaped}"
+        end
+      end
+    end
   end
 
   # DynaSymbol represents a symbol literal that uses quotes to dynamically
@@ -3628,21 +4832,82 @@ class SyntaxTree < Ripper
       parts
     end
 
+    def format(q)
+      opening_quote, closing_quote = quotes(q)
+
+      q.group(0, opening_quote, closing_quote) do
+        parts.each do |part|
+          if part.is_a?(TStringContent)
+            value = Quotes.normalize(part.value, closing_quote)
+            separator = -> { q.breakable(force: true, indent: false) }
+            q.seplist(value.split(/\r?\n/, -1), separator) do |text|
+              q.text(text)
+            end
+          else
+            q.format(part)
+          end
+        end
+      end
+    end
+
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('dyna_symbol')
+      q.group(2, "(", ")") do
+        q.text("dyna_symbol")
 
         q.breakable
-        q.group(2, '(', ')') { q.seplist(parts) { |part| q.pp(part) } }
+        q.group(2, "(", ")") { q.seplist(parts) { |part| q.pp(part) } }
 
         q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :dyna_symbol, parts: parts, quote: quote, loc: location, cmts: comments }.to_json(
-        *opts
-      )
+      {
+        type: :dyna_symbol,
+        parts: parts,
+        quote: quote,
+        loc: location,
+        cmts: comments
+      }.to_json(*opts)
+    end
+
+    private
+
+    # Here we determine the quotes to use for a dynamic symbol. It's bound by a
+    # lot of rules because it could be in many different contexts with many
+    # different kinds of escaping.
+    def quotes(q)
+      # If we're inside of an assoc node as the key, then it will handle
+      # printing the : on its own since it could change sides.
+      parent = q.parent
+      hash_key = parent.is_a?(Assoc) && parent.key == self
+
+      if quote.start_with?("%s")
+        # Here we're going to check if there is a closing character, a new line,
+        # or a quote in the content of the dyna symbol. If there is, then
+        # quoting could get weird, so just bail out and stick to the original
+        # quotes in the source.
+        matching = Quotes.matching(quote[2])
+        pattern = /[\n#{Regexp.escape(matching)}'"]/
+
+        if parts.any? do |part|
+             part.is_a?(TStringContent) && part.value.match?(pattern)
+           end
+          [quote, matching]
+        elsif Quotes.locked?(self)
+          ["#{":" unless hash_key}'", "'"]
+        else
+          ["#{":" unless hash_key}#{q.quote}", q.quote]
+        end
+      elsif Quotes.locked?(self)
+        if quote.start_with?(":")
+          [hash_key ? quote[1..-1] : quote, quote[1..-1]]
+        else
+          [hash_key ? quote : ":#{quote}", quote]
+        end
+      else
+        [hash_key ? q.quote : ":#{q.quote}", q.quote]
+      end
     end
   end
 
@@ -3698,9 +4963,22 @@ class SyntaxTree < Ripper
       [statements]
     end
 
+    def format(q)
+      q.group do
+        q.text("else")
+
+        unless statements.empty?
+          q.indent do
+            q.breakable(force: true)
+            q.format(statements)
+          end
+        end
+      end
+    end
+
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('else')
+      q.group(2, "(", ")") do
+        q.text("else")
 
         q.breakable
         q.pp(statements)
@@ -3710,14 +4988,16 @@ class SyntaxTree < Ripper
     end
 
     def to_json(*opts)
-      { type: :else, stmts: statements, loc: location, cmts: comments }.to_json(*opts)
+      { type: :else, stmts: statements, loc: location, cmts: comments }.to_json(
+        *opts
+      )
     end
   end
 
   # :call-seq:
   #   on_else: (Statements statements) -> Else
   def on_else(statements)
-    beginning = find_token(Kw, 'else')
+    beginning = find_token(Kw, "else")
 
     # else can either end with an end keyword (in which case we'll want to
     # consume that event) or it can end with an ensure keyword (in which case
@@ -3728,7 +5008,7 @@ class SyntaxTree < Ripper
       end
 
     node = tokens[index]
-    ending = node.value == 'end' ? tokens.delete_at(index) : node
+    ending = node.value == "end" ? tokens.delete_at(index) : node
 
     statements.bind(beginning.location.end_char, ending.location.start_char)
 
@@ -3760,7 +5040,13 @@ class SyntaxTree < Ripper
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(predicate:, statements:, consequent:, location:, comments: [])
+    def initialize(
+      predicate:,
+      statements:,
+      consequent:,
+      location:,
+      comments: []
+    )
       @predicate = predicate
       @statements = statements
       @consequent = consequent
@@ -3772,9 +5058,32 @@ class SyntaxTree < Ripper
       [predicate, statements, consequent]
     end
 
+    def format(q)
+      q.group do
+        q.group do
+          q.text("elsif ")
+          q.nest("elsif".length - 1) { q.format(predicate) }
+        end
+
+        unless statements.empty?
+          q.indent do
+            q.breakable(force: true)
+            q.format(statements)
+          end
+        end
+
+        if consequent
+          q.group do
+            q.breakable(force: true)
+            q.format(consequent)
+          end
+        end
+      end
+    end
+
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('elsif')
+      q.group(2, "(", ")") do
+        q.text("elsif")
 
         q.breakable
         q.pp(predicate)
@@ -3810,8 +5119,8 @@ class SyntaxTree < Ripper
   #     (nil | Elsif | Else) consequent
   #   ) -> Elsif
   def on_elsif(predicate, statements, consequent)
-    beginning = find_token(Kw, 'elsif')
-    ending = consequent || find_token(Kw, 'end')
+    beginning = find_token(Kw, "elsif")
+    ending = consequent || find_token(Kw, "end")
 
     statements.bind(predicate.location.end_char, ending.location.start_char)
 
@@ -3846,13 +5155,22 @@ class SyntaxTree < Ripper
       false
     end
 
+    def comments
+      []
+    end
+
     def child_nodes
       []
     end
 
+    def format(q)
+      q.trim
+      q.text(value)
+    end
+
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('embdoc')
+      q.group(2, "(", ")") do
+        q.text("embdoc")
 
         q.breakable
         q.pp(value)
@@ -4032,9 +5350,20 @@ class SyntaxTree < Ripper
       [keyword, statements]
     end
 
+    def format(q)
+      q.format(keyword)
+
+      unless statements.empty?
+        q.indent do
+          q.breakable(force: true)
+          q.format(statements)
+        end
+      end
+    end
+
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('ensure')
+      q.group(2, "(", ")") do
+        q.text("ensure")
 
         q.breakable
         q.pp(statements)
@@ -4057,11 +5386,11 @@ class SyntaxTree < Ripper
   # :call-seq:
   #   on_ensure: (Statements statements) -> Ensure
   def on_ensure(statements)
-    keyword = find_token(Kw, 'ensure')
+    keyword = find_token(Kw, "ensure")
 
     # We don't want to consume the :@kw event, because that would break
     # def..ensure..end chains.
-    ending = find_token(Kw, 'end', consume: false)
+    ending = find_token(Kw, "end", consume: false)
     statements.bind(
       find_next_statement_start(keyword.location.end_char),
       ending.location.start_char
@@ -4104,9 +5433,13 @@ class SyntaxTree < Ripper
       []
     end
 
+    def format(q)
+      q.text(value)
+    end
+
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('excessed_comma')
+      q.group(2, "(", ")") do
+        q.text("excessed_comma")
 
         q.breakable
         q.pp(value)
@@ -4116,7 +5449,12 @@ class SyntaxTree < Ripper
     end
 
     def to_json(*opts)
-      { type: :excessed_comma, value: value, loc: location, cmts: comments }.to_json(*opts)
+      {
+        type: :excessed_comma,
+        value: value,
+        loc: location,
+        cmts: comments
+      }.to_json(*opts)
     end
   end
 
@@ -4158,9 +5496,13 @@ class SyntaxTree < Ripper
       [value]
     end
 
+    def format(q)
+      q.format(value)
+    end
+
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('fcall')
+      q.group(2, "(", ")") do
+        q.text("fcall")
 
         q.breakable
         q.pp(value)
@@ -4170,7 +5512,9 @@ class SyntaxTree < Ripper
     end
 
     def to_json(*opts)
-      { type: :fcall, value: value, loc: location, cmts: comments }.to_json(*opts)
+      { type: :fcall, value: value, loc: location, cmts: comments }.to_json(
+        *opts
+      )
     end
   end
 
@@ -4210,12 +5554,20 @@ class SyntaxTree < Ripper
     end
 
     def child_nodes
-      [parent, (operator if operator != :'::'), name]
+      [parent, (operator if operator != :"::"), name]
+    end
+
+    def format(q)
+      q.group do
+        q.format(parent)
+        q.format(CallOperatorFormatter.new(operator))
+        q.format(name)
+      end
     end
 
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('field')
+      q.group(2, "(", ")") do
+        q.text("field")
 
         q.breakable
         q.pp(parent)
@@ -4281,9 +5633,13 @@ class SyntaxTree < Ripper
       []
     end
 
+    def format(q)
+      q.text(value)
+    end
+
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('float')
+      q.group(2, "(", ")") do
+        q.text("float")
 
         q.breakable
         q.pp(value)
@@ -4293,21 +5649,19 @@ class SyntaxTree < Ripper
     end
 
     def to_json(*opts)
-      { type: :float, value: value, loc: location, cmts: comments }.to_json(*opts)
+      { type: :float, value: value, loc: location, cmts: comments }.to_json(
+        *opts
+      )
     end
   end
 
   # :call-seq:
   #   on_float: (String value) -> FloatLiteral
   def on_float(value)
-    node =
-      FloatLiteral.new(
-        value: value,
-        location: Location.token(line: lineno, char: char_pos, size: value.size)
-      )
-
-    tokens << node
-    node
+    FloatLiteral.new(
+      value: value,
+      location: Location.token(line: lineno, char: char_pos, size: value.size)
+    )
   end
 
   # FndPtn represents matching against a pattern where you find a pattern in an
@@ -4350,9 +5704,24 @@ class SyntaxTree < Ripper
       [constant, left, *values, right]
     end
 
+    def format(q)
+      q.format(constant) if constant
+      q.group(0, "[", "]") do
+        q.text("*")
+        q.format(left)
+        q.comma_breakable
+
+        q.seplist(values) { |value| q.format(value) }
+        q.comma_breakable
+
+        q.text("*")
+        q.format(right)
+      end
+    end
+
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('fndptn')
+      q.group(2, "(", ")") do
+        q.text("fndptn")
 
         if constant
           q.breakable
@@ -4363,7 +5732,7 @@ class SyntaxTree < Ripper
         q.pp(left)
 
         q.breakable
-        q.group(2, '(', ')') { q.seplist(values) { |value| q.pp(value) } }
+        q.group(2, "(", ")") { q.seplist(values) { |value| q.pp(value) } }
 
         q.breakable
         q.pp(right)
@@ -4439,9 +5808,28 @@ class SyntaxTree < Ripper
       [index, collection, statements]
     end
 
+    def format(q)
+      q.group do
+        q.text("for ")
+        q.group { q.format(index) }
+        q.text(" in ")
+        q.format(collection)
+
+        unless statements.empty?
+          q.indent do
+            q.breakable(force: true)
+            q.format(statements)
+          end
+        end
+
+        q.breakable(force: true)
+        q.text("end")
+      end
+    end
+
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('for')
+      q.group(2, "(", ")") do
+        q.text("for")
 
         q.breakable
         q.pp(index)
@@ -4475,12 +5863,12 @@ class SyntaxTree < Ripper
   #     Statements statements
   #   ) -> For
   def on_for(index, collection, statements)
-    beginning = find_token(Kw, 'for')
-    ending = find_token(Kw, 'end')
+    beginning = find_token(Kw, "for")
+    ending = find_token(Kw, "end")
 
     # Consume the do keyword if it exists so that it doesn't get confused for
     # some other block
-    keyword = find_token(Kw, 'do', consume: false)
+    keyword = find_token(Kw, "do", consume: false)
     if keyword && keyword.location.start_char > collection.location.end_char &&
          keyword.location.end_char < ending.location.start_char
       tokens.delete(keyword)
@@ -4523,9 +5911,13 @@ class SyntaxTree < Ripper
       []
     end
 
+    def format(q)
+      q.text(value)
+    end
+
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('gvar')
+      q.group(2, "(", ")") do
+        q.text("gvar")
 
         q.breakable
         q.pp(value)
@@ -4535,21 +5927,19 @@ class SyntaxTree < Ripper
     end
 
     def to_json(*opts)
-      { type: :gvar, value: value, loc: location, cmts: comments }.to_json(*opts)
+      { type: :gvar, value: value, loc: location, cmts: comments }.to_json(
+        *opts
+      )
     end
   end
 
   # :call-seq:
   #   on_gvar: (String value) -> GVar
   def on_gvar(value)
-    node =
-      GVar.new(
-        value: value,
-        location: Location.token(line: lineno, char: char_pos, size: value.size)
-      )
-
-    tokens << node
-    node
+    GVar.new(
+      value: value,
+      location: Location.token(line: lineno, char: char_pos, size: value.size)
+    )
   end
 
   # HashLiteral represents a hash literal.
@@ -4576,13 +5966,27 @@ class SyntaxTree < Ripper
       assocs
     end
 
+    def format(q)
+      contents = -> do
+        q.text("{")
+        q.indent do
+          q.breakable
+          q.format(HashFormatter.for(self))
+        end
+        q.breakable
+        q.text("}")
+      end
+
+      q.parent.is_a?(Assoc) ? contents.call : q.group(&contents)
+    end
+
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('hash')
+      q.group(2, "(", ")") do
+        q.text("hash")
 
         if assocs.any?
           q.breakable
-          q.group(2, '(', ')') { q.seplist(assocs) { |assoc| q.pp(assoc) } }
+          q.group(2, "(", ")") { q.seplist(assocs) { |assoc| q.pp(assoc) } }
         end
 
         q.pp(Comment::List.new(comments))
@@ -4590,7 +5994,9 @@ class SyntaxTree < Ripper
     end
 
     def to_json(*opts)
-      { type: :hash, assocs: assocs, loc: location, cmts: comments }.to_json(*opts)
+      { type: :hash, assocs: assocs, loc: location, cmts: comments }.to_json(
+        *opts
+      )
     end
   end
 
@@ -4641,12 +6047,43 @@ class SyntaxTree < Ripper
       [beginning, *parts]
     end
 
+    def format(q)
+      # This is a very specific behavior that should probably be included in the
+      # prettyprint module. It's when you want to force a newline, but don't
+      # want to force the break parent.
+      breakable = -> do
+        q.target <<
+          PrettyPrint::Breakable.new(" ", 1, indent: false, force: true)
+      end
+
+      q.group do
+        q.format(beginning)
+
+        q.line_suffix do
+          q.group do
+            breakable.call
+
+            parts.each do |part|
+              if part.is_a?(TStringContent)
+                texts = part.value.split(/\r?\n/, -1)
+                q.seplist(texts, breakable) { |text| q.text(text) }
+              else
+                q.format(part)
+              end
+            end
+
+            q.text(ending)
+          end
+        end
+      end
+    end
+
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('heredoc')
+      q.group(2, "(", ")") do
+        q.text("heredoc")
 
         q.breakable
-        q.group(2, '(', ')') { q.seplist(parts) { |part| q.pp(part) } }
+        q.group(2, "(", ")") { q.seplist(parts) { |part| q.pp(part) } }
 
         q.pp(Comment::List.new(comments))
       end
@@ -4691,9 +6128,13 @@ class SyntaxTree < Ripper
       []
     end
 
+    def format(q)
+      q.text(value)
+    end
+
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('heredoc_beg')
+      q.group(2, "(", ")") do
+        q.text("heredoc_beg")
 
         q.breakable
         q.pp(value)
@@ -4703,7 +6144,12 @@ class SyntaxTree < Ripper
     end
 
     def to_json(*opts)
-      { type: :heredoc_beg, value: value, loc: location, cmts: comments }.to_json(*opts)
+      {
+        type: :heredoc_beg,
+        value: value,
+        loc: location,
+        cmts: comments
+      }.to_json(*opts)
     end
   end
 
@@ -4726,13 +6172,12 @@ class SyntaxTree < Ripper
   def on_heredoc_dedent(string, width)
     heredoc = @heredocs[-1]
 
-    @heredocs[-1] =
-      Heredoc.new(
-        beginning: heredoc.beginning,
-        ending: heredoc.ending,
-        parts: string.parts,
-        location: heredoc.location
-      )
+    @heredocs[-1] = Heredoc.new(
+      beginning: heredoc.beginning,
+      ending: heredoc.ending,
+      parts: string.parts,
+      location: heredoc.location
+    )
   end
 
   # :call-seq:
@@ -4740,19 +6185,18 @@ class SyntaxTree < Ripper
   def on_heredoc_end(value)
     heredoc = @heredocs[-1]
 
-    @heredocs[-1] =
-      Heredoc.new(
-        beginning: heredoc.beginning,
-        ending: value.chomp,
-        parts: heredoc.parts,
-        location:
-          Location.new(
-            start_line: heredoc.location.start_line,
-            start_char: heredoc.location.start_char,
-            end_line: lineno,
-            end_char: char_pos
-          )
-      )
+    @heredocs[-1] = Heredoc.new(
+      beginning: heredoc.beginning,
+      ending: value.chomp,
+      parts: heredoc.parts,
+      location:
+        Location.new(
+          start_line: heredoc.location.start_line,
+          start_char: heredoc.location.start_char,
+          end_line: lineno,
+          end_char: char_pos
+        )
+    )
   end
 
   # HshPtn represents matching against a hash pattern using the Ruby 2.7+
@@ -4763,6 +6207,50 @@ class SyntaxTree < Ripper
   #     end
   #
   class HshPtn
+    class KeywordFormatter
+      # [Label] the keyword being used
+      attr_reader :key
+
+      # [untyped] the optional value for the keyword
+      attr_reader :value
+
+      def initialize(key, value)
+        @key = key
+        @value = value
+      end
+
+      def comments
+        []
+      end
+
+      def format(q)
+        q.format(key)
+
+        if value
+          q.text(" ")
+          q.format(value)
+        end
+      end
+    end
+
+    class KeywordRestFormatter
+      # [VarField] the parameter that matches the remaining keywords
+      attr_reader :keyword_rest
+
+      def initialize(keyword_rest)
+        @keyword_rest = keyword_rest
+      end
+
+      def comments
+        []
+      end
+
+      def format(q)
+        q.text("**")
+        q.format(keyword_rest)
+      end
+    end
+
     # [nil | untyped] the optional constant wrapper
     attr_reader :constant
 
@@ -4791,9 +6279,32 @@ class SyntaxTree < Ripper
       [constant, *keywords.flatten(1), keyword_rest]
     end
 
+    def format(q)
+      parts = keywords.map { |(key, value)| KeywordFormatter.new(key, value) }
+      parts << KeywordRestFormatter.new(keyword_rest) if keyword_rest
+      contents = -> { q.seplist(parts) { |part| q.format(part) } }
+
+      if constant
+        q.format(constant)
+        q.text("[")
+        contents.call
+        q.text("]")
+        return
+      end
+
+      parent = q.parent
+      if PATTERNS.any? { |pattern| parent.is_a?(pattern) }
+        q.text("{ ")
+        contents.call
+        q.text(" }")
+      else
+        contents.call
+      end
+    end
+
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('hshptn')
+      q.group(2, "(", ")") do
+        q.text("hshptn")
 
         if constant
           q.breakable
@@ -4802,8 +6313,17 @@ class SyntaxTree < Ripper
 
         if keywords.any?
           q.breakable
-          q.group(2, '(', ')') do
-            q.seplist(keywords) { |keyword| q.pp(keyword) }
+          q.group(2, "(", ")") do
+            q.seplist(keywords) do |(key, value)|
+              q.group(2, "(", ")") do
+                q.pp(key)
+
+                if value
+                  q.breakable
+                  q.pp(value)
+                end
+              end
+            end
           end
         end
 
@@ -4827,6 +6347,10 @@ class SyntaxTree < Ripper
       }.to_json(*opts)
     end
   end
+
+  # The list of nodes that represent patterns inside of pattern matching so that
+  # when a pattern is being printed it knows if it's nested.
+  PATTERNS = [AryPtn, Binary, FndPtn, HshPtn, RAssign]
 
   # :call-seq:
   #   on_hshptn: (
@@ -4870,9 +6394,13 @@ class SyntaxTree < Ripper
       []
     end
 
+    def format(q)
+      q.text(value)
+    end
+
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('ident')
+      q.group(2, "(", ")") do
+        q.text("ident")
 
         q.breakable
         q.pp(value)
@@ -4884,7 +6412,7 @@ class SyntaxTree < Ripper
     def to_json(*opts)
       {
         type: :ident,
-        value: value.force_encoding('UTF-8'),
+        value: value.force_encoding("UTF-8"),
         loc: location,
         cmts: comments
       }.to_json(*opts)
@@ -4894,14 +6422,59 @@ class SyntaxTree < Ripper
   # :call-seq:
   #   on_ident: (String value) -> Ident
   def on_ident(value)
-    node =
-      Ident.new(
-        value: value,
-        location: Location.token(line: lineno, char: char_pos, size: value.size)
-      )
+    Ident.new(
+      value: value,
+      location: Location.token(line: lineno, char: char_pos, size: value.size)
+    )
+  end
 
-    tokens << node
-    node
+  # Formats an If or Unless node.
+  class ConditionalFormatter
+    # [String] the keyword associated with this conditional
+    attr_reader :keyword
+
+    # [If | Unless] the node that is being formatted
+    attr_reader :node
+
+    def initialize(keyword, node)
+      @keyword = keyword
+      @node = node
+    end
+
+    def format(q)
+      statements = node.statements
+      break_format = ->(force:) do
+        q.text("#{keyword} ")
+        q.nest(keyword.length + 1) { q.format(node.predicate) }
+
+        unless statements.empty?
+          q.indent do
+            q.breakable(force: force)
+            q.format(statements)
+          end
+        end
+
+        if node.consequent
+          q.breakable(force: force)
+          q.format(node.consequent)
+        end
+
+        q.breakable(force: force)
+        q.text("end")
+      end
+
+      if node.consequent || statements.empty?
+        q.group { break_format.call(force: true) }
+      else
+        q.group do
+          q.if_break { break_format.call(force: false) }.if_flat do
+            q.format(node.statements)
+            q.text(" #{keyword} ")
+            q.format(node.predicate)
+          end
+        end
+      end
+    end
   end
 
   # If represents the first clause in an +if+ chain.
@@ -4925,7 +6498,13 @@ class SyntaxTree < Ripper
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(predicate:, statements:, consequent:, location:, comments: [])
+    def initialize(
+      predicate:,
+      statements:,
+      consequent:,
+      location:,
+      comments: []
+    )
       @predicate = predicate
       @statements = statements
       @consequent = consequent
@@ -4937,9 +6516,13 @@ class SyntaxTree < Ripper
       [predicate, statements, consequent]
     end
 
+    def format(q)
+      ConditionalFormatter.new("if", self).format(q)
+    end
+
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('if')
+      q.group(2, "(", ")") do
+        q.text("if")
 
         q.breakable
         q.pp(predicate)
@@ -4975,8 +6558,8 @@ class SyntaxTree < Ripper
   #     (nil | Elsif | Else) consequent
   #   ) -> If
   def on_if(predicate, statements, consequent)
-    beginning = find_token(Kw, 'if')
-    ending = consequent || find_token(Kw, 'end')
+    beginning = find_token(Kw, "if")
+    ending = consequent || find_token(Kw, "end")
 
     statements.bind(predicate.location.end_char, ending.location.start_char)
 
@@ -5020,9 +6603,44 @@ class SyntaxTree < Ripper
       [predicate, truthy, falsy]
     end
 
+    def format(q)
+      q.group do
+        q.if_break do
+          q.text("if ")
+          q.nest("if ".length) { q.format(predicate) }
+
+          q.indent do
+            q.breakable
+            q.format(truthy)
+          end
+
+          q.breakable
+          q.text("else")
+
+          q.indent do
+            q.breakable
+            q.format(falsy)
+          end
+
+          q.breakable
+          q.text("end")
+        end.if_flat do
+          q.format(predicate)
+          q.text(" ?")
+
+          q.breakable
+          q.format(truthy)
+          q.text(" :")
+
+          q.breakable
+          q.format(falsy)
+        end
+      end
+    end
+
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('ifop')
+      q.group(2, "(", ")") do
+        q.text("ifop")
 
         q.breakable
         q.pp(predicate)
@@ -5060,6 +6678,39 @@ class SyntaxTree < Ripper
     )
   end
 
+  # Formats an IfMod or UnlessMod node.
+  class ConditionalModFormatter
+    # [String] the keyword associated with this conditional
+    attr_reader :keyword
+
+    # [IfMod | UnlessMod] the node that is being formatted
+    attr_reader :node
+
+    def initialize(keyword, node)
+      @keyword = keyword
+      @node = node
+    end
+
+    def format(q)
+      q.group do
+        q.if_break do
+          q.text("#{keyword} ")
+          q.nest(keyword.length + 1) { q.format(node.predicate) }
+          q.indent do
+            q.breakable
+            q.format(node.statement)
+          end
+          q.breakable
+          q.text("end")
+        end.if_flat do
+          q.format(node.statement)
+          q.text(" #{keyword} ")
+          q.format(node.predicate)
+        end
+      end
+    end
+  end
+
   # IfMod represents the modifier form of an +if+ statement.
   #
   #     expression if predicate
@@ -5088,9 +6739,13 @@ class SyntaxTree < Ripper
       [statement, predicate]
     end
 
+    def format(q)
+      ConditionalModFormatter.new("if", self).format(q)
+    end
+
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('if_mod')
+      q.group(2, "(", ")") do
+        q.text("if_mod")
 
         q.breakable
         q.pp(statement)
@@ -5116,7 +6771,7 @@ class SyntaxTree < Ripper
   # :call-seq:
   #   on_if_mod: (untyped predicate, untyped statement) -> IfMod
   def on_if_mod(predicate, statement)
-    find_token(Kw, 'if')
+    find_token(Kw, "if")
 
     IfMod.new(
       statement: statement,
@@ -5157,9 +6812,13 @@ class SyntaxTree < Ripper
       []
     end
 
+    def format(q)
+      q.text(value)
+    end
+
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('imaginary')
+      q.group(2, "(", ")") do
+        q.text("imaginary")
 
         q.breakable
         q.pp(value)
@@ -5169,21 +6828,19 @@ class SyntaxTree < Ripper
     end
 
     def to_json(*opts)
-      { type: :imaginary, value: value, loc: location, cmts: comments }.to_json(*opts)
+      { type: :imaginary, value: value, loc: location, cmts: comments }.to_json(
+        *opts
+      )
     end
   end
 
   # :call-seq:
   #   on_imaginary: (String value) -> Imaginary
   def on_imaginary(value)
-    node =
-      Imaginary.new(
-        value: value,
-        location: Location.token(line: lineno, char: char_pos, size: value.size)
-      )
-
-    tokens << node
-    node
+    Imaginary.new(
+      value: value,
+      location: Location.token(line: lineno, char: char_pos, size: value.size)
+    )
   end
 
   # In represents using the +in+ keyword within the Ruby 2.7+ pattern matching
@@ -5221,9 +6878,30 @@ class SyntaxTree < Ripper
       [pattern, statements, consequent]
     end
 
+    def format(q)
+      keyword = "in "
+
+      q.group do
+        q.text(keyword)
+        q.nest(keyword.length) { q.format(pattern) }
+
+        unless statements.empty?
+          q.indent do
+            q.breakable(force: true)
+            q.format(statements)
+          end
+        end
+
+        if consequent
+          q.breakable(force: true)
+          q.format(consequent)
+        end
+      end
+    end
+
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('in')
+      q.group(2, "(", ")") do
+        q.text("in")
 
         q.breakable
         q.pp(pattern)
@@ -5263,10 +6941,13 @@ class SyntaxTree < Ripper
     # Here we have a rightward assignment
     return pattern unless statements
 
-    beginning = find_token(Kw, 'in')
-    ending = consequent || find_token(Kw, 'end')
+    beginning = find_token(Kw, "in")
+    ending = consequent || find_token(Kw, "end")
 
-    statements.bind(beginning.location.end_char, ending.location.start_char)
+    statements.bind(
+      find_next_statement_start(pattern.location.end_char),
+      ending.location.start_char
+    )
 
     In.new(
       pattern: pattern,
@@ -5300,9 +6981,21 @@ class SyntaxTree < Ripper
       []
     end
 
+    def format(q)
+      if !value.start_with?("0") && value.length >= 5 && !value.include?("_")
+        # If it's a plain integer and it doesn't have any underscores separating
+        # the values, then we're going to insert them every 3 characters
+        # starting from the right.
+        index = (value.length + 2) % 3
+        q.text("  #{value}"[index..-1].scan(/.../).join("_").strip)
+      else
+        q.text(value)
+      end
+    end
+
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('int')
+      q.group(2, "(", ")") do
+        q.text("int")
 
         q.breakable
         q.pp(value)
@@ -5319,14 +7012,10 @@ class SyntaxTree < Ripper
   # :call-seq:
   #   on_int: (String value) -> Int
   def on_int(value)
-    node =
-      Int.new(
-        value: value,
-        location: Location.token(line: lineno, char: char_pos, size: value.size)
-      )
-
-    tokens << node
-    node
+    Int.new(
+      value: value,
+      location: Location.token(line: lineno, char: char_pos, size: value.size)
+    )
   end
 
   # IVar represents an instance variable literal.
@@ -5353,9 +7042,13 @@ class SyntaxTree < Ripper
       []
     end
 
+    def format(q)
+      q.text(value)
+    end
+
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('ivar')
+      q.group(2, "(", ")") do
+        q.text("ivar")
 
         q.breakable
         q.pp(value)
@@ -5365,21 +7058,19 @@ class SyntaxTree < Ripper
     end
 
     def to_json(*opts)
-      { type: :ivar, value: value, loc: location, cmts: comments }.to_json(*opts)
+      { type: :ivar, value: value, loc: location, cmts: comments }.to_json(
+        *opts
+      )
     end
   end
 
   # :call-seq:
   #   on_ivar: (String value) -> IVar
   def on_ivar(value)
-    node =
-      IVar.new(
-        value: value,
-        location: Location.token(line: lineno, char: char_pos, size: value.size)
-      )
-
-    tokens << node
-    node
+    IVar.new(
+      value: value,
+      location: Location.token(line: lineno, char: char_pos, size: value.size)
+    )
   end
 
   # Kw represents the use of a keyword. It can be almost anywhere in the syntax
@@ -5415,9 +7106,13 @@ class SyntaxTree < Ripper
       []
     end
 
+    def format(q)
+      q.text(value)
+    end
+
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('kw')
+      q.group(2, "(", ")") do
+        q.text("kw")
 
         q.breakable
         q.pp(value)
@@ -5469,9 +7164,14 @@ class SyntaxTree < Ripper
       [name]
     end
 
+    def format(q)
+      q.text("**")
+      q.format(name) if name
+    end
+
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('kwrest_param')
+      q.group(2, "(", ")") do
+        q.text("kwrest_param")
 
         q.breakable
         q.pp(name)
@@ -5481,14 +7181,19 @@ class SyntaxTree < Ripper
     end
 
     def to_json(*opts)
-      { type: :kwrest_param, name: name, loc: location, cmts: comments }.to_json(*opts)
+      {
+        type: :kwrest_param,
+        name: name,
+        loc: location,
+        cmts: comments
+      }.to_json(*opts)
     end
   end
 
   # :call-seq:
   #   on_kwrest_param: ((nil | Ident) name) -> KwRestParam
   def on_kwrest_param(name)
-    location = find_token(Op, '**').location
+    location = find_token(Op, "**").location
     location = location.to(name.location) if name
 
     KwRestParam.new(name: name, location: location)
@@ -5527,12 +7232,16 @@ class SyntaxTree < Ripper
       []
     end
 
+    def format(q)
+      q.text(value)
+    end
+
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('label')
+      q.group(2, "(", ")") do
+        q.text("label")
 
         q.breakable
-        q.text(':')
+        q.text(":")
         q.text(value[0...-1])
 
         q.pp(Comment::List.new(comments))
@@ -5540,21 +7249,19 @@ class SyntaxTree < Ripper
     end
 
     def to_json(*opts)
-      { type: :label, value: value, loc: location, cmts: comments }.to_json(*opts)
+      { type: :label, value: value, loc: location, cmts: comments }.to_json(
+        *opts
+      )
     end
   end
 
   # :call-seq:
   #   on_label: (String value) -> Label
   def on_label(value)
-    node =
-      Label.new(
-        value: value,
-        location: Location.token(line: lineno, char: char_pos, size: value.size)
-      )
-
-    tokens << node
-    node
+    Label.new(
+      value: value,
+      location: Location.token(line: lineno, char: char_pos, size: value.size)
+    )
   end
 
   # LabelEnd represents the end of a dynamic symbol.
@@ -5618,9 +7325,42 @@ class SyntaxTree < Ripper
       [params, statements]
     end
 
+    def format(q)
+      q.group(0, "->") do
+        if params.is_a?(Paren)
+          q.format(params) unless params.contents.empty?
+        elsif !params.empty?
+          q.text("(")
+          q.format(params)
+          q.text(")")
+        end
+
+        q.text(" ")
+        q.if_break do
+          force_parens =
+            q.parents.any? do |node|
+              node.is_a?(Command) || node.is_a?(CommandCall)
+            end
+
+          q.text(force_parens ? "{" : "do")
+          q.indent do
+            q.breakable
+            q.format(statements)
+          end
+
+          q.breakable
+          q.text(force_parens ? "}" : "end")
+        end.if_flat do
+          q.text("{ ")
+          q.format(statements)
+          q.text(" }")
+        end
+      end
+    end
+
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('lambda')
+      q.group(2, "(", ")") do
+        q.text("lambda")
 
         q.breakable
         q.pp(params)
@@ -5655,8 +7395,8 @@ class SyntaxTree < Ripper
       opening = tokens.delete(token)
       closing = find_token(RBrace)
     else
-      opening = find_token(Kw, 'do')
-      closing = find_token(Kw, 'end')
+      opening = find_token(Kw, "do")
+      closing = find_token(Kw, "end")
     end
 
     statements.bind(opening.location.end_char, closing.location.start_char)
@@ -5689,9 +7429,13 @@ class SyntaxTree < Ripper
       []
     end
 
+    def format(q)
+      q.text(value)
+    end
+
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('lbrace')
+      q.group(2, "(", ")") do
+        q.text("lbrace")
 
         q.breakable
         q.pp(value)
@@ -5701,7 +7445,9 @@ class SyntaxTree < Ripper
     end
 
     def to_json(*opts)
-      { type: :lbrace, value: value, loc: location, cmts: comments }.to_json(*opts)
+      { type: :lbrace, value: value, loc: location, cmts: comments }.to_json(
+        *opts
+      )
     end
   end
 
@@ -5766,9 +7512,13 @@ class SyntaxTree < Ripper
       []
     end
 
+    def format(q)
+      q.text(value)
+    end
+
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('lparen')
+      q.group(2, "(", ")") do
+        q.text("lparen")
 
         q.breakable
         q.pp(value)
@@ -5778,7 +7528,9 @@ class SyntaxTree < Ripper
     end
 
     def to_json(*opts)
-      { type: :lparen, value: value, loc: location, cmts: comments }.to_json(*opts)
+      { type: :lparen, value: value, loc: location, cmts: comments }.to_json(
+        *opts
+      )
     end
   end
 
@@ -5814,7 +7566,7 @@ class SyntaxTree < Ripper
   #     first, = value
   #
   class MAssign
-    # [Mlhs | MlhsParen] the target of the multiple assignment
+    # [MLHS | MLHSParen] the target of the multiple assignment
     attr_reader :target
 
     # [untyped] the value being assigned
@@ -5837,9 +7589,24 @@ class SyntaxTree < Ripper
       [target, value]
     end
 
+    def format(q)
+      q.group do
+        q.group do
+          q.format(target)
+          q.text(",") if target.is_a?(MLHS) && target.comma
+        end
+
+        q.text(" =")
+        q.indent do
+          q.breakable
+          q.format(value)
+        end
+      end
+    end
+
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('massign')
+      q.group(2, "(", ")") do
+        q.text("massign")
 
         q.breakable
         q.pp(target)
@@ -5852,17 +7619,21 @@ class SyntaxTree < Ripper
     end
 
     def to_json(*opts)
-      { type: :massign, target: target, value: value, loc: location, cmts: comments }.to_json(
-        *opts
-      )
+      {
+        type: :massign,
+        target: target,
+        value: value,
+        loc: location,
+        cmts: comments
+      }.to_json(*opts)
     end
   end
 
   # :call-seq:
-  #   on_massign: ((Mlhs | MlhsParen) target, untyped value) -> MAssign
+  #   on_massign: ((MLHS | MLHSParen) target, untyped value) -> MAssign
   def on_massign(target, value)
     comma_range = target.location.end_char...value.location.start_char
-    target.comma = true if source[comma_range].strip.start_with?(',')
+    target.comma = true if source[comma_range].strip.start_with?(",")
 
     MAssign.new(
       target: target,
@@ -5910,9 +7681,15 @@ class SyntaxTree < Ripper
       [call, arguments]
     end
 
+    def format(q)
+      q.format(call)
+      q.text(" ") if !arguments.is_a?(ArgParen) && arguments.parts.any?
+      q.format(arguments)
+    end
+
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('method_add_arg')
+      q.group(2, "(", ")") do
+        q.text("method_add_arg")
 
         q.breakable
         q.pp(call)
@@ -5975,9 +7752,14 @@ class SyntaxTree < Ripper
       [call, block]
     end
 
+    def format(q)
+      q.format(call)
+      q.format(block)
+    end
+
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('method_add_block')
+      q.group(2, "(", ")") do
+        q.text("method_add_block")
 
         q.breakable
         q.pp(call)
@@ -6019,7 +7801,7 @@ class SyntaxTree < Ripper
   #     first, second, third = value
   #
   class MLHS
-    # Array[ARefField | ArgStar | Field | Ident | MlhsParen | VarField] the
+    # Array[ARefField | ArgStar | Field | Ident | MLHSParen | VarField] the
     # parts of the left-hand side of a multiple assignment
     attr_reader :parts
 
@@ -6027,6 +7809,7 @@ class SyntaxTree < Ripper
     # list, which impacts destructuring. It's an attr_accessor so that while
     # the syntax tree is being built it can be set by its parent node
     attr_accessor :comma
+    alias comma? comma
 
     # [Location] the location of this node
     attr_reader :location
@@ -6045,26 +7828,36 @@ class SyntaxTree < Ripper
       parts
     end
 
+    def format(q)
+      q.seplist(parts) { |part| q.format(part) }
+    end
+
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('mlhs')
+      q.group(2, "(", ")") do
+        q.text("mlhs")
 
         q.breakable
-        q.group(2, '(', ')') { q.seplist(parts) { |part| q.pp(part) } }
+        q.group(2, "(", ")") { q.seplist(parts) { |part| q.pp(part) } }
 
         q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :mlhs, parts: parts, comma: comma, loc: location, cmts: comments }.to_json(*opts)
+      {
+        type: :mlhs,
+        parts: parts,
+        comma: comma,
+        loc: location,
+        cmts: comments
+      }.to_json(*opts)
     end
   end
 
   # :call-seq:
   #   on_mlhs_add: (
   #     MLHS mlhs,
-  #     (ARefField | Field | Ident | MlhsParen | VarField) part
+  #     (ARefField | Field | Ident | MLHSParen | VarField) part
   #   ) -> MLHS
   def on_mlhs_add(mlhs, part)
     location =
@@ -6088,7 +7881,7 @@ class SyntaxTree < Ripper
   #     (nil | ARefField | Field | Ident | VarField) part
   #   ) -> MLHS
   def on_mlhs_add_star(mlhs, part)
-    beginning = find_token(Op, '*')
+    beginning = find_token(Op, "*")
     ending = part || beginning
 
     location = beginning.location.to(ending.location)
@@ -6110,7 +7903,7 @@ class SyntaxTree < Ripper
   #     (left, right) = value
   #
   class MLHSParen
-    # [Mlhs | MlhsParen] the contents inside of the parentheses
+    # [MLHS | MLHSParen] the contents inside of the parentheses
     attr_reader :contents
 
     # [Location] the location of this node
@@ -6129,9 +7922,27 @@ class SyntaxTree < Ripper
       [contents]
     end
 
+    def format(q)
+      parent = q.parent
+
+      if parent.is_a?(MAssign) || parent.is_a?(MLHSParen)
+        q.format(contents)
+      else
+        q.group(0, "(", ")") do
+          q.indent do
+            q.breakable("")
+            q.format(contents)
+            q.text(",") if contents.is_a?(MLHS) && contents.comma?
+          end
+
+          q.breakable("")
+        end
+      end
+    end
+
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('mlhs_paren')
+      q.group(2, "(", ")") do
+        q.text("mlhs_paren")
 
         q.breakable
         q.pp(contents)
@@ -6141,18 +7952,23 @@ class SyntaxTree < Ripper
     end
 
     def to_json(*opts)
-      { type: :mlhs_paren, cnts: contents, loc: location, cmts: comments }.to_json(*opts)
+      {
+        type: :mlhs_paren,
+        cnts: contents,
+        loc: location,
+        cmts: comments
+      }.to_json(*opts)
     end
   end
 
   # :call-seq:
-  #   on_mlhs_paren: ((Mlhs | MlhsParen) contents) -> MLHSParen
+  #   on_mlhs_paren: ((MLHS | MLHSParen) contents) -> MLHSParen
   def on_mlhs_paren(contents)
     lparen = find_token(LParen)
     rparen = find_token(RParen)
 
     comma_range = lparen.location.end_char...rparen.location.start_char
-    contents.comma = true if source[comma_range].strip.end_with?(',')
+    contents.comma = true if source[comma_range].strip.end_with?(",")
 
     MLHSParen.new(
       contents: contents,
@@ -6189,9 +8005,38 @@ class SyntaxTree < Ripper
       [constant, bodystmt]
     end
 
+    def format(q)
+      declaration = -> do
+        q.group do
+          q.text("module ")
+          q.format(constant)
+        end
+      end
+
+      if bodystmt.empty?
+        q.group do
+          declaration.call
+          q.breakable(force: true)
+          q.text("end")
+        end
+      else
+        q.group do
+          declaration.call
+
+          q.indent do
+            q.breakable(force: true)
+            q.format(bodystmt)
+          end
+
+          q.breakable(force: true)
+          q.text("end")
+        end
+      end
+    end
+
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('module')
+      q.group(2, "(", ")") do
+        q.text("module")
 
         q.breakable
         q.pp(constant)
@@ -6220,8 +8065,8 @@ class SyntaxTree < Ripper
   #     BodyStmt bodystmt
   #   ) -> ModuleDeclaration
   def on_module(constant, bodystmt)
-    beginning = find_token(Kw, 'module')
-    ending = find_token(Kw, 'end')
+    beginning = find_token(Kw, "module")
+    ending = find_token(Kw, "end")
 
     bodystmt.bind(
       find_next_statement_start(constant.location.end_char),
@@ -6260,19 +8105,25 @@ class SyntaxTree < Ripper
       parts
     end
 
+    def format(q)
+      q.seplist(parts) { |part| q.format(part) }
+    end
+
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('mrhs')
+      q.group(2, "(", ")") do
+        q.text("mrhs")
 
         q.breakable
-        q.group(2, '(', ')') { q.seplist(parts) { |part| q.pp(part) } }
+        q.group(2, "(", ")") { q.seplist(parts) { |part| q.pp(part) } }
 
         q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :mrhs, parts: parts, loc: location, cmts: comments }.to_json(*opts)
+      { type: :mrhs, parts: parts, loc: location, cmts: comments }.to_json(
+        *opts
+      )
     end
   end
 
@@ -6298,7 +8149,7 @@ class SyntaxTree < Ripper
   # :call-seq:
   #   on_mrhs_add_star: (MRHS mrhs, untyped value) -> MRHS
   def on_mrhs_add_star(mrhs, value)
-    beginning = find_token(Op, '*')
+    beginning = find_token(Op, "*")
     ending = value || beginning
 
     arg_star =
@@ -6360,9 +8211,13 @@ class SyntaxTree < Ripper
       [arguments]
     end
 
+    def format(q)
+      FlowControlFormatter.new("next", self).format(q)
+    end
+
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('next')
+      q.group(2, "(", ")") do
+        q.text("next")
 
         q.breakable
         q.pp(arguments)
@@ -6372,14 +8227,16 @@ class SyntaxTree < Ripper
     end
 
     def to_json(*opts)
-      { type: :next, args: arguments, loc: location, cmts: comments }.to_json(*opts)
+      { type: :next, args: arguments, loc: location, cmts: comments }.to_json(
+        *opts
+      )
     end
   end
 
   # :call-seq:
   #   on_next: (Args arguments) -> Next
   def on_next(arguments)
-    keyword = find_token(Kw, 'next')
+    keyword = find_token(Kw, "next")
 
     location = keyword.location
     location = location.to(arguments.location) if arguments.parts.any?
@@ -6420,9 +8277,13 @@ class SyntaxTree < Ripper
       []
     end
 
+    def format(q)
+      q.text(value)
+    end
+
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('op')
+      q.group(2, "(", ")") do
+        q.text("op")
 
         q.breakable
         q.pp(value)
@@ -6483,9 +8344,21 @@ class SyntaxTree < Ripper
       [target, operator, value]
     end
 
+    def format(q)
+      q.group do
+        q.format(target)
+        q.text(" ")
+        q.format(operator)
+        q.indent do
+          q.breakable
+          q.format(value)
+        end
+      end
+    end
+
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('opassign')
+      q.group(2, "(", ")") do
+        q.text("opassign")
 
         q.breakable
         q.pp(target)
@@ -6536,6 +8409,76 @@ class SyntaxTree < Ripper
   #     def method(param) end
   #
   class Params
+    class OptionalFormatter
+      # [Ident] the name of the parameter
+      attr_reader :name
+
+      # [untyped] the value of the parameter
+      attr_reader :value
+
+      def initialize(name, value)
+        @name = name
+        @value = value
+      end
+
+      def comments
+        []
+      end
+
+      def format(q)
+        q.format(name)
+        q.text(" = ")
+        q.format(value)
+      end
+    end
+
+    class KeywordFormatter
+      # [Ident] the name of the parameter
+      attr_reader :name
+
+      # [nil | untyped] the value of the parameter
+      attr_reader :value
+
+      def initialize(name, value)
+        @name = name
+        @value = value
+      end
+
+      def comments
+        []
+      end
+
+      def format(q)
+        q.format(name)
+
+        if value
+          q.text(" ")
+          q.format(value)
+        end
+      end
+    end
+
+    class KeywordRestFormatter
+      # [:nil | KwRestParam] the value of the parameter
+      attr_reader :value
+
+      def initialize(value)
+        @value = value
+      end
+
+      def comments
+        []
+      end
+
+      def format(q)
+        if value == :nil
+          q.text("**nil")
+        else
+          q.format(value)
+        end
+      end
+    end
+
     # [Array[ Ident ]] any required parameters
     attr_reader :requireds
 
@@ -6567,7 +8510,17 @@ class SyntaxTree < Ripper
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(requireds: [], optionals: [], rest: nil, posts: [], keywords: [], keyword_rest: nil, block: nil, location:, comments: [])
+    def initialize(
+      requireds: [],
+      optionals: [],
+      rest: nil,
+      posts: [],
+      keywords: [],
+      keyword_rest: nil,
+      block: nil,
+      location:,
+      comments: []
+    )
       @requireds = requireds
       @optionals = optionals
       @rest = rest
@@ -6585,7 +8538,9 @@ class SyntaxTree < Ripper
     # it's missing.
     def empty?
       requireds.empty? && optionals.empty? && !rest && posts.empty? &&
-        keywords.empty? && !keyword_rest && !block
+        keywords.empty? &&
+        !keyword_rest &&
+        !block
     end
 
     def child_nodes
@@ -6600,23 +8555,45 @@ class SyntaxTree < Ripper
       ]
     end
 
+    def format(q)
+      parts = [
+        *requireds,
+        *optionals.map { |(name, value)| OptionalFormatter.new(name, value) }
+      ]
+
+      parts << rest if rest && !rest.is_a?(ExcessedComma)
+      parts +=
+        [
+          *posts,
+          *keywords.map { |(name, value)| KeywordFormatter.new(name, value) }
+        ]
+
+      parts << KeywordRestFormatter.new(keyword_rest) if keyword_rest
+      parts << block if block
+
+      q.nest(0) do
+        q.seplist(parts) { |part| q.format(part) }
+        q.format(rest) if rest && rest.is_a?(ExcessedComma)
+      end
+    end
+
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('params')
+      q.group(2, "(", ")") do
+        q.text("params")
 
         if requireds.any?
           q.breakable
-          q.group(2, '(', ')') { q.seplist(requireds) { |name| q.pp(name) } }
+          q.group(2, "(", ")") { q.seplist(requireds) { |name| q.pp(name) } }
         end
 
         if optionals.any?
           q.breakable
-          q.group(2, '(', ')') do
+          q.group(2, "(", ")") do
             q.seplist(optionals) do |(name, default)|
               q.pp(name)
-              q.text('=')
+              q.text("=")
               q.group(2) do
-                q.breakable('')
+                q.breakable("")
                 q.pp(default)
               end
             end
@@ -6630,19 +8607,19 @@ class SyntaxTree < Ripper
 
         if posts.any?
           q.breakable
-          q.group(2, '(', ')') { q.seplist(posts) { |value| q.pp(value) } }
+          q.group(2, "(", ")") { q.seplist(posts) { |value| q.pp(value) } }
         end
 
         if keywords.any?
           q.breakable
-          q.group(2, '(', ')') do
+          q.group(2, "(", ")") do
             q.seplist(keywords) do |(name, default)|
               q.pp(name)
 
               if default
-                q.text('=')
+                q.text("=")
                 q.group(2) do
-                  q.breakable('')
+                  q.breakable("")
                   q.pp(default)
                 end
               end
@@ -6690,16 +8667,25 @@ class SyntaxTree < Ripper
   #     (nil | :nil | KwRestParam) keyword_rest,
   #     (nil | BlockArg) block
   #   ) -> Params
-  def on_params(requireds, optionals, rest, posts, keywords, keyword_rest, block)
-    parts = [
-      *requireds,
-      *optionals&.flatten(1),
-      rest,
-      *posts,
-      *keywords&.flat_map { |(key, value)| [key, value || nil] },
-      (keyword_rest if keyword_rest != :nil),
-      block
-    ].compact
+  def on_params(
+    requireds,
+    optionals,
+    rest,
+    posts,
+    keywords,
+    keyword_rest,
+    block
+  )
+    parts =
+      [
+        *requireds,
+        *optionals&.flatten(1),
+        rest,
+        *posts,
+        *keywords&.flat_map { |(key, value)| [key, value || nil] },
+        (keyword_rest if keyword_rest != :nil),
+        block
+      ].compact
 
     location =
       if parts.any?
@@ -6750,9 +8736,25 @@ class SyntaxTree < Ripper
       [lparen, contents]
     end
 
+    def format(q)
+      q.group do
+        q.format(lparen)
+
+        if !contents.is_a?(Params) || !contents.empty?
+          q.indent do
+            q.breakable("")
+            q.format(contents)
+          end
+        end
+
+        q.breakable("")
+        q.text(")")
+      end
+    end
+
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('paren')
+      q.group(2, "(", ")") do
+        q.text("paren")
 
         q.breakable
         q.pp(contents)
@@ -6762,9 +8764,13 @@ class SyntaxTree < Ripper
     end
 
     def to_json(*opts)
-      { type: :paren, lparen: lparen, cnts: contents, loc: location, cmts: comments }.to_json(
-        *opts
-      )
+      {
+        type: :paren,
+        lparen: lparen,
+        cnts: contents,
+        loc: location,
+        cmts: comments
+      }.to_json(*opts)
     end
   end
 
@@ -6836,9 +8842,13 @@ class SyntaxTree < Ripper
       []
     end
 
+    def format(q)
+      q.text(value)
+    end
+
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('period')
+      q.group(2, "(", ")") do
+        q.text("period")
 
         q.breakable
         q.pp(value)
@@ -6848,7 +8858,9 @@ class SyntaxTree < Ripper
     end
 
     def to_json(*opts)
-      { type: :period, value: value, loc: location, cmts: comments }.to_json(*opts)
+      { type: :period, value: value, loc: location, cmts: comments }.to_json(
+        *opts
+      )
     end
   end
 
@@ -6882,9 +8894,14 @@ class SyntaxTree < Ripper
       [statements]
     end
 
+    def format(q)
+      q.format(statements)
+      q.breakable(force: true)
+    end
+
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('program')
+      q.group(2, "(", ")") do
+        q.text("program")
 
         q.breakable
         q.pp(statements)
@@ -6932,24 +8949,28 @@ class SyntaxTree < Ripper
 
       if comment.inline?
         if preceding
-          preceding.comments << comment # leading: false, trailing: true
+          preceding.comments << comment
+          comment.trailing!
         elsif following
-          following.comments << comment # leading: true, trailing: false
+          following.comments << comment
+          comment.leading!
         elsif enclosing
-          enclosing.comments << comment # leading: false, trailing: false
+          enclosing.comments << comment
         else
-          node.comments << comment # leading: false, trailing: false
+          program.comments << comment
         end
       else
         # If a comment exists on its own line, prefer a leading comment.
         if following
-          following.comments << comment # leading: true, trailing: false
+          following.comments << comment
+          comment.leading!
         elsif preceding
-          preceding.comments << comment # leading: false, trailing: true
+          preceding.comments << comment
+          comment.trailing!
         elsif enclosing
-          enclosing.comments << comment # leading: false, trailing: false
+          enclosing.comments << comment
         else
-          node.comments << comment # leading: false, trailing: false
+          program.comments << comment
         end
       end
     end
@@ -6961,7 +8982,7 @@ class SyntaxTree < Ripper
     comment_start = comment.location.start_char
     comment_end = comment.location.end_char
 
-    child_nodes = node.child_nodes
+    child_nodes = node.child_nodes.compact
     preceding = nil
     following = nil
 
@@ -7003,7 +9024,7 @@ class SyntaxTree < Ripper
       end
 
       # This should only happen if there is a bug in this parser.
-      raise 'Comment location overlaps with node location'
+      raise "Comment location overlaps with node location"
     end
 
     [preceding, node, following]
@@ -7033,19 +9054,36 @@ class SyntaxTree < Ripper
       []
     end
 
+    def format(q)
+      q.group(0, "%i[", "]") do
+        q.indent do
+          q.breakable("")
+          q.seplist(elements, -> { q.breakable }) do |element|
+            q.format(element)
+          end
+        end
+        q.breakable("")
+      end
+    end
+
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('qsymbols')
+      q.group(2, "(", ")") do
+        q.text("qsymbols")
 
         q.breakable
-        q.group(2, '(', ')') { q.seplist(elements) { |element| q.pp(element) } }
+        q.group(2, "(", ")") { q.seplist(elements) { |element| q.pp(element) } }
 
         q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :qsymbols, elems: elements, loc: location, cmts: comments }.to_json(*opts)
+      {
+        type: :qsymbols,
+        elems: elements,
+        loc: location,
+        cmts: comments
+      }.to_json(*opts)
     end
   end
 
@@ -7123,19 +9161,33 @@ class SyntaxTree < Ripper
       []
     end
 
+    def format(q)
+      q.group(0, "%w[", "]") do
+        q.indent do
+          q.breakable("")
+          q.seplist(elements, -> { q.breakable }) do |element|
+            q.format(element)
+          end
+        end
+        q.breakable("")
+      end
+    end
+
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('qwords')
+      q.group(2, "(", ")") do
+        q.text("qwords")
 
         q.breakable
-        q.group(2, '(', ')') { q.seplist(elements) { |element| q.pp(element) } }
+        q.group(2, "(", ")") { q.seplist(elements) { |element| q.pp(element) } }
 
         q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :qwords, elems: elements, loc: location, cmts: comments }.to_json(*opts)
+      { type: :qwords, elems: elements, loc: location, cmts: comments }.to_json(
+        *opts
+      )
     end
   end
 
@@ -7213,9 +9265,13 @@ class SyntaxTree < Ripper
       []
     end
 
+    def format(q)
+      q.text(value)
+    end
+
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('rational')
+      q.group(2, "(", ")") do
+        q.text("rational")
 
         q.breakable
         q.pp(value)
@@ -7225,21 +9281,19 @@ class SyntaxTree < Ripper
     end
 
     def to_json(*opts)
-      { type: :rational, value: value, loc: location, cmts: comments }.to_json(*opts)
+      { type: :rational, value: value, loc: location, cmts: comments }.to_json(
+        *opts
+      )
     end
   end
 
   # :call-seq:
   #   on_rational: (String value) -> RationalLiteral
   def on_rational(value)
-    node =
-      RationalLiteral.new(
-        value: value,
-        location: Location.token(line: lineno, char: char_pos, size: value.size)
-      )
-
-    tokens << node
-    node
+    RationalLiteral.new(
+      value: value,
+      location: Location.token(line: lineno, char: char_pos, size: value.size)
+    )
   end
 
   # RBrace represents the use of a right brace, i.e., +++.
@@ -7320,9 +9374,13 @@ class SyntaxTree < Ripper
       []
     end
 
+    def format(q)
+      q.text(value)
+    end
+
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('redo')
+      q.group(2, "(", ")") do
+        q.text("redo")
 
         q.breakable
         q.pp(value)
@@ -7332,14 +9390,16 @@ class SyntaxTree < Ripper
     end
 
     def to_json(*opts)
-      { type: :redo, value: value, loc: location, cmts: comments }.to_json(*opts)
+      { type: :redo, value: value, loc: location, cmts: comments }.to_json(
+        *opts
+      )
     end
   end
 
   # :call-seq:
   #   on_redo: () -> Redo
   def on_redo
-    keyword = find_token(Kw, 'redo')
+    keyword = find_token(Kw, "redo")
 
     Redo.new(value: keyword.value, location: keyword.location)
   end
@@ -7481,12 +9541,31 @@ class SyntaxTree < Ripper
       parts
     end
 
+    def format(q)
+      braces = ambiguous?(q) || include?(%r{\/})
+
+      if braces && include?(/[{}]/)
+        q.group do
+          q.text(beginning)
+          q.format_each(parts)
+          q.text(ending)
+        end
+      else
+        q.group do
+          q.text(braces ? "%r{" : "/")
+          q.format_each(parts)
+          q.text(braces ? "}" : "/")
+          q.text(ending[1..-1])
+        end
+      end
+    end
+
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('regexp_literal')
+      q.group(2, "(", ")") do
+        q.text("regexp_literal")
 
         q.breakable
-        q.group(2, '(', ')') { q.seplist(parts) { |part| q.pp(part) } }
+        q.group(2, "(", ")") { q.seplist(parts) { |part| q.pp(part) } }
 
         q.pp(Comment::List.new(comments))
       end
@@ -7501,6 +9580,26 @@ class SyntaxTree < Ripper
         loc: location,
         cmts: comments
       }.to_json(*opts)
+    end
+
+    private
+
+    def include?(pattern)
+      parts.any? do |part|
+        part.is_a?(TStringContent) && part.value.match?(pattern)
+      end
+    end
+
+    # If the first part of this regex is plain string content, we have a space
+    # or an =, and we're contained within a command or command_call node, then
+    # we want to use braces because otherwise we could end up with an ambiguous
+    # operator, e.g. foo / bar/ or foo /=bar/
+    def ambiguous?(q)
+      return false if parts.empty?
+      part = parts.first
+
+      part.is_a?(TStringContent) && part.value.start_with?(" ", "=") &&
+        q.parents.any? { |node| node.is_a?(Command) || node.is_a?(CommandCall) }
     end
   end
 
@@ -7561,9 +9660,23 @@ class SyntaxTree < Ripper
       [*exceptions, variable]
     end
 
+    def format(q)
+      q.group do
+        if exceptions
+          q.text(" ")
+          q.format(exceptions)
+        end
+
+        if variable
+          q.text(" => ")
+          q.format(variable)
+        end
+      end
+    end
+
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('rescue_ex')
+      q.group(2, "(", ")") do
+        q.text("rescue_ex")
 
         q.breakable
         q.pp(exceptions)
@@ -7608,7 +9721,13 @@ class SyntaxTree < Ripper
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(exception:, statements:, consequent:, location:, comments: [])
+    def initialize(
+      exception:,
+      statements:,
+      consequent:,
+      location:,
+      comments: []
+    )
       @exception = exception
       @statements = statements
       @consequent = consequent
@@ -7637,9 +9756,33 @@ class SyntaxTree < Ripper
       [exception, statements, consequent]
     end
 
+    def format(q)
+      q.group do
+        q.text("rescue")
+
+        if exception
+          q.nest("rescue ".length) { q.format(exception) }
+        else
+          q.text(" StandardError")
+        end
+
+        unless statements.empty?
+          q.indent do
+            q.breakable(force: true)
+            q.format(statements)
+          end
+        end
+
+        if consequent
+          q.breakable(force: true)
+          q.format(consequent)
+        end
+      end
+    end
+
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('rescue')
+      q.group(2, "(", ")") do
+        q.text("rescue")
 
         if exception
           q.breakable
@@ -7678,7 +9821,7 @@ class SyntaxTree < Ripper
   #     (nil | Rescue) consequent
   #   ) -> Rescue
   def on_rescue(exceptions, variable, statements, consequent)
-    keyword = find_token(Kw, 'rescue')
+    keyword = find_token(Kw, "rescue")
     exceptions = exceptions[0] if exceptions.is_a?(Array)
 
     last_node = variable || exceptions || keyword
@@ -7747,9 +9890,25 @@ class SyntaxTree < Ripper
       [statement, value]
     end
 
+    def format(q)
+      q.group(0, "begin", "end") do
+        q.indent do
+          q.breakable(force: true)
+          q.format(statement)
+        end
+        q.breakable(force: true)
+        q.text("rescue StandardError")
+        q.indent do
+          q.breakable(force: true)
+          q.format(value)
+        end
+        q.breakable(force: true)
+      end
+    end
+
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('rescue_mod')
+      q.group(2, "(", ")") do
+        q.text("rescue_mod")
 
         q.breakable
         q.pp(statement)
@@ -7775,7 +9934,7 @@ class SyntaxTree < Ripper
   # :call-seq:
   #   on_rescue_mod: (untyped statement, untyped value) -> RescueMod
   def on_rescue_mod(statement, value)
-    find_token(Kw, 'rescue')
+    find_token(Kw, "rescue")
 
     RescueMod.new(
       statement: statement,
@@ -7809,9 +9968,14 @@ class SyntaxTree < Ripper
       [name]
     end
 
+    def format(q)
+      q.text("*")
+      q.format(name) if name
+    end
+
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('rest_param')
+      q.group(2, "(", ")") do
+        q.text("rest_param")
 
         q.breakable
         q.pp(name)
@@ -7821,14 +9985,16 @@ class SyntaxTree < Ripper
     end
 
     def to_json(*opts)
-      { type: :rest_param, name: name, loc: location, cmts: comments }.to_json(*opts)
+      { type: :rest_param, name: name, loc: location, cmts: comments }.to_json(
+        *opts
+      )
     end
   end
 
   # :call-seq:
   #   on_rest_param: ((nil | Ident) name) -> RestParam
   def on_rest_param(name)
-    location = find_token(Op, '*').location
+    location = find_token(Op, "*").location
     location = location.to(name.location) if name
 
     RestParam.new(name: name, location: location)
@@ -7858,9 +10024,13 @@ class SyntaxTree < Ripper
       []
     end
 
+    def format(q)
+      q.text(value)
+    end
+
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('retry')
+      q.group(2, "(", ")") do
+        q.text("retry")
 
         q.breakable
         q.pp(value)
@@ -7870,14 +10040,16 @@ class SyntaxTree < Ripper
     end
 
     def to_json(*opts)
-      { type: :retry, value: value, loc: location, cmts: comments }.to_json(*opts)
+      { type: :retry, value: value, loc: location, cmts: comments }.to_json(
+        *opts
+      )
     end
   end
 
   # :call-seq:
   #   on_retry: () -> Retry
   def on_retry
-    keyword = find_token(Kw, 'retry')
+    keyword = find_token(Kw, "retry")
 
     Retry.new(value: keyword.value, location: keyword.location)
   end
@@ -7906,9 +10078,13 @@ class SyntaxTree < Ripper
       [arguments]
     end
 
+    def format(q)
+      FlowControlFormatter.new("return", self).format(q)
+    end
+
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('return')
+      q.group(2, "(", ")") do
+        q.text("return")
 
         q.breakable
         q.pp(arguments)
@@ -7918,14 +10094,16 @@ class SyntaxTree < Ripper
     end
 
     def to_json(*opts)
-      { type: :return, args: arguments, loc: location, cmts: comments }.to_json(*opts)
+      { type: :return, args: arguments, loc: location, cmts: comments }.to_json(
+        *opts
+      )
     end
   end
 
   # :call-seq:
   #   on_return: (Args arguments) -> Return
   def on_return(arguments)
-    keyword = find_token(Kw, 'return')
+    keyword = find_token(Kw, "return")
 
     Return.new(
       arguments: arguments,
@@ -7957,9 +10135,13 @@ class SyntaxTree < Ripper
       []
     end
 
+    def format(q)
+      q.text(value)
+    end
+
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('return0')
+      q.group(2, "(", ")") do
+        q.text("return0")
 
         q.breakable
         q.pp(value)
@@ -7969,14 +10151,16 @@ class SyntaxTree < Ripper
     end
 
     def to_json(*opts)
-      { type: :return0, value: value, loc: location, cmts: comments }.to_json(*opts)
+      { type: :return0, value: value, loc: location, cmts: comments }.to_json(
+        *opts
+      )
     end
   end
 
   # :call-seq:
   #   on_return0: () -> Return0
   def on_return0
-    keyword = find_token(Kw, 'return')
+    keyword = find_token(Kw, "return")
 
     Return0.new(value: keyword.value, location: keyword.location)
   end
@@ -8039,9 +10223,20 @@ class SyntaxTree < Ripper
       [target, bodystmt]
     end
 
+    def format(q)
+      q.group(0, "class << ", "end") do
+        q.format(target)
+        q.indent do
+          q.breakable(force: true)
+          q.format(bodystmt)
+        end
+        q.breakable(force: true)
+      end
+    end
+
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('sclass')
+      q.group(2, "(", ")") do
+        q.text("sclass")
 
         q.breakable
         q.pp(target)
@@ -8067,8 +10262,8 @@ class SyntaxTree < Ripper
   # :call-seq:
   #   on_sclass: (untyped target, BodyStmt bodystmt) -> SClass
   def on_sclass(target, bodystmt)
-    beginning = find_token(Kw, 'class')
-    ending = find_token(Kw, 'end')
+    beginning = find_token(Kw, "class")
+    ending = find_token(Kw, "end")
 
     bodystmt.bind(
       find_next_statement_start(target.location.end_char),
@@ -8095,7 +10290,14 @@ class SyntaxTree < Ripper
   # parent stmts node as well as an stmt which can be any expression in
   # Ruby.
   def on_stmts_add(statements, statement)
-    statements << statement
+    location =
+      if statements.body.empty?
+        statement.location
+      else
+        statements.location.to(statement.location)
+      end
+
+    Statements.new(self, body: statements.body << statement, location: location)
   end
 
   # Everything that has a block of code inside of it has a list of statements.
@@ -8106,7 +10308,7 @@ class SyntaxTree < Ripper
   # propagate that onto void_stmt nodes inside the stmts in order to make sure
   # all comments get printed appropriately.
   class Statements
-    # [SyntaxTree] the parser that created this node
+    # [SyntaxTree] the parser that is generating this node
     attr_reader :parser
 
     # [Array[ untyped ]] the list of expressions contained within this node
@@ -8118,7 +10320,7 @@ class SyntaxTree < Ripper
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(parser:, body:, location:, comments: [])
+    def initialize(parser, body:, location:, comments: [])
       @parser = parser
       @body = body
       @location = location
@@ -8160,21 +10362,60 @@ class SyntaxTree < Ripper
         )
     end
 
-    def <<(statement)
-      @location =
-        body.any? ? location.to(statement.location) : statement.location
-
-      body << statement
-      self
+    def empty?
+      body.all? do |statement|
+        statement.is_a?(VoidStmt) && statement.comments.empty?
+      end
     end
 
     def child_nodes
       body
     end
 
+    def format(q)
+      line = nil
+
+      # This handles a special case where you've got a block of statements where
+      # the only value is a comment. In that case a lot of nodes like
+      # brace_block will attempt to format as a single line, but since that
+      # wouldn't work with a comment, we intentionally break the parent group.
+      if body.length == 2 && body.first.is_a?(VoidStmt)
+        q.format(body.last)
+        q.break_parent
+        return
+      end
+
+      body.each_with_index do |statement, index|
+        next if statement.is_a?(VoidStmt)
+
+        if line.nil?
+          q.format(statement)
+        elsif (statement.location.start_line - line) > 1
+          q.breakable(force: true)
+          q.breakable(force: true)
+          q.format(statement)
+        elsif statement.is_a?(AccessCtrl) || body[index - 1].is_a?(AccessCtrl)
+          q.breakable(force: true)
+          q.breakable(force: true)
+          q.format(statement)
+        elsif statement.location.start_line != line
+          q.breakable(force: true)
+          q.format(statement)
+        elsif !q.parent.is_a?(StringEmbExpr)
+          q.breakable(force: true)
+          q.format(statement)
+        else
+          q.text("; ")
+          q.format(statement)
+        end
+
+        line = statement.location.end_line
+      end
+    end
+
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('statements')
+      q.group(2, "(", ")") do
+        q.text("statements")
 
         q.breakable
         q.seplist(body) { |statement| q.pp(statement) }
@@ -8184,23 +10425,43 @@ class SyntaxTree < Ripper
     end
 
     def to_json(*opts)
-      { type: :statements, body: body, loc: location, cmts: comments }.to_json(*opts)
+      { type: :statements, body: body, loc: location, cmts: comments }.to_json(
+        *opts
+      )
     end
 
     private
 
+    # As efficiently as possible, gather up all of the comments that have been
+    # found while this statements list was being parsed and add them into the
+    # body.
     def attach_comments(start_char, end_char)
-      attachable =
-        parser.comments.select do |comment|
-          !comment.inline? && start_char <= comment.location.start_char &&
-            end_char >= comment.location.end_char &&
-            !comment.value.include?('prettier-ignore')
+      parser_comments = parser.comments
+
+      comment_index = 0
+      body_index = 0
+
+      while comment_index < parser_comments.size
+        comment = parser_comments[comment_index]
+        location = comment.location
+
+        if !comment.inline? && (start_char <= location.start_char) &&
+             (end_char >= location.end_char)
+          parser_comments.delete_at(comment_index)
+
+          while (node = body[body_index]) &&
+                  (
+                    node.is_a?(VoidStmt) ||
+                      node.location.start_char < location.start_char
+                  )
+            body_index += 1
+          end
+
+          body.insert(body_index, comment)
+        else
+          comment_index += 1
         end
-
-      return if attachable.empty?
-
-      parser.comments -= attachable
-      @body = (body + attachable).sort_by! { |node| node.location.start_char }
+      end
     end
   end
 
@@ -8208,7 +10469,7 @@ class SyntaxTree < Ripper
   #   on_stmts_new: () -> Statements
   def on_stmts_new
     Statements.new(
-      parser: self,
+      self,
       body: [],
       location: Location.fixed(line: lineno, char: char_pos)
     )
@@ -8274,9 +10535,20 @@ class SyntaxTree < Ripper
       [left, right]
     end
 
+    def format(q)
+      q.group do
+        q.format(left)
+        q.text(' \\')
+        q.indent do
+          q.breakable(force: true)
+          q.format(right)
+        end
+      end
+    end
+
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('string_concat')
+      q.group(2, "(", ")") do
+        q.text("string_concat")
 
         q.breakable
         q.pp(left)
@@ -8289,9 +10561,13 @@ class SyntaxTree < Ripper
     end
 
     def to_json(*opts)
-      { type: :string_concat, left: left, right: right, loc: location, cmts: comments }.to_json(
-        *opts
-      )
+      {
+        type: :string_concat,
+        left: left,
+        right: right,
+        loc: location,
+        cmts: comments
+      }.to_json(*opts)
     end
   end
 
@@ -8343,9 +10619,15 @@ class SyntaxTree < Ripper
       [variable]
     end
 
+    def format(q)
+      q.text('#{')
+      q.format(variable)
+      q.text("}")
+    end
+
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('string_dvar')
+      q.group(2, "(", ")") do
+        q.text("string_dvar")
 
         q.breakable
         q.pp(variable)
@@ -8355,7 +10637,12 @@ class SyntaxTree < Ripper
     end
 
     def to_json(*opts)
-      { type: :string_dvar, var: variable, loc: location, cmts: comments }.to_json(*opts)
+      {
+        type: :string_dvar,
+        var: variable,
+        loc: location,
+        cmts: comments
+      }.to_json(*opts)
     end
   end
 
@@ -8394,11 +10681,32 @@ class SyntaxTree < Ripper
 
     def child_nodes
       [statements]
-    end 
+    end
+
+    def format(q)
+      if location.start_line == location.end_line
+        # If the contents of this embedded expression were originally on the
+        # same line in the source, then we're going to leave them in place and
+        # assume that's the way the developer wanted this expression
+        # represented.
+        doc = q.group(0, '#{', "}") { q.format(statements) }
+        RemoveBreaks.call(doc)
+      else
+        q.group do
+          q.text('#{')
+          q.indent do
+            q.breakable("")
+            q.format(statements)
+          end
+          q.breakable("")
+          q.text("}")
+        end
+      end
+    end
 
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('string_embexpr')
+      q.group(2, "(", ")") do
+        q.text("string_embexpr")
 
         q.breakable
         q.pp(statements)
@@ -8408,7 +10716,12 @@ class SyntaxTree < Ripper
     end
 
     def to_json(*opts)
-      { type: :string_embexpr, stmts: statements, loc: location, cmts: comments }.to_json(*opts)
+      {
+        type: :string_embexpr,
+        stmts: statements,
+        loc: location,
+        cmts: comments
+      }.to_json(*opts)
     end
   end
 
@@ -8458,12 +10771,42 @@ class SyntaxTree < Ripper
       parts
     end
 
+    def format(q)
+      if parts.empty?
+        q.text("#{q.quote}#{q.quote}")
+        return
+      end
+
+      opening_quote, closing_quote =
+        if !Quotes.locked?(self)
+          [q.quote, q.quote]
+        elsif quote.start_with?("%")
+          [quote, Quotes.matching(quote[/%[qQ]?(.)/, 1])]
+        else
+          [quote, quote]
+        end
+
+      q.group(0, opening_quote, closing_quote) do
+        parts.each do |part|
+          if part.is_a?(TStringContent)
+            value = Quotes.normalize(part.value, closing_quote)
+            separator = -> { q.breakable(force: true, indent: false) }
+            q.seplist(value.split(/\r?\n/, -1), separator) do |text|
+              q.text(text)
+            end
+          else
+            q.format(part)
+          end
+        end
+      end
+    end
+
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('string_literal')
+      q.group(2, "(", ")") do
+        q.text("string_literal")
 
         q.breakable
-        q.group(2, '(', ')') { q.seplist(parts) { |part| q.pp(part) } }
+        q.group(2, "(", ")") { q.seplist(parts) { |part| q.pp(part) } }
 
         q.pp(Comment::List.new(comments))
       end
@@ -8531,9 +10874,22 @@ class SyntaxTree < Ripper
       [arguments]
     end
 
+    def format(q)
+      q.group do
+        q.text("super")
+
+        if arguments.is_a?(ArgParen)
+          q.format(arguments)
+        else
+          q.text(" ")
+          q.nest("super ".length) { q.format(arguments) }
+        end
+      end
+    end
+
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('super')
+      q.group(2, "(", ")") do
+        q.text("super")
 
         q.breakable
         q.pp(arguments)
@@ -8543,14 +10899,16 @@ class SyntaxTree < Ripper
     end
 
     def to_json(*opts)
-      { type: :super, args: arguments, loc: location, cmts: comments }.to_json(*opts)
+      { type: :super, args: arguments, loc: location, cmts: comments }.to_json(
+        *opts
+      )
     end
   end
 
   # :call-seq:
   #   on_super: ((ArgParen | Args) arguments) -> Super
   def on_super(arguments)
-    keyword = find_token(Kw, 'super')
+    keyword = find_token(Kw, "super")
 
     Super.new(
       arguments: arguments,
@@ -8625,7 +10983,7 @@ class SyntaxTree < Ripper
   #     (Backtick | Const | CVar | GVar | Ident | IVar | Kw | Op) value
   #   ) -> SymbolContent
   def on_symbol(value)
-    tokens.pop
+    tokens.delete(value)
 
     SymbolContent.new(value: value, location: value.location)
   end
@@ -8656,9 +11014,14 @@ class SyntaxTree < Ripper
       [value]
     end
 
+    def format(q)
+      q.text(":")
+      q.format(value)
+    end
+
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('symbol_literal')
+      q.group(2, "(", ")") do
+        q.text("symbol_literal")
 
         q.breakable
         q.pp(value)
@@ -8668,7 +11031,12 @@ class SyntaxTree < Ripper
     end
 
     def to_json(*opts)
-      { type: :symbol_literal, value: value, loc: location, cmts: comments }.to_json(*opts)
+      {
+        type: :symbol_literal,
+        value: value,
+        loc: location,
+        cmts: comments
+      }.to_json(*opts)
     end
   end
 
@@ -8680,15 +11048,16 @@ class SyntaxTree < Ripper
   #     ) value
   #   ) -> SymbolLiteral
   def on_symbol_literal(value)
-    if tokens[-1] == value
-      SymbolLiteral.new(value: tokens.pop, location: value.location)
-    else
+    if value.is_a?(SymbolContent)
       symbeg = find_token(SymBeg)
 
       SymbolLiteral.new(
         value: value.value,
         location: symbeg.location.to(value.location)
       )
+    else
+      tokens.delete(value)
+      SymbolLiteral.new(value: value, location: value.location)
     end
   end
 
@@ -8716,19 +11085,36 @@ class SyntaxTree < Ripper
       []
     end
 
+    def format(q)
+      q.group(0, "%I[", "]") do
+        q.indent do
+          q.breakable("")
+          q.seplist(elements, -> { q.breakable }) do |element|
+            q.format(element)
+          end
+        end
+        q.breakable("")
+      end
+    end
+
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('symbols')
+      q.group(2, "(", ")") do
+        q.text("symbols")
 
         q.breakable
-        q.group(2, '(', ')') { q.seplist(elements) { |element| q.pp(element) } }
+        q.group(2, "(", ")") { q.seplist(elements) { |element| q.pp(element) } }
 
         q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :symbols, elems: elements, loc: location, cmts: comments }.to_json(*opts)
+      {
+        type: :symbols,
+        elems: elements,
+        loc: location,
+        cmts: comments
+      }.to_json(*opts)
     end
   end
 
@@ -8873,8 +11259,8 @@ class SyntaxTree < Ripper
     end
 
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('top_const_field')
+      q.group(2, "(", ")") do
+        q.text("top_const_field")
 
         q.breakable
         q.pp(constant)
@@ -8884,9 +11270,12 @@ class SyntaxTree < Ripper
     end
 
     def to_json(*opts)
-      { type: :top_const_field, constant: constant, loc: location, cmts: comments }.to_json(
-        *opts
-      )
+      {
+        type: :top_const_field,
+        constant: constant,
+        loc: location,
+        cmts: comments
+      }.to_json(*opts)
     end
   end
 
@@ -8926,9 +11315,14 @@ class SyntaxTree < Ripper
       [constant]
     end
 
+    def format(q)
+      q.text("::")
+      q.format(constant)
+    end
+
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('top_const_ref')
+      q.group(2, "(", ")") do
+        q.text("top_const_ref")
 
         q.breakable
         q.pp(constant)
@@ -8938,7 +11332,12 @@ class SyntaxTree < Ripper
     end
 
     def to_json(*opts)
-      { type: :top_const_ref, constant: constant, loc: location, cmts: comments }.to_json(*opts)
+      {
+        type: :top_const_ref,
+        constant: constant,
+        loc: location,
+        cmts: comments
+      }.to_json(*opts)
     end
   end
 
@@ -9017,9 +11416,13 @@ class SyntaxTree < Ripper
       []
     end
 
+    def format(q)
+      q.text(value)
+    end
+
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('tstring_content')
+      q.group(2, "(", ")") do
+        q.text("tstring_content")
 
         q.breakable
         q.pp(value)
@@ -9031,7 +11434,7 @@ class SyntaxTree < Ripper
     def to_json(*opts)
       {
         type: :tstring_content,
-        value: value.force_encoding('UTF-8'),
+        value: value.force_encoding("UTF-8"),
         loc: location,
         cmts: comments
       }.to_json(*opts)
@@ -9111,9 +11514,15 @@ class SyntaxTree < Ripper
       [statement]
     end
 
+    def format(q)
+      q.text(parentheses ? "not(" : "not ")
+      q.format(statement)
+      q.text(")") if parentheses
+    end
+
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('not')
+      q.group(2, "(", ")") do
+        q.text("not")
 
         q.breakable
         q.pp(statement)
@@ -9162,9 +11571,14 @@ class SyntaxTree < Ripper
       [statement]
     end
 
+    def format(q)
+      q.text(operator)
+      q.format(statement)
+    end
+
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('unary')
+      q.group(2, "(", ")") do
+        q.text("unary")
 
         q.breakable
         q.pp(operator)
@@ -9177,9 +11591,13 @@ class SyntaxTree < Ripper
     end
 
     def to_json(*opts)
-      { type: :unary, op: operator, value: statement, loc: location, cmts: comments }.to_json(
-        *opts
-      )
+      {
+        type: :unary,
+        op: operator,
+        value: statement,
+        loc: location,
+        cmts: comments
+      }.to_json(*opts)
     end
   end
 
@@ -9191,11 +11609,11 @@ class SyntaxTree < Ripper
       # We have somewhat special handling of the not operator since if it has
       # parentheses they don't get reported as a paren node for some reason.
 
-      beginning = find_token(Kw, 'not')
+      beginning = find_token(Kw, "not")
       ending = statement
 
       range = beginning.location.end_char...statement.location.start_char
-      paren = source[range].include?('(')
+      paren = source[range].include?("(")
 
       if paren
         find_token(LParen)
@@ -9234,6 +11652,27 @@ class SyntaxTree < Ripper
   #     undef method
   #
   class Undef
+    class UndefArgumentFormatter
+      # [DynaSymbol | SymbolLiteral] the symbol to undefine
+      attr_reader :node
+
+      def initialize(node)
+        @node = node
+      end
+
+      def comments
+        if node.is_a?(SymbolLiteral)
+          node.comments + node.value.comments
+        else
+          node.comments
+        end
+      end
+
+      def format(q)
+        node.is_a?(SymbolLiteral) ? q.format(node.value) : q.format(node)
+      end
+    end
+
     # [Array[ DynaSymbol | SymbolLiteral ]] the symbols to undefine
     attr_reader :symbols
 
@@ -9253,26 +11692,40 @@ class SyntaxTree < Ripper
       symbols
     end
 
+    def format(q)
+      keyword = "undef "
+      formatters = symbols.map { |symbol| UndefArgumentFormatter.new(symbol) }
+
+      q.group do
+        q.text(keyword)
+        q.nest(keyword.length) do
+          q.seplist(formatters) { |formatter| q.format(formatter) }
+        end
+      end
+    end
+
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('undef')
+      q.group(2, "(", ")") do
+        q.text("undef")
 
         q.breakable
-        q.group(2, '(', ')') { q.seplist(symbols) { |symbol| q.pp(symbol) } }
+        q.group(2, "(", ")") { q.seplist(symbols) { |symbol| q.pp(symbol) } }
 
         q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :undef, syms: symbols, loc: location, cmts: comments }.to_json(*opts)
+      { type: :undef, syms: symbols, loc: location, cmts: comments }.to_json(
+        *opts
+      )
     end
   end
 
   # :call-seq:
   #   on_undef: (Array[DynaSymbol | SymbolLiteral] symbols) -> Undef
   def on_undef(symbols)
-    keyword = find_token(Kw, 'undef')
+    keyword = find_token(Kw, "undef")
 
     Undef.new(
       symbols: symbols,
@@ -9301,7 +11754,13 @@ class SyntaxTree < Ripper
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(predicate:, statements:, consequent:, location:, comments: [])
+    def initialize(
+      predicate:,
+      statements:,
+      consequent:,
+      location:,
+      comments: []
+    )
       @predicate = predicate
       @statements = statements
       @consequent = consequent
@@ -9313,9 +11772,13 @@ class SyntaxTree < Ripper
       [predicate, statements, consequent]
     end
 
+    def format(q)
+      ConditionalFormatter.new("unless", self).format(q)
+    end
+
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('unless')
+      q.group(2, "(", ")") do
+        q.text("unless")
 
         q.breakable
         q.pp(predicate)
@@ -9351,8 +11814,8 @@ class SyntaxTree < Ripper
   #     ((nil | Elsif | Else) consequent)
   #   ) -> Unless
   def on_unless(predicate, statements, consequent)
-    beginning = find_token(Kw, 'unless')
-    ending = consequent || find_token(Kw, 'end')
+    beginning = find_token(Kw, "unless")
+    ending = consequent || find_token(Kw, "end")
 
     statements.bind(predicate.location.end_char, ending.location.start_char)
 
@@ -9392,9 +11855,13 @@ class SyntaxTree < Ripper
       [statement, predicate]
     end
 
+    def format(q)
+      ConditionalModFormatter.new("unless", self).format(q)
+    end
+
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('unless_mod')
+      q.group(2, "(", ")") do
+        q.text("unless_mod")
 
         q.breakable
         q.pp(statement)
@@ -9420,13 +11887,50 @@ class SyntaxTree < Ripper
   # :call-seq:
   #   on_unless_mod: (untyped predicate, untyped statement) -> UnlessMod
   def on_unless_mod(predicate, statement)
-    find_token(Kw, 'unless')
+    find_token(Kw, "unless")
 
     UnlessMod.new(
       statement: statement,
       predicate: predicate,
       location: statement.location.to(predicate.location)
     )
+  end
+
+  # Formats an Until, UntilMod, While, or WhileMod node.
+  class LoopFormatter
+    # [String] the name of the keyword used for this loop
+    attr_reader :keyword
+
+    # [Until | UntilMod | While | WhileMod] the node that is being formatted
+    attr_reader :node
+
+    # [untyped] the statements associated with the node
+    attr_reader :statements
+
+    def initialize(keyword, node, statements)
+      @keyword = keyword
+      @node = node
+      @statements = statements
+    end
+
+    def format(q)
+      q.group do
+        q.if_break do
+          q.text("#{keyword} ")
+          q.nest(keyword.length + 1) { q.format(node.predicate) }
+          q.indent do
+            q.breakable("")
+            q.format(statements)
+          end
+          q.breakable("")
+          q.text("end")
+        end.if_flat do
+          q.format(statements)
+          q.text(" #{keyword} ")
+          q.format(node.predicate)
+        end
+      end
+    end
   end
 
   # Until represents an +until+ loop.
@@ -9458,9 +11962,24 @@ class SyntaxTree < Ripper
       [predicate, statements]
     end
 
+    def format(q)
+      if statements.empty?
+        keyword = "until "
+
+        q.group do
+          q.text(keyword)
+          q.nest(keyword.length) { q.format(predicate) }
+          q.breakable(force: true)
+          q.text("end")
+        end
+      else
+        LoopFormatter.new("until", self, statements).format(q)
+      end
+    end
+
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('until')
+      q.group(2, "(", ")") do
+        q.text("until")
 
         q.breakable
         q.pp(predicate)
@@ -9486,12 +12005,12 @@ class SyntaxTree < Ripper
   # :call-seq:
   #   on_until: (untyped predicate, Statements statements) -> Until
   def on_until(predicate, statements)
-    beginning = find_token(Kw, 'until')
-    ending = find_token(Kw, 'end')
+    beginning = find_token(Kw, "until")
+    ending = find_token(Kw, "end")
 
     # Consume the do keyword if it exists so that it doesn't get confused for
     # some other block
-    keyword = find_token(Kw, 'do', consume: false)
+    keyword = find_token(Kw, "do", consume: false)
     if keyword && keyword.location.start_char > predicate.location.end_char &&
          keyword.location.end_char < ending.location.start_char
       tokens.delete(keyword)
@@ -9535,9 +12054,13 @@ class SyntaxTree < Ripper
       [statement, predicate]
     end
 
+    def format(q)
+      LoopFormatter.new("until", self, statement).format(q)
+    end
+
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('until_mod')
+      q.group(2, "(", ")") do
+        q.text("until_mod")
 
         q.breakable
         q.pp(statement)
@@ -9563,7 +12086,7 @@ class SyntaxTree < Ripper
   # :call-seq:
   #   on_until_mod: (untyped predicate, untyped statement) -> UntilMod
   def on_until_mod(predicate, statement)
-    find_token(Kw, 'until')
+    find_token(Kw, "until")
 
     UntilMod.new(
       statement: statement,
@@ -9601,9 +12124,18 @@ class SyntaxTree < Ripper
       [left, right]
     end
 
+    def format(q)
+      keyword = "alias "
+
+      q.text(keyword)
+      q.format(left)
+      q.text(" ")
+      q.format(right)
+    end
+
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('var_alias')
+      q.group(2, "(", ")") do
+        q.text("var_alias")
 
         q.breakable
         q.pp(left)
@@ -9616,16 +12148,20 @@ class SyntaxTree < Ripper
     end
 
     def to_json(*opts)
-      { type: :var_alias, left: left, right: right, loc: location, cmts: comments }.to_json(
-        *opts
-      )
+      {
+        type: :var_alias,
+        left: left,
+        right: right,
+        loc: location,
+        cmts: comments
+      }.to_json(*opts)
     end
   end
 
   # :call-seq:
   #   on_var_alias: (GVar left, (Backref | GVar) right) -> VarAlias
   def on_var_alias(left, right)
-    keyword = find_token(Kw, 'alias')
+    keyword = find_token(Kw, "alias")
 
     VarAlias.new(
       left: left,
@@ -9660,9 +12196,13 @@ class SyntaxTree < Ripper
       [value]
     end
 
+    def format(q)
+      q.format(value) if value
+    end
+
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('var_field')
+      q.group(2, "(", ")") do
+        q.text("var_field")
 
         q.breakable
         q.pp(value)
@@ -9672,7 +12212,9 @@ class SyntaxTree < Ripper
     end
 
     def to_json(*opts)
-      { type: :var_field, value: value, loc: location, cmts: comments }.to_json(*opts)
+      { type: :var_field, value: value, loc: location, cmts: comments }.to_json(
+        *opts
+      )
     end
   end
 
@@ -9721,9 +12263,13 @@ class SyntaxTree < Ripper
       [value]
     end
 
+    def format(q)
+      q.format(value)
+    end
+
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('var_ref')
+      q.group(2, "(", ")") do
+        q.text("var_ref")
 
         q.breakable
         q.pp(value)
@@ -9733,7 +12279,9 @@ class SyntaxTree < Ripper
     end
 
     def to_json(*opts)
-      { type: :var_ref, value: value, loc: location, cmts: comments }.to_json(*opts)
+      { type: :var_ref, value: value, loc: location, cmts: comments }.to_json(
+        *opts
+      )
     end
   end
 
@@ -9768,9 +12316,13 @@ class SyntaxTree < Ripper
       [value]
     end
 
+    def format(q)
+      q.format(value)
+    end
+
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('access_ctrl')
+      q.group(2, "(", ")") do
+        q.text("access_ctrl")
 
         q.breakable
         q.pp(value)
@@ -9780,7 +12332,12 @@ class SyntaxTree < Ripper
     end
 
     def to_json(*opts)
-      { type: :access_ctrl, value: value, loc: location, cmts: comments }.to_json(*opts)
+      {
+        type: :access_ctrl,
+        value: value,
+        loc: location,
+        cmts: comments
+      }.to_json(*opts)
     end
   end
 
@@ -9809,9 +12366,13 @@ class SyntaxTree < Ripper
       [value]
     end
 
+    def format(q)
+      q.format(value)
+    end
+
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('vcall')
+      q.group(2, "(", ")") do
+        q.text("vcall")
 
         q.breakable
         q.pp(value)
@@ -9821,7 +12382,9 @@ class SyntaxTree < Ripper
     end
 
     def to_json(*opts)
-      { type: :vcall, value: value, loc: location, cmts: comments }.to_json(*opts)
+      { type: :vcall, value: value, loc: location, cmts: comments }.to_json(
+        *opts
+      )
     end
   end
 
@@ -9857,9 +12420,12 @@ class SyntaxTree < Ripper
       @comments = comments
     end
 
+    def format(q)
+    end
+
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('void_stmt')
+      q.group(2, "(", ")") do
+        q.text("void_stmt")
         q.pp(Comment::List.new(comments))
       end
     end
@@ -9882,7 +12448,7 @@ class SyntaxTree < Ripper
   #     end
   #
   class When
-    # [untyped] the arguments to the when clause
+    # [Args] the arguments to the when clause
     attr_reader :arguments
 
     # [Statements] the expressions to be executed
@@ -9897,7 +12463,13 @@ class SyntaxTree < Ripper
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(arguments:, statements:, consequent:, location:, comments: [])
+    def initialize(
+      arguments:,
+      statements:,
+      consequent:,
+      location:,
+      comments: []
+    )
       @arguments = arguments
       @statements = statements
       @consequent = consequent
@@ -9909,9 +12481,39 @@ class SyntaxTree < Ripper
       [arguments, statements, consequent]
     end
 
+    def format(q)
+      keyword = "when "
+
+      q.group do
+        q.group do
+          q.text(keyword)
+          q.nest(keyword.length) do
+            if arguments.comments.any?
+              q.format(arguments)
+            else
+              separator = -> { q.group { q.comma_breakable } }
+              q.seplist(arguments.parts, separator) { |part| q.format(part) }
+            end
+          end
+        end
+
+        unless statements.empty?
+          q.indent do
+            q.breakable(force: true)
+            q.format(statements)
+          end
+        end
+
+        if consequent
+          q.breakable(force: true)
+          q.format(consequent)
+        end
+      end
+    end
+
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('when')
+      q.group(2, "(", ")") do
+        q.text("when")
 
         q.breakable
         q.pp(arguments)
@@ -9942,13 +12544,13 @@ class SyntaxTree < Ripper
 
   # :call-seq:
   #   on_when: (
-  #     untyped arguments,
+  #     Args arguments,
   #     Statements statements,
   #     (nil | Else | When) consequent
   #   ) -> When
   def on_when(arguments, statements, consequent)
-    beginning = find_token(Kw, 'when')
-    ending = consequent || find_token(Kw, 'end')
+    beginning = find_token(Kw, "when")
+    ending = consequent || find_token(Kw, "end")
 
     statements.bind(arguments.location.end_char, ending.location.start_char)
 
@@ -9989,9 +12591,24 @@ class SyntaxTree < Ripper
       [predicate, statements]
     end
 
+    def format(q)
+      if statements.empty?
+        keyword = "while "
+
+        q.group do
+          q.text(keyword)
+          q.nest(keyword.length) { q.format(predicate) }
+          q.breakable(force: true)
+          q.text("end")
+        end
+      else
+        LoopFormatter.new("while", self, statements).format(q)
+      end
+    end
+
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('while')
+      q.group(2, "(", ")") do
+        q.text("while")
 
         q.breakable
         q.pp(predicate)
@@ -10017,12 +12634,12 @@ class SyntaxTree < Ripper
   # :call-seq:
   #   on_while: (untyped predicate, Statements statements) -> While
   def on_while(predicate, statements)
-    beginning = find_token(Kw, 'while')
-    ending = find_token(Kw, 'end')
+    beginning = find_token(Kw, "while")
+    ending = find_token(Kw, "end")
 
     # Consume the do keyword if it exists so that it doesn't get confused for
     # some other block
-    keyword = find_token(Kw, 'do', consume: false)
+    keyword = find_token(Kw, "do", consume: false)
     if keyword && keyword.location.start_char > predicate.location.end_char &&
          keyword.location.end_char < ending.location.start_char
       tokens.delete(keyword)
@@ -10066,16 +12683,20 @@ class SyntaxTree < Ripper
       [statement, predicate]
     end
 
+    def format(q)
+      LoopFormatter.new("while", self, statement).format(q)
+    end
+
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('while_mod')
+      q.group(2, "(", ")") do
+        q.text("while_mod")
 
         q.breakable
         q.pp(statement)
 
         q.breakable
         q.pp(predicate)
-      
+
         q.pp(Comment::List.new(comments))
       end
     end
@@ -10094,7 +12715,7 @@ class SyntaxTree < Ripper
   # :call-seq:
   #   on_while_mod: (untyped predicate, untyped statement) -> WhileMod
   def on_while_mod(predicate, statement)
-    find_token(Kw, 'while')
+    find_token(Kw, "while")
 
     WhileMod.new(
       statement: statement,
@@ -10131,19 +12752,25 @@ class SyntaxTree < Ripper
       parts
     end
 
+    def format(q)
+      q.format_each(parts)
+    end
+
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('word')
+      q.group(2, "(", ")") do
+        q.text("word")
 
         q.breakable
-        q.group(2, '(', ')') { q.seplist(parts) { |part| q.pp(part) } }
+        q.group(2, "(", ")") { q.seplist(parts) { |part| q.pp(part) } }
 
         q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :word, parts: parts, loc: location, cmts: comments }.to_json(*opts)
+      { type: :word, parts: parts, loc: location, cmts: comments }.to_json(
+        *opts
+      )
     end
   end
 
@@ -10189,19 +12816,33 @@ class SyntaxTree < Ripper
       []
     end
 
+    def format(q)
+      q.group(0, "%W[", "]") do
+        q.indent do
+          q.breakable("")
+          q.seplist(elements, -> { q.breakable }) do |element|
+            q.format(element)
+          end
+        end
+        q.breakable("")
+      end
+    end
+
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('words')
+      q.group(2, "(", ")") do
+        q.text("words")
 
         q.breakable
-        q.group(2, '(', ')') { q.seplist(elements) { |element| q.pp(element) } }
+        q.group(2, "(", ")") { q.seplist(elements) { |element| q.pp(element) } }
 
         q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :words, elems: elements, loc: location, cmts: comments }.to_json(*opts)
+      { type: :words, elems: elements, loc: location, cmts: comments }.to_json(
+        *opts
+      )
     end
   end
 
@@ -10296,7 +12937,7 @@ class SyntaxTree < Ripper
     heredoc = @heredocs[-1]
 
     location =
-      if heredoc && heredoc.beginning.value.include?('`')
+      if heredoc && heredoc.beginning.value.include?("`")
         heredoc.location
       else
         find_token(Backtick).location
@@ -10330,19 +12971,30 @@ class SyntaxTree < Ripper
       parts
     end
 
+    def format(q)
+      q.text("`")
+      q.format_each(parts)
+      q.text("`")
+    end
+
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('xstring_literal')
+      q.group(2, "(", ")") do
+        q.text("xstring_literal")
 
         q.breakable
-        q.group(2, '(', ')') { q.seplist(parts) { |part| q.pp(part) } }
+        q.group(2, "(", ")") { q.seplist(parts) { |part| q.pp(part) } }
 
         q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :xstring_literal, parts: parts, loc: location, cmts: comments }.to_json(*opts)
+      {
+        type: :xstring_literal,
+        parts: parts,
+        loc: location,
+        cmts: comments
+      }.to_json(*opts)
     end
   end
 
@@ -10351,7 +13003,7 @@ class SyntaxTree < Ripper
   def on_xstring_literal(xstring)
     heredoc = @heredocs[-1]
 
-    if heredoc && heredoc.beginning.value.include?('`')
+    if heredoc && heredoc.beginning.value.include?("`")
       Heredoc.new(
         beginning: heredoc.beginning,
         ending: heredoc.ending,
@@ -10392,9 +13044,17 @@ class SyntaxTree < Ripper
       [arguments]
     end
 
+    def format(q)
+      q.group do
+        q.text("yield")
+        q.text(" ") if arguments.is_a?(Args)
+        q.format(arguments)
+      end
+    end
+
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('yield')
+      q.group(2, "(", ")") do
+        q.text("yield")
 
         q.breakable
         q.pp(arguments)
@@ -10404,14 +13064,16 @@ class SyntaxTree < Ripper
     end
 
     def to_json(*opts)
-      { type: :yield, args: arguments, loc: location, cmts: comments }.to_json(*opts)
+      { type: :yield, args: arguments, loc: location, cmts: comments }.to_json(
+        *opts
+      )
     end
   end
 
   # :call-seq:
   #   on_yield: ((Args | Paren) arguments) -> Yield
   def on_yield(arguments)
-    keyword = find_token(Kw, 'yield')
+    keyword = find_token(Kw, "yield")
 
     Yield.new(
       arguments: arguments,
@@ -10443,9 +13105,13 @@ class SyntaxTree < Ripper
       []
     end
 
+    def format(q)
+      q.text(value)
+    end
+
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('yield0')
+      q.group(2, "(", ")") do
+        q.text("yield0")
 
         q.breakable
         q.pp(value)
@@ -10455,14 +13121,16 @@ class SyntaxTree < Ripper
     end
 
     def to_json(*opts)
-      { type: :yield0, value: value, loc: location, cmts: comments }.to_json(*opts)
+      { type: :yield0, value: value, loc: location, cmts: comments }.to_json(
+        *opts
+      )
     end
   end
 
   # :call-seq:
   #   on_yield0: () -> Yield0
   def on_yield0
-    keyword = find_token(Kw, 'yield')
+    keyword = find_token(Kw, "yield")
 
     Yield0.new(value: keyword.value, location: keyword.location)
   end
@@ -10491,9 +13159,13 @@ class SyntaxTree < Ripper
       []
     end
 
+    def format(q)
+      q.text(value)
+    end
+
     def pretty_print(q)
-      q.group(2, '(', ')') do
-        q.text('zsuper')
+      q.group(2, "(", ")") do
+        q.text("zsuper")
 
         q.breakable
         q.pp(value)
@@ -10503,14 +13175,16 @@ class SyntaxTree < Ripper
     end
 
     def to_json(*opts)
-      { type: :zsuper, value: value, loc: location, cmts: comments }.to_json(*opts)
+      { type: :zsuper, value: value, loc: location, cmts: comments }.to_json(
+        *opts
+      )
     end
   end
 
   # :call-seq:
   #   on_zsuper: () -> ZSuper
   def on_zsuper
-    keyword = find_token(Kw, 'super')
+    keyword = find_token(Kw, "super")
 
     ZSuper.new(value: keyword.value, location: keyword.location)
   end

@@ -1,0 +1,14 @@
+%
+defined?(foo)
+%
+defined?(foooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo)
+-
+defined?(
+  foooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo
+)
+%
+defined?(
+  foo
+)
+-
+defined?(foo)
