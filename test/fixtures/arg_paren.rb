@@ -1,0 +1,16 @@
+%
+foo(bar)
+%
+foo()
+%
+foo(barrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr)
+-
+foo(
+  barrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr
+)
+%
+foo(
+  bar
+)
+-
+foo(bar)

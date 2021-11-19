@@ -1003,6 +1003,28 @@ class SyntaxTree
       assert_node(ZSuper, 'zsuper', 'super')
     end
 
+    # --------------------------------------------------------------------------
+    # Tests for formatting
+    # --------------------------------------------------------------------------
+
+    Dir[File.join(__dir__, 'fixtures', '*.rb')].each do |filepath|
+      basename = File.basename(filepath, '.rb')
+
+      File
+        .read(filepath)
+        .split("%\n")
+        .drop(1)
+        .each_with_index do |source, index|
+          define_method(:"test_formatting_#{basename}_#{index}") do
+            original, expected = source.split("-\n")
+            expected ||= original
+
+            actual = SyntaxTree.new(original).parse.format
+            assert_equal(expected, actual)
+          end
+        end
+    end
+
     private
 
     def location(lines: 1..1, chars: 0..0)

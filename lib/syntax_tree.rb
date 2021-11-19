@@ -577,6 +577,23 @@ class SyntaxTree < Ripper
   # symbols (note that this includes dynamic symbols like
   # :"left-#{middle}-right").
   class Alias
+    class AliasArgumentFormatter
+      # [DynaSymbol | SymbolLiteral] the argument being passed to alias
+      attr_reader :argument
+
+      def initialize(argument)
+        @argument = argument
+      end
+
+      def format(q)
+        if argument.is_a?(SymbolLiteral)
+          q.format(argument.value)
+        else
+          q.format(argument)
+        end
+      end
+    end
+
     # [DynaSymbol | SymbolLiteral] the new name of the method
     attr_reader :left
 
@@ -605,11 +622,11 @@ class SyntaxTree < Ripper
 
       q.group do
         q.text(keyword)
-        q.format(left)
+        q.format(AliasArgumentFormatter.new(left))
         q.group do
           q.nest(keyword.length) do
             q.breakable
-            q.format(right)
+            q.format(AliasArgumentFormatter.new(right))
           end
         end
       end
@@ -867,6 +884,11 @@ class SyntaxTree < Ripper
     end
 
     def format(q)
+      unless arguments
+        q.text('()')
+        return
+      end
+
       q.group(0, '(', ')') do
         q.nest(2) do
           q.breakable('')
@@ -1001,6 +1023,11 @@ class SyntaxTree < Ripper
 
     def child_nodes
       [value]
+    end
+
+    def format(q)
+      q.text('&')
+      q.format(value)
     end
 
     def pretty_print(q)
@@ -1177,21 +1204,54 @@ class SyntaxTree < Ripper
     Args.new(parts: [], location: Location.fixed(line: lineno, char: char_pos))
   end
 
-  # ArrayLiteral represents any form of an array literal, and contains myriad
-  # child nodes because of the special array literal syntax like %w and %i.
+  # ArrayLiteral represents an array literal, which can optionally contain
+  # elements.
   #
   #     []
   #     [one, two, three]
-  #     [*one_two_three]
-  #     %i[one two three]
-  #     %w[one two three]
-  #     %I[one two three]
-  #     %W[one two three]
   #
-  # Every line in the example above produces an ArrayLiteral node. In order, the
-  # child contents node of this ArrayLiteral node would be nil, Args, QSymbols,
-  # QWords, Symbols, and Words.
   class ArrayLiteral
+    class QWordsFormatter
+      # [Args] the contents of the array
+      attr_reader :contents
+
+      def initialize(contents)
+        @contents = contents
+      end
+
+      def format(q)
+        q.group(0, '%w[', ']') do
+          q.nest(2) do
+            q.breakable('')
+            q.seplist(contents.parts, -> { q.breakable }) do |part|
+              q.format(part.parts.first)
+            end
+          end
+          q.breakable('')
+        end
+      end
+    end
+
+    class QSymbolsFormatter
+      # [Args] the contents of the array
+      attr_reader :contents
+
+      def initialize(contents)
+        @contents = contents
+      end
+
+      def format(q)
+        q.group(0, '%i[', ']') do
+          q.nest(2) do
+            q.breakable('')
+            q.seplist(contents.parts, -> { q.breakable }) do |part|
+              q.format(part.value)
+            end
+          end
+        end
+      end
+    end
+
     # [nil | Args] the contents of the array
     attr_reader :contents
 
@@ -1212,6 +1272,21 @@ class SyntaxTree < Ripper
     end
 
     def format(q)
+      unless contents
+        q.text('[]')
+        return
+      end
+
+      if qwords?
+        q.format(QWordsFormatter.new(contents))
+        return
+      end
+
+      if qsymbols?
+        q.format(QSymbolsFormatter.new(contents))
+        return
+      end
+
       q.group(0, '[', ']') do
         q.nest(2) do
           q.breakable('')
@@ -1234,6 +1309,25 @@ class SyntaxTree < Ripper
 
     def to_json(*opts)
       { type: :array, cnts: contents, loc: location, cmts: comments }.to_json(*opts)
+    end
+
+    private
+
+    def qwords?
+      contents &&
+        contents.parts.length > 1 &&
+        contents.parts.all? do |part|
+          part.is_a?(StringLiteral) &&
+            part.parts.length == 1 &&
+            part.parts.first.is_a?(TStringContent) &&
+            !part.parts.first.value.match?(/[\s\\\]]/)
+        end
+    end
+
+    def qsymbols?
+      contents &&
+        contents.parts.length > 1 &&
+        contents.parts.all? { |part| part.is_a?(SymbolLiteral) }
     end
   end
 
@@ -1279,15 +1373,15 @@ class SyntaxTree < Ripper
   class AryPtn
     class RestFormatter
       # [VarField] the identifier that represents the remaining positionals
-      attr_reader :required
+      attr_reader :value
 
-      def initialize(required)
-        @required = required
+      def initialize(value)
+        @value = value
       end
 
       def format(q)
         q.text('*')
-        q.format(rest)
+        q.format(value)
       end
     end
 
@@ -1333,7 +1427,7 @@ class SyntaxTree < Ripper
       if constant
         q.format(constant)
         q.text('[')
-        q.format_each(parts)
+        q.seplist(parts) { |part| q.format(part) }
         q.text(']')
         return
       end
@@ -1341,10 +1435,10 @@ class SyntaxTree < Ripper
       parent = q.parent
       if parts.length == 1 || PATTERNS.any? { |pattern| parent.is_a?(pattern) }
         q.text('[')
-        q.format_each(parts)
+        q.seplist(parts) { |part| q.format(part) }
         q.text(']')
       else
-        q.format_each(parts)
+        q.seplist(parts) { |part| q.format(part) }
       end
     end
 
@@ -1445,9 +1539,15 @@ class SyntaxTree < Ripper
       q.group do
         q.format(target)
         q.text(' =')
-        q.nest(2) do
-          q.breakable
+
+        if skip_indent?
+          q.text(' ')
           q.format(value)
+        else
+          q.nest(2) do
+            q.breakable
+            q.format(value)
+          end
         end
       end
     end
@@ -1470,6 +1570,16 @@ class SyntaxTree < Ripper
       { type: :assign, target: target, value: value, loc: location, cmts: comments }.to_json(
         *opts
       )
+    end
+
+    private
+
+    def skip_indent?
+      target.is_a?(ARefField) ||
+        value.is_a?(ArrayLiteral) ||
+        value.is_a?(HashLiteral) ||
+        value.is_a?(Heredoc) ||
+        value.is_a?(Lambda)
     end
   end
 
@@ -1519,8 +1629,10 @@ class SyntaxTree < Ripper
     def format(q)
       contents = -> {
         q.parent.format_key(q, key)
-        q.breakable
-        q.format(value)
+        q.nest(2) do
+          q.breakable
+          q.format(value)
+        end
       }
 
       value.is_a?(HashLiteral) ? contents.call : q.group(&contents)
@@ -1881,13 +1993,17 @@ class SyntaxTree < Ripper
     end
 
     def format(q)
-      q.group(0, 'begin', 'end') do
+      q.text('begin')
+
+      unless bodystmt.empty?
         q.nest(2) do
           q.hardbreak
           q.format(bodystmt)
         end
-        q.hardbreak
       end
+
+      q.hardbreak
+      q.text('end')
     end
 
     def pretty_print(q)
@@ -1940,7 +2056,7 @@ class SyntaxTree < Ripper
     # [untyped] the left-hand side of the expression
     attr_reader :left
 
-    # [String] the operator used between the two expressions
+    # [Symbol] the operator used between the two expressions
     attr_reader :operator
 
     # [untyped] the right-hand side of the expression
@@ -1965,13 +2081,14 @@ class SyntaxTree < Ripper
     end
 
     def format(q)
-      power = operator == '**'
+      power = operator == :**
 
       q.group do
         q.group { q.format(left) }
         q.text(' ') unless power
-        q.group_sub do
-          q.text(operator)
+        q.text(operator)
+
+        q.nest(2) do
           q.breakable(power ? '' : ' ')
           q.format(right)
         end
@@ -2224,6 +2341,10 @@ class SyntaxTree < Ripper
       end
     end
 
+    def empty?
+      statements.empty? && !rescue_clause && !else_clause && !ensure_clause
+    end
+
     def child_nodes
       [statements, rescue_clause, else_clause, ensure_clause]
     end
@@ -2239,7 +2360,7 @@ class SyntaxTree < Ripper
           end
         end
 
-        if ensure_clause
+        if else_clause
           q.nest(-2) do
             q.hardbreak
             q.text('else')
@@ -2353,8 +2474,11 @@ class SyntaxTree < Ripper
           q.format(block_var)
         end
 
-        q.breakable
-        q.format(statements)
+        unless statements.empty?
+          q.breakable
+          q.format(statements)
+        end
+
         q.breakable
       end
     end
@@ -3544,9 +3668,11 @@ class SyntaxTree < Ripper
           end
         end
 
-        q.nest(2) do
-          q.hardbreak
-          q.format(bodystmt)
+        unless bodystmt.empty?
+          q.nest(2) do
+            q.hardbreak
+            q.format(bodystmt)
+          end
         end
 
         q.hardbreak
@@ -3841,9 +3967,11 @@ class SyntaxTree < Ripper
           end
         end
 
-        q.nest(2) do
-          q.hardbreak
-          q.format(bodystmt)
+        unless bodystmt.empty?
+          q.nest(2) do
+            q.hardbreak
+            q.format(bodystmt)
+          end
         end
 
         q.hardbreak
@@ -4224,10 +4352,14 @@ class SyntaxTree < Ripper
 
     def format(q)
       q.group do
-        q.text(':')
-        q.text(quote)
+        # If we're inside of an assoc node as the key, then it will handle
+        # printing the : on its own since it could change sides.
+        parent = q.parent
+        q.text(':') if !parent.is_a?(Assoc) || parent.key != self
+
+        q.text(q.quote)
         q.format_each(parts)
-        q.text(quote)
+        q.text(q.quote)
       end
     end
 
@@ -6069,9 +6201,12 @@ class SyntaxTree < Ripper
       q.group do
         q.text(keyword)
         q.nest(keyword.length) { q.format(pattern) }
-        q.nest(2) do
-          q.hardbreak
-          q.format(statements)
+
+        unless statements.empty?
+          q.nest(2) do
+            q.hardbreak
+            q.format(statements)
+          end
         end
 
         if consequent
@@ -7527,6 +7662,63 @@ class SyntaxTree < Ripper
   #     def method(param) end
   #
   class Params
+    class OptionalFormatter
+      # [Ident] the name of the parameter
+      attr_reader :name
+
+      # [untyped] the value of the parameter
+      attr_reader :value
+
+      def initialize(name, value)
+        @name = name
+        @value = value
+      end
+
+      def format(q)
+        q.format(name)
+        q.text(' = ')
+        q.format(value)
+      end
+    end
+
+    class KeywordFormatter
+      # [Ident] the name of the parameter
+      attr_reader :name
+
+      # [nil | untyped] the value of the parameter
+      attr_reader :value
+
+      def initialize(name, value)
+        @name = name
+        @value = value
+      end
+
+      def format(q)
+        q.format(name)
+
+        if value
+          q.text(' ')
+          q.format(value)
+        end
+      end
+    end
+
+    class KeywordRestFormatter
+      # [:nil | KwRestParam] the value of the parameter
+
+      def initialize(value)
+        @value = value
+      end
+
+      def format(q)
+        if value == :nil
+          q.text('**nil')
+        else
+          q.format(value)
+        end
+      end
+    end
+
     # [Array[ Ident ]] any required parameters
     attr_reader :requireds
 
@@ -7593,6 +7785,20 @@ class SyntaxTree < Ripper
 
 
     def format(q)
+      parts = [
+        *requireds,
+        *optionals.map { |(name, value)| OptionalFormatter.new(name, value) }
+      ]
+
+      parts << rest if rest
+      parts += [
+        *posts,
+        *keywords.map { |(name, value)| KeywordFormatter.new(name, value) }
+      ]
+
+      parts << block if block
+
+      q.group { q.seplist(parts) { |part| q.format(part) } }
     end
 
     def pretty_print(q)
@@ -9336,6 +9542,10 @@ class SyntaxTree < Ripper
         )
     end
 
+    def empty?
+      body.all? { |statement| statement.is_a?(VoidStmt) }
+    end
+
     def <<(statement)
       @location =
         body.any? ? location.to(statement.location) : statement.location
@@ -9349,8 +9559,33 @@ class SyntaxTree < Ripper
     end
 
     def format(q)
-      q.seplist(body, -> { q.hardbreak }) do |statement|
-        q.format(statement)
+      line = nil
+
+      body.each_with_index do |statement, index|
+        next if statement.is_a?(VoidStmt)
+
+        if line.nil?
+          q.format(statement)
+        elsif (statement.location.start_line - line) > 1
+          q.hardbreak
+          q.hardbreak
+          q.format(statement)
+        elsif statement.is_a?(AccessCtrl) || body[index - 1].is_a?(AccessCtrl)
+          q.hardbreak
+          q.hardbreak
+          q.format(statement)
+        elsif statement.location.start_line != line
+          q.hardbreak
+          q.format(statement)
+        elsif !q.parent.is_a?(StringEmbExpr)
+          q.hardbreak
+          q.format(statement)
+        else
+          q.text('; ')
+          q.format(statement)
+        end
+
+        line = statement.location.end_line
       end
     end
 
