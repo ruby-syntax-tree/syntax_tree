@@ -2,4 +2,9 @@
 # frozen_string_literal: true
 
 require_relative File.expand_path('../lib/syntax_tree', __dir__)
-pp SyntaxTree.new(ARGF.read).parse
+
+program = SyntaxTree.new(ARGF.read).parse
+
+pp program
+puts
+puts program.format

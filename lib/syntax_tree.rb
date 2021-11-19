@@ -1,6 +1,9 @@
 # frozen_string_literal: true
 
+require 'pp'
 require 'ripper'
+require 'stringio'
+
 require_relative 'syntax_tree/version'
 
 class SyntaxTree < Ripper
@@ -297,6 +300,19 @@ class SyntaxTree < Ripper
       [lbrace, statements]
     end
 
+    def format(q)
+      q.group do
+        q.text('BEGIN ')
+        q.format(lbrace)
+        q.nest(2) do
+          q.breakable
+          q.format(statements)
+        end
+        q.breakable
+        q.text('}')
+      end
+    end
+
     def pretty_print(q)
       q.group(2, '(', ')') do
         q.text('BEGIN')
@@ -365,6 +381,16 @@ class SyntaxTree < Ripper
       []
     end
 
+    def format(q)
+      if value.length != 2
+        q.text(value)
+      else
+        q.text(q.quote)
+        q.text(value[1])
+        q.text(q.quote)
+      end
+    end
+
     def pretty_print(q)
       q.group(2, '(', ')') do
         q.text('CHAR')
@@ -425,6 +451,19 @@ class SyntaxTree < Ripper
 
     def child_nodes
       [lbrace, statements]
+    end
+
+    def format(q)
+      q.group do
+        q.text('END ')
+        q.format(lbrace)
+        q.nest(2) do
+          q.breakable
+          q.format(statements)
+        end
+        q.breakable
+        q.text('}')
+      end
     end
 
     def pretty_print(q)
@@ -494,6 +533,12 @@ class SyntaxTree < Ripper
       []
     end
 
+    def format(q)
+      q.text('__END__')
+      q.hardbreak
+      q.text(value)
+    end
+
     def pretty_print(q)
       q.group(2, '(', ')') do
         q.text('__end__')
@@ -553,6 +598,21 @@ class SyntaxTree < Ripper
 
     def child_nodes
       [left, right]
+    end
+
+    def format(q)
+      keyword = 'alias '
+
+      q.group do
+        q.text(keyword)
+        q.format(left)
+        q.group do
+          q.nest(keyword.length) do
+            q.breakable
+            q.format(right)
+          end
+        end
+      end
     end
 
     def pretty_print(q)
@@ -626,6 +686,23 @@ class SyntaxTree < Ripper
       [collection, index]
     end
 
+    def format(q)
+      q.group do
+        q.format(collection)
+        q.text('[')
+
+        if index
+          q.nest(2) do
+            q.breakable('')
+            q.format(index)
+          end
+          q.breakable('')
+        end
+
+        q.text(']')
+      end
+    end
+
     def pretty_print(q)
       q.group(2, '(', ')') do
         q.text('aref')
@@ -693,6 +770,23 @@ class SyntaxTree < Ripper
 
     def child_nodes
       [collection, index]
+    end
+
+    def format(q)
+      q.group do
+        q.format(collection)
+        q.text('[')
+
+        if index
+          q.nest(2) do
+            q.breakable('')
+            q.format(index)
+          end
+          q.breakable('')
+        end
+
+        q.text(']')
+      end
     end
 
     def pretty_print(q)
@@ -772,6 +866,16 @@ class SyntaxTree < Ripper
       [arguments]
     end
 
+    def format(q)
+      q.group(0, '(', ')') do
+        q.nest(2) do
+          q.breakable('')
+          q.format(arguments)
+        end
+        q.breakable('')
+      end
+    end
+
     def pretty_print(q)
       q.group(2, '(', ')') do
         q.text('arg_paren')
@@ -835,6 +939,10 @@ class SyntaxTree < Ripper
 
     def child_nodes
       parts
+    end
+
+    def format(q)
+      q.seplist(parts) { |part| q.format(part) }
     end
 
     def pretty_print(q)
@@ -955,6 +1063,11 @@ class SyntaxTree < Ripper
       [value]
     end
 
+    def format(q)
+      q.text('*')
+      q.format(value) if value
+    end
+
     def pretty_print(q)
       q.group(2, '(', ')') do
         q.text('arg_star')
@@ -1030,6 +1143,10 @@ class SyntaxTree < Ripper
       []
     end
 
+    def format(q)
+      q.text(value)
+    end
+
     def pretty_print(q)
       q.group(2, '(', ')') do
         q.text('args_forward')
@@ -1075,8 +1192,7 @@ class SyntaxTree < Ripper
   # child contents node of this ArrayLiteral node would be nil, Args, QSymbols,
   # QWords, Symbols, and Words.
   class ArrayLiteral
-    # [nil | Args | QSymbols | QWords | Symbols | Words] the
-    # contents of the array
+    # [nil | Args] the contents of the array
     attr_reader :contents
 
     # [Location] the location of this node
@@ -1093,6 +1209,16 @@ class SyntaxTree < Ripper
 
     def child_nodes
       [contents]
+    end
+
+    def format(q)
+      q.group(0, '[', ']') do
+        q.nest(2) do
+          q.breakable('')
+          q.format(contents)
+        end
+        q.breakable('')
+      end
     end
 
     def pretty_print(q)
@@ -1151,6 +1277,20 @@ class SyntaxTree < Ripper
   # and an optional array of positional matches that occur after the splat.
   # All of the in clauses above would create an AryPtn node.
   class AryPtn
+    class RestFormatter
+      # [VarField] the identifier that represents the remaining positionals
+      attr_reader :required
+
+      def initialize(required)
+        @required = required
+      end
+
+      def format(q)
+        q.text('*')
+        q.format(rest)
+      end
+    end
+
     # [nil | VarRef] the optional constant wrapper
     attr_reader :constant
 
@@ -1183,6 +1323,29 @@ class SyntaxTree < Ripper
 
     def child_nodes
       [constant, *required, rest, *posts]
+    end
+
+    def format(q)
+      parts = [*requireds]
+      parts << RestFormatter.new(rest) if rest
+      parts += posts
+
+      if constant
+        q.format(constant)
+        q.text('[')
+        q.format_each(parts)
+        q.text(']')
+        return
+      end
+
+      parent = q.parent
+      if parts.length == 1 || PATTERNS.any? { |pattern| parent.is_a?(pattern) }
+        q.text('[')
+        q.format_each(parts)
+        q.text(']')
+      else
+        q.format_each(parts)
+      end
     end
 
     def pretty_print(q)
@@ -1278,6 +1441,17 @@ class SyntaxTree < Ripper
       [target, value]
     end
 
+    def format(q)
+      q.group do
+        q.format(target)
+        q.text(' =')
+        q.nest(2) do
+          q.breakable
+          q.format(value)
+        end
+      end
+    end
+
     def pretty_print(q)
       q.group(2, '(', ')') do
         q.text('assign')
@@ -1342,6 +1516,16 @@ class SyntaxTree < Ripper
       [key, value]
     end
 
+    def format(q)
+      contents = -> {
+        q.parent.format_key(q, key)
+        q.breakable
+        q.format(value)
+      }
+
+      value.is_a?(HashLiteral) ? contents.call : q.group(&contents)
+    end
+
     def pretty_print(q)
       q.group(2, '(', ')') do
         q.text('assoc')
@@ -1390,6 +1574,11 @@ class SyntaxTree < Ripper
 
     def child_nodes
       [value]
+    end
+
+    def format(q)
+      q.text('**')
+      q.format(value)
     end
 
     def pretty_print(q)
@@ -1444,7 +1633,11 @@ class SyntaxTree < Ripper
     def child_nodes
       []
     end
-    
+
+    def format(q)
+      q.text(value)
+    end
+
     def pretty_print(q)
       q.group(2, '(', ')') do
         q.text('backref')
@@ -1497,6 +1690,10 @@ class SyntaxTree < Ripper
       []
     end
 
+    def format(q)
+      q.text(value)
+    end
+
     def pretty_print(q)
       q.group(2, '(', ')') do
         q.text('backtick')
@@ -1526,6 +1723,82 @@ class SyntaxTree < Ripper
     node
   end
 
+  # This module is responsible for formatting the assocs contained within a
+  # hash or bare hash. It first determines if every key in the hash can use
+  # labels. If it can, it uses labels. Otherwise it uses hash rockets.
+  module HashFormatter
+    class Base
+      # [HashLiteral | BareAssocHash] the source of the assocs
+      attr_reader :container
+
+      def initialize(container)
+        @container = container
+      end
+
+      def format(q)
+        q.seplist(container.assocs) { |assoc| q.format(assoc) }
+      end
+    end
+
+    class Labels < Base
+      def format_key(q, key)
+        case key
+        when Label
+          q.format(key)
+        when SymbolLiteral
+          q.format(key.value)
+          q.text(':')
+        when DynaSymbol
+          q.format(key)
+          q.text(':')
+        end
+      end
+    end
+
+    class Rockets < Base
+      def format_key(q, key)
+        case key
+        when Label
+          q.text(':')
+          q.text(key.value.chomp(':'))
+        when DynaSymbol
+          q.text(':')
+          q.format(key)
+        else
+          q.format(key)
+        end
+
+        q.text(' =>')
+      end
+    end
+
+    def self.for(container)
+      labels =
+        container.assocs.all? do |assoc|
+          next true if assoc.is_a?(AssocSplat)
+
+          case assoc.key
+          when Label
+            true
+          when SymbolLiteral
+            # When attempting to convert a hash rocket into a hash label,
+            # you need to take care because only certain patterns are
+            # allowed. Ruby source says that they have to match keyword
+            # arguments to methods, but don't specify what that is. After
+            # some experimentation, it looks like it's:
+            value = assoc.key.value.value
+            value.match?(/^[_A-Za-z]/) && !value.end_with?('=')
+          when DynaSymbol
+            true
+          else
+            false
+          end
+        end
+
+      (labels ? Labels : Rockets).new(container)
+    end
+  end
+
   # BareAssocHash represents a hash of contents being passed as a method
   # argument (and therefore has omitted braces). It's very similar to an
   # AssocListFromArgs node.
@@ -1550,6 +1823,10 @@ class SyntaxTree < Ripper
 
     def child_nodes
       assocs
+    end
+
+    def format(q)
+      q.format(HashFormatter.for(self))
     end
 
     def pretty_print(q)
@@ -1601,6 +1878,16 @@ class SyntaxTree < Ripper
 
     def child_nodes
       [bodystmt]
+    end
+
+    def format(q)
+      q.group(0, 'begin', 'end') do
+        q.nest(2) do
+          q.hardbreak
+          q.format(bodystmt)
+        end
+        q.hardbreak
+      end
     end
 
     def pretty_print(q)
@@ -1675,6 +1962,20 @@ class SyntaxTree < Ripper
 
     def child_nodes
       [left, right]
+    end
+
+    def format(q)
+      power = operator == '**'
+
+      q.group do
+        q.group { q.format(left) }
+        q.text(' ') unless power
+        q.group_sub do
+          q.text(operator)
+          q.breakable(power ? '' : ' ')
+          q.format(right)
+        end
+      end
     end
 
     def pretty_print(q)
@@ -1755,6 +2056,17 @@ class SyntaxTree < Ripper
       [params, *locals]
     end
 
+    def format(q)
+      q.group(0, '|', '|') do
+        q.format(params)
+
+        if locals.any?
+          q.text('; ')
+          q.seplist(locals, -> { q.text(', ') }) { |local| q.format(local) }
+        end
+      end
+    end
+
     def pretty_print(q)
       q.group(2, '(', ')') do
         q.text('block_var')
@@ -1823,6 +2135,11 @@ class SyntaxTree < Ripper
 
     def child_nodes
       [name]
+    end
+
+    def format(q)
+      q.text('&')
+      q.format(name)
     end
 
     def pretty_print(q)
@@ -1909,6 +2226,35 @@ class SyntaxTree < Ripper
 
     def child_nodes
       [statements, rescue_clause, else_clause, ensure_clause]
+    end
+
+    def format(q)
+      q.group do
+        q.format(statements)
+
+        if rescue_clause
+          q.nest(-2) do
+            q.hardbreak
+            q.format(rescue_clause)
+          end
+        end
+
+        if ensure_clause
+          q.nest(-2) do
+            q.hardbreak
+            q.text('else')
+          end
+          q.hardbreak
+          q.format(else_clause)
+        end
+
+        if ensure_clause
+          q.nest(-2) do
+            q.hardbreak
+            q.format(ensure_clause)
+          end
+        end
+      end
     end
 
     def pretty_print(q)
@@ -2000,6 +2346,19 @@ class SyntaxTree < Ripper
       [lbrace, block_var, statements]
     end
 
+    def format(q)
+      q.group(0, '{', '}') do
+        if block_var
+          q.text(' ')
+          q.format(block_var)
+        end
+
+        q.breakable
+        q.format(statements)
+        q.breakable
+      end
+    end
+
     def pretty_print(q)
       q.group(2, '(', ')') do
         q.text('brace_block')
@@ -2086,6 +2445,11 @@ class SyntaxTree < Ripper
       [arguments]
     end
 
+    def format(q)
+      q.text('break ')
+      q.format(arguments)
+    end
+
     def pretty_print(q)
       q.group(2, '(', ')') do
         q.text('break')
@@ -2111,6 +2475,25 @@ class SyntaxTree < Ripper
     location = location.to(arguments.location) if arguments.parts.any?
 
     Break.new(arguments: arguments, location: location)
+  end
+
+  # Wraps a call operator (which can be a string literal :: or an Op node or a
+  # Period node) and formats it when called.
+  class CallOperatorFormatter
+    # [:"::" | Op | Period] the operator being formatted
+    attr_reader :operator
+
+    def initialize(operator)
+      @operator = operator
+    end
+
+    def format(q)
+      if operator == '::'
+        q.text('.')
+      else
+        q.format(operator)
+      end
+    end
   end
 
   # Call represents a method call. This node doesn't contain the arguments being
@@ -2145,6 +2528,18 @@ class SyntaxTree < Ripper
 
     def child_nodes
       [receiver, (operator if operator != :'::'), (message if message != :call)]
+    end
+
+    def format(q)
+      q.group do
+        q.format(receiver)
+        q.group do
+          q.nest(2) do
+            q.format(CallOperatorFormatter.new(operator))
+            q.format(message)
+          end
+        end
+      end
     end
 
     def pretty_print(q)
@@ -2235,6 +2630,19 @@ class SyntaxTree < Ripper
       [value, consequent]
     end
 
+    def format(q)
+      q.group(0, 'case', 'end') do
+        if value
+          q.text(' ')
+          q.format(value)
+        end
+
+        q.hardbreak
+        q.format(consequent)
+        q.hardbreak
+      end
+    end
+
     def pretty_print(q)
       q.group(2, '(', ')') do
         q.text('case')
@@ -2290,6 +2698,20 @@ class SyntaxTree < Ripper
 
     def child_nodes
       [value, operator, pattern]
+    end
+
+    def format(q)
+      q.group do
+        q.format(value)
+        q.text(' ')
+        q.format(operator)
+        q.group do
+          q.nest(2) do
+            q.breakable
+            q.format(pattern)
+          end
+        end
+      end
     end
 
     def pretty_print(q)
@@ -2405,6 +2827,28 @@ class SyntaxTree < Ripper
       [constant, superclass, bodystmt]
     end
 
+    def format(q)
+      q.group do
+        q.group do
+          q.text('class ')
+          q.format(constant)
+
+          if superclass
+            q.text(' < ')
+            q.format(superclass)
+          end
+        end
+
+        q.nest(2) do
+          q.hardbreak
+          q.format(bodystmt)
+        end
+
+        q.hardbreak
+        q.text('end')
+      end
+    end
+
     def pretty_print(q)
       q.group(2, '(', ')') do
         q.text('class')
@@ -2516,6 +2960,14 @@ class SyntaxTree < Ripper
       [message, arguments]
     end
 
+    def format(q)
+      q.group do
+        q.format(message)
+        q.text(' ')
+        q.format(arguments)
+      end
+    end
+
     def pretty_print(q)
       q.group(2, '(', ')') do
         q.text('command')
@@ -2586,6 +3038,16 @@ class SyntaxTree < Ripper
 
     def child_nodes
       [receiver, message, arguments]
+    end
+
+    def format(q)
+      q.group do
+        q.format(receiver)
+        q.format(CallOperatorFormatter.new(operator))
+        q.format(message)
+        q.text(' ')
+        q.format(arguments)
+      end
     end
 
     def pretty_print(q)
@@ -2680,6 +3142,10 @@ class SyntaxTree < Ripper
       @location = location
     end
 
+    def format(q)
+      q.text(value)
+    end
+
     def pretty_print(q)
       q.group(2, '(', ')') do
         q.text('comment')
@@ -2749,6 +3215,10 @@ class SyntaxTree < Ripper
       []
     end
 
+    def format(q)
+      q.text(value)
+    end
+
     def pretty_print(q)
       q.group(2, '(', ')') do
         q.text('const')
@@ -2806,6 +3276,12 @@ class SyntaxTree < Ripper
 
     def child_nodes
       [parent, constant]
+    end
+
+    def format(q)
+      q.format(parent)
+      q.text('::')
+      q.format(constant)
     end
 
     def pretty_print(q)
@@ -2871,6 +3347,12 @@ class SyntaxTree < Ripper
       [parent, constant]
     end
 
+    def format(q)
+      q.format(parent)
+      q.text('::')
+      q.format(constant)
+    end
+
     def pretty_print(q)
       q.group(2, '(', ')') do
         q.text('const_path_ref')
@@ -2932,6 +3414,10 @@ class SyntaxTree < Ripper
       [constant]
     end
 
+    def format(q)
+      q.format(constant)
+    end
+
     def pretty_print(q)
       q.group(2, '(', ')') do
         q.text('const_ref')
@@ -2976,6 +3462,10 @@ class SyntaxTree < Ripper
 
     def child_nodes
       []
+    end
+
+    def format(q)
+      q.text(value)
     end
 
     def pretty_print(q)
@@ -3039,6 +3529,31 @@ class SyntaxTree < Ripper
       [name, params, bodystmt]
     end
 
+    def format(q)
+      q.group do
+        q.group do
+          q.text('def ')
+          q.format(name)
+
+          if params.is_a?(Params) && !params.empty?
+            q.text('(')
+            q.format(params)
+            q.text(')')
+          else
+            q.format(params)
+          end
+        end
+
+        q.nest(2) do
+          q.hardbreak
+          q.format(bodystmt)
+        end
+
+        q.hardbreak
+        q.text('end')
+      end
+    end
+
     def pretty_print(q)
       q.group(2, '(', ')') do
         q.text('def')
@@ -3076,7 +3591,7 @@ class SyntaxTree < Ripper
     # [Backtick | Const | Ident | Kw | Op] the name of the method
     attr_reader :name
 
-    # [Paren] the parameter declaration for the method
+    # [nil | Paren] the parameter declaration for the method
     attr_reader :paren
 
     # [untyped] the expression to be executed by the method
@@ -3100,6 +3615,21 @@ class SyntaxTree < Ripper
       [name, paren, statement]
     end
 
+    def format(q)
+      q.group do
+        q.text('def ')
+        q.format(name)
+        q.format(paren) if paren && !paren.contents.empty?
+        q.text(' =')
+        q.group do
+          q.nest(2) do
+            q.breakable
+            q.format(statement)
+          end
+        end
+      end
+    end
+
     def pretty_print(q)
       q.group(2, '(', ')') do
         q.text('def_endless')
@@ -3107,8 +3637,10 @@ class SyntaxTree < Ripper
         q.breakable
         q.pp(name)
 
-        q.breakable
-        q.pp(paren)
+        if paren
+          q.breakable
+          q.pp(paren)
+        end
 
         q.breakable
         q.pp(statement)
@@ -3132,7 +3664,7 @@ class SyntaxTree < Ripper
   # :call-seq:
   #   on_def: (
   #     (Backtick | Const | Ident | Kw | Op) name,
-  #     (Params | Paren) params,
+  #     (nil | Params | Paren) params,
   #     untyped bodystmt
   #   ) -> Def | DefEndless
   def on_def(name, params, bodystmt)
@@ -3211,6 +3743,16 @@ class SyntaxTree < Ripper
       [value]
     end
 
+    def format(q)
+      q.group(0, 'defined?(', ')') do
+        q.nest(2) do
+          q.breakable('')
+          q.format(value)
+        end
+        q.breakable('')
+      end
+    end
+
     def pretty_print(q)
       q.group(2, '(', ')') do
         q.text('defined')
@@ -3280,6 +3822,33 @@ class SyntaxTree < Ripper
 
     def child_nodes
       [target, operator, name, params, bodystmt]
+    end
+
+    def format(q)
+      q.group do
+        q.group do
+          q.text('def ')
+          q.format(target)
+          q.format(operator)
+          q.format(name)
+
+          if params.is_a?(Params) && !params.empty?
+            q.text('(')
+            q.format(params)
+            q.text(')')
+          else
+            q.format(params)
+          end
+        end
+
+        q.nest(2) do
+          q.hardbreak
+          q.format(bodystmt)
+        end
+
+        q.hardbreak
+        q.text('end')
+      end
     end
 
     def pretty_print(q)
@@ -3400,6 +3969,19 @@ class SyntaxTree < Ripper
       [keyword, block_var, bodystmt]
     end
 
+    def format(q)
+      q.group(0, 'do', 'end') do
+        if block_var
+          q.text(' ')
+          q.format(block_var)
+        end
+
+        q.breakable
+        q.format(bodystmt)
+        q.breakable
+      end
+    end
+
     def pretty_print(q)
       q.group(2, '(', ')') do
         q.text('do_block')
@@ -3482,6 +4064,12 @@ class SyntaxTree < Ripper
       [left, right]
     end
 
+    def format(q)
+      q.format(left) if left
+      q.text('..')
+      q.format(right) if right
+    end
+
     def pretty_print(q)
       q.group(2, '(', ')') do
         q.text('dot2')
@@ -3556,6 +4144,12 @@ class SyntaxTree < Ripper
       [left, right]
     end
 
+    def format(q)
+      q.format(left) if left
+      q.text('...')
+      q.format(right) if right
+    end
+
     def pretty_print(q)
       q.group(2, '(', ')') do
         q.text('dot3')
@@ -3628,6 +4222,15 @@ class SyntaxTree < Ripper
       parts
     end
 
+    def format(q)
+      q.group do
+        q.text(':')
+        q.text(quote)
+        q.format_each(parts)
+        q.text(quote)
+      end
+    end
+
     def pretty_print(q)
       q.group(2, '(', ')') do
         q.text('dyna_symbol')
@@ -3696,6 +4299,16 @@ class SyntaxTree < Ripper
 
     def child_nodes
       [statements]
+    end
+
+    def format(q)
+      q.group do
+        q.text('else')
+        q.nest(2) do
+          q.hardbreak
+          q.format(statements)
+        end
+      end
     end
 
     def pretty_print(q)
@@ -3770,6 +4383,27 @@ class SyntaxTree < Ripper
 
     def child_nodes
       [predicate, statements, consequent]
+    end
+
+    def format(q)
+      q.group do
+        q.group do
+          q.text('elsif ')
+          q.nest('elsif'.length - 1) { q.format(predicate) }
+        end
+
+        q.nest(2) do
+          q.hardbreak
+          q.format(statements)
+        end
+
+        if consequent
+          q.group do
+            q.hardbreak
+            q.format(consequent)
+          end
+        end
+      end
     end
 
     def pretty_print(q)
@@ -3848,6 +4482,10 @@ class SyntaxTree < Ripper
 
     def child_nodes
       []
+    end
+
+    def format(q)
+      q.text(value)
     end
 
     def pretty_print(q)
@@ -4032,6 +4670,14 @@ class SyntaxTree < Ripper
       [keyword, statements]
     end
 
+    def format(q)
+      q.format(keyword)
+      q.nest(2) do
+        q.hardbreak
+        q.format(statements)
+      end
+    end
+
     def pretty_print(q)
       q.group(2, '(', ')') do
         q.text('ensure')
@@ -4104,6 +4750,10 @@ class SyntaxTree < Ripper
       []
     end
 
+    def format(q)
+      q.text(value)
+    end
+
     def pretty_print(q)
       q.group(2, '(', ')') do
         q.text('excessed_comma')
@@ -4156,6 +4806,10 @@ class SyntaxTree < Ripper
 
     def child_nodes
       [value]
+    end
+
+    def format(q)
+      q.format(value)
     end
 
     def pretty_print(q)
@@ -4211,6 +4865,14 @@ class SyntaxTree < Ripper
 
     def child_nodes
       [parent, (operator if operator != :'::'), name]
+    end
+
+    def format(q)
+      q.group do
+        q.format(parent)
+        q.format(CallOperatorFormatter.new(operator))
+        q.format(name)
+      end
     end
 
     def pretty_print(q)
@@ -4281,6 +4943,10 @@ class SyntaxTree < Ripper
       []
     end
 
+    def format(q)
+      q.text(value)
+    end
+
     def pretty_print(q)
       q.group(2, '(', ')') do
         q.text('float')
@@ -4348,6 +5014,21 @@ class SyntaxTree < Ripper
 
     def child_nodes
       [constant, left, *values, right]
+    end
+
+    def format(q)
+      q.format(constant) if constant
+      q.group(0, '[', ']') do
+        q.text('*')
+        q.format(left)
+        q.comma_breakable
+
+        q.seplist(values) { |value| q.format(value) }
+        q.comma_breakable
+
+        q.text('*')
+        q.format(right)
+      end
     end
 
     def pretty_print(q)
@@ -4439,6 +5120,21 @@ class SyntaxTree < Ripper
       [index, collection, statements]
     end
 
+    def format(q)
+      q.group do
+        q.text('for ')
+        q.format(index)
+        q.text(' in ')
+        q.format(collection)
+        q.nest(2) do
+          q.hardbreak
+          q.format(statements)
+        end
+        q.hardbreak
+        q.text('end')
+      end
+    end
+
     def pretty_print(q)
       q.group(2, '(', ')') do
         q.text('for')
@@ -4523,6 +5219,10 @@ class SyntaxTree < Ripper
       []
     end
 
+    def format(q)
+      q.text(value)
+    end
+
     def pretty_print(q)
       q.group(2, '(', ')') do
         q.text('gvar')
@@ -4574,6 +5274,20 @@ class SyntaxTree < Ripper
 
     def child_nodes
       assocs
+    end
+
+    def format(q)
+      contents = -> {
+        q.text('{')
+        q.nest(2) do
+          q.breakable
+          q.format(HashFormatter.for(self))
+        end
+        q.breakable
+        q.text('}')
+      }
+
+      q.parent.is_a?(Assoc) ? contents.call : q.group(&contents)
     end
 
     def pretty_print(q)
@@ -4641,6 +5355,15 @@ class SyntaxTree < Ripper
       [beginning, *parts]
     end
 
+    def format(q)
+      q.group do
+        q.format(beginning)
+        q.hardbreak
+        q.format_each(parts)
+        q.text(ending)
+      end
+    end
+
     def pretty_print(q)
       q.group(2, '(', ')') do
         q.text('heredoc')
@@ -4689,6 +5412,10 @@ class SyntaxTree < Ripper
 
     def child_nodes
       []
+    end
+
+    def format(q)
+      q.text(value)
     end
 
     def pretty_print(q)
@@ -4763,6 +5490,42 @@ class SyntaxTree < Ripper
   #     end
   #
   class HshPtn
+    class KeywordFormatter
+      # [Label] the keyword being used
+      attr_reader :key
+
+      # [untyped] the optional value for the keyword
+      attr_reader :value
+
+      def initialize(key, value)
+        @key = key
+        @value = value
+      end
+
+      def format(q)
+        q.format(key)
+
+        if value
+          q.text(' ')
+          q.format(value)
+        end
+      end
+    end
+
+    class KeywordRestFormatter
+      # [VarField] the parameter that matches the remaining keywords
+      attr_reader :keyword_rest
+
+      def initialize(keyword_rest)
+        @keyword_rest = keyword_rest
+      end
+
+      def format(q)
+        q.text('**')
+        q.format(keyword_rest)
+      end
+    end
+
     # [nil | untyped] the optional constant wrapper
     attr_reader :constant
 
@@ -4789,6 +5552,29 @@ class SyntaxTree < Ripper
 
     def child_nodes
       [constant, *keywords.flatten(1), keyword_rest]
+    end
+
+    def format(q)
+      parts = keywords.map { |(key, value)| KeywordFormatter.new(key, value) }
+      parts << KeywordRestFormatter.new(keyword_rest) if keyword_rest
+      contents = -> { q.seplist(parts) { |part| q.format(part) } }
+
+      if constant
+        q.format(constant)
+        q.text('[')
+        contents.call
+        q.text(']')
+        return
+      end
+
+      parent = q.parent
+      if PATTERNS.any? { |pattern| parent.is_a?(pattern) }
+        q.text('{ ')
+        contents.call
+        q.text(' }')
+      else
+        contents.call
+      end
     end
 
     def pretty_print(q)
@@ -4827,6 +5613,10 @@ class SyntaxTree < Ripper
       }.to_json(*opts)
     end
   end
+
+  # The list of nodes that represent patterns inside of pattern matching so that
+  # when a pattern is being printed it knows if it's nested.
+  PATTERNS = [AryPtn, Binary, FndPtn, HshPtn, RAssign]
 
   # :call-seq:
   #   on_hshptn: (
@@ -4868,6 +5658,10 @@ class SyntaxTree < Ripper
 
     def child_nodes
       []
+    end
+
+    def format(q)
+      q.text(value)
     end
 
     def pretty_print(q)
@@ -4935,6 +5729,28 @@ class SyntaxTree < Ripper
 
     def child_nodes
       [predicate, statements, consequent]
+    end
+
+    def format(q)
+      keyword = 'if '
+
+      q.group do
+        q.text(keyword)
+        q.nest(keyword.length) { q.format(predicate) }
+
+        q.nest(2) do
+          q.hardbreak
+          q.format(statements)
+        end
+
+        if consequent
+          q.hardbreak
+          q.format(consequent)
+        end
+
+        q.hardbreak
+        q.text('end')
+      end
     end
 
     def pretty_print(q)
@@ -5020,6 +5836,20 @@ class SyntaxTree < Ripper
       [predicate, truthy, falsy]
     end
 
+    def format(q)
+      q.group do
+        q.format(predicate)
+        q.text(' ?')
+
+        q.breakable
+        q.format(truthy)
+        q.text(' :')
+
+        q.breakable
+        q.format(falsy)
+      end
+    end
+
     def pretty_print(q)
       q.group(2, '(', ')') do
         q.text('ifop')
@@ -5086,6 +5916,14 @@ class SyntaxTree < Ripper
 
     def child_nodes
       [statement, predicate]
+    end
+
+    def format(q)
+      q.group do
+        q.format(statement)
+        q.text(' if ')
+        q.format(predicate)
+      end
     end
 
     def pretty_print(q)
@@ -5157,6 +5995,10 @@ class SyntaxTree < Ripper
       []
     end
 
+    def format(q)
+      q.text(value)
+    end
+
     def pretty_print(q)
       q.group(2, '(', ')') do
         q.text('imaginary')
@@ -5219,6 +6061,24 @@ class SyntaxTree < Ripper
 
     def child_nodes
       [pattern, statements, consequent]
+    end
+
+    def format(q)
+      keyword = 'in '
+
+      q.group do
+        q.text(keyword)
+        q.nest(keyword.length) { q.format(pattern) }
+        q.nest(2) do
+          q.hardbreak
+          q.format(statements)
+        end
+
+        if consequent
+          q.hardbreak
+          q.format(consequent)
+        end
+      end
     end
 
     def pretty_print(q)
@@ -5300,6 +6160,10 @@ class SyntaxTree < Ripper
       []
     end
 
+    def format(q)
+      q.text(value)
+    end
+
     def pretty_print(q)
       q.group(2, '(', ')') do
         q.text('int')
@@ -5351,6 +6215,10 @@ class SyntaxTree < Ripper
 
     def child_nodes
       []
+    end
+
+    def format(q)
+      q.text(value)
     end
 
     def pretty_print(q)
@@ -5415,6 +6283,10 @@ class SyntaxTree < Ripper
       []
     end
 
+    def format(q)
+      q.text(value)
+    end
+
     def pretty_print(q)
       q.group(2, '(', ')') do
         q.text('kw')
@@ -5467,6 +6339,11 @@ class SyntaxTree < Ripper
 
     def child_nodes
       [name]
+    end
+
+    def format(q)
+      q.text('**')
+      q.format(name) if name
     end
 
     def pretty_print(q)
@@ -5525,6 +6402,10 @@ class SyntaxTree < Ripper
 
     def child_nodes
       []
+    end
+
+    def format(q)
+      q.text(value)
     end
 
     def pretty_print(q)
@@ -5618,6 +6499,18 @@ class SyntaxTree < Ripper
       [params, statements]
     end
 
+    def format(q)
+      q.group do
+        q.text('->')
+        q.format(params)
+        q.text(' {')
+        q.breakable
+        q.format(statements)
+        q.breakable
+        q.text('}')
+      end
+    end
+
     def pretty_print(q)
       q.group(2, '(', ')') do
         q.text('lambda')
@@ -5687,6 +6580,10 @@ class SyntaxTree < Ripper
 
     def child_nodes
       []
+    end
+
+    def format(q)
+      q.text(value)
     end
 
     def pretty_print(q)
@@ -5766,6 +6663,10 @@ class SyntaxTree < Ripper
       []
     end
 
+    def format(q)
+      q.text(value)
+    end
+
     def pretty_print(q)
       q.group(2, '(', ')') do
         q.text('lparen')
@@ -5814,7 +6715,7 @@ class SyntaxTree < Ripper
   #     first, = value
   #
   class MAssign
-    # [Mlhs | MlhsParen] the target of the multiple assignment
+    # [MLHS | MLHSParen] the target of the multiple assignment
     attr_reader :target
 
     # [untyped] the value being assigned
@@ -5835,6 +6736,21 @@ class SyntaxTree < Ripper
 
     def child_nodes
       [target, value]
+    end
+
+    def format(q)
+      q.group do
+        q.group do
+          q.format(target)
+          q.text(',') if target.is_a?(MLHS) && target.comma
+        end
+
+        q.text(' =')
+        q.nest(2) do
+          q.breakable
+          q.format(value)
+        end
+      end
     end
 
     def pretty_print(q)
@@ -5859,7 +6775,7 @@ class SyntaxTree < Ripper
   end
 
   # :call-seq:
-  #   on_massign: ((Mlhs | MlhsParen) target, untyped value) -> MAssign
+  #   on_massign: ((MLHS | MLHSParen) target, untyped value) -> MAssign
   def on_massign(target, value)
     comma_range = target.location.end_char...value.location.start_char
     target.comma = true if source[comma_range].strip.start_with?(',')
@@ -5908,6 +6824,12 @@ class SyntaxTree < Ripper
 
     def child_nodes
       [call, arguments]
+    end
+
+    def format(q)
+      q.format(call)
+      q.text(' ') unless arguments.is_a?(ArgParen)
+      q.format(arguments)
     end
 
     def pretty_print(q)
@@ -5975,6 +6897,11 @@ class SyntaxTree < Ripper
       [call, block]
     end
 
+    def format(q)
+      q.format(call)
+      q.format(block)
+    end
+
     def pretty_print(q)
       q.group(2, '(', ')') do
         q.text('method_add_block')
@@ -6019,7 +6946,7 @@ class SyntaxTree < Ripper
   #     first, second, third = value
   #
   class MLHS
-    # Array[ARefField | ArgStar | Field | Ident | MlhsParen | VarField] the
+    # Array[ARefField | ArgStar | Field | Ident | MLHSParen | VarField] the
     # parts of the left-hand side of a multiple assignment
     attr_reader :parts
 
@@ -6027,6 +6954,7 @@ class SyntaxTree < Ripper
     # list, which impacts destructuring. It's an attr_accessor so that while
     # the syntax tree is being built it can be set by its parent node
     attr_accessor :comma
+    alias comma? comma
 
     # [Location] the location of this node
     attr_reader :location
@@ -6043,6 +6971,10 @@ class SyntaxTree < Ripper
 
     def child_nodes
       parts
+    end
+
+    def format(q)
+      q.format_each(parts)
     end
 
     def pretty_print(q)
@@ -6064,7 +6996,7 @@ class SyntaxTree < Ripper
   # :call-seq:
   #   on_mlhs_add: (
   #     MLHS mlhs,
-  #     (ARefField | Field | Ident | MlhsParen | VarField) part
+  #     (ARefField | Field | Ident | MLHSParen | VarField) part
   #   ) -> MLHS
   def on_mlhs_add(mlhs, part)
     location =
@@ -6110,7 +7042,7 @@ class SyntaxTree < Ripper
   #     (left, right) = value
   #
   class MLHSParen
-    # [Mlhs | MlhsParen] the contents inside of the parentheses
+    # [MLHS | MLHSParen] the contents inside of the parentheses
     attr_reader :contents
 
     # [Location] the location of this node
@@ -6127,6 +7059,23 @@ class SyntaxTree < Ripper
 
     def child_nodes
       [contents]
+    end
+
+    def format(q)
+      parent = q.parent
+      if parent.is_a?(MAssign) || parent.is_a?(MLHSParen)
+        q.format(contents)
+      end
+
+      q.group(0, '(', ')') do
+        q.nest(2) do
+          q.breakable('')
+          q.format(contents)
+          q.text(',') if contents.is_a?(MLHS) && contents.comma?
+        end
+
+        q.breakable('')
+      end
     end
 
     def pretty_print(q)
@@ -6146,7 +7095,7 @@ class SyntaxTree < Ripper
   end
 
   # :call-seq:
-  #   on_mlhs_paren: ((Mlhs | MlhsParen) contents) -> MLHSParen
+  #   on_mlhs_paren: ((MLHS | MLHSParen) contents) -> MLHSParen
   def on_mlhs_paren(contents)
     lparen = find_token(LParen)
     rparen = find_token(RParen)
@@ -6187,6 +7136,23 @@ class SyntaxTree < Ripper
 
     def child_nodes
       [constant, bodystmt]
+    end
+
+    def format(q)
+      q.group do
+        q.group do
+          q.text('module ')
+          q.format(constant)
+        end
+
+        q.nest(2) do
+          q.hardbreak
+          q.format(bodystmt)
+        end
+
+        q.hardbreak
+        q.text('end')
+      end
     end
 
     def pretty_print(q)
@@ -6258,6 +7224,10 @@ class SyntaxTree < Ripper
 
     def child_nodes
       parts
+    end
+
+    def format(q)
+      q.format_each(parts)
     end
 
     def pretty_print(q)
@@ -6360,6 +7330,11 @@ class SyntaxTree < Ripper
       [arguments]
     end
 
+    def format(q)
+      q.text('next ')
+      q.format(arguments)
+    end
+
     def pretty_print(q)
       q.group(2, '(', ')') do
         q.text('next')
@@ -6418,6 +7393,10 @@ class SyntaxTree < Ripper
 
     def child_nodes
       []
+    end
+
+    def format(q)
+      q.text(value)
     end
 
     def pretty_print(q)
@@ -6481,6 +7460,18 @@ class SyntaxTree < Ripper
 
     def child_nodes
       [target, operator, value]
+    end
+
+    def format(q)
+      q.group do
+        q.format(target)
+        q.text(' ')
+        q.format(operator)
+        q.nest(2) do
+          q.breakable
+          q.format(value)
+        end
+      end
     end
 
     def pretty_print(q)
@@ -6598,6 +7589,10 @@ class SyntaxTree < Ripper
         (keyword_rest if keyword_rest != :nil),
         block
       ]
+    end
+
+
+    def format(q)
     end
 
     def pretty_print(q)
@@ -6750,6 +7745,18 @@ class SyntaxTree < Ripper
       [lparen, contents]
     end
 
+    def format(q)
+      q.group do
+        q.format(lparen)
+        q.nest(2) do
+          q.breakable('')
+          q.format(contents)
+        end
+        q.breakable('')
+        q.text(')')
+      end
+    end
+
     def pretty_print(q)
       q.group(2, '(', ')') do
         q.text('paren')
@@ -6836,6 +7843,10 @@ class SyntaxTree < Ripper
       []
     end
 
+    def format(q)
+      q.text(value)
+    end
+
     def pretty_print(q)
       q.group(2, '(', ')') do
         q.text('period')
@@ -6863,6 +7874,36 @@ class SyntaxTree < Ripper
 
   # Program represents the overall syntax tree.
   class Program
+    class Formatter < PP
+      attr_reader :stack, :quote
+
+      def initialize(*)
+        super
+
+        @stack = []
+        @quote = '"'
+      end
+
+      def format(node)
+        stack << node
+        node.format(self)
+        stack.pop
+      end
+
+      def format_each(nodes)
+        nodes.each { |node| format(node) }
+      end
+
+      def hardbreak
+        breakable('')
+        current_group.break
+      end
+
+      def parent
+        stack[-2]
+      end
+    end
+
     # [Statements] the top-level expressions of the program
     attr_reader :statements
 
@@ -6880,6 +7921,17 @@ class SyntaxTree < Ripper
 
     def child_nodes
       [statements]
+    end
+
+    def format
+      out = StringIO.new
+      q = Formatter.new(out)
+
+      q.format(statements)
+      q.hardbreak
+      q.flush
+
+      out.string
     end
 
     def pretty_print(q)
@@ -7033,6 +8085,18 @@ class SyntaxTree < Ripper
       []
     end
 
+    def format(q)
+      q.group(0, '%i[', ']') do
+        q.nest(2) do
+          q.breakable('')
+          q.seplist(elements, -> { q.breakable }) do |element|
+            q.format(element)
+          end
+        end
+        q.breakable('')
+      end
+    end
+
     def pretty_print(q)
       q.group(2, '(', ')') do
         q.text('qsymbols')
@@ -7123,6 +8187,18 @@ class SyntaxTree < Ripper
       []
     end
 
+    def format(q)
+      q.group(0, '%w[', ']') do
+        q.nest(2) do
+          q.breakable('')
+          q.seplist(elements, -> { q.breakable }) do |element|
+            q.format(element)
+          end
+        end
+        q.breakable('')
+      end
+    end
+
     def pretty_print(q)
       q.group(2, '(', ')') do
         q.text('qwords')
@@ -7211,6 +8287,10 @@ class SyntaxTree < Ripper
 
     def child_nodes
       []
+    end
+
+    def format(q)
+      q.text(value)
     end
 
     def pretty_print(q)
@@ -7318,6 +8398,10 @@ class SyntaxTree < Ripper
 
     def child_nodes
       []
+    end
+
+    def format(q)
+      q.text(value)
     end
 
     def pretty_print(q)
@@ -7481,6 +8565,15 @@ class SyntaxTree < Ripper
       parts
     end
 
+    def format(q)
+      q.group do
+        q.format('%r{')
+        q.format_each(parts)
+        q.format('}')
+        q.text(ending[1..-1])
+      end
+    end
+
     def pretty_print(q)
       q.group(2, '(', ')') do
         q.text('regexp_literal')
@@ -7561,6 +8654,20 @@ class SyntaxTree < Ripper
       [*exceptions, variable]
     end
 
+    def format(q)
+      q.group do
+        if exceptions
+          q.text(' ')
+          q.format(exceptions)
+        end
+
+        if variable
+          q.text(' => ')
+          q.format(variable)
+        end
+      end
+    end
+
     def pretty_print(q)
       q.group(2, '(', ')') do
         q.text('rescue_ex')
@@ -7635,6 +8742,28 @@ class SyntaxTree < Ripper
 
     def child_nodes
       [exception, statements, consequent]
+    end
+
+    def format(q)
+      q.group do
+        q.text('rescue')
+
+        if exception
+          q.nest('rescue '.length) { q.format(exception) }
+        else
+          q.text(' StandardError')
+        end
+
+        q.nest(2) do
+          q.hardbreak
+          q.format(statements)
+        end
+
+        if consequent
+          q.hardbreak
+          q.format(consequent)
+        end
+      end
     end
 
     def pretty_print(q)
@@ -7747,6 +8876,22 @@ class SyntaxTree < Ripper
       [statement, value]
     end
 
+    def format(q)
+      q.group(0, 'begin', 'end') do
+        q.nest(2) do
+          q.hardbreak
+          q.format(statement)
+        end
+        q.hardbreak
+        q.text('rescue StandardError')
+        q.nest(2) do
+          q.hardbreak
+          q.format(value)
+        end
+        q.hardbreak
+      end
+    end
+
     def pretty_print(q)
       q.group(2, '(', ')') do
         q.text('rescue_mod')
@@ -7809,6 +8954,11 @@ class SyntaxTree < Ripper
       [name]
     end
 
+    def format(q)
+      q.text('*')
+      q.format(name) if name
+    end
+
     def pretty_print(q)
       q.group(2, '(', ')') do
         q.text('rest_param')
@@ -7858,6 +9008,10 @@ class SyntaxTree < Ripper
       []
     end
 
+    def format(q)
+      q.text(value)
+    end
+
     def pretty_print(q)
       q.group(2, '(', ')') do
         q.text('retry')
@@ -7904,6 +9058,13 @@ class SyntaxTree < Ripper
 
     def child_nodes
       [arguments]
+    end
+
+    def format(q)
+      q.group do
+        q.text('return ')
+        q.format(arguments)
+      end
     end
 
     def pretty_print(q)
@@ -7955,6 +9116,10 @@ class SyntaxTree < Ripper
 
     def child_nodes
       []
+    end
+
+    def format(q)
+      q.text(value)
     end
 
     def pretty_print(q)
@@ -8037,6 +9202,17 @@ class SyntaxTree < Ripper
 
     def child_nodes
       [target, bodystmt]
+    end
+
+    def format(q)
+      q.group(0, 'class << ', 'end') do
+        q.format(target)
+        q.nest(2) do
+          q.hardbreak
+          q.format(bodystmt)
+        end
+        q.hardbreak
+      end
     end
 
     def pretty_print(q)
@@ -8172,6 +9348,12 @@ class SyntaxTree < Ripper
       body
     end
 
+    def format(q)
+      q.seplist(body, -> { q.hardbreak }) do |statement|
+        q.format(statement)
+      end
+    end
+
     def pretty_print(q)
       q.group(2, '(', ')') do
         q.text('statements')
@@ -8274,6 +9456,17 @@ class SyntaxTree < Ripper
       [left, right]
     end
 
+    def format(q)
+      q.group do
+        q.format(left)
+        q.text(' \\')
+        q.nest(2) do
+          q.hardbreak
+          q.format(right)
+        end
+      end
+    end
+
     def pretty_print(q)
       q.group(2, '(', ')') do
         q.text('string_concat')
@@ -8343,6 +9536,12 @@ class SyntaxTree < Ripper
       [variable]
     end
 
+    def format(q)
+      q.text('#{')
+      q.format(variable)
+      q.text('}')
+    end
+
     def pretty_print(q)
       q.group(2, '(', ')') do
         q.text('string_dvar')
@@ -8394,7 +9593,19 @@ class SyntaxTree < Ripper
 
     def child_nodes
       [statements]
-    end 
+    end
+
+    def format(q)
+      q.group do
+        q.text('#{')
+        q.nest(2) do
+          q.breakable('')
+          q.format(statements)
+        end
+        q.breakable('')
+        q.text('}')
+      end
+    end
 
     def pretty_print(q)
       q.group(2, '(', ')') do
@@ -8456,6 +9667,12 @@ class SyntaxTree < Ripper
 
     def child_nodes
       parts
+    end
+
+    def format(q)
+      q.group(0, quote, quote) do
+        q.format_each(parts)
+      end
     end
 
     def pretty_print(q)
@@ -8529,6 +9746,14 @@ class SyntaxTree < Ripper
 
     def child_nodes
       [arguments]
+    end
+
+    def format(q)
+      q.group do
+        q.text('super')
+        q.text(' ') if arguments.is_a(Args)
+        q.format(arguments)
+      end
     end
 
     def pretty_print(q)
@@ -8656,6 +9881,11 @@ class SyntaxTree < Ripper
       [value]
     end
 
+    def format(q)
+      q.text(':')
+      q.format(value)
+    end
+
     def pretty_print(q)
       q.group(2, '(', ')') do
         q.text('symbol_literal')
@@ -8714,6 +9944,18 @@ class SyntaxTree < Ripper
 
     def child_nodes
       []
+    end
+
+    def format(q)
+      q.group(0, '%I[', ']') do
+        q.nest(2) do
+          q.breakable('')
+          q.seplist(elements, -> { q.breakable }) do |element|
+            q.format(element)
+          end
+        end
+        q.breakable('')
+      end
     end
 
     def pretty_print(q)
@@ -8926,6 +10168,11 @@ class SyntaxTree < Ripper
       [constant]
     end
 
+    def format(q)
+      q.text('::')
+      q.format(constant)
+    end
+
     def pretty_print(q)
       q.group(2, '(', ')') do
         q.text('top_const_ref')
@@ -9015,6 +10262,10 @@ class SyntaxTree < Ripper
 
     def child_nodes
       []
+    end
+
+    def format(q)
+      q.text(value)
     end
 
     def pretty_print(q)
@@ -9111,6 +10362,12 @@ class SyntaxTree < Ripper
       [statement]
     end
 
+    def format(q)
+      q.text(parentheses ? 'not(' : 'not ')
+      q.format(statement)
+      q.text(')') if parentheses
+    end
+
     def pretty_print(q)
       q.group(2, '(', ')') do
         q.text('not')
@@ -9160,6 +10417,11 @@ class SyntaxTree < Ripper
 
     def child_nodes
       [statement]
+    end
+
+    def format(q)
+      q.text(operator)
+      q.format(statement)
     end
 
     def pretty_print(q)
@@ -9253,6 +10515,17 @@ class SyntaxTree < Ripper
       symbols
     end
 
+    def format(q)
+      keyword = 'undef '
+
+      q.group do
+        q.text(keyword)
+        q.nest(keyword.length) do
+          q.seplist(symbols) { |symbol| q.format(symbol) }
+        end
+      end
+    end
+
     def pretty_print(q)
       q.group(2, '(', ')') do
         q.text('undef')
@@ -9311,6 +10584,28 @@ class SyntaxTree < Ripper
 
     def child_nodes
       [predicate, statements, consequent]
+    end
+
+    def format(q)
+      keyword = 'unless '
+
+      q.group do
+        q.text(keyword)
+        q.nest(keyword.length) { q.format(predicate) }
+
+        q.nest(2) do
+          q.hardbreak
+          q.format(statements)
+        end
+
+        if consequent
+          q.hardbreak
+          q.format(consequent)
+        end
+
+        q.hardbreak
+        q.text('end')
+      end
     end
 
     def pretty_print(q)
@@ -9392,6 +10687,14 @@ class SyntaxTree < Ripper
       [statement, predicate]
     end
 
+    def format(q)
+      q.group do
+        q.format(statement)
+        q.text(' unless ')
+        q.format(predicate)
+      end
+    end
+
     def pretty_print(q)
       q.group(2, '(', ')') do
         q.text('unless_mod')
@@ -9456,6 +10759,21 @@ class SyntaxTree < Ripper
 
     def child_nodes
       [predicate, statements]
+    end
+
+    def format(q)
+      keyword = 'until '
+
+      q.group do
+        q.format(keyword)
+        q.nest(keyword.length) { q.format(predicate) }
+        q.nest(2) do
+          q.hardbreak
+          q.format(statements)
+        end
+        q.hardbreak
+        q.text('end')
+      end
     end
 
     def pretty_print(q)
@@ -9535,6 +10853,14 @@ class SyntaxTree < Ripper
       [statement, predicate]
     end
 
+    def format(q)
+      q.group do
+        q.format(statement)
+        q.text(' until ')
+        q.format(predicate)
+      end
+    end
+
     def pretty_print(q)
       q.group(2, '(', ')') do
         q.text('until_mod')
@@ -9601,6 +10927,21 @@ class SyntaxTree < Ripper
       [left, right]
     end
 
+    def format(q)
+      keyword = 'alias '
+
+      q.group do
+        q.text(keyword)
+        q.format(left)
+        q.group do
+          q.nest(keyword.length) do
+            q.breakable
+            q.format(right)
+          end
+        end
+      end
+    end
+
     def pretty_print(q)
       q.group(2, '(', ')') do
         q.text('var_alias')
@@ -9658,6 +10999,10 @@ class SyntaxTree < Ripper
 
     def child_nodes
       [value]
+    end
+
+    def format(q)
+      q.format(value) if value
     end
 
     def pretty_print(q)
@@ -9721,6 +11066,10 @@ class SyntaxTree < Ripper
       [value]
     end
 
+    def format(q)
+      q.format(value)
+    end
+
     def pretty_print(q)
       q.group(2, '(', ')') do
         q.text('var_ref')
@@ -9768,6 +11117,10 @@ class SyntaxTree < Ripper
       [value]
     end
 
+    def format(q)
+      q.format(value)
+    end
+
     def pretty_print(q)
       q.group(2, '(', ')') do
         q.text('access_ctrl')
@@ -9807,6 +11160,10 @@ class SyntaxTree < Ripper
 
     def child_nodes
       [value]
+    end
+
+    def format(q)
+      q.format(value)
     end
 
     def pretty_print(q)
@@ -9855,6 +11212,9 @@ class SyntaxTree < Ripper
     def initialize(location:, comments: [])
       @location = location
       @comments = comments
+    end
+
+    def format(q)
     end
 
     def pretty_print(q)
@@ -9907,6 +11267,22 @@ class SyntaxTree < Ripper
 
     def child_nodes
       [arguments, statements, consequent]
+    end
+
+    def format(q)
+      keyword = 'when '
+
+      q.group do
+        q.text(keyword)
+        q.nest(keyword.length) do
+          q.format(arguments)
+        end
+
+        if consequent
+          q.hardbreak
+          q.format(consequent)
+        end
+      end
     end
 
     def pretty_print(q)
@@ -9989,6 +11365,21 @@ class SyntaxTree < Ripper
       [predicate, statements]
     end
 
+    def format(q)
+      keyword = 'while '
+
+      q.group do
+        q.format(keyword)
+        q.nest(keyword.length) { q.format(predicate) }
+        q.nest(2) do
+          q.hardbreak
+          q.format(statements)
+        end
+        q.hardbreak
+        q.text('end')
+      end
+    end
+
     def pretty_print(q)
       q.group(2, '(', ')') do
         q.text('while')
@@ -10066,6 +11457,14 @@ class SyntaxTree < Ripper
       [statement, predicate]
     end
 
+    def format(q)
+      q.group do
+        q.format(statement)
+        q.text(' while ')
+        q.format(predicate)
+      end
+    end
+
     def pretty_print(q)
       q.group(2, '(', ')') do
         q.text('while_mod')
@@ -10131,6 +11530,10 @@ class SyntaxTree < Ripper
       parts
     end
 
+    def format(q)
+      q.format_each(parts)
+    end
+
     def pretty_print(q)
       q.group(2, '(', ')') do
         q.text('word')
@@ -10187,6 +11590,18 @@ class SyntaxTree < Ripper
 
     def child_nodes
       []
+    end
+
+    def format(q)
+      q.group(0, '%W[', ']') do
+        q.nest(2) do
+          q.breakable('')
+          q.seplist(elements, -> { q.breakable }) do |element|
+            q.format(element)
+          end
+        end
+        q.breakable('')
+      end
     end
 
     def pretty_print(q)
@@ -10330,6 +11745,12 @@ class SyntaxTree < Ripper
       parts
     end
 
+    def format(q)
+      q.text('`')
+      q.format_each(parts)
+      q.text('`')
+    end
+
     def pretty_print(q)
       q.group(2, '(', ')') do
         q.text('xstring_literal')
@@ -10392,6 +11813,12 @@ class SyntaxTree < Ripper
       [arguments]
     end
 
+    def format(q)
+      q.text('yield')
+      q.text(' ') if arguments.is_a?(Args)
+      q.format(arguments)
+    end
+
     def pretty_print(q)
       q.group(2, '(', ')') do
         q.text('yield')
@@ -10443,6 +11870,10 @@ class SyntaxTree < Ripper
       []
     end
 
+    def format(q)
+      q.text(value)
+    end
+
     def pretty_print(q)
       q.group(2, '(', ')') do
         q.text('yield0')
@@ -10489,6 +11920,10 @@ class SyntaxTree < Ripper
 
     def child_nodes
       []
+    end
+
+    def format(q)
+      q.text(value)
     end
 
     def pretty_print(q)
