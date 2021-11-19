@@ -105,16 +105,16 @@ class SyntaxTree
 
       at = location(chars: 7..27)
       assert_node(Args, 'args', source, at: at) do |node|
-        node.arguments.arguments.arguments
+        node.arguments.arguments
       end
     end
 
-    def test_args_add_block
+    def test_arg_block
       source = 'method(argument, &block)'
 
-      at = location(chars: 7..23)
-      assert_node(ArgsAddBlock, 'args_add_block', source, at: at) do |node|
-        node.arguments.arguments
+      at = location(chars: 17..23)
+      assert_node(ArgBlock, 'arg_block', source, at: at) do |node|
+        node.arguments.arguments.parts[1]
       end
     end
 
@@ -123,7 +123,7 @@ class SyntaxTree
 
       at = location(chars: 15..25)
       assert_node(ArgStar, 'arg_star', source, at: at) do |node|
-        node.arguments.arguments.arguments.parts[1]
+        node.arguments.arguments.parts[1]
       end
     end
 
@@ -194,7 +194,7 @@ class SyntaxTree
 
       at = location(chars: 7..33)
       assert_node(BareAssocHash, 'bare_assoc_hash', source, at: at) do |node|
-        node.arguments.arguments.arguments.parts.first
+        node.arguments.arguments.parts.first
       end
     end
 

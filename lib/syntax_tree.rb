@@ -549,7 +549,7 @@ class SyntaxTree < Ripper
     # [untyped] the value being indexed
     attr_reader :collection
 
-    # [nil | Args | ArgsAddBlock] the value being passed within the brackets
+    # [nil | Args] the value being passed within the brackets
     attr_reader :index
 
     # [Location] the location of this node
@@ -582,7 +582,7 @@ class SyntaxTree < Ripper
   end
 
   # :call-seq:
-  #   on_aref: (untyped collection, (nil | Args | ArgsAddBlock) index) -> ARef
+  #   on_aref: (untyped collection, (nil | Args) index) -> ARef
   def on_aref(collection, index)
     find_token(LBracket)
     rbracket = find_token(RBracket)
@@ -605,7 +605,7 @@ class SyntaxTree < Ripper
     # [untyped] the value being indexed
     attr_reader :collection
 
-    # [nil | ArgsAddBlock] the value being passed within the brackets
+    # [nil | Args] the value being passed within the brackets
     attr_reader :index
 
     # [Location] the location of this node
@@ -640,7 +640,7 @@ class SyntaxTree < Ripper
   # :call-seq:
   #   on_aref_field: (
   #     untyped collection,
-  #     (nil | ArgsAddBlock) index
+  #     (nil | Args) index
   #   ) -> ARefField
   def on_aref_field(collection, index)
     find_token(LBracket)
@@ -662,15 +662,14 @@ class SyntaxTree < Ripper
   #
   #     method(argument)
   #
-  # In the example above, there would be an ArgParen node around the
-  # ArgsAddBlock node that represents the set of arguments being sent to the
-  # method method. The argument child node can be +nil+ if no arguments were
-  # passed, as in:
+  # In the example above, there would be an ArgParen node around the Args node
+  # that represents the set of arguments being sent to the method method. The
+  # argument child node can be +nil+ if no arguments were passed, as in:
   #
   #     method()
   #
   class ArgParen
-    # [nil | Args | ArgsAddBlock | ArgsForward] the arguments inside the
+    # [nil | Args | ArgsForward] the arguments inside the
     # parentheses
     attr_reader :arguments
 
@@ -697,7 +696,7 @@ class SyntaxTree < Ripper
 
   # :call-seq:
   #   on_arg_paren: (
-  #     (nil | Args | ArgsAddBlock | ArgsForward) arguments
+  #     (nil | Args | ArgsForward) arguments
   #   ) -> ArgParen
   def on_arg_paren(arguments)
     lparen = find_token(LParen)
@@ -767,46 +766,33 @@ class SyntaxTree < Ripper
     end
   end
 
-  # ArgsAddBlock represents a list of arguments and potentially a block
-  # argument. ArgsAddBlock is commonly seen being passed to any method where you
-  # use parentheses (wrapped in an ArgParen node). It’s also used to pass
-  # arguments to the various control-flow keywords like +return+.
+  # ArgBlock represents using a block operator on an expression.
   #
-  #     method(argument, &block)
+  #     method(&expression)
   #
-  class ArgsAddBlock
-    # [Args] the arguments before the optional block
-    attr_reader :arguments
-
-    # [nil | untyped] the optional block argument
-    attr_reader :block
+  class ArgBlock
+    # [untyped] the expression being turned into a block
+    attr_reader :value
 
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(arguments:, block:, location:)
-      @arguments = arguments
-      @block = block
+    def initialize(value:, location:)
+      @value = value
       @location = location
     end
 
     def pretty_print(q)
       q.group(2, '(', ')') do
-        q.text('args_add_block')
+        q.text('arg_block')
+
         q.breakable
-        q.pp(arguments)
-        q.breakable
-        q.pp(block)
+        q.pp(value)
       end
     end
 
     def to_json(*opts)
-      {
-        type: :args_add_block,
-        args: arguments,
-        block: block,
-        loc: location
-      }.to_json(*opts)
+      { type: :arg_block, value: value, loc: location }.to_json(*opts)
     end
   end
 
@@ -814,14 +800,19 @@ class SyntaxTree < Ripper
   #   on_args_add_block: (
   #     Args arguments,
   #     (false | untyped) block
-  #   ) -> ArgsAddBlock
+  #   ) -> Args
   def on_args_add_block(arguments, block)
-    ending = block || arguments
+    return arguments unless block
 
-    ArgsAddBlock.new(
-      arguments: arguments,
-      block: block || nil,
-      location: arguments.location.to(ending.location)
+    arg_block =
+      ArgBlock.new(
+        value: block,
+        location: find_token(Op, '&').location.to(block.location)
+      )
+
+    Args.new(
+      parts: arguments.parts << arg_block,
+      location: arguments.location.to(arg_block.location)
     )
   end
 
@@ -1785,7 +1776,7 @@ class SyntaxTree < Ripper
   #     break 1
   #
   class Break
-    # [Args | ArgsAddBlock] the arguments being sent to the keyword
+    # [Args] the arguments being sent to the keyword
     attr_reader :arguments
 
     # [Location] the location of this node
@@ -1810,12 +1801,12 @@ class SyntaxTree < Ripper
   end
 
   # :call-seq:
-  #   on_break: ((Args | ArgsAddBlock) arguments) -> Break
+  #   on_break: (Args arguments) -> Break
   def on_break(arguments)
     keyword = find_token(Kw, 'break')
 
     location = keyword.location
-    location = location.to(arguments.location) unless arguments.is_a?(Args)
+    location = location.to(arguments.location) if arguments.parts.any?
 
     Break.new(arguments: arguments, location: location)
   end
@@ -2157,7 +2148,7 @@ class SyntaxTree < Ripper
     # [Const | Ident] the message being sent to the implicit receiver
     attr_reader :message
 
-    # [Args | ArgsAddBlock] the arguments being sent with the message
+    # [Args] the arguments being sent with the message
     attr_reader :arguments
 
     # [Location] the location of this node
@@ -2192,10 +2183,7 @@ class SyntaxTree < Ripper
   end
 
   # :call-seq:
-  #   on_command: (
-  #     (Const | Ident) message,
-  #     (Args | ArgsAddBlock) arguments
-  #   ) -> Command
+  #   on_command: ((Const | Ident) message, Args arguments) -> Command
   def on_command(message, arguments)
     Command.new(
       message: message,
@@ -2219,7 +2207,7 @@ class SyntaxTree < Ripper
     # [Const | Ident | Op] the message being send
     attr_reader :message
 
-    # [Args | ArgsAddBlock] the arguments going along with the message
+    # [Args] the arguments going along with the message
     attr_reader :arguments
 
     # [Location] the location of this node
@@ -2268,7 +2256,7 @@ class SyntaxTree < Ripper
   #     untyped receiver,
   #     (:"::" | Op | Period) operator,
   #     (Const | Ident | Op) message,
-  #     (Args | ArgsAddBlock) arguments
+  #     Args arguments
   #   ) -> CommandCall
   def on_command_call(receiver, operator, message, arguments)
     ending = arguments || message
@@ -5068,7 +5056,7 @@ class SyntaxTree < Ripper
     # [Call | FCall] the method call
     attr_reader :call
 
-    # [ArgParen | Args | ArgsAddBlock] the arguments to the method call
+    # [ArgParen | Args] the arguments to the method call
     attr_reader :arguments
 
     # [Location] the location of this node
@@ -5105,11 +5093,10 @@ class SyntaxTree < Ripper
   # :call-seq:
   #   on_method_add_arg: (
   #     (Call | FCall) call,
-  #     (ArgParen | Args | ArgsAddBlock) arguments
+  #     (ArgParen | Args) arguments
   #   ) -> MethodAddArg
   def on_method_add_arg(call, arguments)
     location = call.location
-
     location = location.to(arguments.location) unless arguments.is_a?(Args)
 
     MethodAddArg.new(call: call, arguments: arguments, location: location)
@@ -5457,7 +5444,7 @@ class SyntaxTree < Ripper
   #     next(value)
   #
   class Next
-    # [Args | ArgsAddBlock] the arguments passed to the next keyword
+    # [Args] the arguments passed to the next keyword
     attr_reader :arguments
 
     # [Location] the location of this node
@@ -5483,12 +5470,12 @@ class SyntaxTree < Ripper
   end
 
   # :call-seq:
-  #   on_next: ((Args | ArgsAddBlock) arguments) -> Next
+  #   on_next: (Args arguments) -> Next
   def on_next(arguments)
     keyword = find_token(Kw, 'next')
 
     location = keyword.location
-    location = location.to(arguments.location) unless arguments.is_a?(Args)
+    location = location.to(arguments.location) if arguments.parts.any?
 
     Next.new(arguments: arguments, location: location)
   end
@@ -6751,7 +6738,7 @@ class SyntaxTree < Ripper
   #     return value
   #
   class Return
-    # [Args | ArgsAddBlock] the arguments being passed to the keyword
+    # [Args] the arguments being passed to the keyword
     attr_reader :arguments
 
     # [Location] the location of this node
@@ -6777,7 +6764,7 @@ class SyntaxTree < Ripper
   end
 
   # :call-seq:
-  #   on_return: ((Args | ArgsAddBlock) arguments) -> Return
+  #   on_return: (Args arguments) -> Return
   def on_return(arguments)
     keyword = find_token(Kw, 'return')
 
@@ -7294,7 +7281,7 @@ class SyntaxTree < Ripper
   #     super(value)
   #
   class Super
-    # [ArgParen | Args | ArgsAddBlock] the arguments to the keyword
+    # [ArgParen | Args] the arguments to the keyword
     attr_reader :arguments
 
     # [Location] the location of this node
@@ -7320,7 +7307,7 @@ class SyntaxTree < Ripper
   end
 
   # :call-seq:
-  #   on_super: ((ArgParen | Args | ArgsAddBlock) arguments) -> Super
+  #   on_super: ((ArgParen | Args) arguments) -> Super
   def on_super(arguments)
     keyword = find_token(Kw, 'super')
 
@@ -8899,7 +8886,7 @@ class SyntaxTree < Ripper
   #     yield value
   #
   class Yield
-    # [ArgsAddBlock | Paren] the arguments passed to the yield
+    # [Args | Paren] the arguments passed to the yield
     attr_reader :arguments
 
     # [Location] the location of this node
@@ -8925,7 +8912,7 @@ class SyntaxTree < Ripper
   end
 
   # :call-seq:
-  #   on_yield: ((ArgsAddBlock | Paren) arguments) -> Yield
+  #   on_yield: ((Args | Paren) arguments) -> Yield
   def on_yield(arguments)
     keyword = find_token(Kw, 'yield')
 
