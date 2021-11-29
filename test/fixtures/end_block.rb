@@ -16,3 +16,12 @@ END { foooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo 
 END {
   foooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo
 }
+%
+END { # comment
+  foo
+}
+%
+END {
+  # comment
+  foo
+}

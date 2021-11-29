@@ -8329,7 +8329,7 @@ class SyntaxTree < Ripper
     comment_start = comment.location.start_char
     comment_end = comment.location.end_char
 
-    child_nodes = node.child_nodes
+    child_nodes = node.child_nodes.compact
     preceding = nil
     following = nil
 

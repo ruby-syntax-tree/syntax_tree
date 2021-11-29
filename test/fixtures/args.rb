@@ -14,3 +14,8 @@ foo(
 )
 -
 foo(bar, baz)
+%
+foo(
+  bar, # comment
+  baz
+)

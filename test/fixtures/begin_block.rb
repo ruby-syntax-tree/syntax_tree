@@ -16,3 +16,12 @@ BEGIN { foooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo 
 BEGIN {
   foooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo
 }
+%
+BEGIN { # comment
+  foo
+}
+%
+BEGIN {
+  # comment
+  foo
+}
