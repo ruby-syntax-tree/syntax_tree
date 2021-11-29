@@ -8101,7 +8101,32 @@ class SyntaxTree < Ripper
 
       def format(node)
         stack << node
-        node.format(self)
+
+        # If there are comments, then we're going to format them around the node
+        # so that they get printed properly.
+        if node.comments.any?
+          leading, trailing = node.comments.partition(&:leading?)
+
+          # Print all comments that were found before the node.
+          leading.each do |comment|
+            node.format(comment)
+            node.breakable(force: true)
+          end
+
+          node.format(self)
+
+          # Print all comments that were found after the node.
+          trailing.each do |comment|
+            node.line_suffix do
+              node.text(' ')
+              node.format(comment)
+              node.break_parent
+            end
+          end
+        else
+          node.format(self)
+        end
+
         stack.pop
       end
 
