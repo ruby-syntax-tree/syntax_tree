@@ -6,3 +6,5 @@ foo[] = baz
 foo[
   barrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr
 ] = baz
+%
+foo[bar] # comment

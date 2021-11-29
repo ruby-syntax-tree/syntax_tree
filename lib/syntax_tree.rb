@@ -8,11 +8,17 @@ require 'stringio'
 require_relative 'syntax_tree/version'
 
 # If PrettyPrint::Assign isn't defined, then we haven't gotten the updated
-# version of prettyprint. In that case we'll define our own
-if PrettyPrint.const_defined?(:Assign)
-  SyntaxTree::PrettyPrint = PrettyPrint
-else
-  require_relative 'syntax_tree/prettyprint'
+# version of prettyprint. In that case we'll define our own. This is going to
+# overwrite a bunch of methods, so silencing them as well.
+unless PrettyPrint.const_defined?(:Assign)
+  verbose = $VERBOSE
+  $VERBOSE = nil
+
+  begin
+    require_relative 'syntax_tree/prettyprint'
+  ensure
+    $VERBOSE = verbose
+  end
 end
 
 class SyntaxTree < Ripper
@@ -594,6 +600,14 @@ class SyntaxTree < Ripper
         @argument = argument
       end
 
+      def comments
+        if argument.is_a?(SymbolLiteral)
+          argument.comments + argument.value.comments
+        else
+          argument.comments
+        end
+      end
+
       def format(q)
         if argument.is_a?(SymbolLiteral)
           q.format(argument.value)
@@ -628,13 +642,14 @@ class SyntaxTree < Ripper
 
     def format(q)
       keyword = 'alias '
+      left_argument = AliasArgumentFormatter.new(left)
 
       q.group do
         q.text(keyword)
-        q.format(AliasArgumentFormatter.new(left))
+        q.format(left_argument)
         q.group do
           q.nest(keyword.length) do
-            q.breakable
+            q.breakable(force: left_argument.comments.any?)
             q.format(AliasArgumentFormatter.new(right))
           end
         end
@@ -1228,6 +1243,10 @@ class SyntaxTree < Ripper
         @contents = contents
       end
 
+      def comments
+        contents.comments
+      end
+
       def format(q)
         q.group(0, '%w[', ']') do
           q.nest(2) do
@@ -1247,6 +1266,10 @@ class SyntaxTree < Ripper
 
       def initialize(contents)
         @contents = contents
+      end
+
+      def comments
+        contents.comments
       end
 
       def format(q)
@@ -1386,6 +1409,10 @@ class SyntaxTree < Ripper
 
       def initialize(value)
         @value = value
+      end
+
+      def comments
+        value.comments
       end
 
       def format(q)
@@ -1854,6 +1881,10 @@ class SyntaxTree < Ripper
 
       def initialize(container)
         @container = container
+      end
+
+      def comments
+        container.comments
       end
 
       def format(q)
@@ -2620,8 +2651,12 @@ class SyntaxTree < Ripper
       @operator = operator
     end
 
+    def comments
+      operator == :'::' ? [] : operator.comments
+    end
+
     def format(q)
-      if operator == '::'
+      if operator == :'::'
         q.text('.')
       else
         q.format(operator)
@@ -3273,9 +3308,38 @@ class SyntaxTree < Ripper
       @value = value
       @inline = inline
       @location = location
+
+      @leading = false
+      @trailing = false
+      @printed = false
+    end
+
+    def leading!
+      @leading = true
+    end
+
+    def leading?
+      @leading
+    end
+
+    def trailing!
+      @trailing = true
+    end
+
+    def trailing?
+      @trailing
+    end
+
+    def printed!
+      @printed = true
+    end
+
+    def printed?
+      @printed
     end
 
     def format(q)
+      printed!
       q.text(value)
     end
 
@@ -3291,7 +3355,7 @@ class SyntaxTree < Ripper
     def to_json(*opts)
       {
         type: :comment,
-        value: value.force_encoding('UTF-8')[1..-1],
+        value: value.force_encoding('UTF-8'),
         inline: inline,
         loc: location
       }.to_json(*opts)
@@ -5643,6 +5707,10 @@ class SyntaxTree < Ripper
         @value = value
       end
 
+      def comments
+        key.comments + value.comments
+      end
+
       def format(q)
         q.format(key)
 
@@ -5659,6 +5727,10 @@ class SyntaxTree < Ripper
 
       def initialize(keyword_rest)
         @keyword_rest = keyword_rest
+      end
+
+      def comments
+        keyword_rest.comments
       end
 
       def format(q)
@@ -8109,18 +8181,18 @@ class SyntaxTree < Ripper
 
           # Print all comments that were found before the node.
           leading.each do |comment|
-            node.format(comment)
-            node.breakable(force: true)
+            comment.format(self)
+            breakable(force: true)
           end
 
           node.format(self)
 
           # Print all comments that were found after the node.
           trailing.each do |comment|
-            node.line_suffix do
-              node.text(' ')
-              node.format(comment)
-              node.break_parent
+            line_suffix do
+              text(' ')
+              comment.format(self)
+              break_parent
             end
           end
         else
@@ -8224,24 +8296,28 @@ class SyntaxTree < Ripper
 
       if comment.inline?
         if preceding
-          preceding.comments << comment # leading: false, trailing: true
+          preceding.comments << comment
+          comment.trailing!
         elsif following
-          following.comments << comment # leading: true, trailing: false
+          following.comments << comment
+          comment.leading!
         elsif enclosing
-          enclosing.comments << comment # leading: false, trailing: false
+          enclosing.comments << comment
         else
-          node.comments << comment # leading: false, trailing: false
+          program.comments << comment
         end
       else
         # If a comment exists on its own line, prefer a leading comment.
         if following
-          following.comments << comment # leading: true, trailing: false
+          following.comments << comment
+          comment.leading!
         elsif preceding
-          preceding.comments << comment # leading: false, trailing: true
+          preceding.comments << comment
+          comment.trailing!
         elsif enclosing
-          enclosing.comments << comment # leading: false, trailing: false
+          enclosing.comments << comment
         else
-          node.comments << comment # leading: false, trailing: false
+          program.comments << comment
         end
       end
     end

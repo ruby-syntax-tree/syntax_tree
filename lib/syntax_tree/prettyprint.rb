@@ -67,7 +67,6 @@
 # == Author
 # Tanaka Akira <akr@fsij.org>
 #
-module SyntaxTree
 class PrettyPrint
   # A node in the print tree that represents aligning nested nodes to a certain
   # prefix width or string.
@@ -1123,5 +1122,4 @@ class PrettyPrint
     @groups = [Group.new(0)]
     @target = @groups.last.contents
   end
-end
 end
