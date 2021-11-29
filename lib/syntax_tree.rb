@@ -550,7 +550,7 @@ class SyntaxTree < Ripper
 
     def format(q)
       q.text('__END__')
-      q.hardbreak
+      q.breakable(force: true)
       q.text(value)
     end
 
@@ -1243,10 +1243,6 @@ class SyntaxTree < Ripper
         @contents = contents
       end
 
-      def comments
-        contents.comments
-      end
-
       def format(q)
         q.group(0, '%w[', ']') do
           q.nest(2) do
@@ -1266,10 +1262,6 @@ class SyntaxTree < Ripper
 
       def initialize(contents)
         @contents = contents
-      end
-
-      def comments
-        contents.comments
       end
 
       def format(q)
@@ -1310,12 +1302,12 @@ class SyntaxTree < Ripper
       end
 
       if qwords?
-        q.format(QWordsFormatter.new(contents))
+        QWordsFormatter.new(contents).format(q)
         return
       end
 
       if qsymbols?
-        q.format(QSymbolsFormatter.new(contents))
+        QSymbolsFormatter.new(contents).format(q)
         return
       end
 
@@ -2037,12 +2029,12 @@ class SyntaxTree < Ripper
 
       unless bodystmt.empty?
         q.nest(2) do
-          q.hardbreak
+          q.breakable(force: true)
           q.format(bodystmt)
         end
       end
 
-      q.hardbreak
+      q.breakable(force: true)
       q.text('end')
     end
 
@@ -2395,23 +2387,23 @@ class SyntaxTree < Ripper
 
         if rescue_clause
           q.nest(-2) do
-            q.hardbreak
+            q.breakable(force: true)
             q.format(rescue_clause)
           end
         end
 
         if else_clause
           q.nest(-2) do
-            q.hardbreak
+            q.breakable(force: true)
             q.text('else')
           end
-          q.hardbreak
+          q.breakable(force: true)
           q.format(else_clause)
         end
 
         if ensure_clause
           q.nest(-2) do
-            q.hardbreak
+            q.breakable(force: true)
             q.format(ensure_clause)
           end
         end
@@ -2805,9 +2797,9 @@ class SyntaxTree < Ripper
           q.format(value)
         end
 
-        q.hardbreak
+        q.breakable(force: true)
         q.format(consequent)
-        q.hardbreak
+        q.breakable(force: true)
       end
     end
 
@@ -3008,11 +3000,11 @@ class SyntaxTree < Ripper
         end
 
         q.nest(2) do
-          q.hardbreak
+          q.breakable(force: true)
           q.format(bodystmt)
         end
 
-        q.hardbreak
+        q.breakable(force: true)
         q.text('end')
       end
     end
@@ -3743,12 +3735,12 @@ class SyntaxTree < Ripper
 
         unless bodystmt.empty?
           q.nest(2) do
-            q.hardbreak
+            q.breakable(force: true)
             q.format(bodystmt)
           end
         end
 
-        q.hardbreak
+        q.breakable(force: true)
         q.text('end')
       end
     end
@@ -4042,12 +4034,12 @@ class SyntaxTree < Ripper
 
         unless bodystmt.empty?
           q.nest(2) do
-            q.hardbreak
+            q.breakable(force: true)
             q.format(bodystmt)
           end
         end
 
-        q.hardbreak
+        q.breakable(force: true)
         q.text('end')
       end
     end
@@ -4510,7 +4502,7 @@ class SyntaxTree < Ripper
       q.group do
         q.text('else')
         q.nest(2) do
-          q.hardbreak
+          q.breakable(force: true)
           q.format(statements)
         end
       end
@@ -4598,13 +4590,13 @@ class SyntaxTree < Ripper
         end
 
         q.nest(2) do
-          q.hardbreak
+          q.breakable(force: true)
           q.format(statements)
         end
 
         if consequent
           q.group do
-            q.hardbreak
+            q.breakable(force: true)
             q.format(consequent)
           end
         end
@@ -4878,7 +4870,7 @@ class SyntaxTree < Ripper
     def format(q)
       q.format(keyword)
       q.nest(2) do
-        q.hardbreak
+        q.breakable(force: true)
         q.format(statements)
       end
     end
@@ -5332,10 +5324,10 @@ class SyntaxTree < Ripper
         q.text(' in ')
         q.format(collection)
         q.nest(2) do
-          q.hardbreak
+          q.breakable(force: true)
           q.format(statements)
         end
-        q.hardbreak
+        q.breakable(force: true)
         q.text('end')
       end
     end
@@ -5563,7 +5555,7 @@ class SyntaxTree < Ripper
     def format(q)
       q.group do
         q.format(beginning)
-        q.hardbreak
+        q.breakable(force: true)
         q.format_each(parts)
         q.text(ending)
       end
@@ -5952,16 +5944,16 @@ class SyntaxTree < Ripper
         q.nest(keyword.length) { q.format(predicate) }
 
         q.nest(2) do
-          q.hardbreak
+          q.breakable(force: true)
           q.format(statements)
         end
 
         if consequent
-          q.hardbreak
+          q.breakable(force: true)
           q.format(consequent)
         end
 
-        q.hardbreak
+        q.breakable(force: true)
         q.text('end')
       end
     end
@@ -6285,13 +6277,13 @@ class SyntaxTree < Ripper
 
         unless statements.empty?
           q.nest(2) do
-            q.hardbreak
+            q.breakable(force: true)
             q.format(statements)
           end
         end
 
         if consequent
-          q.hardbreak
+          q.breakable(force: true)
           q.format(consequent)
         end
       end
@@ -7362,11 +7354,11 @@ class SyntaxTree < Ripper
         end
 
         q.nest(2) do
-          q.hardbreak
+          q.breakable(force: true)
           q.format(bodystmt)
         end
 
-        q.hardbreak
+        q.breakable(force: true)
         q.text('end')
       end
     end
@@ -8206,11 +8198,6 @@ class SyntaxTree < Ripper
         nodes.each { |node| format(node) }
       end
 
-      def hardbreak
-        breakable('')
-        current_group.break
-      end
-
       def parent
         stack[-2]
       end
@@ -8240,7 +8227,7 @@ class SyntaxTree < Ripper
       q = Formatter.new(out)
 
       q.format(statements)
-      q.hardbreak
+      q.breakable(force: true)
       q.flush
 
       out.string
@@ -9071,12 +9058,12 @@ class SyntaxTree < Ripper
         end
 
         q.nest(2) do
-          q.hardbreak
+          q.breakable(force: true)
           q.format(statements)
         end
 
         if consequent
-          q.hardbreak
+          q.breakable(force: true)
           q.format(consequent)
         end
       end
@@ -9195,16 +9182,16 @@ class SyntaxTree < Ripper
     def format(q)
       q.group(0, 'begin', 'end') do
         q.nest(2) do
-          q.hardbreak
+          q.breakable(force: true)
           q.format(statement)
         end
-        q.hardbreak
+        q.breakable(force: true)
         q.text('rescue StandardError')
         q.nest(2) do
-          q.hardbreak
+          q.breakable(force: true)
           q.format(value)
         end
-        q.hardbreak
+        q.breakable(force: true)
       end
     end
 
@@ -9524,10 +9511,10 @@ class SyntaxTree < Ripper
       q.group(0, 'class << ', 'end') do
         q.format(target)
         q.nest(2) do
-          q.hardbreak
+          q.breakable(force: true)
           q.format(bodystmt)
         end
-        q.hardbreak
+        q.breakable(force: true)
       end
     end
 
@@ -9653,7 +9640,9 @@ class SyntaxTree < Ripper
     end
 
     def empty?
-      body.all? { |statement| statement.is_a?(VoidStmt) }
+      body.all? do |statement|
+        statement.is_a?(VoidStmt) && statement.comments.empty?
+      end
     end
 
     def <<(statement)
@@ -9677,18 +9666,18 @@ class SyntaxTree < Ripper
         if line.nil?
           q.format(statement)
         elsif (statement.location.start_line - line) > 1
-          q.hardbreak
-          q.hardbreak
+          q.breakable(force: true)
+          q.breakable(force: true)
           q.format(statement)
         elsif statement.is_a?(AccessCtrl) || body[index - 1].is_a?(AccessCtrl)
-          q.hardbreak
-          q.hardbreak
+          q.breakable(force: true)
+          q.breakable(force: true)
           q.format(statement)
         elsif statement.location.start_line != line
-          q.hardbreak
+          q.breakable(force: true)
           q.format(statement)
         elsif !q.parent.is_a?(StringEmbExpr)
-          q.hardbreak
+          q.breakable(force: true)
           q.format(statement)
         else
           q.text('; ')
@@ -9806,7 +9795,7 @@ class SyntaxTree < Ripper
         q.format(left)
         q.text(' \\')
         q.nest(2) do
-          q.hardbreak
+          q.breakable(force: true)
           q.format(right)
         end
       end
@@ -10939,16 +10928,16 @@ class SyntaxTree < Ripper
         q.nest(keyword.length) { q.format(predicate) }
 
         q.nest(2) do
-          q.hardbreak
+          q.breakable(force: true)
           q.format(statements)
         end
 
         if consequent
-          q.hardbreak
+          q.breakable(force: true)
           q.format(consequent)
         end
 
-        q.hardbreak
+        q.breakable(force: true)
         q.text('end')
       end
     end
@@ -11077,6 +11066,43 @@ class SyntaxTree < Ripper
     )
   end
 
+  # Formats an Until, UntilMod, While, or WhileMod node.
+  class LoopFormatter
+    # [String] the name of the keyword used for this loop
+    attr_reader :keyword
+
+    # [Until | UntilMod | While | WhileMod] the node that is being formatted
+    attr_reader :node
+
+    # [untyped] the statements associated with the node
+    attr_reader :statements
+
+    def initialize(keyword, node, statements)
+      @keyword = keyword
+      @node = node
+      @statements = statements
+    end
+
+    def format(q)
+      q.group do
+        q.if_break do
+          q.text("#{keyword} ")
+          q.nest(keyword.length + 1) { q.format(node.predicate) }
+          q.indent do
+            q.breakable('')
+            q.format(statements)
+          end
+          q.breakable('')
+          q.text('end')
+        end.if_flat do
+          q.format(statements)
+          q.text(" #{keyword} ")
+          q.format(node.predicate)
+        end
+      end
+    end
+  end
+
   # Until represents an +until+ loop.
   #
   #     until predicate
@@ -11107,17 +11133,17 @@ class SyntaxTree < Ripper
     end
 
     def format(q)
-      keyword = 'until '
+      if statements.empty?
+        keyword = 'until '
 
-      q.group do
-        q.format(keyword)
-        q.nest(keyword.length) { q.format(predicate) }
-        q.nest(2) do
-          q.hardbreak
-          q.format(statements)
+        q.group do
+          q.text(keyword)
+          q.nest(keyword.length) { q.format(predicate) }
+          q.breakable(force: true)
+          q.text('end')
         end
-        q.hardbreak
-        q.text('end')
+      else
+        LoopFormatter.new('until', self, statements).format(q)
       end
     end
 
@@ -11199,11 +11225,7 @@ class SyntaxTree < Ripper
     end
 
     def format(q)
-      q.group do
-        q.format(statement)
-        q.text(' until ')
-        q.format(predicate)
-      end
+      LoopFormatter.new('until', self, statement).format(q)
     end
 
     def pretty_print(q)
@@ -11618,7 +11640,7 @@ class SyntaxTree < Ripper
         end
 
         if consequent
-          q.hardbreak
+          q.breakable(force: true)
           q.format(consequent)
         end
       end
@@ -11705,17 +11727,17 @@ class SyntaxTree < Ripper
     end
 
     def format(q)
-      keyword = 'while '
+      if statements.empty?
+        keyword = 'while '
 
-      q.group do
-        q.format(keyword)
-        q.nest(keyword.length) { q.format(predicate) }
-        q.nest(2) do
-          q.hardbreak
-          q.format(statements)
+        q.group do
+          q.text(keyword)
+          q.nest(keyword.length) { q.format(predicate) }
+          q.breakable(force: true)
+          q.text('end')
         end
-        q.hardbreak
-        q.text('end')
+      else
+        LoopFormatter.new('while', self, statements).format(q)
       end
     end
 
@@ -11797,11 +11819,7 @@ class SyntaxTree < Ripper
     end
 
     def format(q)
-      q.group do
-        q.format(statement)
-        q.text(' while ')
-        q.format(predicate)
-      end
+      LoopFormatter.new('while', self, statement).format(q)
     end
 
     def pretty_print(q)
