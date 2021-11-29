@@ -7807,16 +7807,21 @@ class SyntaxTree < Ripper
 
     class KeywordRestFormatter
       # [:nil | KwRestParam] the value of the parameter
+      attr_reader :value
 
       def initialize(value)
         @value = value
+      end
+
+      def comments
+        value == :nil ? [] : value.comments 
       end
 
       def format(q)
         if value == :nil
           q.text('**nil')
         else
-          q.format(value)
+          value.format(q)
         end
       end
     end
@@ -7898,6 +7903,7 @@ class SyntaxTree < Ripper
         *keywords.map { |(name, value)| KeywordFormatter.new(name, value) }
       ]
 
+      parts << KeywordRestFormatter.new(keyword_rest) if keyword_rest
       parts << block if block
 
       q.group { q.seplist(parts) { |part| q.format(part) } }
