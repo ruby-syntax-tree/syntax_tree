@@ -9687,6 +9687,17 @@ class SyntaxTree < Ripper
     end
 
     def format(q)
+      # This is a special case where we have only comments inside a statement
+      # list. In this case we want to avoid any kind of line number tracking and
+      # just print out the comments.
+      if body.length == 1 && body[0].is_a?(VoidStmt) && body[0].comments.any?
+        q.break_parent
+        separator = -> { q.breakable(force: true) }
+
+        q.seplist(body[0].comments, separator) { |comment| comment.format(q) }
+        return
+      end
+
       line = nil
 
       body.each_with_index do |statement, index|
@@ -11856,7 +11867,7 @@ class SyntaxTree < Ripper
 
         q.breakable
         q.pp(predicate)
-      
+
         q.pp(Comment::List.new(comments))
       end
     end
