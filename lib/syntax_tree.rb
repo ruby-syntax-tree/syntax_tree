@@ -283,17 +283,28 @@ class SyntaxTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(lbrace:, statements:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(lbrace:, statements:, location:, comments: [])
       @lbrace = lbrace
       @statements = statements
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [lbrace, statements]
     end
 
     def pretty_print(q)
       q.group(2, '(', ')') do
         q.text('BEGIN')
+
         q.breakable
         q.pp(statements)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
@@ -302,7 +313,8 @@ class SyntaxTree < Ripper
         type: :BEGIN,
         lbrace: lbrace,
         stmts: statements,
-        loc: location
+        loc: location,
+        cmts: comments
       }.to_json(*opts)
     end
   end
@@ -340,21 +352,32 @@ class SyntaxTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(value:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(value:, location:, comments: [])
       @value = value
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      []
     end
 
     def pretty_print(q)
       q.group(2, '(', ')') do
         q.text('CHAR')
+
         q.breakable
         q.pp(value)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :CHAR, value: value, loc: location }.to_json(*opts)
+      { type: :CHAR, value: value, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
@@ -390,22 +413,33 @@ class SyntaxTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(lbrace:, statements:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(lbrace:, statements:, location:, comments: [])
       @lbrace = lbrace
       @statements = statements
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [lbrace, statements]
     end
 
     def pretty_print(q)
       q.group(2, '(', ')') do
         q.text('END')
+
         q.breakable
         q.pp(statements)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :END, lbrace: lbrace, stmts: statements, loc: location }.to_json(
+      { type: :END, lbrace: lbrace, stmts: statements, loc: location, cmts: comments }.to_json(
         *opts
       )
     end
@@ -447,21 +481,32 @@ class SyntaxTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(value:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(value:, location:, comments: [])
       @value = value
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      []
     end
 
     def pretty_print(q)
       q.group(2, '(', ')') do
         q.text('__end__')
+
         q.breakable
         q.pp(value)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :__end__, value: value, loc: location }.to_json(*opts)
+      { type: :__end__, value: value, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
@@ -496,24 +541,36 @@ class SyntaxTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(left:, right:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(left:, right:, location:, comments: [])
       @left = left
       @right = right
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [left, right]
     end
 
     def pretty_print(q)
       q.group(2, '(', ')') do
         q.text('alias')
+
         q.breakable
         q.pp(left)
+
         q.breakable
         q.pp(right)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :alias, left: left, right: right, loc: location }.to_json(*opts)
+      { type: :alias, left: left, right: right, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
@@ -555,19 +612,31 @@ class SyntaxTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(collection:, index:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(collection:, index:, location:, comments: [])
       @collection = collection
       @index = index
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [collection, index]
     end
 
     def pretty_print(q)
       q.group(2, '(', ')') do
         q.text('aref')
+
         q.breakable
         q.pp(collection)
+
         q.breakable
         q.pp(index)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
@@ -576,7 +645,8 @@ class SyntaxTree < Ripper
         type: :aref,
         collection: collection,
         index: index,
-        loc: location
+        loc: location,
+        cmts: comments
       }.to_json(*opts)
     end
   end
@@ -611,19 +681,31 @@ class SyntaxTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(collection:, index:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(collection:, index:, location:, comments: [])
       @collection = collection
       @index = index
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [collection, index]
     end
 
     def pretty_print(q)
       q.group(2, '(', ')') do
         q.text('aref_field')
+
         q.breakable
         q.pp(collection)
+
         q.breakable
         q.pp(index)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
@@ -632,7 +714,8 @@ class SyntaxTree < Ripper
         type: :aref_field,
         collection: collection,
         index: index,
-        loc: location
+        loc: location,
+        cmts: comments
       }.to_json(*opts)
     end
   end
@@ -676,21 +759,32 @@ class SyntaxTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(arguments:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(arguments:, location:, comments: [])
       @arguments = arguments
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [arguments]
     end
 
     def pretty_print(q)
       q.group(2, '(', ')') do
         q.text('arg_paren')
+
         q.breakable
         q.pp(arguments)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :arg_paren, args: arguments, loc: location }.to_json(*opts)
+      { type: :arg_paren, args: arguments, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
@@ -730,21 +824,32 @@ class SyntaxTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(parts:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(parts:, location:, comments: [])
       @parts = parts
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      parts
     end
 
     def pretty_print(q)
       q.group(2, '(', ')') do
         q.text('args')
+
         q.breakable
         q.group(2, '(', ')') { q.seplist(parts) { |part| q.pp(part) } }
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :args, parts: parts, loc: location }.to_json(*opts)
+      { type: :args, parts: parts, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
@@ -777,9 +882,17 @@ class SyntaxTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(value:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(value:, location:, comments: [])
       @value = value
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [value]
     end
 
     def pretty_print(q)
@@ -788,11 +901,13 @@ class SyntaxTree < Ripper
 
         q.breakable
         q.pp(value)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :arg_block, value: value, loc: location }.to_json(*opts)
+      { type: :arg_block, value: value, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
@@ -827,9 +942,17 @@ class SyntaxTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(value:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(value:, location:, comments: [])
       @value = value
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [value]
     end
 
     def pretty_print(q)
@@ -838,11 +961,13 @@ class SyntaxTree < Ripper
 
         q.breakable
         q.pp(value)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :arg_star, value: value, loc: location }.to_json(*opts)
+      { type: :arg_star, value: value, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
@@ -892,21 +1017,32 @@ class SyntaxTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(value:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(value:, location:, comments: [])
       @value = value
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      []
     end
 
     def pretty_print(q)
       q.group(2, '(', ')') do
         q.text('args_forward')
+
         q.breakable
         q.pp(value)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :args_forward, value: value, loc: location }.to_json(*opts)
+      { type: :args_forward, value: value, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
@@ -946,21 +1082,32 @@ class SyntaxTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(contents:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(contents:, location:, comments: [])
       @contents = contents
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [contents]
     end
 
     def pretty_print(q)
       q.group(2, '(', ')') do
         q.text('array')
+
         q.breakable
         q.pp(contents)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :array, cnts: contents, loc: location }.to_json(*opts)
+      { type: :array, cnts: contents, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
@@ -1022,12 +1169,20 @@ class SyntaxTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(constant:, requireds:, rest:, posts:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(constant:, requireds:, rest:, posts:, location:, comments: [])
       @constant = constant
       @requireds = requireds
       @rest = rest
       @posts = posts
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [constant, *required, rest, *posts]
     end
 
     def pretty_print(q)
@@ -1055,6 +1210,8 @@ class SyntaxTree < Ripper
           q.breakable
           q.group(2, '(', ')') { q.seplist(posts) { |post| q.pp(post) } }
         end
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
@@ -1065,7 +1222,8 @@ class SyntaxTree < Ripper
         reqs: requireds,
         rest: rest,
         posts: posts,
-        loc: location
+        loc: location,
+        cmts: comments
       }.to_json(*opts)
     end
   end
@@ -1106,24 +1264,36 @@ class SyntaxTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(target:, value:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(target:, value:, location:, comments: [])
       @target = target
       @value = value
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [target, value]
     end
 
     def pretty_print(q)
       q.group(2, '(', ')') do
         q.text('assign')
+
         q.breakable
         q.pp(target)
+
         q.breakable
         q.pp(value)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :assign, target: target, value: value, loc: location }.to_json(
+      { type: :assign, target: target, value: value, loc: location, cmts: comments }.to_json(
         *opts
       )
     end
@@ -1158,24 +1328,36 @@ class SyntaxTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(key:, value:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(key:, value:, location:, comments: [])
       @key = key
       @value = value
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [key, value]
     end
 
     def pretty_print(q)
       q.group(2, '(', ')') do
         q.text('assoc')
+
         q.breakable
         q.pp(key)
+
         q.breakable
         q.pp(value)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :assoc, key: key, value: value, loc: location }.to_json(*opts)
+      { type: :assoc, key: key, value: value, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
@@ -1197,21 +1379,32 @@ class SyntaxTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(value:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(value:, location:, comments: [])
       @value = value
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [value]
     end
 
     def pretty_print(q)
       q.group(2, '(', ')') do
         q.text('assoc_splat')
+
         q.breakable
         q.pp(value)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :assoc_splat, value: value, loc: location }.to_json(*opts)
+      { type: :assoc_splat, value: value, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
@@ -1239,21 +1432,32 @@ class SyntaxTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(value:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(value:, location:, comments: [])
       @value = value
       @location = location
+      @comments = comments
     end
 
+    def child_nodes
+      []
+    end
+    
     def pretty_print(q)
       q.group(2, '(', ')') do
         q.text('backref')
+
         q.breakable
         q.pp(value)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :backref, value: value, loc: location }.to_json(*opts)
+      { type: :backref, value: value, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
@@ -1280,21 +1484,32 @@ class SyntaxTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(value:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(value:, location:, comments: [])
       @value = value
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      []
     end
 
     def pretty_print(q)
       q.group(2, '(', ')') do
         q.text('backtick')
+
         q.breakable
         q.pp(value)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :backtick, value: value, loc: location }.to_json(*opts)
+      { type: :backtick, value: value, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
@@ -1324,21 +1539,32 @@ class SyntaxTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(assocs:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(assocs:, location:, comments: [])
       @assocs = assocs
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      assocs
     end
 
     def pretty_print(q)
       q.group(2, '(', ')') do
         q.text('bare_assoc_hash')
+
         q.breakable
         q.group(2, '(', ')') { q.seplist(assocs) { |assoc| q.pp(assoc) } }
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :bare_assoc_hash, assocs: assocs, loc: location }.to_json(*opts)
+      { type: :bare_assoc_hash, assocs: assocs, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
@@ -1364,21 +1590,32 @@ class SyntaxTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(bodystmt:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(bodystmt:, location:, comments: [])
       @bodystmt = bodystmt
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [bodystmt]
     end
 
     def pretty_print(q)
       q.group(2, '(', ')') do
         q.text('begin')
+
         q.breakable
         q.pp(bodystmt)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :begin, bodystmt: bodystmt, loc: location }.to_json(*opts)
+      { type: :begin, bodystmt: bodystmt, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
@@ -1425,22 +1662,35 @@ class SyntaxTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(left:, operator:, right:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(left:, operator:, right:, location:, comments: [])
       @left = left
       @operator = operator
       @right = right
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [left, right]
     end
 
     def pretty_print(q)
       q.group(2, '(', ')') do
         q.text('binary')
+
         q.breakable
         q.pp(left)
+
         q.breakable
         q.text(operator)
+
         q.breakable
         q.pp(right)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
@@ -1450,7 +1700,8 @@ class SyntaxTree < Ripper
         left: left,
         op: operator,
         right: right,
-        loc: location
+        loc: location,
+        cmts: comments
       }.to_json(*opts)
     end
   end
@@ -1490,15 +1741,24 @@ class SyntaxTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(params:, locals:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(params:, locals:, location:, comments: [])
       @params = params
       @locals = locals
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [params, *locals]
     end
 
     def pretty_print(q)
       q.group(2, '(', ')') do
         q.text('block_var')
+
         q.breakable
         q.pp(params)
 
@@ -1506,6 +1766,8 @@ class SyntaxTree < Ripper
           q.breakable
           q.group(2, '(', ')') { q.seplist(locals) { |local| q.pp(local) } }
         end
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
@@ -1514,7 +1776,8 @@ class SyntaxTree < Ripper
         type: :block_var,
         params: params,
         locals: locals,
-        loc: location
+        loc: location,
+        cmts: comments
       }.to_json(*opts)
     end
   end
@@ -1549,21 +1812,32 @@ class SyntaxTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(name:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(name:, location:, comments: [])
       @name = name
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [name]
     end
 
     def pretty_print(q)
       q.group(2, '(', ')') do
         q.text('blockarg')
+
         q.breakable
         q.pp(name)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :blockarg, name: name, loc: location }.to_json(*opts)
+      { type: :blockarg, name: name, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
@@ -1594,18 +1868,16 @@ class SyntaxTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(
-      statements:,
-      rescue_clause:,
-      else_clause:,
-      ensure_clause:,
-      location:
-    )
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(statements:, rescue_clause:, else_clause:, ensure_clause:, location:, comments: [])
       @statements = statements
       @rescue_clause = rescue_clause
       @else_clause = else_clause
       @ensure_clause = ensure_clause
       @location = location
+      @comments = comments
     end
 
     def bind(start_char, end_char)
@@ -1635,9 +1907,14 @@ class SyntaxTree < Ripper
       end
     end
 
+    def child_nodes
+      [statements, rescue_clause, else_clause, ensure_clause]
+    end
+
     def pretty_print(q)
       q.group(2, '(', ')') do
         q.text('bodystmt')
+
         q.breakable
         q.pp(statements)
 
@@ -1655,6 +1932,8 @@ class SyntaxTree < Ripper
           q.breakable
           q.pp(ensure_clause)
         end
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
@@ -1665,7 +1944,8 @@ class SyntaxTree < Ripper
         rsc: rescue_clause,
         els: else_clause,
         ens: ensure_clause,
-        loc: location
+        loc: location,
+        cmts: comments
       }.to_json(*opts)
     end
   end
@@ -1705,11 +1985,19 @@ class SyntaxTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(lbrace:, block_var:, statements:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(lbrace:, block_var:, statements:, location:, comments: [])
       @lbrace = lbrace
       @block_var = block_var
       @statements = statements
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [lbrace, block_var, statements]
     end
 
     def pretty_print(q)
@@ -1723,6 +2011,8 @@ class SyntaxTree < Ripper
 
         q.breakable
         q.pp(statements)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
@@ -1732,7 +2022,8 @@ class SyntaxTree < Ripper
         lbrace: lbrace,
         block_var: block_var,
         stmts: statements,
-        loc: location
+        loc: location,
+        cmts: comments
       }.to_json(*opts)
     end
   end
@@ -1782,21 +2073,32 @@ class SyntaxTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(arguments:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(arguments:, location:, comments: [])
       @arguments = arguments
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [arguments]
     end
 
     def pretty_print(q)
       q.group(2, '(', ')') do
         q.text('break')
+
         q.breakable
         q.pp(arguments)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :break, args: arguments, loc: location }.to_json(*opts)
+      { type: :break, args: arguments, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
@@ -1830,22 +2132,35 @@ class SyntaxTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(receiver:, operator:, message:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(receiver:, operator:, message:, location:, comments: [])
       @receiver = receiver
       @operator = operator
       @message = message
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [receiver, (operator if operator != :'::'), (message if message != :call)]
     end
 
     def pretty_print(q)
       q.group(2, '(', ')') do
         q.text('call')
+
         q.breakable
         q.pp(receiver)
+
         q.breakable
         q.pp(operator)
+
         q.breakable
         q.pp(message)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
@@ -1855,7 +2170,8 @@ class SyntaxTree < Ripper
         receiver: receiver,
         op: operator,
         message: message,
-        loc: location
+        loc: location,
+        cmts: comments
       }.to_json(*opts)
     end
   end
@@ -1905,10 +2221,18 @@ class SyntaxTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(value:, consequent:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(value:, consequent:, location:, comments: [])
       @value = value
       @consequent = consequent
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [value, consequent]
     end
 
     def pretty_print(q)
@@ -1922,11 +2246,13 @@ class SyntaxTree < Ripper
 
         q.breakable
         q.pp(consequent)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :case, value: value, cons: consequent, loc: location }.to_json(
+      { type: :case, value: value, cons: consequent, loc: location, cmts: comments }.to_json(
         *opts
       )
     end
@@ -1951,11 +2277,19 @@ class SyntaxTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(value:, operator:, pattern:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(value:, operator:, pattern:, location:, comments: [])
       @value = value
       @operator = operator
       @pattern = pattern
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [value, operator, pattern]
     end
 
     def pretty_print(q)
@@ -1970,6 +2304,8 @@ class SyntaxTree < Ripper
 
         q.breakable
         q.pp(pattern)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
@@ -1979,7 +2315,8 @@ class SyntaxTree < Ripper
         value: value,
         op: operator,
         pattern: pattern,
-        loc: location
+        loc: location,
+        cmts: comments
       }.to_json(*opts)
     end
   end
@@ -2053,11 +2390,19 @@ class SyntaxTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(constant:, superclass:, bodystmt:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(constant:, superclass:, bodystmt:, location:, comments: [])
       @constant = constant
       @superclass = superclass
       @bodystmt = bodystmt
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [constant, superclass, bodystmt]
     end
 
     def pretty_print(q)
@@ -2074,6 +2419,8 @@ class SyntaxTree < Ripper
 
         q.breakable
         q.pp(bodystmt)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
@@ -2083,7 +2430,8 @@ class SyntaxTree < Ripper
         constant: constant,
         superclass: superclass,
         bodystmt: bodystmt,
-        loc: location
+        loc: location,
+        cmts: comments
       }.to_json(*opts)
     end
   end
@@ -2154,10 +2502,18 @@ class SyntaxTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(message:, arguments:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(message:, arguments:, location:, comments: [])
       @message = message
       @arguments = arguments
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [message, arguments]
     end
 
     def pretty_print(q)
@@ -2169,6 +2525,8 @@ class SyntaxTree < Ripper
 
         q.breakable
         q.pp(arguments)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
@@ -2177,7 +2535,8 @@ class SyntaxTree < Ripper
         type: :command,
         message: message,
         args: arguments,
-        loc: location
+        loc: location,
+        cmts: comments
       }.to_json(*opts)
     end
   end
@@ -2213,12 +2572,20 @@ class SyntaxTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(receiver:, operator:, message:, arguments:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(receiver:, operator:, message:, arguments:, location:, comments: [])
       @receiver = receiver
       @operator = operator
       @message = message
       @arguments = arguments
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [receiver, message, arguments]
     end
 
     def pretty_print(q)
@@ -2236,6 +2603,8 @@ class SyntaxTree < Ripper
 
         q.breakable
         q.pp(arguments)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
@@ -2246,7 +2615,8 @@ class SyntaxTree < Ripper
         op: operator,
         message: message,
         args: arguments,
-        loc: location
+        loc: location,
+        cmts: comments
       }.to_json(*opts)
     end
   end
@@ -2275,6 +2645,24 @@ class SyntaxTree < Ripper
   #     # comment
   #
   class Comment
+    class List
+      # [Array[ Comment ]] the list of comments this list represents
+      attr_reader :comments
+
+      def initialize(comments)
+        @comments = comments
+      end
+
+      def pretty_print(q)
+        return if comments.empty?
+
+        q.breakable
+        q.group(2, '(', ')') do
+          q.seplist(comments) { |comment| q.pp(comment) }
+        end
+      end
+    end
+
     # [String] the contents of the comment
     attr_reader :value
 
@@ -2295,6 +2683,7 @@ class SyntaxTree < Ripper
     def pretty_print(q)
       q.group(2, '(', ')') do
         q.text('comment')
+
         q.breakable
         q.pp(value)
       end
@@ -2303,7 +2692,7 @@ class SyntaxTree < Ripper
     def to_json(*opts)
       {
         type: :comment,
-        value: value.force_encoding('UTF-8'),
+        value: value.force_encoding('UTF-8')[1..-1],
         inline: inline,
         loc: location
       }.to_json(*opts)
@@ -2316,7 +2705,7 @@ class SyntaxTree < Ripper
     line = lineno
     comment =
       Comment.new(
-        value: value[1..-1].chomp,
+        value: value.chomp,
         inline: value.strip != lines[line - 1],
         location:
           Location.token(line: line, char: char_pos, size: value.size - 1)
@@ -2347,21 +2736,32 @@ class SyntaxTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(value:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(value:, location:, comments: [])
       @value = value
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      []
     end
 
     def pretty_print(q)
       q.group(2, '(', ')') do
         q.text('const')
+
         q.breakable
         q.pp(value)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :const, value: value, loc: location }.to_json(*opts)
+      { type: :const, value: value, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
@@ -2394,10 +2794,18 @@ class SyntaxTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(parent:, constant:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(parent:, constant:, location:, comments: [])
       @parent = parent
       @constant = constant
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [parent, constant]
     end
 
     def pretty_print(q)
@@ -2409,6 +2817,8 @@ class SyntaxTree < Ripper
 
         q.breakable
         q.pp(constant)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
@@ -2417,7 +2827,8 @@ class SyntaxTree < Ripper
         type: :const_path_field,
         parent: parent,
         constant: constant,
-        loc: location
+        loc: location,
+        cmts: comments
       }.to_json(*opts)
     end
   end
@@ -2446,10 +2857,18 @@ class SyntaxTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(parent:, constant:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(parent:, constant:, location:, comments: [])
       @parent = parent
       @constant = constant
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [parent, constant]
     end
 
     def pretty_print(q)
@@ -2461,6 +2880,8 @@ class SyntaxTree < Ripper
 
         q.breakable
         q.pp(constant)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
@@ -2469,7 +2890,8 @@ class SyntaxTree < Ripper
         type: :const_path_ref,
         parent: parent,
         constant: constant,
-        loc: location
+        loc: location,
+        cmts: comments
       }.to_json(*opts)
     end
   end
@@ -2497,9 +2919,17 @@ class SyntaxTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(constant:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(constant:, location:, comments: [])
       @constant = constant
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [constant]
     end
 
     def pretty_print(q)
@@ -2508,11 +2938,13 @@ class SyntaxTree < Ripper
 
         q.breakable
         q.pp(constant)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :const_ref, constant: constant, loc: location }.to_json(*opts)
+      { type: :const_ref, constant: constant, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
@@ -2533,9 +2965,17 @@ class SyntaxTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(value:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(value:, location:, comments: [])
       @value = value
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      []
     end
 
     def pretty_print(q)
@@ -2544,11 +2984,13 @@ class SyntaxTree < Ripper
 
         q.breakable
         q.pp(value)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :cvar, value: value, loc: location }.to_json(*opts)
+      { type: :cvar, value: value, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
@@ -2582,11 +3024,19 @@ class SyntaxTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(name:, params:, bodystmt:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(name:, params:, bodystmt:, location:, comments: [])
       @name = name
       @params = params
       @bodystmt = bodystmt
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [name, params, bodystmt]
     end
 
     def pretty_print(q)
@@ -2601,6 +3051,8 @@ class SyntaxTree < Ripper
 
         q.breakable
         q.pp(bodystmt)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
@@ -2610,7 +3062,8 @@ class SyntaxTree < Ripper
         name: name,
         params: params,
         bodystmt: bodystmt,
-        loc: location
+        loc: location,
+        cmts: comments
       }.to_json(*opts)
     end
   end
@@ -2632,11 +3085,19 @@ class SyntaxTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(name:, paren:, statement:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(name:, paren:, statement:, location:, comments: [])
       @name = name
       @paren = paren
       @statement = statement
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [name, paren, statement]
     end
 
     def pretty_print(q)
@@ -2651,6 +3112,8 @@ class SyntaxTree < Ripper
 
         q.breakable
         q.pp(statement)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
@@ -2660,7 +3123,8 @@ class SyntaxTree < Ripper
         name: name,
         paren: paren,
         stmt: statement,
-        loc: location
+        loc: location,
+        cmts: comments
       }.to_json(*opts)
     end
   end
@@ -2734,9 +3198,17 @@ class SyntaxTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(value:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(value:, location:, comments: [])
       @value = value
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [value]
     end
 
     def pretty_print(q)
@@ -2745,11 +3217,13 @@ class SyntaxTree < Ripper
 
         q.breakable
         q.pp(value)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :defined, value: value, loc: location }.to_json(*opts)
+      { type: :defined, value: value, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
@@ -2791,13 +3265,21 @@ class SyntaxTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(target:, operator:, name:, params:, bodystmt:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(target:, operator:, name:, params:, bodystmt:, location:, comments: [])
       @target = target
       @operator = operator
       @name = name
       @params = params
       @bodystmt = bodystmt
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [target, operator, name, params, bodystmt]
     end
 
     def pretty_print(q)
@@ -2818,6 +3300,8 @@ class SyntaxTree < Ripper
 
         q.breakable
         q.pp(bodystmt)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
@@ -2829,7 +3313,8 @@ class SyntaxTree < Ripper
         name: name,
         params: params,
         bodystmt: bodystmt,
-        loc: location
+        loc: location,
+        cmts: comments
       }.to_json(*opts)
     end
   end
@@ -2900,11 +3385,19 @@ class SyntaxTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(keyword:, block_var:, bodystmt:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(keyword:, block_var:, bodystmt:, location:, comments: [])
       @keyword = keyword
       @block_var = block_var
       @bodystmt = bodystmt
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [keyword, block_var, bodystmt]
     end
 
     def pretty_print(q)
@@ -2918,6 +3411,8 @@ class SyntaxTree < Ripper
 
         q.breakable
         q.pp(bodystmt)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
@@ -2927,7 +3422,8 @@ class SyntaxTree < Ripper
         keyword: keyword,
         block_var: block_var,
         bodystmt: bodystmt,
-        loc: location
+        loc: location,
+        cmts: comments
       }.to_json(*opts)
     end
   end
@@ -2972,10 +3468,18 @@ class SyntaxTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(left:, right:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(left:, right:, location:, comments: [])
       @left = left
       @right = right
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [left, right]
     end
 
     def pretty_print(q)
@@ -2991,11 +3495,13 @@ class SyntaxTree < Ripper
           q.breakable
           q.pp(right)
         end
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :dot2, left: left, right: right, loc: location }.to_json(*opts)
+      { type: :dot2, left: left, right: right, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
@@ -3036,10 +3542,18 @@ class SyntaxTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(left:, right:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(left:, right:, location:, comments: [])
       @left = left
       @right = right
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [left, right]
     end
 
     def pretty_print(q)
@@ -3055,11 +3569,13 @@ class SyntaxTree < Ripper
           q.breakable
           q.pp(right)
         end
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :dot3, left: left, right: right, loc: location }.to_json(*opts)
+      { type: :dot3, left: left, right: right, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
@@ -3098,10 +3614,18 @@ class SyntaxTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(parts:, quote:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(parts:, quote:, location:, comments: [])
       @parts = parts
       @quote = quote
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      parts
     end
 
     def pretty_print(q)
@@ -3110,11 +3634,13 @@ class SyntaxTree < Ripper
 
         q.breakable
         q.group(2, '(', ')') { q.seplist(parts) { |part| q.pp(part) } }
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :dyna_symbol, parts: parts, quote: quote, loc: location }.to_json(
+      { type: :dyna_symbol, parts: parts, quote: quote, loc: location, cmts: comments }.to_json(
         *opts
       )
     end
@@ -3159,9 +3685,17 @@ class SyntaxTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(statements:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(statements:, location:, comments: [])
       @statements = statements
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [statements]
     end
 
     def pretty_print(q)
@@ -3170,11 +3704,13 @@ class SyntaxTree < Ripper
 
         q.breakable
         q.pp(statements)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :else, stmts: statements, loc: location }.to_json(*opts)
+      { type: :else, stmts: statements, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
@@ -3221,11 +3757,19 @@ class SyntaxTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(predicate:, statements:, consequent:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(predicate:, statements:, consequent:, location:, comments: [])
       @predicate = predicate
       @statements = statements
       @consequent = consequent
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [predicate, statements, consequent]
     end
 
     def pretty_print(q)
@@ -3242,6 +3786,8 @@ class SyntaxTree < Ripper
           q.breakable
           q.pp(consequent)
         end
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
@@ -3251,7 +3797,8 @@ class SyntaxTree < Ripper
         pred: predicate,
         stmts: statements,
         cons: consequent,
-        loc: location
+        loc: location,
+        cmts: comments
       }.to_json(*opts)
     end
   end
@@ -3297,6 +3844,10 @@ class SyntaxTree < Ripper
 
     def inline?
       false
+    end
+
+    def child_nodes
+      []
     end
 
     def pretty_print(q)
@@ -3467,10 +4018,18 @@ class SyntaxTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(keyword:, statements:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(keyword:, statements:, location:, comments: [])
       @keyword = keyword
       @statements = statements
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [keyword, statements]
     end
 
     def pretty_print(q)
@@ -3479,6 +4038,8 @@ class SyntaxTree < Ripper
 
         q.breakable
         q.pp(statements)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
@@ -3487,7 +4048,8 @@ class SyntaxTree < Ripper
         type: :ensure,
         keyword: keyword,
         stmts: statements,
-        loc: location
+        loc: location,
+        cmts: comments
       }.to_json(*opts)
     end
   end
@@ -3529,9 +4091,17 @@ class SyntaxTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(value:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(value:, location:, comments: [])
       @value = value
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      []
     end
 
     def pretty_print(q)
@@ -3540,11 +4110,13 @@ class SyntaxTree < Ripper
 
         q.breakable
         q.pp(value)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :excessed_comma, value: value, loc: location }.to_json(*opts)
+      { type: :excessed_comma, value: value, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
@@ -3573,9 +4145,17 @@ class SyntaxTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(value:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(value:, location:, comments: [])
       @value = value
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [value]
     end
 
     def pretty_print(q)
@@ -3584,11 +4164,13 @@ class SyntaxTree < Ripper
 
         q.breakable
         q.pp(value)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :fcall, value: value, loc: location }.to_json(*opts)
+      { type: :fcall, value: value, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
@@ -3616,11 +4198,19 @@ class SyntaxTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(parent:, operator:, name:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(parent:, operator:, name:, location:, comments: [])
       @parent = parent
       @operator = operator
       @name = name
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [parent, (operator if operator != :'::'), name]
     end
 
     def pretty_print(q)
@@ -3635,6 +4225,8 @@ class SyntaxTree < Ripper
 
         q.breakable
         q.pp(name)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
@@ -3644,7 +4236,8 @@ class SyntaxTree < Ripper
         parent: parent,
         op: operator,
         name: name,
-        loc: location
+        loc: location,
+        cmts: comments
       }.to_json(*opts)
     end
   end
@@ -3675,9 +4268,17 @@ class SyntaxTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(value:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(value:, location:, comments: [])
       @value = value
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      []
     end
 
     def pretty_print(q)
@@ -3686,11 +4287,13 @@ class SyntaxTree < Ripper
 
         q.breakable
         q.pp(value)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :float, value: value, loc: location }.to_json(*opts)
+      { type: :float, value: value, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
@@ -3731,12 +4334,20 @@ class SyntaxTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(constant:, left:, values:, right:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(constant:, left:, values:, right:, location:, comments: [])
       @constant = constant
       @left = left
       @values = values
       @right = right
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [constant, left, *values, right]
     end
 
     def pretty_print(q)
@@ -3756,6 +4367,8 @@ class SyntaxTree < Ripper
 
         q.breakable
         q.pp(right)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
@@ -3766,7 +4379,8 @@ class SyntaxTree < Ripper
         left: left,
         values: values,
         right: right,
-        loc: location
+        loc: location,
+        cmts: comments
       }.to_json(*opts)
     end
   end
@@ -3810,11 +4424,19 @@ class SyntaxTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(index:, collection:, statements:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(index:, collection:, statements:, location:, comments: [])
       @index = index
       @collection = collection
       @statements = statements
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [index, collection, statements]
     end
 
     def pretty_print(q)
@@ -3829,6 +4451,8 @@ class SyntaxTree < Ripper
 
         q.breakable
         q.pp(statements)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
@@ -3838,7 +4462,8 @@ class SyntaxTree < Ripper
         index: index,
         collection: collection,
         stmts: statements,
-        loc: location
+        loc: location,
+        cmts: comments
       }.to_json(*opts)
     end
   end
@@ -3885,9 +4510,17 @@ class SyntaxTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(value:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(value:, location:, comments: [])
       @value = value
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      []
     end
 
     def pretty_print(q)
@@ -3896,11 +4529,13 @@ class SyntaxTree < Ripper
 
         q.breakable
         q.pp(value)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :gvar, value: value, loc: location }.to_json(*opts)
+      { type: :gvar, value: value, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
@@ -3928,9 +4563,17 @@ class SyntaxTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(assocs:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(assocs:, location:, comments: [])
       @assocs = assocs
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      assocs
     end
 
     def pretty_print(q)
@@ -3941,11 +4584,13 @@ class SyntaxTree < Ripper
           q.breakable
           q.group(2, '(', ')') { q.seplist(assocs) { |assoc| q.pp(assoc) } }
         end
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :hash, assocs: assocs, loc: location }.to_json(*opts)
+      { type: :hash, assocs: assocs, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
@@ -3981,11 +4626,19 @@ class SyntaxTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(beginning:, ending: nil, parts: [], location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(beginning:, ending: nil, parts: [], location:, comments: [])
       @beginning = beginning
       @ending = ending
       @parts = parts
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [beginning, *parts]
     end
 
     def pretty_print(q)
@@ -3994,6 +4647,8 @@ class SyntaxTree < Ripper
 
         q.breakable
         q.group(2, '(', ')') { q.seplist(parts) { |part| q.pp(part) } }
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
@@ -4003,7 +4658,8 @@ class SyntaxTree < Ripper
         beging: beginning,
         ending: ending,
         parts: parts,
-        loc: location
+        loc: location,
+        cmts: comments
       }.to_json(*opts)
     end
   end
@@ -4022,9 +4678,17 @@ class SyntaxTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(value:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(value:, location:, comments: [])
       @value = value
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      []
     end
 
     def pretty_print(q)
@@ -4033,11 +4697,13 @@ class SyntaxTree < Ripper
 
         q.breakable
         q.pp(value)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :heredoc_beg, value: value, loc: location }.to_json(*opts)
+      { type: :heredoc_beg, value: value, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
@@ -4110,11 +4776,19 @@ class SyntaxTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(constant:, keywords:, keyword_rest:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(constant:, keywords:, keyword_rest:, location:, comments: [])
       @constant = constant
       @keywords = keywords
       @keyword_rest = keyword_rest
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [constant, *keywords.flatten(1), keyword_rest]
     end
 
     def pretty_print(q)
@@ -4137,6 +4811,8 @@ class SyntaxTree < Ripper
           q.breakable
           q.pp(keyword_rest)
         end
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
@@ -4146,7 +4822,8 @@ class SyntaxTree < Ripper
         constant: constant,
         keywords: keywords,
         kwrest: keyword_rest,
-        loc: location
+        loc: location,
+        cmts: comments
       }.to_json(*opts)
     end
   end
@@ -4180,16 +4857,27 @@ class SyntaxTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(value:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(value:, location:, comments: [])
       @value = value
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      []
     end
 
     def pretty_print(q)
       q.group(2, '(', ')') do
         q.text('ident')
+
         q.breakable
         q.pp(value)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
@@ -4197,7 +4885,8 @@ class SyntaxTree < Ripper
       {
         type: :ident,
         value: value.force_encoding('UTF-8'),
-        loc: location
+        loc: location,
+        cmts: comments
       }.to_json(*opts)
     end
   end
@@ -4233,11 +4922,19 @@ class SyntaxTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(predicate:, statements:, consequent:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(predicate:, statements:, consequent:, location:, comments: [])
       @predicate = predicate
       @statements = statements
       @consequent = consequent
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [predicate, statements, consequent]
     end
 
     def pretty_print(q)
@@ -4254,6 +4951,8 @@ class SyntaxTree < Ripper
           q.breakable
           q.pp(consequent)
         end
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
@@ -4263,7 +4962,8 @@ class SyntaxTree < Ripper
         pred: predicate,
         stmts: statements,
         cons: consequent,
-        loc: location
+        loc: location,
+        cmts: comments
       }.to_json(*opts)
     end
   end
@@ -4305,11 +5005,19 @@ class SyntaxTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(predicate:, truthy:, falsy:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(predicate:, truthy:, falsy:, location:, comments: [])
       @predicate = predicate
       @truthy = truthy
       @falsy = falsy
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [predicate, truthy, falsy]
     end
 
     def pretty_print(q)
@@ -4324,6 +5032,8 @@ class SyntaxTree < Ripper
 
         q.breakable
         q.pp(falsy)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
@@ -4333,7 +5043,8 @@ class SyntaxTree < Ripper
         pred: predicate,
         tthy: truthy,
         flsy: falsy,
-        loc: location
+        loc: location,
+        cmts: comments
       }.to_json(*opts)
     end
   end
@@ -4363,10 +5074,18 @@ class SyntaxTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(statement:, predicate:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(statement:, predicate:, location:, comments: [])
       @statement = statement
       @predicate = predicate
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [statement, predicate]
     end
 
     def pretty_print(q)
@@ -4378,6 +5097,8 @@ class SyntaxTree < Ripper
 
         q.breakable
         q.pp(predicate)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
@@ -4386,7 +5107,8 @@ class SyntaxTree < Ripper
         type: :if_mod,
         stmt: statement,
         pred: predicate,
-        loc: location
+        loc: location,
+        cmts: comments
       }.to_json(*opts)
     end
   end
@@ -4422,9 +5144,17 @@ class SyntaxTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(value:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(value:, location:, comments: [])
       @value = value
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      []
     end
 
     def pretty_print(q)
@@ -4433,11 +5163,13 @@ class SyntaxTree < Ripper
 
         q.breakable
         q.pp(value)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :imaginary, value: value, loc: location }.to_json(*opts)
+      { type: :imaginary, value: value, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
@@ -4474,11 +5206,19 @@ class SyntaxTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(pattern:, statements:, consequent:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(pattern:, statements:, consequent:, location:, comments: [])
       @pattern = pattern
       @statements = statements
       @consequent = consequent
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [pattern, statements, consequent]
     end
 
     def pretty_print(q)
@@ -4495,6 +5235,8 @@ class SyntaxTree < Ripper
           q.breakable
           q.pp(consequent)
         end
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
@@ -4504,7 +5246,8 @@ class SyntaxTree < Ripper
         pattern: pattern,
         stmts: statements,
         cons: consequent,
-        loc: location
+        loc: location,
+        cmts: comments
       }.to_json(*opts)
     end
   end
@@ -4544,9 +5287,17 @@ class SyntaxTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(value:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(value:, location:, comments: [])
       @value = value
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      []
     end
 
     def pretty_print(q)
@@ -4555,11 +5306,13 @@ class SyntaxTree < Ripper
 
         q.breakable
         q.pp(value)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :int, value: value, loc: location }.to_json(*opts)
+      { type: :int, value: value, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
@@ -4587,9 +5340,17 @@ class SyntaxTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(value:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(value:, location:, comments: [])
       @value = value
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      []
     end
 
     def pretty_print(q)
@@ -4598,11 +5359,13 @@ class SyntaxTree < Ripper
 
         q.breakable
         q.pp(value)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :ivar, value: value, loc: location }.to_json(*opts)
+      { type: :ivar, value: value, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
@@ -4639,9 +5402,17 @@ class SyntaxTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(value:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(value:, location:, comments: [])
       @value = value
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      []
     end
 
     def pretty_print(q)
@@ -4650,11 +5421,13 @@ class SyntaxTree < Ripper
 
         q.breakable
         q.pp(value)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :kw, value: value, loc: location }.to_json(*opts)
+      { type: :kw, value: value, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
@@ -4683,9 +5456,17 @@ class SyntaxTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(name:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(name:, location:, comments: [])
       @name = name
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [name]
     end
 
     def pretty_print(q)
@@ -4694,11 +5475,13 @@ class SyntaxTree < Ripper
 
         q.breakable
         q.pp(name)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :kwrest_param, name: name, loc: location }.to_json(*opts)
+      { type: :kwrest_param, name: name, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
@@ -4731,9 +5514,17 @@ class SyntaxTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(value:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(value:, location:, comments: [])
       @value = value
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      []
     end
 
     def pretty_print(q)
@@ -4743,11 +5534,13 @@ class SyntaxTree < Ripper
         q.breakable
         q.text(':')
         q.text(value[0...-1])
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :label, value: value, loc: location }.to_json(*opts)
+      { type: :label, value: value, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
@@ -4811,10 +5604,18 @@ class SyntaxTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(params:, statements:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(params:, statements:, location:, comments: [])
       @params = params
       @statements = statements
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [params, statements]
     end
 
     def pretty_print(q)
@@ -4826,6 +5627,8 @@ class SyntaxTree < Ripper
 
         q.breakable
         q.pp(statements)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
@@ -4834,7 +5637,8 @@ class SyntaxTree < Ripper
         type: :lambda,
         params: params,
         stmts: statements,
-        loc: location
+        loc: location,
+        cmts: comments
       }.to_json(*opts)
     end
   end
@@ -4872,9 +5676,17 @@ class SyntaxTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(value:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(value:, location:, comments: [])
       @value = value
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      []
     end
 
     def pretty_print(q)
@@ -4883,11 +5695,13 @@ class SyntaxTree < Ripper
 
         q.breakable
         q.pp(value)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :lbrace, value: value, loc: location }.to_json(*opts)
+      { type: :lbrace, value: value, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
@@ -4939,9 +5753,17 @@ class SyntaxTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(value:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(value:, location:, comments: [])
       @value = value
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      []
     end
 
     def pretty_print(q)
@@ -4950,11 +5772,13 @@ class SyntaxTree < Ripper
 
         q.breakable
         q.pp(value)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :lparen, value: value, loc: location }.to_json(*opts)
+      { type: :lparen, value: value, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
@@ -4999,10 +5823,18 @@ class SyntaxTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(target:, value:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(target:, value:, location:, comments: [])
       @target = target
       @value = value
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [target, value]
     end
 
     def pretty_print(q)
@@ -5014,11 +5846,13 @@ class SyntaxTree < Ripper
 
         q.breakable
         q.pp(value)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :massign, target: target, value: value, loc: location }.to_json(
+      { type: :massign, target: target, value: value, loc: location, cmts: comments }.to_json(
         *opts
       )
     end
@@ -5062,10 +5896,18 @@ class SyntaxTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(call:, arguments:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(call:, arguments:, location:, comments: [])
       @call = call
       @arguments = arguments
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [call, arguments]
     end
 
     def pretty_print(q)
@@ -5077,6 +5919,8 @@ class SyntaxTree < Ripper
 
         q.breakable
         q.pp(arguments)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
@@ -5085,7 +5929,8 @@ class SyntaxTree < Ripper
         type: :method_add_arg,
         call: call,
         args: arguments,
-        loc: location
+        loc: location,
+        cmts: comments
       }.to_json(*opts)
     end
   end
@@ -5116,10 +5961,18 @@ class SyntaxTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(call:, block:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(call:, block:, location:, comments: [])
       @call = call
       @block = block
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [call, block]
     end
 
     def pretty_print(q)
@@ -5131,6 +5984,8 @@ class SyntaxTree < Ripper
 
         q.breakable
         q.pp(block)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
@@ -5139,7 +5994,8 @@ class SyntaxTree < Ripper
         type: :method_add_block,
         call: call,
         block: block,
-        loc: location
+        loc: location,
+        cmts: comments
       }.to_json(*opts)
     end
   end
@@ -5175,10 +6031,18 @@ class SyntaxTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(parts:, comma: false, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(parts:, comma: false, location:, comments: [])
       @parts = parts
       @comma = comma
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      parts
     end
 
     def pretty_print(q)
@@ -5187,11 +6051,13 @@ class SyntaxTree < Ripper
 
         q.breakable
         q.group(2, '(', ')') { q.seplist(parts) { |part| q.pp(part) } }
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :mlhs, parts: parts, comma: comma, loc: location }.to_json(*opts)
+      { type: :mlhs, parts: parts, comma: comma, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
@@ -5250,9 +6116,17 @@ class SyntaxTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(contents:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(contents:, location:, comments: [])
       @contents = contents
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [contents]
     end
 
     def pretty_print(q)
@@ -5261,11 +6135,13 @@ class SyntaxTree < Ripper
 
         q.breakable
         q.pp(contents)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :mlhs_paren, cnts: contents, loc: location }.to_json(*opts)
+      { type: :mlhs_paren, cnts: contents, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
@@ -5299,10 +6175,18 @@ class SyntaxTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(constant:, bodystmt:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(constant:, bodystmt:, location:, comments: [])
       @constant = constant
       @bodystmt = bodystmt
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [constant, bodystmt]
     end
 
     def pretty_print(q)
@@ -5314,6 +6198,8 @@ class SyntaxTree < Ripper
 
         q.breakable
         q.pp(bodystmt)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
@@ -5322,7 +6208,8 @@ class SyntaxTree < Ripper
         type: :module,
         constant: constant,
         bodystmt: bodystmt,
-        loc: location
+        loc: location,
+        cmts: comments
       }.to_json(*opts)
     end
   end
@@ -5360,9 +6247,17 @@ class SyntaxTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(parts:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(parts:, location:, comments: [])
       @parts = parts
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      parts
     end
 
     def pretty_print(q)
@@ -5371,11 +6266,13 @@ class SyntaxTree < Ripper
 
         q.breakable
         q.group(2, '(', ')') { q.seplist(parts) { |part| q.pp(part) } }
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :mrhs, parts: parts, loc: location }.to_json(*opts)
+      { type: :mrhs, parts: parts, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
@@ -5450,9 +6347,17 @@ class SyntaxTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(arguments:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(arguments:, location:, comments: [])
       @arguments = arguments
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [arguments]
     end
 
     def pretty_print(q)
@@ -5461,11 +6366,13 @@ class SyntaxTree < Ripper
 
         q.breakable
         q.pp(arguments)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :next, args: arguments, loc: location }.to_json(*opts)
+      { type: :next, args: arguments, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
@@ -5500,9 +6407,17 @@ class SyntaxTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(value:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(value:, location:, comments: [])
       @value = value
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      []
     end
 
     def pretty_print(q)
@@ -5511,11 +6426,13 @@ class SyntaxTree < Ripper
 
         q.breakable
         q.pp(value)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :op, value: value, loc: location }.to_json(*opts)
+      { type: :op, value: value, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
@@ -5551,11 +6468,19 @@ class SyntaxTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(target:, operator:, value:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(target:, operator:, value:, location:, comments: [])
       @target = target
       @operator = operator
       @value = value
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [target, operator, value]
     end
 
     def pretty_print(q)
@@ -5570,6 +6495,8 @@ class SyntaxTree < Ripper
 
         q.breakable
         q.pp(value)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
@@ -5579,7 +6506,8 @@ class SyntaxTree < Ripper
         target: target,
         op: operator,
         value: value,
-        loc: location
+        loc: location,
+        cmts: comments
       }.to_json(*opts)
     end
   end
@@ -5636,16 +6564,10 @@ class SyntaxTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(
-      requireds: [],
-      optionals: [],
-      rest: nil,
-      posts: [],
-      keywords: [],
-      keyword_rest: nil,
-      block: nil,
-      location:
-    )
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(requireds: [], optionals: [], rest: nil, posts: [], keywords: [], keyword_rest: nil, block: nil, location:, comments: [])
       @requireds = requireds
       @optionals = optionals
       @rest = rest
@@ -5654,6 +6576,7 @@ class SyntaxTree < Ripper
       @keyword_rest = keyword_rest
       @block = block
       @location = location
+      @comments = comments
     end
 
     # Params nodes are the most complicated in the tree. Occasionally you want
@@ -5663,6 +6586,18 @@ class SyntaxTree < Ripper
     def empty?
       requireds.empty? && optionals.empty? && !rest && posts.empty? &&
         keywords.empty? && !keyword_rest && !block
+    end
+
+    def child_nodes
+      [
+        *requireds,
+        *optionals.flatten(1),
+        rest,
+        *posts,
+        *keywords.flatten(1),
+        (keyword_rest if keyword_rest != :nil),
+        block
+      ]
     end
 
     def pretty_print(q)
@@ -5724,6 +6659,8 @@ class SyntaxTree < Ripper
           q.breakable
           q.pp(block)
         end
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
@@ -5737,7 +6674,8 @@ class SyntaxTree < Ripper
         keywords: keywords,
         kwrest: keyword_rest,
         block: block,
-        loc: location
+        loc: location,
+        cmts: comments
       }.to_json(*opts)
     end
   end
@@ -5752,15 +6690,7 @@ class SyntaxTree < Ripper
   #     (nil | :nil | KwRestParam) keyword_rest,
   #     (nil | BlockArg) block
   #   ) -> Params
-  def on_params(
-    requireds,
-    optionals,
-    rest,
-    posts,
-    keywords,
-    keyword_rest,
-    block
-  )
+  def on_params(requireds, optionals, rest, posts, keywords, keyword_rest, block)
     parts = [
       *requireds,
       *optionals&.flatten(1),
@@ -5806,10 +6736,18 @@ class SyntaxTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(lparen:, contents:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(lparen:, contents:, location:, comments: [])
       @lparen = lparen
       @contents = contents
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [lparen, contents]
     end
 
     def pretty_print(q)
@@ -5818,11 +6756,13 @@ class SyntaxTree < Ripper
 
         q.breakable
         q.pp(contents)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :paren, lparen: lparen, cnts: contents, loc: location }.to_json(
+      { type: :paren, lparen: lparen, cnts: contents, loc: location, cmts: comments }.to_json(
         *opts
       )
     end
@@ -5883,9 +6823,17 @@ class SyntaxTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(value:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(value:, location:, comments: [])
       @value = value
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      []
     end
 
     def pretty_print(q)
@@ -5894,11 +6842,13 @@ class SyntaxTree < Ripper
 
         q.breakable
         q.pp(value)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :period, value: value, loc: location }.to_json(*opts)
+      { type: :period, value: value, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
@@ -5916,16 +6866,20 @@ class SyntaxTree < Ripper
     # [Statements] the top-level expressions of the program
     attr_reader :statements
 
-    # [Array[ Comment | EmbDoc ]] the comments inside the program
-    attr_reader :comments
-
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(statements:, comments:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(statements:, location:, comments: [])
       @statements = statements
-      @comments = comments
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [statements]
     end
 
     def pretty_print(q)
@@ -5934,6 +6888,8 @@ class SyntaxTree < Ripper
 
         q.breakable
         q.pp(statements)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
@@ -5942,7 +6898,8 @@ class SyntaxTree < Ripper
         type: :program,
         stmts: statements,
         comments: comments,
-        loc: location
+        loc: location,
+        cmts: comments
       }.to_json(*opts)
     end
   end
@@ -5961,7 +6918,95 @@ class SyntaxTree < Ripper
     statements.body << @__end__ if @__end__
     statements.bind(0, source.length)
 
-    Program.new(statements: statements, comments: @comments, location: location)
+    program = Program.new(statements: statements, location: location)
+    attach_comments(program, @comments)
+
+    program
+  end
+
+  # Attaches comments to the nodes in the tree that most closely correspond to
+  # the location of the comments.
+  def attach_comments(program, comments)
+    comments.each do |comment|
+      preceding, enclosing, following = nearest_nodes(program, comment)
+
+      if comment.inline?
+        if preceding
+          preceding.comments << comment # leading: false, trailing: true
+        elsif following
+          following.comments << comment # leading: true, trailing: false
+        elsif enclosing
+          enclosing.comments << comment # leading: false, trailing: false
+        else
+          node.comments << comment # leading: false, trailing: false
+        end
+      else
+        # If a comment exists on its own line, prefer a leading comment.
+        if following
+          following.comments << comment # leading: true, trailing: false
+        elsif preceding
+          preceding.comments << comment # leading: false, trailing: true
+        elsif enclosing
+          enclosing.comments << comment # leading: false, trailing: false
+        else
+          node.comments << comment # leading: false, trailing: false
+        end
+      end
+    end
+  end
+
+  # Responsible for finding the nearest nodes to the given comment within the
+  # context of the given encapsulating node.
+  def nearest_nodes(node, comment)
+    comment_start = comment.location.start_char
+    comment_end = comment.location.end_char
+
+    child_nodes = node.child_nodes
+    preceding = nil
+    following = nil
+
+    left = 0
+    right = child_nodes.length
+
+    # This is a custom binary search that finds the nearest nodes to the given
+    # comment. When it finds a node that completely encapsulates the comment, it
+    # recursed downward into the tree.
+    while left < right
+      middle = (left + right) / 2
+      child = child_nodes[middle]
+
+      node_start = child.location.start_char
+      node_end = child.location.end_char
+
+      if node_start <= comment_start && comment_end <= node_end
+        # The comment is completely contained by this child node. Abandon the
+        # binary search at this level.
+        return nearest_nodes(child, comment)
+      end
+
+      if node_end <= comment_start
+        # This child node falls completely before the comment. Because we will
+        # never consider this node or any nodes before it again, this node must
+        # be the closest preceding node we have encountered so far.
+        preceding = child
+        left = middle + 1
+        next
+      end
+
+      if comment_end <= node_start
+        # This child node falls completely after the comment. Because we will
+        # never consider this node or any nodes after it again, this node must
+        # be the closest following node we have encountered so far.
+        following = child
+        right = middle
+        next
+      end
+
+      # This should only happen if there is a bug in this parser.
+      raise 'Comment location overlaps with node location'
+    end
+
+    [preceding, node, following]
   end
 
   # QSymbols represents a symbol literal array without interpolation.
@@ -5975,9 +7020,17 @@ class SyntaxTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(elements:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(elements:, location:, comments: [])
       @elements = elements
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      []
     end
 
     def pretty_print(q)
@@ -5986,11 +7039,13 @@ class SyntaxTree < Ripper
 
         q.breakable
         q.group(2, '(', ')') { q.seplist(elements) { |element| q.pp(element) } }
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :qsymbols, elems: elements, loc: location }.to_json(*opts)
+      { type: :qsymbols, elems: elements, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
@@ -6055,9 +7110,17 @@ class SyntaxTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(elements:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(elements:, location:, comments: [])
       @elements = elements
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      []
     end
 
     def pretty_print(q)
@@ -6066,11 +7129,13 @@ class SyntaxTree < Ripper
 
         q.breakable
         q.group(2, '(', ')') { q.seplist(elements) { |element| q.pp(element) } }
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :qwords, elems: elements, loc: location }.to_json(*opts)
+      { type: :qwords, elems: elements, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
@@ -6135,9 +7200,17 @@ class SyntaxTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(value:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(value:, location:, comments: [])
       @value = value
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      []
     end
 
     def pretty_print(q)
@@ -6146,11 +7219,13 @@ class SyntaxTree < Ripper
 
         q.breakable
         q.pp(value)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :rational, value: value, loc: location }.to_json(*opts)
+      { type: :rational, value: value, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
@@ -6232,9 +7307,17 @@ class SyntaxTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(value:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(value:, location:, comments: [])
       @value = value
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      []
     end
 
     def pretty_print(q)
@@ -6243,11 +7326,13 @@ class SyntaxTree < Ripper
 
         q.breakable
         q.pp(value)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :redo, value: value, loc: location }.to_json(*opts)
+      { type: :redo, value: value, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
@@ -6378,14 +7463,22 @@ class SyntaxTree < Ripper
     # regular expression literal
     attr_reader :parts
 
-    # [Locatione] the location of this node
+    # [Location] the location of this node
     attr_reader :location
 
-    def initialize(beginning:, ending:, parts:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(beginning:, ending:, parts:, location:, comments: [])
       @beginning = beginning
       @ending = ending
       @parts = parts
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      parts
     end
 
     def pretty_print(q)
@@ -6394,6 +7487,8 @@ class SyntaxTree < Ripper
 
         q.breakable
         q.group(2, '(', ')') { q.seplist(parts) { |part| q.pp(part) } }
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
@@ -6403,7 +7498,8 @@ class SyntaxTree < Ripper
         beging: beginning,
         ending: ending,
         parts: parts,
-        loc: location
+        loc: location,
+        cmts: comments
       }.to_json(*opts)
     end
   end
@@ -6451,10 +7547,18 @@ class SyntaxTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(exceptions:, variable:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(exceptions:, variable:, location:, comments: [])
       @exceptions = exceptions
       @variable = variable
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [*exceptions, variable]
     end
 
     def pretty_print(q)
@@ -6466,6 +7570,8 @@ class SyntaxTree < Ripper
 
         q.breakable
         q.pp(variable)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
@@ -6474,7 +7580,8 @@ class SyntaxTree < Ripper
         type: :rescue_ex,
         extns: exceptions,
         var: variable,
-        loc: location
+        loc: location,
+        cmts: comments
       }.to_json(*opts)
     end
   end
@@ -6498,11 +7605,15 @@ class SyntaxTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(exception:, statements:, consequent:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(exception:, statements:, consequent:, location:, comments: [])
       @exception = exception
       @statements = statements
       @consequent = consequent
       @location = location
+      @comments = comments
     end
 
     def bind_end(end_char)
@@ -6522,6 +7633,10 @@ class SyntaxTree < Ripper
       end
     end
 
+    def child_nodes
+      [exception, statements, consequent]
+    end
+
     def pretty_print(q)
       q.group(2, '(', ')') do
         q.text('rescue')
@@ -6538,6 +7653,8 @@ class SyntaxTree < Ripper
           q.breakable
           q.pp(consequent)
         end
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
@@ -6547,7 +7664,8 @@ class SyntaxTree < Ripper
         extn: exception,
         stmts: statements,
         cons: consequent,
-        loc: location
+        loc: location,
+        cmts: comments
       }.to_json(*opts)
     end
   end
@@ -6615,10 +7733,18 @@ class SyntaxTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(statement:, value:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(statement:, value:, location:, comments: [])
       @statement = statement
       @value = value
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [statement, value]
     end
 
     def pretty_print(q)
@@ -6630,6 +7756,8 @@ class SyntaxTree < Ripper
 
         q.breakable
         q.pp(value)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
@@ -6638,7 +7766,8 @@ class SyntaxTree < Ripper
         type: :rescue_mod,
         stmt: statement,
         value: value,
-        loc: location
+        loc: location,
+        cmts: comments
       }.to_json(*opts)
     end
   end
@@ -6667,9 +7796,17 @@ class SyntaxTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(name:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(name:, location:, comments: [])
       @name = name
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [name]
     end
 
     def pretty_print(q)
@@ -6678,11 +7815,13 @@ class SyntaxTree < Ripper
 
         q.breakable
         q.pp(name)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :rest_param, name: name, loc: location }.to_json(*opts)
+      { type: :rest_param, name: name, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
@@ -6706,9 +7845,17 @@ class SyntaxTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(value:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(value:, location:, comments: [])
       @value = value
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      []
     end
 
     def pretty_print(q)
@@ -6717,11 +7864,13 @@ class SyntaxTree < Ripper
 
         q.breakable
         q.pp(value)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :retry, value: value, loc: location }.to_json(*opts)
+      { type: :retry, value: value, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
@@ -6744,9 +7893,17 @@ class SyntaxTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(arguments:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(arguments:, location:, comments: [])
       @arguments = arguments
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [arguments]
     end
 
     def pretty_print(q)
@@ -6755,11 +7912,13 @@ class SyntaxTree < Ripper
 
         q.breakable
         q.pp(arguments)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :return, args: arguments, loc: location }.to_json(*opts)
+      { type: :return, args: arguments, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
@@ -6785,9 +7944,17 @@ class SyntaxTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(value:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(value:, location:, comments: [])
       @value = value
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      []
     end
 
     def pretty_print(q)
@@ -6796,11 +7963,13 @@ class SyntaxTree < Ripper
 
         q.breakable
         q.pp(value)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :return0, value: value, loc: location }.to_json(*opts)
+      { type: :return0, value: value, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
@@ -6856,10 +8025,18 @@ class SyntaxTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(target:, bodystmt:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(target:, bodystmt:, location:, comments: [])
       @target = target
       @bodystmt = bodystmt
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [target, bodystmt]
     end
 
     def pretty_print(q)
@@ -6871,6 +8048,8 @@ class SyntaxTree < Ripper
 
         q.breakable
         q.pp(bodystmt)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
@@ -6879,7 +8058,8 @@ class SyntaxTree < Ripper
         type: :sclass,
         target: target,
         bodystmt: bodystmt,
-        loc: location
+        loc: location,
+        cmts: comments
       }.to_json(*opts)
     end
   end
@@ -6935,10 +8115,14 @@ class SyntaxTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(parser:, body:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(parser:, body:, location:, comments: [])
       @parser = parser
       @body = body
       @location = location
+      @comments = comments
     end
 
     def bind(start_char, end_char)
@@ -6984,17 +8168,23 @@ class SyntaxTree < Ripper
       self
     end
 
+    def child_nodes
+      body
+    end
+
     def pretty_print(q)
       q.group(2, '(', ')') do
         q.text('statements')
 
         q.breakable
         q.seplist(body) { |statement| q.pp(statement) }
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :statements, body: body, loc: location }.to_json(*opts)
+      { type: :statements, body: body, loc: location, cmts: comments }.to_json(*opts)
     end
 
     private
@@ -7070,10 +8260,18 @@ class SyntaxTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(left:, right:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(left:, right:, location:, comments: [])
       @left = left
       @right = right
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [left, right]
     end
 
     def pretty_print(q)
@@ -7085,11 +8283,13 @@ class SyntaxTree < Ripper
 
         q.breakable
         q.pp(right)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :string_concat, left: left, right: right, loc: location }.to_json(
+      { type: :string_concat, left: left, right: right, loc: location, cmts: comments }.to_json(
         *opts
       )
     end
@@ -7130,9 +8330,17 @@ class SyntaxTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(variable:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(variable:, location:, comments: [])
       @variable = variable
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [variable]
     end
 
     def pretty_print(q)
@@ -7141,11 +8349,13 @@ class SyntaxTree < Ripper
 
         q.breakable
         q.pp(variable)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :string_dvar, var: variable, loc: location }.to_json(*opts)
+      { type: :string_dvar, var: variable, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
@@ -7173,10 +8383,18 @@ class SyntaxTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(statements:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(statements:, location:, comments: [])
       @statements = statements
       @location = location
+      @comments = comments
     end
+
+    def child_nodes
+      [statements]
+    end 
 
     def pretty_print(q)
       q.group(2, '(', ')') do
@@ -7184,11 +8402,13 @@ class SyntaxTree < Ripper
 
         q.breakable
         q.pp(statements)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :string_embexpr, stmts: statements, loc: location }.to_json(*opts)
+      { type: :string_embexpr, stmts: statements, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
@@ -7224,10 +8444,18 @@ class SyntaxTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(parts:, quote:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(parts:, quote:, location:, comments: [])
       @parts = parts
       @quote = quote
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      parts
     end
 
     def pretty_print(q)
@@ -7236,6 +8464,8 @@ class SyntaxTree < Ripper
 
         q.breakable
         q.group(2, '(', ')') { q.seplist(parts) { |part| q.pp(part) } }
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
@@ -7244,7 +8474,8 @@ class SyntaxTree < Ripper
         type: :string_literal,
         parts: parts,
         quote: quote,
-        loc: location
+        loc: location,
+        cmts: comments
       }.to_json(*opts)
     end
   end
@@ -7287,9 +8518,17 @@ class SyntaxTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(arguments:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(arguments:, location:, comments: [])
       @arguments = arguments
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [arguments]
     end
 
     def pretty_print(q)
@@ -7298,11 +8537,13 @@ class SyntaxTree < Ripper
 
         q.breakable
         q.pp(arguments)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :super, args: arguments, loc: location }.to_json(*opts)
+      { type: :super, args: arguments, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
@@ -7402,9 +8643,17 @@ class SyntaxTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(value:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(value:, location:, comments: [])
       @value = value
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [value]
     end
 
     def pretty_print(q)
@@ -7413,11 +8662,13 @@ class SyntaxTree < Ripper
 
         q.breakable
         q.pp(value)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :symbol_literal, value: value, loc: location }.to_json(*opts)
+      { type: :symbol_literal, value: value, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
@@ -7452,9 +8703,17 @@ class SyntaxTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(elements:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(elements:, location:, comments: [])
       @elements = elements
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      []
     end
 
     def pretty_print(q)
@@ -7463,11 +8722,13 @@ class SyntaxTree < Ripper
 
         q.breakable
         q.group(2, '(', ')') { q.seplist(elements) { |element| q.pp(element) } }
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :symbols, elems: elements, loc: location }.to_json(*opts)
+      { type: :symbols, elems: elements, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
@@ -7598,9 +8859,17 @@ class SyntaxTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(constant:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(constant:, location:, comments: [])
       @constant = constant
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [constant]
     end
 
     def pretty_print(q)
@@ -7609,11 +8878,13 @@ class SyntaxTree < Ripper
 
         q.breakable
         q.pp(constant)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :top_const_field, constant: constant, loc: location }.to_json(
+      { type: :top_const_field, constant: constant, loc: location, cmts: comments }.to_json(
         *opts
       )
     end
@@ -7642,9 +8913,17 @@ class SyntaxTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(constant:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(constant:, location:, comments: [])
       @constant = constant
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [constant]
     end
 
     def pretty_print(q)
@@ -7653,11 +8932,13 @@ class SyntaxTree < Ripper
 
         q.breakable
         q.pp(constant)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :top_const_ref, constant: constant, loc: location }.to_json(*opts)
+      { type: :top_const_ref, constant: constant, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
@@ -7723,9 +9004,17 @@ class SyntaxTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(value:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(value:, location:, comments: [])
       @value = value
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      []
     end
 
     def pretty_print(q)
@@ -7734,6 +9023,8 @@ class SyntaxTree < Ripper
 
         q.breakable
         q.pp(value)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
@@ -7741,7 +9032,8 @@ class SyntaxTree < Ripper
       {
         type: :tstring_content,
         value: value.force_encoding('UTF-8'),
-        loc: location
+        loc: location,
+        cmts: comments
       }.to_json(*opts)
     end
   end
@@ -7805,10 +9097,18 @@ class SyntaxTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(statement:, parentheses:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(statement:, parentheses:, location:, comments: [])
       @statement = statement
       @parentheses = parentheses
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [statement]
     end
 
     def pretty_print(q)
@@ -7817,6 +9117,8 @@ class SyntaxTree < Ripper
 
         q.breakable
         q.pp(statement)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
@@ -7825,7 +9127,8 @@ class SyntaxTree < Ripper
         type: :not,
         value: statement,
         paren: parentheses,
-        loc: location
+        loc: location,
+        cmts: comments
       }.to_json(*opts)
     end
   end
@@ -7845,10 +9148,18 @@ class SyntaxTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(operator:, statement:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(operator:, statement:, location:, comments: [])
       @operator = operator
       @statement = statement
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [statement]
     end
 
     def pretty_print(q)
@@ -7860,11 +9171,13 @@ class SyntaxTree < Ripper
 
         q.breakable
         q.pp(statement)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :unary, op: operator, value: statement, loc: location }.to_json(
+      { type: :unary, op: operator, value: statement, loc: location, cmts: comments }.to_json(
         *opts
       )
     end
@@ -7927,9 +9240,17 @@ class SyntaxTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(symbols:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(symbols:, location:, comments: [])
       @symbols = symbols
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      symbols
     end
 
     def pretty_print(q)
@@ -7938,11 +9259,13 @@ class SyntaxTree < Ripper
 
         q.breakable
         q.group(2, '(', ')') { q.seplist(symbols) { |symbol| q.pp(symbol) } }
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :undef, syms: symbols, loc: location }.to_json(*opts)
+      { type: :undef, syms: symbols, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
@@ -7975,11 +9298,19 @@ class SyntaxTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(predicate:, statements:, consequent:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(predicate:, statements:, consequent:, location:, comments: [])
       @predicate = predicate
       @statements = statements
       @consequent = consequent
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [predicate, statements, consequent]
     end
 
     def pretty_print(q)
@@ -7996,6 +9327,8 @@ class SyntaxTree < Ripper
           q.breakable
           q.pp(consequent)
         end
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
@@ -8005,7 +9338,8 @@ class SyntaxTree < Ripper
         pred: predicate,
         stmts: statements,
         cons: consequent,
-        loc: location
+        loc: location,
+        cmts: comments
       }.to_json(*opts)
     end
   end
@@ -8044,10 +9378,18 @@ class SyntaxTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(statement:, predicate:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(statement:, predicate:, location:, comments: [])
       @statement = statement
       @predicate = predicate
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [statement, predicate]
     end
 
     def pretty_print(q)
@@ -8059,6 +9401,8 @@ class SyntaxTree < Ripper
 
         q.breakable
         q.pp(predicate)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
@@ -8067,7 +9411,8 @@ class SyntaxTree < Ripper
         type: :unless_mod,
         stmt: statement,
         pred: predicate,
-        loc: location
+        loc: location,
+        cmts: comments
       }.to_json(*opts)
     end
   end
@@ -8099,10 +9444,18 @@ class SyntaxTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(predicate:, statements:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(predicate:, statements:, location:, comments: [])
       @predicate = predicate
       @statements = statements
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [predicate, statements]
     end
 
     def pretty_print(q)
@@ -8114,6 +9467,8 @@ class SyntaxTree < Ripper
 
         q.breakable
         q.pp(statements)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
@@ -8122,7 +9477,8 @@ class SyntaxTree < Ripper
         type: :until,
         pred: predicate,
         stmts: statements,
-        loc: location
+        loc: location,
+        cmts: comments
       }.to_json(*opts)
     end
   end
@@ -8165,10 +9521,18 @@ class SyntaxTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(statement:, predicate:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(statement:, predicate:, location:, comments: [])
       @statement = statement
       @predicate = predicate
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [statement, predicate]
     end
 
     def pretty_print(q)
@@ -8180,6 +9544,8 @@ class SyntaxTree < Ripper
 
         q.breakable
         q.pp(predicate)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
@@ -8188,7 +9554,8 @@ class SyntaxTree < Ripper
         type: :until_mod,
         stmt: statement,
         pred: predicate,
-        loc: location
+        loc: location,
+        cmts: comments
       }.to_json(*opts)
     end
   end
@@ -8220,10 +9587,18 @@ class SyntaxTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(left:, right:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(left:, right:, location:, comments: [])
       @left = left
       @right = right
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [left, right]
     end
 
     def pretty_print(q)
@@ -8235,11 +9610,13 @@ class SyntaxTree < Ripper
 
         q.breakable
         q.pp(right)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :var_alias, left: left, right: right, loc: location }.to_json(
+      { type: :var_alias, left: left, right: right, loc: location, cmts: comments }.to_json(
         *opts
       )
     end
@@ -8270,9 +9647,17 @@ class SyntaxTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(value:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(value:, location:, comments: [])
       @value = value
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [value]
     end
 
     def pretty_print(q)
@@ -8281,11 +9666,13 @@ class SyntaxTree < Ripper
 
         q.breakable
         q.pp(value)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :var_field, value: value, loc: location }.to_json(*opts)
+      { type: :var_field, value: value, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
@@ -8321,9 +9708,17 @@ class SyntaxTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(value:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(value:, location:, comments: [])
       @value = value
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [value]
     end
 
     def pretty_print(q)
@@ -8332,11 +9727,13 @@ class SyntaxTree < Ripper
 
         q.breakable
         q.pp(value)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :var_ref, value: value, loc: location }.to_json(*opts)
+      { type: :var_ref, value: value, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
@@ -8358,9 +9755,17 @@ class SyntaxTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(value:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(value:, location:, comments: [])
       @value = value
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [value]
     end
 
     def pretty_print(q)
@@ -8369,11 +9774,13 @@ class SyntaxTree < Ripper
 
         q.breakable
         q.pp(value)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :access_ctrl, value: value, loc: location }.to_json(*opts)
+      { type: :access_ctrl, value: value, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
@@ -8389,9 +9796,17 @@ class SyntaxTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(value:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(value:, location:, comments: [])
       @value = value
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [value]
     end
 
     def pretty_print(q)
@@ -8400,11 +9815,13 @@ class SyntaxTree < Ripper
 
         q.breakable
         q.pp(value)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :vcall, value: value, loc: location }.to_json(*opts)
+      { type: :vcall, value: value, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
@@ -8432,16 +9849,23 @@ class SyntaxTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(location:, comments: [])
       @location = location
+      @comments = comments
     end
 
     def pretty_print(q)
-      q.group(2, '(', ')') { q.text('void_stmt') }
+      q.group(2, '(', ')') do
+        q.text('void_stmt')
+        q.pp(Comment::List.new(comments))
+      end
     end
 
     def to_json(*opts)
-      { type: :void_stmt, loc: location }.to_json(*opts)
+      { type: :void_stmt, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
@@ -8470,11 +9894,19 @@ class SyntaxTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(arguments:, statements:, consequent:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(arguments:, statements:, consequent:, location:, comments: [])
       @arguments = arguments
       @statements = statements
       @consequent = consequent
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [arguments, statements, consequent]
     end
 
     def pretty_print(q)
@@ -8491,6 +9923,8 @@ class SyntaxTree < Ripper
           q.breakable
           q.pp(consequent)
         end
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
@@ -8500,7 +9934,8 @@ class SyntaxTree < Ripper
         args: arguments,
         stmts: statements,
         cons: consequent,
-        loc: location
+        loc: location,
+        cmts: comments
       }.to_json(*opts)
     end
   end
@@ -8540,10 +9975,18 @@ class SyntaxTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(predicate:, statements:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(predicate:, statements:, location:, comments: [])
       @predicate = predicate
       @statements = statements
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [predicate, statements]
     end
 
     def pretty_print(q)
@@ -8555,6 +9998,8 @@ class SyntaxTree < Ripper
 
         q.breakable
         q.pp(statements)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
@@ -8563,7 +10008,8 @@ class SyntaxTree < Ripper
         type: :while,
         pred: predicate,
         stmts: statements,
-        loc: location
+        loc: location,
+        cmts: comments
       }.to_json(*opts)
     end
   end
@@ -8606,10 +10052,18 @@ class SyntaxTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(statement:, predicate:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(statement:, predicate:, location:, comments: [])
       @statement = statement
       @predicate = predicate
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [statement, predicate]
     end
 
     def pretty_print(q)
@@ -8621,6 +10075,8 @@ class SyntaxTree < Ripper
 
         q.breakable
         q.pp(predicate)
+      
+        q.pp(Comment::List.new(comments))
       end
     end
 
@@ -8629,7 +10085,8 @@ class SyntaxTree < Ripper
         type: :while_mod,
         stmt: statement,
         pred: predicate,
-        loc: location
+        loc: location,
+        cmts: comments
       }.to_json(*opts)
     end
   end
@@ -8661,9 +10118,17 @@ class SyntaxTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(parts:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(parts:, location:, comments: [])
       @parts = parts
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      parts
     end
 
     def pretty_print(q)
@@ -8672,11 +10137,13 @@ class SyntaxTree < Ripper
 
         q.breakable
         q.group(2, '(', ')') { q.seplist(parts) { |part| q.pp(part) } }
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :word, parts: parts, loc: location }.to_json(*opts)
+      { type: :word, parts: parts, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
@@ -8709,9 +10176,17 @@ class SyntaxTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(elements:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(elements:, location:, comments: [])
       @elements = elements
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      []
     end
 
     def pretty_print(q)
@@ -8720,11 +10195,13 @@ class SyntaxTree < Ripper
 
         q.breakable
         q.group(2, '(', ')') { q.seplist(elements) { |element| q.pp(element) } }
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :words, elems: elements, loc: location }.to_json(*opts)
+      { type: :words, elems: elements, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
@@ -8840,9 +10317,17 @@ class SyntaxTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(parts:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(parts:, location:, comments: [])
       @parts = parts
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      parts
     end
 
     def pretty_print(q)
@@ -8851,11 +10336,13 @@ class SyntaxTree < Ripper
 
         q.breakable
         q.group(2, '(', ')') { q.seplist(parts) { |part| q.pp(part) } }
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :xstring_literal, parts: parts, loc: location }.to_json(*opts)
+      { type: :xstring_literal, parts: parts, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
@@ -8892,9 +10379,17 @@ class SyntaxTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(arguments:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(arguments:, location:, comments: [])
       @arguments = arguments
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [arguments]
     end
 
     def pretty_print(q)
@@ -8903,11 +10398,13 @@ class SyntaxTree < Ripper
 
         q.breakable
         q.pp(arguments)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :yield, args: arguments, loc: location }.to_json(*opts)
+      { type: :yield, args: arguments, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
@@ -8933,9 +10430,17 @@ class SyntaxTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(value:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(value:, location:, comments: [])
       @value = value
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      []
     end
 
     def pretty_print(q)
@@ -8944,11 +10449,13 @@ class SyntaxTree < Ripper
 
         q.breakable
         q.pp(value)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :yield0, value: value, loc: location }.to_json(*opts)
+      { type: :yield0, value: value, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
@@ -8968,12 +10475,20 @@ class SyntaxTree < Ripper
     # [String] the value of the keyword
     attr_reader :value
 
-    # [Location] the location of the node
+    # [Location] the location of this node
     attr_reader :location
 
-    def initialize(value:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(value:, location:, comments: [])
       @value = value
       @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      []
     end
 
     def pretty_print(q)
@@ -8982,11 +10497,13 @@ class SyntaxTree < Ripper
 
         q.breakable
         q.pp(value)
+
+        q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :zsuper, value: value, loc: location }.to_json(*opts)
+      { type: :zsuper, value: value, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
