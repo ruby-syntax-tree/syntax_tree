@@ -11275,16 +11275,10 @@ class SyntaxTree < Ripper
     def format(q)
       keyword = 'alias '
 
-      q.group do
-        q.text(keyword)
-        q.format(left)
-        q.group do
-          q.nest(keyword.length) do
-            q.breakable
-            q.format(right)
-          end
-        end
-      end
+      q.text(keyword)
+      q.format(left)
+      q.text(' ')
+      q.format(right)
     end
 
     def pretty_print(q)
