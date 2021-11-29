@@ -12153,9 +12153,11 @@ class SyntaxTree < Ripper
     end
 
     def format(q)
-      q.text('yield')
-      q.text(' ') if arguments.is_a?(Args)
-      q.format(arguments)
+      q.group do
+        q.text('yield')
+        q.text(' ') if arguments.is_a?(Args)
+        q.format(arguments)
+      end
     end
 
     def pretty_print(q)
