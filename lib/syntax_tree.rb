@@ -1,10 +1,19 @@
 # frozen_string_literal: true
 
 require 'pp'
+require 'prettyprint'
 require 'ripper'
 require 'stringio'
 
 require_relative 'syntax_tree/version'
+
+# If PrettyPrint::Assign isn't defined, then we haven't gotten the updated
+# version of prettyprint. In that case we'll define our own
+if PrettyPrint.const_defined?(:Assign)
+  SyntaxTree::PrettyPrint = PrettyPrint
+else
+  require_relative 'syntax_tree/prettyprint'
+end
 
 class SyntaxTree < Ripper
   # Represents a line in the source. If this class is being used, it means that
