@@ -10,7 +10,7 @@ GEM
     benchmark-ips (2.9.2)
     docile (1.4.0)
     minitest (5.14.4)
-    parser (3.0.3.0)
+    parser (3.0.3.1)
       ast (~> 2.4.1)
     rake (13.0.6)
     ruby_parser (3.18.1)
