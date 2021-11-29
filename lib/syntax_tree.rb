@@ -319,7 +319,7 @@ class SyntaxTree < Ripper
       q.group do
         q.text('BEGIN ')
         q.format(lbrace)
-        q.nest(2) do
+        q.indent do
           q.breakable
           q.format(statements)
         end
@@ -472,7 +472,7 @@ class SyntaxTree < Ripper
       q.group do
         q.text('END ')
         q.format(lbrace)
-        q.nest(2) do
+        q.indent do
           q.breakable
           q.format(statements)
         end
@@ -733,7 +733,7 @@ class SyntaxTree < Ripper
         q.text('[')
 
         if index
-          q.nest(2) do
+          q.indent do
             q.breakable('')
             q.format(index)
           end
@@ -819,7 +819,7 @@ class SyntaxTree < Ripper
         q.text('[')
 
         if index
-          q.nest(2) do
+          q.indent do
             q.breakable('')
             q.format(index)
           end
@@ -914,7 +914,7 @@ class SyntaxTree < Ripper
       end
 
       q.group(0, '(', ')') do
-        q.nest(2) do
+        q.indent do
           q.breakable('')
           q.format(arguments)
         end
@@ -1245,7 +1245,7 @@ class SyntaxTree < Ripper
 
       def format(q)
         q.group(0, '%w[', ']') do
-          q.nest(2) do
+          q.indent do
             q.breakable('')
             q.seplist(contents.parts, -> { q.breakable }) do |part|
               q.format(part.parts.first)
@@ -1266,7 +1266,7 @@ class SyntaxTree < Ripper
 
       def format(q)
         q.group(0, '%i[', ']') do
-          q.nest(2) do
+          q.indent do
             q.breakable('')
             q.seplist(contents.parts, -> { q.breakable }) do |part|
               q.format(part.value)
@@ -1312,7 +1312,7 @@ class SyntaxTree < Ripper
       end
 
       q.group(0, '[', ']') do
-        q.nest(2) do
+        q.indent do
           q.breakable('')
           q.format(contents)
         end
@@ -1572,7 +1572,7 @@ class SyntaxTree < Ripper
           q.text(' ')
           q.format(value)
         else
-          q.nest(2) do
+          q.indent do
             q.breakable
             q.format(value)
           end
@@ -1657,7 +1657,7 @@ class SyntaxTree < Ripper
     def format(q)
       contents = -> {
         q.parent.format_key(q, key)
-        q.nest(2) do
+        q.indent do
           q.breakable
           q.format(value)
         end
@@ -2028,7 +2028,7 @@ class SyntaxTree < Ripper
       q.text('begin')
 
       unless bodystmt.empty?
-        q.nest(2) do
+        q.indent do
           q.breakable(force: true)
           q.format(bodystmt)
         end
@@ -2120,7 +2120,7 @@ class SyntaxTree < Ripper
         q.text(' ') unless power
         q.text(operator)
 
-        q.nest(2) do
+        q.indent do
           q.breakable(power ? '' : ' ')
           q.format(right)
         end
@@ -2694,7 +2694,7 @@ class SyntaxTree < Ripper
       q.group do
         q.format(receiver)
         q.group do
-          q.nest(2) do
+          q.indent do
             q.format(CallOperatorFormatter.new(operator))
             q.format(message)
           end
@@ -2866,7 +2866,7 @@ class SyntaxTree < Ripper
         q.text(' ')
         q.format(operator)
         q.group do
-          q.nest(2) do
+          q.indent do
             q.breakable
             q.format(pattern)
           end
@@ -2999,7 +2999,7 @@ class SyntaxTree < Ripper
           end
         end
 
-        q.nest(2) do
+        q.indent do
           q.breakable(force: true)
           q.format(bodystmt)
         end
@@ -3734,7 +3734,7 @@ class SyntaxTree < Ripper
         end
 
         unless bodystmt.empty?
-          q.nest(2) do
+          q.indent do
             q.breakable(force: true)
             q.format(bodystmt)
           end
@@ -3813,7 +3813,7 @@ class SyntaxTree < Ripper
         q.format(paren) if paren && !paren.contents.empty?
         q.text(' =')
         q.group do
-          q.nest(2) do
+          q.indent do
             q.breakable
             q.format(statement)
           end
@@ -3936,7 +3936,7 @@ class SyntaxTree < Ripper
 
     def format(q)
       q.group(0, 'defined?(', ')') do
-        q.nest(2) do
+        q.indent do
           q.breakable('')
           q.format(value)
         end
@@ -4033,7 +4033,7 @@ class SyntaxTree < Ripper
         end
 
         unless bodystmt.empty?
-          q.nest(2) do
+          q.indent do
             q.breakable(force: true)
             q.format(bodystmt)
           end
@@ -4501,7 +4501,7 @@ class SyntaxTree < Ripper
     def format(q)
       q.group do
         q.text('else')
-        q.nest(2) do
+        q.indent do
           q.breakable(force: true)
           q.format(statements)
         end
@@ -4589,7 +4589,7 @@ class SyntaxTree < Ripper
           q.nest('elsif'.length - 1) { q.format(predicate) }
         end
 
-        q.nest(2) do
+        q.indent do
           q.breakable(force: true)
           q.format(statements)
         end
@@ -4869,7 +4869,7 @@ class SyntaxTree < Ripper
 
     def format(q)
       q.format(keyword)
-      q.nest(2) do
+      q.indent do
         q.breakable(force: true)
         q.format(statements)
       end
@@ -5323,7 +5323,7 @@ class SyntaxTree < Ripper
         q.format(index)
         q.text(' in ')
         q.format(collection)
-        q.nest(2) do
+        q.indent do
           q.breakable(force: true)
           q.format(statements)
         end
@@ -5476,7 +5476,7 @@ class SyntaxTree < Ripper
     def format(q)
       contents = -> {
         q.text('{')
-        q.nest(2) do
+        q.indent do
           q.breakable
           q.format(HashFormatter.for(self))
         end
@@ -5943,7 +5943,7 @@ class SyntaxTree < Ripper
         q.text(keyword)
         q.nest(keyword.length) { q.format(predicate) }
 
-        q.nest(2) do
+        q.indent do
           q.breakable(force: true)
           q.format(statements)
         end
@@ -6095,6 +6095,39 @@ class SyntaxTree < Ripper
     )
   end
 
+  # Formats an IfMod or UnlessMod node.
+  class ConditionalFormatter
+    # [String] the keyword associated with this conditional
+    attr_reader :keyword
+
+    # [IfMod | UnlessMod] the node that is being formatted
+    attr_reader :node
+
+    def initialize(keyword, node)
+      @keyword = keyword
+      @node = node
+    end
+
+    def format(q)
+      q.group do
+        q.if_break do
+          q.text("#{keyword} ")
+          q.nest(keyword.length + 1) { q.format(node.predicate) }
+          q.indent do
+            q.breakable('')
+            q.format(node.statement)
+          end
+          q.breakable('')
+          q.text('end')
+        end.if_flat do
+          q.format(node.statement)
+          q.text(" #{keyword} ")
+          q.format(node.predicate)
+        end
+      end
+    end
+  end
+
   # IfMod represents the modifier form of an +if+ statement.
   #
   #     expression if predicate
@@ -6124,11 +6157,7 @@ class SyntaxTree < Ripper
     end
 
     def format(q)
-      q.group do
-        q.format(statement)
-        q.text(' if ')
-        q.format(predicate)
-      end
+      ConditionalFormatter.new('if', self).format(q)
     end
 
     def pretty_print(q)
@@ -6276,7 +6305,7 @@ class SyntaxTree < Ripper
         q.nest(keyword.length) { q.format(pattern) }
 
         unless statements.empty?
-          q.nest(2) do
+          q.indent do
             q.breakable(force: true)
             q.format(statements)
           end
@@ -6954,7 +6983,7 @@ class SyntaxTree < Ripper
         end
 
         q.text(' =')
-        q.nest(2) do
+        q.indent do
           q.breakable
           q.format(value)
         end
@@ -7276,7 +7305,7 @@ class SyntaxTree < Ripper
       end
 
       q.group(0, '(', ')') do
-        q.nest(2) do
+        q.indent do
           q.breakable('')
           q.format(contents)
           q.text(',') if contents.is_a?(MLHS) && contents.comma?
@@ -7353,7 +7382,7 @@ class SyntaxTree < Ripper
           q.format(constant)
         end
 
-        q.nest(2) do
+        q.indent do
           q.breakable(force: true)
           q.format(bodystmt)
         end
@@ -7675,7 +7704,7 @@ class SyntaxTree < Ripper
         q.format(target)
         q.text(' ')
         q.format(operator)
-        q.nest(2) do
+        q.indent do
           q.breakable
           q.format(value)
         end
@@ -8027,7 +8056,7 @@ class SyntaxTree < Ripper
     def format(q)
       q.group do
         q.format(lparen)
-        q.nest(2) do
+        q.indent do
           q.breakable('')
           q.format(contents)
         end
@@ -8390,7 +8419,7 @@ class SyntaxTree < Ripper
 
     def format(q)
       q.group(0, '%i[', ']') do
-        q.nest(2) do
+        q.indent do
           q.breakable('')
           q.seplist(elements, -> { q.breakable }) do |element|
             q.format(element)
@@ -8492,7 +8521,7 @@ class SyntaxTree < Ripper
 
     def format(q)
       q.group(0, '%w[', ']') do
-        q.nest(2) do
+        q.indent do
           q.breakable('')
           q.seplist(elements, -> { q.breakable }) do |element|
             q.format(element)
@@ -9057,7 +9086,7 @@ class SyntaxTree < Ripper
           q.text(' StandardError')
         end
 
-        q.nest(2) do
+        q.indent do
           q.breakable(force: true)
           q.format(statements)
         end
@@ -9181,13 +9210,13 @@ class SyntaxTree < Ripper
 
     def format(q)
       q.group(0, 'begin', 'end') do
-        q.nest(2) do
+        q.indent do
           q.breakable(force: true)
           q.format(statement)
         end
         q.breakable(force: true)
         q.text('rescue StandardError')
-        q.nest(2) do
+        q.indent do
           q.breakable(force: true)
           q.format(value)
         end
@@ -9510,7 +9539,7 @@ class SyntaxTree < Ripper
     def format(q)
       q.group(0, 'class << ', 'end') do
         q.format(target)
-        q.nest(2) do
+        q.indent do
           q.breakable(force: true)
           q.format(bodystmt)
         end
@@ -9794,7 +9823,7 @@ class SyntaxTree < Ripper
       q.group do
         q.format(left)
         q.text(' \\')
-        q.nest(2) do
+        q.indent do
           q.breakable(force: true)
           q.format(right)
         end
@@ -9932,7 +9961,7 @@ class SyntaxTree < Ripper
     def format(q)
       q.group do
         q.text('#{')
-        q.nest(2) do
+        q.indent do
           q.breakable('')
           q.format(statements)
         end
@@ -10282,7 +10311,7 @@ class SyntaxTree < Ripper
 
     def format(q)
       q.group(0, '%I[', ']') do
-        q.nest(2) do
+        q.indent do
           q.breakable('')
           q.seplist(elements, -> { q.breakable }) do |element|
             q.format(element)
@@ -10927,7 +10956,7 @@ class SyntaxTree < Ripper
         q.text(keyword)
         q.nest(keyword.length) { q.format(predicate) }
 
-        q.nest(2) do
+        q.indent do
           q.breakable(force: true)
           q.format(statements)
         end
@@ -11022,11 +11051,7 @@ class SyntaxTree < Ripper
     end
 
     def format(q)
-      q.group do
-        q.format(statement)
-        q.text(' unless ')
-        q.format(predicate)
-      end
+      ConditionalFormatter.new('unless', self).format(q)
     end
 
     def pretty_print(q)
@@ -11951,7 +11976,7 @@ class SyntaxTree < Ripper
 
     def format(q)
       q.group(0, '%W[', ']') do
-        q.nest(2) do
+        q.indent do
           q.breakable('')
           q.seplist(elements, -> { q.breakable }) do |element|
             q.format(element)
