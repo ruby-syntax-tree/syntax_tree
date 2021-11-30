@@ -10,7 +10,7 @@ require_relative 'syntax_tree/version'
 # If PrettyPrint::Assign isn't defined, then we haven't gotten the updated
 # version of prettyprint. In that case we'll define our own. This is going to
 # overwrite a bunch of methods, so silencing them as well.
-unless PrettyPrint.const_defined?(:Assign)
+unless PrettyPrint.const_defined?(:Align)
   verbose = $VERBOSE
   $VERBOSE = nil
 
@@ -10876,6 +10876,27 @@ class SyntaxTree < Ripper
   #     undef method
   #
   class Undef
+    class UndefArgumentFormatter
+      # [DynaSymbol | SymbolLiteral] the symbol to undefine
+      attr_reader :node
+
+      def initialize(node)
+        @node = node
+      end
+
+      def comments
+        if node.is_a?(SymbolLiteral)
+          node.comments + node.value.comments
+        else
+          node.comments
+        end
+      end
+
+      def format(q)
+        node.is_a?(SymbolLiteral) ? q.format(node.value) : q.format(node)
+      end
+    end
+
     # [Array[ DynaSymbol | SymbolLiteral ]] the symbols to undefine
     attr_reader :symbols
 
@@ -10897,11 +10918,12 @@ class SyntaxTree < Ripper
 
     def format(q)
       keyword = 'undef '
+      formatters = symbols.map { |symbol| UndefArgumentFormatter.new(symbol) }
 
       q.group do
         q.text(keyword)
         q.nest(keyword.length) do
-          q.seplist(symbols) { |symbol| q.format(symbol) }
+          q.seplist(formatters) { |formatter| q.format(formatter) }
         end
       end
     end
