@@ -111,11 +111,20 @@ class SyntaxTree < Ripper
     end
   end
 
-  attr_reader :source, :lines, :tokens
+  # [String] the source being parsed
+  attr_reader :source
 
-  # This is an attr_accessor so Stmts objects can grab comments out of this
-  # array and attach them to themselves.
-  attr_accessor :comments
+  # [Array[ String ]] the list of lines in the source
+  attr_reader :lines
+
+  # [Array[ untyped ]] a running list of tokens that have been found in the
+  # source. This list changes a lot as certain nodes will "consume" these tokens
+  # to determine their bounds.
+  attr_reader :tokens
+
+  # [Array[ Comment | EmbDoc ]] the list of comments that have been found while
+  # parsing the source.
+  attr_reader :comments
 
   def initialize(source, *)
     super
@@ -4690,9 +4699,11 @@ class SyntaxTree < Ripper
           q.nest('elsif'.length - 1) { q.format(predicate) }
         end
 
-        q.indent do
-          q.breakable(force: true)
-          q.format(statements)
+        unless statements.empty?
+          q.indent do
+            q.breakable(force: true)
+            q.format(statements)
+          end
         end
 
         if consequent
@@ -4776,6 +4787,12 @@ class SyntaxTree < Ripper
 
     def inline?
       false
+    end
+
+    def leading!
+    end
+
+    def trailing!
     end
 
     def child_nodes
@@ -7941,6 +7958,10 @@ class SyntaxTree < Ripper
         @value = value
       end
 
+      def comments
+        []
+      end
+
       def format(q)
         q.format(name)
         q.text(' = ')
@@ -7958,6 +7979,10 @@ class SyntaxTree < Ripper
       def initialize(name, value)
         @name = name
         @value = value
+      end
+
+      def comments
+        []
       end
 
       def format(q)
@@ -7979,14 +8004,14 @@ class SyntaxTree < Ripper
       end
 
       def comments
-        value == :nil ? [] : value.comments 
+        []
       end
 
       def format(q)
         if value == :nil
           q.text('**nil')
         else
-          value.format(q)
+          q.format(value)
         end
       end
     end
@@ -9780,7 +9805,14 @@ class SyntaxTree < Ripper
   # parent stmts node as well as an stmt which can be any expression in
   # Ruby.
   def on_stmts_add(statements, statement)
-    statements << statement
+    location =
+      if statements.body.empty?
+        statement.location
+      else
+        statements.location.to(statement.location)
+      end
+
+    Statements.new(body: statements.body << statement, location: location)
   end
 
   # Everything that has a block of code inside of it has a list of statements.
@@ -9791,9 +9823,6 @@ class SyntaxTree < Ripper
   # propagate that onto void_stmt nodes inside the stmts in order to make sure
   # all comments get printed appropriately.
   class Statements
-    # [SyntaxTree] the parser that created this node
-    attr_reader :parser
-
     # [Array[ untyped ]] the list of expressions contained within this node
     attr_reader :body
 
@@ -9803,8 +9832,7 @@ class SyntaxTree < Ripper
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(parser:, body:, location:, comments: [])
-      @parser = parser
+    def initialize(body:, location:, comments: [])
       @body = body
       @location = location
       @comments = comments
@@ -9831,8 +9859,6 @@ class SyntaxTree < Ripper
 
         body[0] = VoidStmt.new(location: location)
       end
-
-      attach_comments(start_char, end_char)
     end
 
     def bind_end(end_char)
@@ -9849,14 +9875,6 @@ class SyntaxTree < Ripper
       body.all? do |statement|
         statement.is_a?(VoidStmt) && statement.comments.empty?
       end
-    end
-
-    def <<(statement)
-      @location =
-        body.any? ? location.to(statement.location) : statement.location
-
-      body << statement
-      self
     end
 
     def child_nodes
@@ -9919,29 +9937,12 @@ class SyntaxTree < Ripper
     def to_json(*opts)
       { type: :statements, body: body, loc: location, cmts: comments }.to_json(*opts)
     end
-
-    private
-
-    def attach_comments(start_char, end_char)
-      attachable =
-        parser.comments.select do |comment|
-          !comment.inline? && start_char <= comment.location.start_char &&
-            end_char >= comment.location.end_char &&
-            !comment.value.include?('prettier-ignore')
-        end
-
-      return if attachable.empty?
-
-      parser.comments -= attachable
-      @body = (body + attachable).sort_by! { |node| node.location.start_char }
-    end
   end
 
   # :call-seq:
   #   on_stmts_new: () -> Statements
   def on_stmts_new
     Statements.new(
-      parser: self,
       body: [],
       location: Location.fixed(line: lineno, char: char_pos)
     )
