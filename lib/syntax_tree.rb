@@ -3207,7 +3207,7 @@ class SyntaxTree < Ripper
       q.group do
         q.format(message)
         q.text(' ')
-        q.format(arguments)
+        q.nest(message.value.length + 1) { q.format(arguments) }
       end
     end
 
@@ -8177,10 +8177,14 @@ class SyntaxTree < Ripper
     def format(q)
       q.group do
         q.format(lparen)
-        q.indent do
-          q.breakable('')
-          q.format(contents)
+
+        if !contents.is_a?(Params) || !contents.empty?
+          q.indent do
+            q.breakable('')
+            q.format(contents)
+          end
         end
+
         q.breakable('')
         q.text(')')
       end
