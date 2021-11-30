@@ -7381,7 +7381,7 @@ class SyntaxTree < Ripper
     end
 
     def format(q)
-      q.format_each(parts)
+      q.seplist(parts) { |part| q.format(part) }
     end
 
     def pretty_print(q)
@@ -7470,18 +7470,19 @@ class SyntaxTree < Ripper
 
     def format(q)
       parent = q.parent
+
       if parent.is_a?(MAssign) || parent.is_a?(MLHSParen)
         q.format(contents)
-      end
+      else
+        q.group(0, '(', ')') do
+          q.indent do
+            q.breakable('')
+            q.format(contents)
+            q.text(',') if contents.is_a?(MLHS) && contents.comma?
+          end
 
-      q.group(0, '(', ')') do
-        q.indent do
           q.breakable('')
-          q.format(contents)
-          q.text(',') if contents.is_a?(MLHS) && contents.comma?
         end
-
-        q.breakable('')
       end
     end
 
