@@ -11813,9 +11813,18 @@ class SyntaxTree < Ripper
       keyword = 'when '
 
       q.group do
-        q.text(keyword)
-        q.nest(keyword.length) do
-          q.format(arguments)
+        q.group do
+          q.text(keyword)
+          q.nest(keyword.length) do
+            q.format(arguments)
+          end
+        end
+
+        unless statements.empty?
+          q.indent do
+            q.breakable(force: true)
+            q.format(statements)
+          end
         end
 
         if consequent
