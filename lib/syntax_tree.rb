@@ -4702,9 +4702,12 @@ class SyntaxTree < Ripper
     def format(q)
       q.group do
         q.text('else')
-        q.indent do
-          q.breakable(force: true)
-          q.format(statements)
+
+        unless statements.empty?
+          q.indent do
+            q.breakable(force: true)
+            q.format(statements)
+          end
         end
       end
     end

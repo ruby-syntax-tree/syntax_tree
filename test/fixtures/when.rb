@@ -36,13 +36,13 @@ case
 when foooooooooooooooooo, barrrrrrrrrrrrrrrrrr,
      bazzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
 end
--
+%
 case
 when foo
 when bar
 end
--
+%
 case
 when foo
 else
-end 
+end

@@ -1,7 +1,9 @@
 # frozen_string_literal: true
 
 require 'simplecov'
-SimpleCov.start
+SimpleCov.start do
+  add_filter('prettyprint.rb')
+end
 
 $LOAD_PATH.unshift(File.expand_path('../lib', __dir__))
 require 'syntax_tree'
