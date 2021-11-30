@@ -2512,6 +2512,8 @@ class SyntaxTree < Ripper
 
     def format(q)
       q.group do
+        q.text(' ')
+
         q.if_break do
           q.format(BlockOpenFormatter.new('do', block_open))
 
@@ -4296,6 +4298,34 @@ class SyntaxTree < Ripper
     )
   end
 
+  # Responsible for formatting Dot2 and Dot3 nodes.
+  class DotFormatter
+    # [String] the operator to display
+    attr_reader :operator
+
+    # [Dot2 | Dot3] the node that is being formatter
+    attr_reader :node
+
+    def initialize(operator, node)
+      @operator = operator
+      @node = node
+    end
+
+    def format(q)
+      parent = q.parent
+      space = parent.is_a?(If) || parent.is_a?(Unless)
+
+      left = node.left
+      right = node.right
+
+      q.format(left) if left
+      q.text(' ') if space
+      q.text(operator)
+      q.text(' ') if space
+      q.format(right) if right
+    end
+  end
+
   # Dot2 represents using the .. operator between two expressions. Usually this
   # is to create a range object.
   #
@@ -4332,9 +4362,7 @@ class SyntaxTree < Ripper
     end
 
     def format(q)
-      q.format(left) if left
-      q.text('..')
-      q.format(right) if right
+      DotFormatter.new('..', self).format(q)
     end
 
     def pretty_print(q)
@@ -4412,9 +4440,7 @@ class SyntaxTree < Ripper
     end
 
     def format(q)
-      q.format(left) if left
-      q.text('...')
-      q.format(right) if right
+      DotFormatter.new('...', self).format(q)
     end
 
     def pretty_print(q)
@@ -6017,9 +6043,11 @@ class SyntaxTree < Ripper
         q.text(keyword)
         q.nest(keyword.length) { q.format(predicate) }
 
-        q.indent do
-          q.breakable(force: true)
-          q.format(statements)
+        unless statements.empty?
+          q.indent do
+            q.breakable(force: true)
+            q.format(statements)
+          end
         end
 
         if consequent
@@ -7168,7 +7196,7 @@ class SyntaxTree < Ripper
 
     def format(q)
       q.format(call)
-      q.text(' ') unless arguments.is_a?(ArgParen)
+      q.text(' ') if !arguments.is_a?(ArgParen) && arguments.parts.any?
       q.format(arguments)
     end
 
@@ -8005,14 +8033,13 @@ class SyntaxTree < Ripper
       ]
     end
 
-
     def format(q)
       parts = [
         *requireds,
         *optionals.map { |(name, value)| OptionalFormatter.new(name, value) }
       ]
 
-      parts << rest if rest
+      parts << rest if rest && !rest.is_a?(ExcessedComma)
       parts += [
         *posts,
         *keywords.map { |(name, value)| KeywordFormatter.new(name, value) }
@@ -8021,7 +8048,10 @@ class SyntaxTree < Ripper
       parts << KeywordRestFormatter.new(keyword_rest) if keyword_rest
       parts << block if block
 
-      q.group { q.seplist(parts) { |part| q.format(part) } }
+      q.group do
+        q.seplist(parts) { |part| q.format(part) }
+        q.text(',') if rest && rest.is_a?(ExcessedComma)
+      end
     end
 
     def pretty_print(q)
@@ -11114,9 +11144,11 @@ class SyntaxTree < Ripper
         q.text(keyword)
         q.nest(keyword.length) { q.format(predicate) }
 
-        q.indent do
-          q.breakable(force: true)
-          q.format(statements)
+        unless statements.empty?
+          q.indent do
+            q.breakable(force: true)
+            q.format(statements)
+          end
         end
 
         if consequent
