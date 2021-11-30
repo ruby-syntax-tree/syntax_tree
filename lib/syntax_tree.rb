@@ -2988,7 +2988,7 @@ class SyntaxTree < Ripper
     end
 
     def format(q)
-      q.group do
+      declaration = -> {
         q.group do
           q.text('class ')
           q.format(constant)
@@ -2998,14 +2998,26 @@ class SyntaxTree < Ripper
             q.format(superclass)
           end
         end
+      }
 
-        q.indent do
+      if bodystmt.empty?
+        q.group do
+          declaration.call
           q.breakable(force: true)
-          q.format(bodystmt)
+          q.text('end')
         end
+      else
+        q.group do
+          declaration.call
 
-        q.breakable(force: true)
-        q.text('end')
+          q.indent do
+            q.breakable(force: true)
+            q.format(bodystmt)
+          end
+
+          q.breakable(force: true)
+          q.text('end')
+        end
       end
     end
 
@@ -6398,7 +6410,15 @@ class SyntaxTree < Ripper
     end
 
     def format(q)
-      q.text(value)
+      if !value.start_with?('0') && value.length >= 5 && !value.include?('_')
+        # If it's a plain integer and it doesn't have any underscores separating
+        # the values, then we're going to insert them every 3 characters
+        # starting from the right.
+        index = (value.length + 2) % 3
+        q.text("  #{value}"[index..-1].scan(/.../).join('_').strip)
+      else
+        q.text(value)
+      end
     end
 
     def pretty_print(q)
@@ -7376,19 +7396,31 @@ class SyntaxTree < Ripper
     end
 
     def format(q)
-      q.group do
+      declaration = -> {
         q.group do
           q.text('module ')
           q.format(constant)
         end
+      }
 
-        q.indent do
+      if bodystmt.empty?
+        q.group do
+          declaration.call
           q.breakable(force: true)
-          q.format(bodystmt)
+          q.text('end')
         end
+      else
+        q.group do
+          declaration.call
 
-        q.breakable(force: true)
-        q.text('end')
+          q.indent do
+            q.breakable(force: true)
+            q.format(bodystmt)
+          end
+
+          q.breakable(force: true)
+          q.text('end')
+        end
       end
     end
 
@@ -7464,7 +7496,7 @@ class SyntaxTree < Ripper
     end
 
     def format(q)
-      q.format_each(parts)
+      q.seplist(parts) { |part| q.format(part) }
     end
 
     def pretty_print(q)
@@ -8905,9 +8937,9 @@ class SyntaxTree < Ripper
 
     def format(q)
       q.group do
-        q.format('%r{')
+        q.text('/')
         q.format_each(parts)
-        q.format('}')
+        q.text('/')
         q.text(ending[1..-1])
       end
     end
