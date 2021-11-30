@@ -307,7 +307,7 @@ class PrettyPrint
         trimmed = 0
 
         while output.any? && output.last.is_a?(String) && output.last.match?(/\A[\t ]*\z/)
-          trimmed += parts.pop.length
+          trimmed += output.pop.length
         end
 
         if output.any? && output.last.is_a?(String) && !output.last.frozen?

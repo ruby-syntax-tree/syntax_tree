@@ -3,7 +3,8 @@
 
 require_relative File.expand_path('../lib/syntax_tree', __dir__)
 
-program = SyntaxTree.new(ARGF.read).parse
+source = ARGF.read
+program = SyntaxTree.new(source).parse
 
 pp program
 puts

@@ -28,3 +28,7 @@ case foo
 in bar
   # comment
 end
+%
+case foo
+in bar if baz
+end

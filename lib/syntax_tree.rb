@@ -2102,7 +2102,7 @@ class SyntaxTree < Ripper
 
       unless bodystmt.empty?
         q.indent do
-          q.breakable(force: true)
+          q.breakable(force: true) unless bodystmt.statements.empty?
           q.format(bodystmt)
         end
       end
@@ -2456,7 +2456,7 @@ class SyntaxTree < Ripper
 
     def format(q)
       q.group do
-        q.format(statements)
+        q.format(statements) unless statements.empty?
 
         if rescue_clause
           q.nest(-2) do
@@ -5111,9 +5111,12 @@ class SyntaxTree < Ripper
 
     def format(q)
       q.format(keyword)
-      q.indent do
-        q.breakable(force: true)
-        q.format(statements)
+
+      unless statements.empty?
+        q.indent do
+          q.breakable(force: true)
+          q.format(statements)
+        end
       end
     end
 
@@ -5562,13 +5565,17 @@ class SyntaxTree < Ripper
     def format(q)
       q.group do
         q.text('for ')
-        q.format(index)
+        q.group { q.format(index) }
         q.text(' in ')
         q.format(collection)
-        q.indent do
-          q.breakable(force: true)
-          q.format(statements)
+
+        unless statements.empty?
+          q.indent do
+            q.breakable(force: true)
+            q.format(statements)
+          end
         end
+
         q.breakable(force: true)
         q.text('end')
       end
@@ -5963,7 +5970,7 @@ class SyntaxTree < Ripper
       end
 
       def comments
-        key.comments + (value ? value.comments : [])
+        []
       end
 
       def format(q)
@@ -5985,7 +5992,7 @@ class SyntaxTree < Ripper
       end
 
       def comments
-        keyword_rest.comments
+        []
       end
 
       def format(q)
@@ -6057,7 +6064,16 @@ class SyntaxTree < Ripper
         if keywords.any?
           q.breakable
           q.group(2, '(', ')') do
-            q.seplist(keywords) { |keyword| q.pp(keyword) }
+            q.seplist(keywords) do |(key, value)|
+              q.group(2, '(', ')') do
+                q.pp(key)
+
+                if value
+                  q.breakable
+                  q.pp(value)
+                end
+              end
+            end
           end
         end
 
@@ -6166,6 +6182,57 @@ class SyntaxTree < Ripper
     node
   end
 
+  # Formats an If or Unless node.
+  class ConditionalFormatter
+    # [String] the keyword associated with this conditional
+    attr_reader :keyword
+
+    # [If | Unless] the node that is being formatted
+    attr_reader :node
+
+    def initialize(keyword, node)
+      @keyword = keyword
+      @node = node
+    end
+
+    def format(q)
+      statements = node.statements
+      break_format = ->(force:) {
+        q.text("#{keyword} ")
+        q.nest(keyword.length + 1) { q.format(node.predicate) }
+
+        unless statements.empty?
+          q.indent do
+            q.breakable(force: force)
+            q.format(statements)
+          end
+        end
+
+        if node.consequent
+          q.breakable(force: force)
+          q.format(node.consequent)
+        end
+
+        q.breakable(force: force)
+        q.text('end')
+      }
+
+      if node.consequent || statements.empty?
+        q.group { break_format.call(force: true) }
+      else
+        q.group do
+          q.if_break do
+            break_format.call(force: false)
+          end.if_flat do
+            q.format(node.statements)
+            q.text(" #{keyword} ")
+            q.format(node.predicate)
+          end
+        end
+      end
+    end
+  end
+
   # If represents the first clause in an +if+ chain.
   #
   #     if predicate
@@ -6200,27 +6267,7 @@ class SyntaxTree < Ripper
     end
 
     def format(q)
-      keyword = 'if '
-
-      q.group do
-        q.text(keyword)
-        q.nest(keyword.length) { q.format(predicate) }
-
-        unless statements.empty?
-          q.indent do
-            q.breakable(force: true)
-            q.format(statements)
-          end
-        end
-
-        if consequent
-          q.breakable(force: true)
-          q.format(consequent)
-        end
-
-        q.breakable(force: true)
-        q.text('end')
-      end
+      ConditionalFormatter.new('if', self).format(q)
     end
 
     def pretty_print(q)
@@ -6382,7 +6429,7 @@ class SyntaxTree < Ripper
   end
 
   # Formats an IfMod or UnlessMod node.
-  class ConditionalFormatter
+  class ConditionalModFormatter
     # [String] the keyword associated with this conditional
     attr_reader :keyword
 
@@ -6443,7 +6490,7 @@ class SyntaxTree < Ripper
     end
 
     def format(q)
-      ConditionalFormatter.new('if', self).format(q)
+      ConditionalModFormatter.new('if', self).format(q)
     end
 
     def pretty_print(q)
@@ -6649,7 +6696,10 @@ class SyntaxTree < Ripper
     beginning = find_token(Kw, 'in')
     ending = consequent || find_token(Kw, 'end')
 
-    statements.bind(beginning.location.end_char, ending.location.start_char)
+    statements.bind(
+      find_next_statement_start(pattern.location.end_char),
+      ending.location.start_char
+    )
 
     In.new(
       pattern: pattern,
@@ -8549,14 +8599,14 @@ class SyntaxTree < Ripper
     end
 
     def format
-      out = StringIO.new
+      out = []
       q = Formatter.new(out)
 
       q.format(statements)
       q.breakable(force: true)
       q.flush
 
-      out.string
+      out.join
     end
 
     def pretty_print(q)
@@ -9383,9 +9433,11 @@ class SyntaxTree < Ripper
           q.text(' StandardError')
         end
 
-        q.indent do
-          q.breakable(force: true)
-          q.format(statements)
+        unless statements.empty?
+          q.indent do
+            q.breakable(force: true)
+            q.format(statements)
+          end
         end
 
         if consequent
@@ -9690,10 +9742,7 @@ class SyntaxTree < Ripper
     end
 
     def format(q)
-      q.group do
-        q.text('return ')
-        q.format(arguments)
-      end
+      FlowControlFormatter.new('return', self).format(q)
     end
 
     def pretty_print(q)
@@ -10398,8 +10447,13 @@ class SyntaxTree < Ripper
     def format(q)
       q.group do
         q.text('super')
-        q.text(' ') if arguments.is_a(Args)
-        q.format(arguments)
+
+        if arguments.is_a?(ArgParen)
+          q.format(arguments)
+        else
+          q.text(' ')
+          q.nest('super '.length) { q.format(arguments) }
+        end
       end
     end
 
@@ -11256,27 +11310,7 @@ class SyntaxTree < Ripper
     end
 
     def format(q)
-      keyword = 'unless '
-
-      q.group do
-        q.text(keyword)
-        q.nest(keyword.length) { q.format(predicate) }
-
-        unless statements.empty?
-          q.indent do
-            q.breakable(force: true)
-            q.format(statements)
-          end
-        end
-
-        if consequent
-          q.breakable(force: true)
-          q.format(consequent)
-        end
-
-        q.breakable(force: true)
-        q.text('end')
-      end
+      ConditionalFormatter.new('unless', self).format(q)
     end
 
     def pretty_print(q)
@@ -11359,7 +11393,7 @@ class SyntaxTree < Ripper
     end
 
     def format(q)
-      ConditionalFormatter.new('unless', self).format(q)
+      ConditionalModFormatter.new('unless', self).format(q)
     end
 
     def pretty_print(q)
