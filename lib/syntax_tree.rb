@@ -11782,7 +11782,7 @@ class SyntaxTree < Ripper
   #     end
   #
   class When
-    # [untyped] the arguments to the when clause
+    # [Args] the arguments to the when clause
     attr_reader :arguments
 
     # [Statements] the expressions to be executed
@@ -11816,7 +11816,12 @@ class SyntaxTree < Ripper
         q.group do
           q.text(keyword)
           q.nest(keyword.length) do
-            q.format(arguments)
+            if arguments.comments.any?
+              q.format(arguments)
+            else
+              separator = -> { q.group { q.comma_breakable } }
+              q.seplist(arguments.parts, separator) { |part| q.format(part) }
+            end
           end
         end
 
@@ -11867,7 +11872,7 @@ class SyntaxTree < Ripper
 
   # :call-seq:
   #   on_when: (
-  #     untyped arguments,
+  #     Args arguments,
   #     Statements statements,
   #     (nil | Else | When) consequent
   #   ) -> When
