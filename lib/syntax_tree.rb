@@ -9245,11 +9245,21 @@ class SyntaxTree < Ripper
     end
 
     def format(q)
-      q.group do
-        q.text('/')
-        q.format_each(parts)
-        q.text('/')
-        q.text(ending[1..-1])
+      braces = ambiguous?(q) || include?(/\//)
+
+      if braces && include?(/[{}]/)
+        q.group do
+          q.text(beginning)
+          q.format_each(parts)
+          q.text(ending)
+        end
+      else
+        q.group do
+          q.text(braces ? '%r{' : '/')
+          q.format_each(parts)
+          q.text(braces ? '}' : '/')
+          q.text(ending[1..-1])
+        end
       end
     end
 
@@ -9273,6 +9283,27 @@ class SyntaxTree < Ripper
         loc: location,
         cmts: comments
       }.to_json(*opts)
+    end
+
+    private
+
+    def include?(pattern)
+      parts.any? do |part|
+        part.is_a?(TStringContent) && part.value.match?(pattern)
+      end
+    end
+
+    # If the first part of this regex is plain string content, we have a space
+    # or an =, and we're contained within a command or command_call node, then
+    # we want to use braces because otherwise we could end up with an ambiguous
+    # operator, e.g. foo / bar/ or foo /=bar/
+    def ambiguous?(q)
+      return false if parts.empty?
+      part = parts.first
+
+      part.is_a?(TStringContent) &&
+        part.value.start_with?(' ', '=') &&
+        q.parents.any? { |node| node.is_a?(Command) || node.is_a?(CommandCall) }
     end
   end
 
