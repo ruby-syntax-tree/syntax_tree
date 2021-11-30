@@ -1339,9 +1339,11 @@ class SyntaxTree < Ripper
 
     def qwords?
       contents &&
+        contents.comments.empty? &&
         contents.parts.length > 1 &&
         contents.parts.all? do |part|
           part.is_a?(StringLiteral) &&
+            part.comments.empty? &&
             part.parts.length == 1 &&
             part.parts.first.is_a?(TStringContent) &&
             !part.parts.first.value.match?(/[\s\\\]]/)
@@ -1350,8 +1352,12 @@ class SyntaxTree < Ripper
 
     def qsymbols?
       contents &&
+        contents.comments.empty? &&
         contents.parts.length > 1 &&
-        contents.parts.all? { |part| part.is_a?(SymbolLiteral) }
+        contents.parts.all? do |part|
+          part.is_a?(SymbolLiteral) &&
+          part.comments.empty?
+        end
     end
   end
 
@@ -2466,6 +2472,83 @@ class SyntaxTree < Ripper
     )
   end
 
+  # Responsible for formatting either a BraceBlock or a DoBlock.
+  class BlockFormatter
+    class BlockOpenFormatter
+      # [String] the actual output that should be printed
+      attr_reader :text
+
+      # [LBrace | Keyword] the node that is being represented
+      attr_reader :node
+
+      def initialize(text, node)
+        @text = text
+        @node = node
+      end
+
+      def comments
+        node.comments
+      end
+
+      def format(q)
+        q.text(text)
+      end
+    end
+
+    # [BraceBlock | DoBlock] the block node to be formatted
+    attr_reader :node
+
+    # [LBrace | Keyword] the node that opens the block
+    attr_reader :block_open
+
+    # [BodyStmt | Statements] the statements inside the block
+    attr_reader :statements
+
+    def initialize(node, block_open, statements)
+      @node = node
+      @block_open = block_open
+      @statements = statements
+    end
+
+    def format(q)
+      q.group do
+        q.if_break do
+          q.format(BlockOpenFormatter.new('do', block_open))
+
+          if node.block_var
+            q.text(' ')
+            q.format(node.block_var)
+          end
+
+          unless statements.empty?
+            q.indent do
+              q.breakable
+              q.format(statements)
+            end
+          end
+
+          q.breakable
+          q.text('end')
+        end.if_flat do
+          q.format(BlockOpenFormatter.new('{', block_open))
+
+          if node.block_var
+            q.text(' ')
+            q.format(node.block_var)
+            q.breakable
+          end
+
+          unless statements.empty?
+            q.format(statements)
+            q.breakable
+          end
+
+          q.text('}')
+        end
+      end
+    end
+  end
+
   # BraceBlock represents passing a block to a method call using the { }
   # operators.
   #
@@ -2500,19 +2583,7 @@ class SyntaxTree < Ripper
     end
 
     def format(q)
-      q.group(0, '{', '}') do
-        if block_var
-          q.text(' ')
-          q.format(block_var)
-        end
-
-        unless statements.empty?
-          q.breakable
-          q.format(statements)
-        end
-
-        q.breakable
-      end
+      BlockFormatter.new(self, lbrace, statements).format(q)
     end
 
     def pretty_print(q)
@@ -4175,16 +4246,7 @@ class SyntaxTree < Ripper
     end
 
     def format(q)
-      q.group(0, 'do', 'end') do
-        if block_var
-          q.text(' ')
-          q.format(block_var)
-        end
-
-        q.breakable
-        q.format(bodystmt)
-        q.breakable
-      end
+      BlockFormatter.new(self, keyword, bodystmt).format(q)
     end
 
     def pretty_print(q)
@@ -6055,15 +6117,36 @@ class SyntaxTree < Ripper
 
     def format(q)
       q.group do
-        q.format(predicate)
-        q.text(' ?')
+        q.if_break do
+          q.text('if ')
+          q.nest('if '.length) { q.format(predicate) }
 
-        q.breakable
-        q.format(truthy)
-        q.text(' :')
+          q.indent do
+            q.breakable
+            q.format(truthy)
+          end
 
-        q.breakable
-        q.format(falsy)
+          q.breakable
+          q.text('else')
+
+          q.indent do
+            q.breakable
+            q.format(falsy)
+          end
+
+          q.breakable
+          q.text('end')
+        end.if_flat do
+          q.format(predicate)
+          q.text(' ?')
+
+          q.breakable
+          q.format(truthy)
+          q.text(' :')
+
+          q.breakable
+          q.format(falsy)
+        end
       end
     end
 
@@ -6126,10 +6209,10 @@ class SyntaxTree < Ripper
           q.text("#{keyword} ")
           q.nest(keyword.length + 1) { q.format(node.predicate) }
           q.indent do
-            q.breakable('')
+            q.breakable
             q.format(node.statement)
           end
-          q.breakable('')
+          q.breakable
           q.text('end')
         end.if_flat do
           q.format(node.statement)

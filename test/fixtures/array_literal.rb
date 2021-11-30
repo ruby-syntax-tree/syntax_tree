@@ -25,6 +25,15 @@
 -
 %w[foo bar]
 %
+[
+  "foo",
+  "bar" # comment
+]
+%
+["foo", "bar"] # comment
+-
+%w[foo bar] # comment
+%
 ["foo", :bar]
 %
 ["foo", "#{bar}"]
@@ -40,6 +49,15 @@
 [:foo, :bar]
 -
 %i[foo bar]
+%
+[
+  :foo,
+  :bar # comment
+]
+%
+[:foo, :bar] # comment
+-
+%i[foo bar] # comment
 %
 [:foo, "bar"]
 %
