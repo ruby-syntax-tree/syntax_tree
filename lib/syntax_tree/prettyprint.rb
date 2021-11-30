@@ -806,6 +806,11 @@ class PrettyPrint
       when Breakable
         if mode == MODE_FLAT
           if doc.force?
+            # This line was forced into the output even if we were in flat mode,
+            # so we need to tell the next group that no matter what, it needs to
+            # remeasure because the previous measurement didn't accurately
+            # capture the entire expression (this is necessary for nested
+            # groups).
             should_remeasure = true
           else
             output << doc.separator
@@ -814,11 +819,16 @@ class PrettyPrint
           end
         end
 
+        # If there are any commands in the line suffix buffer, then we're going
+        # to flush them now, as we are about to add a newline.
         if line_suffixes.any?
           commands << [indent, mode, doc]
           commands += line_suffixes.reverse
           line_suffixes = []
-        elsif !doc.indent?
+          next
+        end
+
+        if !doc.indent?
           output << newline
 
           if indent.root
@@ -1101,12 +1111,10 @@ class PrettyPrint
           commands << [indent, mode, doc.flat_contents] if doc.flat_contents
         end
       when Breakable
-        if mode == MODE_FLAT
-          if !doc.force?
-            buffer << doc.separator
-            remaining -= doc.width
-            next
-          end
+        if mode == MODE_FLAT && !doc.force?
+          buffer << doc.separator
+          remaining -= doc.width
+          next
         end
 
         return true

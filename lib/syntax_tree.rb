@@ -2535,12 +2535,13 @@ class SyntaxTree < Ripper
           q.format(BlockOpenFormatter.new('{', block_open))
 
           if node.block_var
-            q.text(' ')
+            q.breakable
             q.format(node.block_var)
             q.breakable
           end
 
           unless statements.empty?
+            q.breakable unless node.block_var
             q.format(statements)
             q.breakable
           end
@@ -2721,10 +2722,10 @@ class SyntaxTree < Ripper
     end
 
     def format(q)
-      if operator == :'::'
+      if operator == :'::' || (operator.is_a?(Op) && operator.value == '::')
         q.text('.')
       else
-        q.format(operator)
+        operator.format(q)
       end
     end
   end
@@ -4105,7 +4106,7 @@ class SyntaxTree < Ripper
         q.group do
           q.text('def ')
           q.format(target)
-          q.format(operator)
+          q.format(CallOperatorFormatter.new(operator))
           q.format(name)
 
           if params.is_a?(Params) && !params.empty?
@@ -5653,11 +5654,32 @@ class SyntaxTree < Ripper
     end
 
     def format(q)
+      # This is a very specific behavior that should probably be included in the
+      # prettyprint module. It's when you want to force a newline, but don't
+      # want to force the break parent.
+      breakable = -> {
+        q.target << PrettyPrint::Breakable.new(' ', 1, indent: false, force: true)
+      }
+
       q.group do
         q.format(beginning)
-        q.breakable(force: true)
-        q.format_each(parts)
-        q.text(ending)
+
+        q.line_suffix do
+          q.group do
+            breakable.call
+
+            parts.each do |part|
+              if part.is_a?(TStringContent)
+                texts = part.value.split(/\r?\n/, -1)
+                q.seplist(texts, breakable) { |text| q.text(text) }
+              else
+                q.format(part)
+              end
+            end
+
+            q.text(ending)
+          end
+        end
       end
     end
 
@@ -8050,7 +8072,7 @@ class SyntaxTree < Ripper
 
       q.group do
         q.seplist(parts) { |part| q.format(part) }
-        q.text(',') if rest && rest.is_a?(ExcessedComma)
+        q.format(rest) if rest && rest.is_a?(ExcessedComma)
       end
     end
 
