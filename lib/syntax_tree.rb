@@ -2714,6 +2714,37 @@ class SyntaxTree < Ripper
     )
   end
 
+  # Formats either a Break or Next node.
+  class FlowControlFormatter
+    # [String] the keyword to print
+    attr_reader :keyword
+
+    # [Break | Next] the node being formatted
+    attr_reader :node
+
+    def initialize(keyword, node)
+      @keyword = keyword
+      @node = node
+    end
+
+    def format(q)
+      arguments = node.arguments
+
+      q.group do
+        q.text(keyword)
+
+        if arguments.parts.any?
+          if arguments.parts.length == 1 && arguments.parts.first.is_a?(Paren)
+            q.format(arguments)
+          else
+            q.text(' ')
+            q.nest(keyword.length + 1) { q.format(arguments) }
+          end
+        end
+      end
+    end
+  end
+
   # Break represents using the +break+ keyword.
   #
   #     break
@@ -2743,8 +2774,7 @@ class SyntaxTree < Ripper
     end
 
     def format(q)
-      q.text('break ')
-      q.format(arguments)
+      FlowControlFormatter.new('break', self).format(q)
     end
 
     def pretty_print(q)
@@ -2837,7 +2867,7 @@ class SyntaxTree < Ripper
         q.group do
           q.indent do
             q.format(CallOperatorFormatter.new(operator))
-            q.format(message)
+            q.format(message) if message != :call
           end
         end
       end
@@ -5933,7 +5963,7 @@ class SyntaxTree < Ripper
       end
 
       def comments
-        key.comments + value.comments
+        key.comments + (value ? value.comments : [])
       end
 
       def format(q)
@@ -7866,8 +7896,7 @@ class SyntaxTree < Ripper
     end
 
     def format(q)
-      q.text('next ')
-      q.format(arguments)
+      FlowControlFormatter.new('next', self).format(q)
     end
 
     def pretty_print(q)
