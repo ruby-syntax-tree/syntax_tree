@@ -1012,7 +1012,7 @@ class SyntaxTree
 
       File
         .read(filepath)
-        .split("%\n")
+        .split(/^%.*\n$/)
         .drop(1)
         .each_with_index do |source, index|
           define_method(:"test_formatting_#{basename}_#{index}") do
