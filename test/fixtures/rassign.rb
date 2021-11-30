@@ -7,3 +7,8 @@ foooooooooooooooooooooooooooooooooooooo in barrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr
 -
 foooooooooooooooooooooooooooooooooooooo in
   barrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr
+%
+foooooooooooooooooooooooooooooooooooooo => barrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr
+-
+foooooooooooooooooooooooooooooooooooooo =>
+  barrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr
