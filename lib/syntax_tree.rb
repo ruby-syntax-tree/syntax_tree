@@ -111,6 +111,64 @@ class SyntaxTree < Ripper
     end
   end
 
+  # A slightly enhanced PP that knows how to format recursively including
+  # comments.
+  class Formatter < PP
+    attr_reader :stack, :quote
+
+    def initialize(*)
+      super
+
+      @stack = []
+      @quote = '"'
+    end
+
+    def format(node)
+      stack << node
+      doc = nil
+
+      # If there are comments, then we're going to format them around the node
+      # so that they get printed properly.
+      if node.comments.any?
+        leading, trailing = node.comments.partition(&:leading?)
+
+        # Print all comments that were found before the node.
+        leading.each do |comment|
+          comment.format(self)
+          breakable(force: true)
+        end
+
+        doc = node.format(self)
+
+        # Print all comments that were found after the node.
+        trailing.each do |comment|
+          line_suffix do
+            text(' ')
+            comment.format(self)
+            break_parent
+          end
+        end
+      else
+        doc = node.format(self)
+      end
+
+      stack.pop
+      doc
+    end
+
+    def format_each(nodes)
+      nodes.each { |node| format(node) }
+    end
+
+    def parent
+      stack[-2]
+    end
+
+    def parents
+      stack[0...-1].reverse_each
+    end
+  end
+
   # [String] the source being parsed
   attr_reader :source
 
@@ -3297,11 +3355,17 @@ class SyntaxTree < Ripper
 
     def format(q)
       q.group do
-        q.format(receiver)
+        doc = q.format(receiver)
         q.format(CallOperatorFormatter.new(operator))
         q.format(message)
         q.text(' ')
-        q.format(arguments)
+
+        width = doc_width(doc)
+        if width > (q.maxwidth / 2)
+          q.indent { q.format(arguments) }
+        else
+          q.nest(width) { q.format(arguments) }
+        end
       end
     end
 
@@ -3335,6 +3399,33 @@ class SyntaxTree < Ripper
         loc: location,
         cmts: comments
       }.to_json(*opts)
+    end
+
+    private
+
+    # This is a somewhat naive method that is attempting to sum up the width of
+    # the doc nodes that make up the given doc node. This is used to align
+    # content.
+    def doc_width(parent)
+      queue = [parent]
+      width = 0
+
+      until queue.empty?
+        doc = queue.shift
+
+        case doc
+        when PrettyPrint::Text
+          width += doc.width
+        when PrettyPrint::Indent, PrettyPrint::Align, PrettyPrint::Group
+          queue += doc.contents.reverse
+        when PrettyPrint::IfBreak
+          queue += doc.flat_contents.reverse
+        when PrettyPrint::Breakable
+          width = doc.force? ? 0 : width + doc.width
+        end
+      end
+
+      width
     end
   end
 
@@ -6907,14 +6998,35 @@ class SyntaxTree < Ripper
     end
 
     def format(q)
-      q.group do
-        q.text('->')
-        q.format(params)
-        q.text(' {')
-        q.breakable
-        q.format(statements)
-        q.breakable
-        q.text('}')
+      q.group(0, '->') do
+        if params.is_a?(Paren)
+          q.format(params) unless params.contents.empty?
+        elsif !params.empty?
+          q.text('(')
+          q.format(params)
+          q.text(')')
+        end
+
+        q.text(' ')
+        q.if_break do
+          force_parens =
+            q.parents.any? do |node|
+              node.is_a?(Command) || node.is_a?(CommandCall)
+            end
+
+          q.text(force_parens ? '{' : 'do')
+          q.indent do
+            q.breakable
+            q.format(statements)
+          end
+
+          q.breakable
+          q.text(force_parens ? '}' : 'end')
+        end.if_flat do
+          q.text('{ ')
+          q.format(statements)
+          q.text(' }')
+        end
       end
     end
 
@@ -8385,56 +8497,6 @@ class SyntaxTree < Ripper
 
   # Program represents the overall syntax tree.
   class Program
-    class Formatter < PP
-      attr_reader :stack, :quote
-
-      def initialize(*)
-        super
-
-        @stack = []
-        @quote = '"'
-      end
-
-      def format(node)
-        stack << node
-
-        # If there are comments, then we're going to format them around the node
-        # so that they get printed properly.
-        if node.comments.any?
-          leading, trailing = node.comments.partition(&:leading?)
-
-          # Print all comments that were found before the node.
-          leading.each do |comment|
-            comment.format(self)
-            breakable(force: true)
-          end
-
-          node.format(self)
-
-          # Print all comments that were found after the node.
-          trailing.each do |comment|
-            line_suffix do
-              text(' ')
-              comment.format(self)
-              break_parent
-            end
-          end
-        else
-          node.format(self)
-        end
-
-        stack.pop
-      end
-
-      def format_each(nodes)
-        nodes.each { |node| format(node) }
-      end
-
-      def parent
-        stack[-2]
-      end
-    end
-
     # [Statements] the top-level expressions of the program
     attr_reader :statements
 
