@@ -344,7 +344,7 @@ class PrettyPrint
   # output. If an IfBreak node is used, only the flat contents are printed.
   # LineSuffix nodes are printed at the end of the buffer when #flush is called.
   class SingleLine
-    # The output object. It stores rendered text and shoudl respond to <<.
+    # The output object. It stores rendered text and should respond to <<.
     attr_reader :output
 
     # The current array of contents that the print tree builder methods should
@@ -653,11 +653,16 @@ class PrettyPrint
   end
 
   # The output object. It represents the final destination of the contents of
-  # the print tree. Its type is one of the classes in the Buffer module. Those
-  # classes all wrap an object that should respond to <<.
+  # the print tree. It should respond to <<.
   #
-  # This defaults to Buffer::StringBuffer.new('')
+  # This defaults to "".dup
   attr_reader :output
+
+  # This is an output buffer that wraps the output object and provides
+  # additional functionality depending on its type.
+  #
+  # This defaults to Buffer::StringBuffer.new("".dup)
+  attr_reader :buffer
 
   # The maximum width of a line, before it is separated in to a newline
   #
@@ -699,7 +704,8 @@ class PrettyPrint
   # The block is used to generate spaces. ->(n) { ' ' * n } is used if it is not
   # given.
   def initialize(output = ''.dup, maxwidth = 80, newline = DEFAULT_NEWLINE, &genspace)
-    @output = Buffer.for(output)
+    @output = output
+    @buffer = Buffer.for(output)
     @maxwidth = maxwidth
     @newline = newline
     @genspace = genspace || DEFAULT_GENSPACE
@@ -772,7 +778,7 @@ class PrettyPrint
 
       case doc
       when Text
-        doc.objects.each { |object| output << object }
+        doc.objects.each { |object| buffer << object }
         position += doc.width
       when Array
         doc.reverse_each { |part| commands << [indent, mode, part] }
@@ -781,7 +787,7 @@ class PrettyPrint
       when Align
         commands << [indent.align(doc.indent), mode, doc.contents]
       when Trim
-        position -= output.trim!
+        position -= buffer.trim!
       when Group
         if mode == MODE_FLAT && !should_remeasure
           commands << [indent, doc.break? ? MODE_BREAK : MODE_FLAT, doc.contents]
@@ -813,7 +819,7 @@ class PrettyPrint
             # groups).
             should_remeasure = true
           else
-            output << doc.separator
+            buffer << doc.separator
             position += doc.width
             next
           end
@@ -829,18 +835,18 @@ class PrettyPrint
         end
 
         if !doc.indent?
-          output << newline
+          buffer << newline
 
           if indent.root
-            output << indent.root.value
+            buffer << indent.root.value
             position = indent.root.length
           else
             position = 0
           end
         else
-          position -= output.trim!
-          output << newline
-          output << indent.value
+          position -= buffer.trim!
+          buffer << newline
+          buffer << indent.value
           position = indent.length
         end
       when BreakParent
@@ -853,7 +859,7 @@ class PrettyPrint
         #
         # This is useful behavior for putting marker nodes into the list so that
         # you can know how things are getting mapped before they get printed.
-        output << doc
+        buffer << doc
       end
 
       if commands.empty? && line_suffixes.any?
@@ -1079,7 +1085,7 @@ class PrettyPrint
     # This is our output buffer, really only necessary to keep track of
     # because we could encounter a Trim doc node that would actually add
     # remaining space.
-    buffer = output.class.new
+    fit_buffer = buffer.class.new
 
     while remaining >= 0
       if commands.empty?
@@ -1094,7 +1100,7 @@ class PrettyPrint
 
       case doc
       when Text
-        doc.objects.each { |object| buffer << object }
+        doc.objects.each { |object| fit_buffer << object }
         remaining -= doc.width
       when Array
         doc.reverse_each { |part| commands << [indent, mode, part] }
@@ -1103,7 +1109,7 @@ class PrettyPrint
       when Align
         commands << [indent.align(doc.indent), mode, doc.contents]
       when Trim
-        remaining += buffer.trim!
+        remaining += fit_buffer.trim!
       when Group
         commands << [indent, doc.break? ? MODE_BREAK : mode, doc.contents]
       when IfBreak
@@ -1114,7 +1120,7 @@ class PrettyPrint
         end
       when Breakable
         if mode == MODE_FLAT && !doc.force?
-          buffer << doc.separator
+          fit_buffer << doc.separator
           remaining -= doc.width
           next
         end

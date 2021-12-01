@@ -118,7 +118,6 @@ class SyntaxTree < Ripper
 
     def initialize(*)
       super
-
       @stack = []
       @quote = '"'
     end
@@ -256,6 +255,16 @@ class SyntaxTree < Ripper
     parser = new(source)
     response = parser.parse
     response unless parser.error?
+  end
+
+  def self.format(source)
+    output = []
+
+    formatter = Formatter.new(output)
+    parse(source).format(formatter)
+
+    formatter.flush
+    output.join
   end
 
   private
@@ -8718,15 +8727,9 @@ class SyntaxTree < Ripper
       [statements]
     end
 
-    def format
-      out = []
-      q = Formatter.new(out)
-
+    def format(q)
       q.format(statements)
       q.breakable(force: true)
-      q.flush
-
-      out.join
     end
 
     def pretty_print(q)

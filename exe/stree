@@ -3,9 +3,74 @@
 
 require_relative File.expand_path('../lib/syntax_tree', __dir__)
 
-source = ARGF.read
-program = SyntaxTree.new(source).parse
+help = <<~EOF
+  stree MDOE FILE
 
-pp program
-puts
-puts program.format
+  MODE: one of "a", "ast", "d", "doc", "f", or "format"
+  FILE: one or more paths to files to parse
+EOF
+
+if ARGV.length < 2
+  warn(help)
+  exit(1)
+end
+
+module SyntaxTree::CLI
+  class AST
+    def run(source)
+      pp SyntaxTree.parse(source)
+    end
+  end
+
+  class Doc
+    def run(source)
+      formatter = SyntaxTree::Formatter.new([])
+      SyntaxTree.parse(source).format(formatter)
+      pp formatter.groups.first
+    end
+  end
+
+  class Format
+    def run(source)
+      puts SyntaxTree.format(source)
+    end
+  end
+end
+
+mode =
+  case ARGV.shift
+  when 'a', 'ast'
+    SyntaxTree::CLI::AST.new
+  when 'd', 'doc'
+    SyntaxTree::CLI::Doc.new
+  when 'f', 'format'
+    SyntaxTree::CLI::Format.new
+  else
+    warn(help)
+    exit(1)
+  end
+
+queue = Queue.new
+ARGV.each { |pattern| Dir[pattern].each { |filepath| queue << filepath } }
+
+if queue.size <= 1
+  filepath = queue.shift
+  mode.run(File.read(filepath)) if File.file?(filepath)
+  return
+end
+
+count = [8, queue.size].min
+threads =
+  count.times.map do
+    Thread.new do
+      loop do
+        filepath = queue.shift
+        break if filepath == :exit
+
+        mode.run(File.read(filepath)) if File.file?(filepath)
+      end
+    end
+  end
+
+count.times { queue << :exit }
+threads.each(&:join)

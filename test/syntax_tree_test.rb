@@ -1024,10 +1024,7 @@ class SyntaxTree
         .each_with_index do |source, index|
           define_method(:"test_formatting_#{basename}_#{index}") do
             original, expected = source.split("-\n")
-            expected ||= original
-
-            actual = SyntaxTree.new(original).parse.format
-            assert_equal(expected, actual)
+            assert_equal(expected || original, SyntaxTree.format(original))
           end
         end
     end
