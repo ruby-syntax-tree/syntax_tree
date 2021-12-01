@@ -4761,8 +4761,7 @@ class SyntaxTree < Ripper
     # quotes, then single quotes would deactivate it.)
     def self.locked?(node)
       node.parts.any? do |part|
-        part.is_a?(TStringContent) &&
-          (part.value.include?('#{') || part.value.include?('\\'))
+        part.is_a?(TStringContent) && part.value.match?(/#[@${]|[\\]/)
       end
     end
 
