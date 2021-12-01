@@ -8571,8 +8571,10 @@ class SyntaxTree < Ripper
       parts << KeywordRestFormatter.new(keyword_rest) if keyword_rest
       parts << block if block
 
-      q.seplist(parts) { |part| q.format(part) }
-      q.format(rest) if rest && rest.is_a?(ExcessedComma)
+      q.nest(0) do
+        q.seplist(parts) { |part| q.format(part) }
+        q.format(rest) if rest && rest.is_a?(ExcessedComma)
+      end
     end
 
     def pretty_print(q)
