@@ -1538,7 +1538,12 @@ class SyntaxTree < Ripper
     attr_reader :comments
 
     def initialize(
-      constant:, requireds:, rest:, posts:, location:, comments: []
+      constant:,
+      requireds:,
+      rest:,
+      posts:,
+      location:,
+      comments: []
     )
       @constant = constant
       @requireds = requireds
@@ -3489,7 +3494,12 @@ class SyntaxTree < Ripper
     attr_reader :comments
 
     def initialize(
-      receiver:, operator:, message:, arguments:, location:, comments: []
+      receiver:,
+      operator:,
+      message:,
+      arguments:,
+      location:,
+      comments: []
     )
       @receiver = receiver
       @operator = operator
@@ -4333,7 +4343,13 @@ class SyntaxTree < Ripper
     attr_reader :comments
 
     def initialize(
-      target:, operator:, name:, params:, bodystmt:, location:, comments: []
+      target:,
+      operator:,
+      name:,
+      params:,
+      bodystmt:,
+      location:,
+      comments: []
     )
       @target = target
       @operator = operator
@@ -5025,7 +5041,11 @@ class SyntaxTree < Ripper
     attr_reader :comments
 
     def initialize(
-      predicate:, statements:, consequent:, location:, comments: []
+      predicate:,
+      statements:,
+      consequent:,
+      location:,
+      comments: []
     )
       @predicate = predicate
       @statements = statements
@@ -6479,7 +6499,11 @@ class SyntaxTree < Ripper
     attr_reader :comments
 
     def initialize(
-      predicate:, statements:, consequent:, location:, comments: []
+      predicate:,
+      statements:,
+      consequent:,
+      location:,
+      comments: []
     )
       @predicate = predicate
       @statements = statements
@@ -8547,10 +8571,8 @@ class SyntaxTree < Ripper
       parts << KeywordRestFormatter.new(keyword_rest) if keyword_rest
       parts << block if block
 
-      q.group do
-        q.seplist(parts) { |part| q.format(part) }
-        q.format(rest) if rest && rest.is_a?(ExcessedComma)
-      end
+      q.seplist(parts) { |part| q.format(part) }
+      q.format(rest) if rest && rest.is_a?(ExcessedComma)
     end
 
     def pretty_print(q)
@@ -8644,7 +8666,13 @@ class SyntaxTree < Ripper
   #     (nil | BlockArg) block
   #   ) -> Params
   def on_params(
-    requireds, optionals, rest, posts, keywords, keyword_rest, block
+    requireds,
+    optionals,
+    rest,
+    posts,
+    keywords,
+    keyword_rest,
+    block
   )
     parts =
       [
@@ -9692,7 +9720,11 @@ class SyntaxTree < Ripper
     attr_reader :comments
 
     def initialize(
-      exception:, statements:, consequent:, location:, comments: []
+      exception:,
+      statements:,
+      consequent:,
+      location:,
+      comments: []
     )
       @exception = exception
       @statements = statements
@@ -11721,7 +11753,11 @@ class SyntaxTree < Ripper
     attr_reader :comments
 
     def initialize(
-      predicate:, statements:, consequent:, location:, comments: []
+      predicate:,
+      statements:,
+      consequent:,
+      location:,
+      comments: []
     )
       @predicate = predicate
       @statements = statements
@@ -12426,7 +12462,11 @@ class SyntaxTree < Ripper
     attr_reader :comments
 
     def initialize(
-      arguments:, statements:, consequent:, location:, comments: []
+      arguments:,
+      statements:,
+      consequent:,
+      location:,
+      comments: []
     )
       @arguments = arguments
       @statements = statements

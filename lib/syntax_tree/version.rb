@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-require 'ripper'
+require "ripper"
 
 class SyntaxTree < Ripper
-  VERSION = '0.1.0'
+  VERSION = "0.1.0"
 end

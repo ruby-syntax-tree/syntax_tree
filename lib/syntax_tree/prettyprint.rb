@@ -79,7 +79,7 @@ class PrettyPrint
     end
 
     def pretty_print(q)
-      q.group(2, 'align([', '])') do
+      q.group(2, "align([", "])") do
         q.seplist(contents) { |content| q.pp(content) }
       end
     end
@@ -90,7 +90,12 @@ class PrettyPrint
   class Breakable
     attr_reader :separator, :width
 
-    def initialize(separator = ' ', width = separator.length, force: false, indent: true)
+    def initialize(
+      separator = " ",
+      width = separator.length,
+      force: false,
+      indent: true
+    )
       @separator = separator
       @width = width
       @force = force
@@ -106,17 +111,17 @@ class PrettyPrint
     end
 
     def pretty_print(q)
-      q.text('breakable')
+      q.text("breakable")
 
       attributes =
-        [('force=true' if force?), ('indent=false' unless indent?)].compact
+        [("force=true" if force?), ("indent=false" unless indent?)].compact
 
       if attributes.any?
-        q.text('(')
-        q.seplist(attributes, -> { q.text(', ') }) do |attribute|
+        q.text("(")
+        q.seplist(attributes, -> { q.text(", ") }) do |attribute|
           q.text(attribute)
         end
-        q.text(')')
+        q.text(")")
       end
     end
   end
@@ -126,7 +131,7 @@ class PrettyPrint
   # force a newline into a group.
   class BreakParent
     def pretty_print(q)
-      q.text('break-parent')
+      q.text("break-parent")
     end
   end
 
@@ -154,7 +159,7 @@ class PrettyPrint
     end
 
     def pretty_print(q)
-      q.group(2, 'group([', '])') do
+      q.group(2, "group([", "])") do
         q.seplist(contents) { |content| q.pp(content) }
       end
     end
@@ -172,13 +177,13 @@ class PrettyPrint
     end
 
     def pretty_print(q)
-      q.group(2, 'if-break(', ')') do
-        q.breakable('')
-        q.group(2, '[', '],') do
+      q.group(2, "if-break(", ")") do
+        q.breakable("")
+        q.group(2, "[", "],") do
           q.seplist(break_contents) { |content| q.pp(content) }
         end
         q.breakable
-        q.group(2, '[', ']') do
+        q.group(2, "[", "]") do
           q.seplist(flat_contents) { |content| q.pp(content) }
         end
       end
@@ -195,7 +200,7 @@ class PrettyPrint
     end
 
     def pretty_print(q)
-      q.group(2, 'indent([', '])') do
+      q.group(2, "indent([", "])") do
         q.seplist(contents) { |content| q.pp(content) }
       end
     end
@@ -215,7 +220,7 @@ class PrettyPrint
     end
 
     def pretty_print(q)
-      q.group(2, 'line-suffix([', '])') do
+      q.group(2, "line-suffix([", "])") do
         q.seplist(contents) { |content| q.pp(content) }
       end
     end
@@ -231,13 +236,13 @@ class PrettyPrint
       @width = 0
     end
 
-    def add(object: '', width: object.length)
+    def add(object: "", width: object.length)
       @objects << object
       @width += width
     end
 
     def pretty_print(q)
-      q.group(2, 'text([', '])') do
+      q.group(2, "text([", "])") do
         q.seplist(objects) { |object| q.pp(object) }
       end
     end
@@ -248,7 +253,7 @@ class PrettyPrint
   # that you've already created. This node should be placed after a Breakable.
   class Trim
     def pretty_print(q)
-      q.text('trim')
+      q.text("trim")
     end
   end
 
@@ -281,13 +286,13 @@ class PrettyPrint
     # trim! method that trims off trailing whitespace from the string using
     # gsub!.
     class StringBuffer < DefaultBuffer
-      def initialize(output = ''.dup)
+      def initialize(output = "".dup)
         super(output)
       end
 
       def trim!
         length = output.length
-        output.gsub!(/[\t ]*\z/, '')
+        output.gsub!(/[\t ]*\z/, "")
         length - output.length
       end
     end
@@ -306,13 +311,14 @@ class PrettyPrint
 
         trimmed = 0
 
-        while output.any? && output.last.is_a?(String) && output.last.match?(/\A[\t ]*\z/)
+        while output.any? && output.last.is_a?(String) &&
+                output.last.match?(/\A[\t ]*\z/)
           trimmed += output.pop.length
         end
 
         if output.any? && output.last.is_a?(String) && !output.last.frozen?
           length = output.last.length
-          output.last.gsub!(/[\t ]*\z/, '')
+          output.last.gsub!(/[\t ]*\z/, "")
           trimmed += length - output.last.length
         end
 
@@ -384,7 +390,12 @@ class PrettyPrint
     #
     # The +width+, +indent+, and +force+ arguments are here for compatibility.
     # They are all noop arguments.
-    def breakable(separator = ' ', width = separator.length, indent: nil, force: nil)
+    def breakable(
+      separator = " ",
+      width = separator.length,
+      indent: nil,
+      force: nil
+    )
       target << separator
     end
 
@@ -394,7 +405,7 @@ class PrettyPrint
 
     # Appends +separator+ to the output buffer. +width+ is a noop here for
     # compatibility.
-    def fill_breakable(separator = ' ', width = separator.length)
+    def fill_breakable(separator = " ", width = separator.length)
       target << separator
     end
 
@@ -415,7 +426,13 @@ class PrettyPrint
     # * +close_obj+ - text appended after the &block. Default is ''
     # * +open_width+ - noop argument. Present for compatibility.
     # * +close_width+ - noop argument. Present for compatibility.
-    def group(indent = nil, open_object = '', close_object = '', open_width = nil, close_width = nil)
+    def group(
+      indent = nil,
+      open_object = "",
+      close_object = "",
+      open_width = nil,
+      close_width = nil
+    )
       target << open_object
       yield
       target << close_object
@@ -459,7 +476,7 @@ class PrettyPrint
     # Add +object+ to the text to be output.
     #
     # +width+ argument is here for compatibility. It is a noop argument.
-    def text(object = '', width = nil)
+    def text(object = "", width = nil)
       target << object
     end
   end
@@ -476,7 +493,13 @@ class PrettyPrint
 
     attr_reader :genspace, :value, :length, :queue, :root
 
-    def initialize(genspace:, value: genspace.call(0), length: 0, queue: [], root: nil)
+    def initialize(
+      genspace:,
+      value: genspace.call(0),
+      length: 0,
+      queue: [],
+      root: nil
+    )
       @genspace = genspace
       @value = value
       @length = length
@@ -504,15 +527,15 @@ class PrettyPrint
 
       last_spaces = 0
 
-      add_spaces = ->(count) {
+      add_spaces = ->(count) do
         next_value << genspace.call(count)
         next_length += count
-      }
+      end
 
-      flush_spaces = -> {
+      flush_spaces = -> do
         add_spaces[last_spaces] if last_spaces > 0
         last_spaces = 0
-      }
+      end
 
       next_queue.each do |part|
         case part
@@ -549,7 +572,7 @@ class PrettyPrint
   # generate one space per character needed for indentation. You can change this
   # behavior (for instance to use tabs) by passing a different genspace
   # procedure.
-  DEFAULT_GENSPACE = ->(n) { ' ' * n }
+  DEFAULT_GENSPACE = ->(n) { " " * n }
 
   # There are two modes in printing, break and flat. When we're in break mode,
   # any lines will use their newline, any if-breaks will use their break
@@ -570,7 +593,12 @@ class PrettyPrint
   #     output
   #   end
   #
-  def self.format(output = ''.dup, maxwidth = 80, newline = DEFAULT_NEWLINE, genspace = DEFAULT_GENSPACE)
+  def self.format(
+    output = "".dup,
+    maxwidth = 80,
+    newline = DEFAULT_NEWLINE,
+    genspace = DEFAULT_GENSPACE
+  )
     q = new(output, maxwidth, newline, &genspace)
     yield q
     q.flush
@@ -584,7 +612,12 @@ class PrettyPrint
   # The invocation of +breakable+ in the block doesn't break a line and is
   # treated as just an invocation of +text+.
   #
-  def self.singleline_format(output = ''.dup, maxwidth = nil, newline = nil, genspace = nil)
+  def self.singleline_format(
+    output = "".dup,
+    maxwidth = nil,
+    newline = nil,
+    genspace = nil
+  )
     q = SingleLine.new(output)
     yield q
     output
@@ -641,7 +674,12 @@ class PrettyPrint
   #
   # The block is used to generate spaces. ->(n) { ' ' * n } is used if it is not
   # given.
-  def initialize(output = ''.dup, maxwidth = 80, newline = DEFAULT_NEWLINE, &genspace)
+  def initialize(
+    output = "".dup,
+    maxwidth = 80,
+    newline = DEFAULT_NEWLINE,
+    &genspace
+  )
     @output = output
     @buffer = Buffer.for(output)
     @maxwidth = maxwidth
@@ -726,7 +764,8 @@ class PrettyPrint
         position -= buffer.trim!
       when Group
         if mode == MODE_FLAT && !should_remeasure
-          commands << [indent, doc.break? ? MODE_BREAK : MODE_FLAT, doc.contents]
+          commands <<
+            [indent, doc.break? ? MODE_BREAK : MODE_FLAT, doc.contents]
         else
           should_remeasure = false
           next_cmd = [indent, MODE_FLAT, doc.contents]
@@ -831,7 +870,12 @@ class PrettyPrint
   # remaining space of the current line. You can force it to break the
   # surrounding group instead if you always want the newline with the +force+
   # argument.
-  def breakable(separator = ' ', width = separator.length, indent: true, force: false)
+  def breakable(
+    separator = " ",
+    width = separator.length,
+    indent: true,
+    force: false
+  )
     doc = Breakable.new(separator, width, indent: indent, force: force)
 
     target << doc
@@ -868,7 +912,7 @@ class PrettyPrint
   #
   # If +width+ is not specified, +separator.length+ is used. You will have to
   # specify this when +separator+ is a multibyte character, for example.
-  def fill_breakable(separator = ' ', width = separator.length)
+  def fill_breakable(separator = " ", width = separator.length)
     group { breakable(separator, width) }
   end
 
@@ -896,8 +940,14 @@ class PrettyPrint
   # If +open_object+ is specified, <tt>text(open_object, open_width)</tt> is
   # called before grouping. If +close_object+ is specified,
   # <tt>text(close_object, close_width)</tt> is called after grouping.
-  def group(indent = 0, open_object = '', close_object = '', open_width = open_object.length, close_width = close_object.length)
-    text(open_object, open_width) if open_object != ''
+  def group(
+    indent = 0,
+    open_object = "",
+    close_object = "",
+    open_width = open_object.length,
+    close_width = close_object.length
+  )
+    text(open_object, open_width) if open_object != ""
 
     doc = Group.new(groups.last.depth + 1)
     groups << doc
@@ -912,7 +962,7 @@ class PrettyPrint
     end
 
     groups.pop
-    text(close_object, close_width) if close_object != ''
+    text(close_object, close_width) if close_object != ""
 
     doc
   end
@@ -983,7 +1033,7 @@ class PrettyPrint
   # This adds +object+ as a text of +width+ columns in width.
   #
   # If +width+ is not specified, object.length is used.
-  def text(object = '', width = object.length)
+  def text(object = "", width = object.length)
     doc = target.last
 
     unless Text === doc
