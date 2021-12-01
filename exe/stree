@@ -1,7 +1,6 @@
 #!/usr/bin/env ruby
 # frozen_string_literal: true
-
-require_relative File.expand_path('../lib/syntax_tree', __dir__)
+require_relative File.expand_path("../lib/syntax_tree", __dir__)
 
 help = <<~EOF
   stree MDOE FILE
@@ -38,20 +37,20 @@ module SyntaxTree::CLI
 
   class Write
     def run(filepath)
-      File.write(SyntaxTree.format(File.read(filepath)))
+      File.write(filepath, SyntaxTree.format(File.read(filepath)))
     end
   end
 end
 
 mode =
   case ARGV.shift
-  when 'a', 'ast'
+  when "a", "ast"
     SyntaxTree::CLI::AST.new
-  when 'd', 'doc'
+  when "d", "doc"
     SyntaxTree::CLI::Doc.new
-  when 'f', 'format'
+  when "f", "format"
     SyntaxTree::CLI::Format.new
-  when 'w', 'write'
+  when "w", "write"
     SyntaxTree::CLI::Write.new
   else
     warn(help)
