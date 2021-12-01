@@ -966,6 +966,8 @@ class PrettyPrint
 
     groups.pop
     text(close_object, close_width) if close_object != ''
+
+    doc
   end
 
   # A small DSL-like object used for specifying the alternative contents to be

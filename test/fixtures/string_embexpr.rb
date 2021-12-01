@@ -6,3 +6,7 @@
 "#{bar} foo"
 %
 "foo #{"bar #{baz} bar"} foo"
+%
+"#{foo; bar}"
+%
+"#{if foo; foooooooooooooooooooooooooooooooooooooo; else; barrrrrrrrrrrrrrrr; end}"

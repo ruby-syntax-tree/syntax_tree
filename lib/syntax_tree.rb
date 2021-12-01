@@ -2247,6 +2247,43 @@ class SyntaxTree < Ripper
     )
   end
 
+  # This is a visitor that can be passed to PrettyPrint.visit that will
+  # propagate BreakParent nodes all of the way up the tree. When a BreakParent
+  # is encountered, it will break the surrounding group, and then that group
+  # will break its parent, and so on.
+  class RemoveBreaksVisitor
+    def on_enter(doc)
+      case doc
+      when PrettyPrint::Indent, PrettyPrint::Align, PrettyPrint::Group
+        doc.contents.map! { |child| remove_breaks(child) }
+      when PrettyPrint::IfBreak
+        doc.flat_contents.map! { |child| remove_breaks(child) }
+      when PrettyPrint::LineSuffix
+        return false
+      end
+
+      true
+    end
+
+    def on_exit(doc)
+    end
+
+    private
+
+    def remove_breaks(doc)
+      case doc
+      when PrettyPrint::Breakable
+        text = PrettyPrint::Text.new
+        text.add(object: doc.force? ? '; ' : doc.separator, width: doc.width)
+        text
+      when PrettyPrint::IfBreak
+        PrettyPrint::Align.new(indent: 0, contents: doc.flat_contents)
+      else
+        doc
+      end
+    end
+  end
+
   # BlockVar represents the parameters being declared for a block. Effectively
   # this node is everything contained within the pipes. This includes all of the
   # various parameter types, as well as block-local variable declarations.
@@ -2280,7 +2317,8 @@ class SyntaxTree < Ripper
 
     def format(q)
       q.group(0, '|', '|') do
-        q.format(params)
+        doc = q.format(params)
+        PrettyPrint.visit(doc, RemoveBreaksVisitor.new)
 
         if locals.any?
           q.text('; ')
@@ -3391,7 +3429,7 @@ class SyntaxTree < Ripper
         q.text(' ')
 
         width = doc_width(doc)
-        if width > (q.maxwidth / 2)
+        if width > (q.maxwidth / 2) || width < 2
           q.indent { q.format(arguments) }
         else
           q.nest(width) { q.format(arguments) }
@@ -10323,14 +10361,23 @@ class SyntaxTree < Ripper
     end
 
     def format(q)
-      q.group do
-        q.text('#{')
-        q.indent do
+      if location.start_line == location.end_line
+        # If the contents of this embedded expression were originally on the
+        # same line in the source, then we're going to leave them in place and
+        # assume that's the way the developer wanted this expression
+        # represented.
+        doc = q.group(0, '#{', '}') { q.format(statements) }
+        PrettyPrint.visit(doc, RemoveBreaksVisitor.new)
+      else
+        q.group do
+          q.text('#{')
+          q.indent do
+            q.breakable('')
+            q.format(statements)
+          end
           q.breakable('')
-          q.format(statements)
+          q.text('}')
         end
-        q.breakable('')
-        q.text('}')
       end
     end
 
