@@ -3593,6 +3593,10 @@ class SyntaxTree < Ripper
       @printed
     end
 
+    def comments
+      []
+    end
+
     def format(q)
       printed!
       q.text(value)
@@ -3624,7 +3628,7 @@ class SyntaxTree < Ripper
     comment =
       Comment.new(
         value: value.chomp,
-        inline: value.strip != lines[line - 1],
+        inline: value.strip != lines[line - 1].strip,
         location:
           Location.token(line: line, char: char_pos, size: value.size - 1)
       )
@@ -5042,10 +5046,8 @@ class SyntaxTree < Ripper
       false
     end
 
-    def leading!
-    end
-
-    def trailing!
+    def comments
+      []
     end
 
     def child_nodes
@@ -10110,7 +10112,7 @@ class SyntaxTree < Ripper
         statements.location.to(statement.location)
       end
 
-    Statements.new(body: statements.body << statement, location: location)
+    Statements.new(self, body: statements.body << statement, location: location)
   end
 
   # Everything that has a block of code inside of it has a list of statements.
@@ -10121,6 +10123,9 @@ class SyntaxTree < Ripper
   # propagate that onto void_stmt nodes inside the stmts in order to make sure
   # all comments get printed appropriately.
   class Statements
+    # [SyntaxTree] the parser that is generating this node
+    attr_reader :parser
+
     # [Array[ untyped ]] the list of expressions contained within this node
     attr_reader :body
 
@@ -10130,7 +10135,8 @@ class SyntaxTree < Ripper
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(body:, location:, comments: [])
+    def initialize(parser, body:, location:, comments: [])
+      @parser = parser
       @body = body
       @location = location
       @comments = comments
@@ -10157,6 +10163,8 @@ class SyntaxTree < Ripper
 
         body[0] = VoidStmt.new(location: location)
       end
+
+      attach_comments(start_char, end_char)
     end
 
     def bind_end(end_char)
@@ -10235,12 +10243,42 @@ class SyntaxTree < Ripper
     def to_json(*opts)
       { type: :statements, body: body, loc: location, cmts: comments }.to_json(*opts)
     end
+
+    private
+
+    # As efficiently as possible, gather up all of the comments that have been
+    # found while this statements list was being parsed and add them into the
+    # body.
+    def attach_comments(start_char, end_char)
+      parser_comments = parser.comments
+
+      comment_index = 0
+      body_index = 0
+
+      while comment_index < parser_comments.size
+        comment = parser_comments[comment_index]
+        location = comment.location
+
+        if !comment.inline? && (start_char <= location.start_char) && (end_char >= location.end_char)
+          parser_comments.delete_at(comment_index)
+
+          while (node = body[body_index]) && (node.is_a?(VoidStmt) || node.location.start_char < location.start_char)
+            body_index += 1
+          end
+
+          body.insert(body_index, comment)
+        else
+          comment_index += 1
+        end
+      end
+    end
   end
 
   # :call-seq:
   #   on_stmts_new: () -> Statements
   def on_stmts_new
     Statements.new(
+      self,
       body: [],
       location: Location.fixed(line: lineno, char: char_pos)
     )

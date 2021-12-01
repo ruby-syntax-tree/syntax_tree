@@ -315,10 +315,7 @@ class SyntaxTree
     end
 
     def test_comment
-      at = location(chars: 0..8)
-      assert_node(Comment, 'comment', '# comment', at: at) do |node|
-        node.comments.first
-      end
+      assert_node(Comment, 'comment', '# comment', at: location(chars: 0..8))
     end
 
     def test_const
@@ -440,9 +437,7 @@ class SyntaxTree
         =end
       SOURCE
 
-      assert_node(EmbDoc, 'embdoc', source) do |node|
-        node.comments.first
-      end
+      assert_node(EmbDoc, 'embdoc', source)
     end
 
     def test_ensure
