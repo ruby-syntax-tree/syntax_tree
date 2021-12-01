@@ -3566,7 +3566,6 @@ class SyntaxTree < Ripper
 
       @leading = false
       @trailing = false
-      @printed = false
     end
 
     def leading!
@@ -3585,20 +3584,11 @@ class SyntaxTree < Ripper
       @trailing
     end
 
-    def printed!
-      @printed = true
-    end
-
-    def printed?
-      @printed
-    end
-
     def comments
       []
     end
 
     def format(q)
-      printed!
       q.text(value)
     end
 
@@ -5055,6 +5045,7 @@ class SyntaxTree < Ripper
     end
 
     def format(q)
+      q.trim
       q.text(value)
     end
 
@@ -10188,18 +10179,17 @@ class SyntaxTree < Ripper
     end
 
     def format(q)
-      # This is a special case where we have only comments inside a statement
-      # list. In this case we want to avoid any kind of line number tracking and
-      # just print out the comments.
-      if body.length == 1 && body[0].is_a?(VoidStmt) && body[0].comments.any?
-        q.break_parent
-        separator = -> { q.breakable(force: true) }
+      line = nil
 
-        q.seplist(body[0].comments, separator) { |comment| comment.format(q) }
+      # This handles a special case where you've got a block of statements where
+      # the only value is a comment. In that case a lot of nodes like
+      # brace_block will attempt to format as a single line, but since that
+      # wouldn't work with a comment, we intentionally break the parent group.
+      if body.length == 2 && body.first.is_a?(VoidStmt)
+        q.format(body.last)
+        q.break_parent
         return
       end
-
-      line = nil
 
       body.each_with_index do |statement, index|
         next if statement.is_a?(VoidStmt)
