@@ -502,14 +502,10 @@ class SyntaxTree < Ripper
   # :call-seq:
   #   on_CHAR: (String value) -> CHAR
   def on_CHAR(value)
-    node =
-      CHAR.new(
-        value: value,
-        location: Location.token(line: lineno, char: char_pos, size: value.size)
-      )
-
-    tokens << node
-    node
+    CHAR.new(
+      value: value,
+      location: Location.token(line: lineno, char: char_pos, size: value.size)
+    )
   end
 
   # ENDBlock represents the use of the +END+ keyword, which hooks into the
@@ -1922,14 +1918,10 @@ class SyntaxTree < Ripper
   # :call-seq:
   #   on_backref: (String value) -> Backref
   def on_backref(value)
-    node =
-      Backref.new(
-        value: value,
-        location: Location.token(line: lineno, char: char_pos, size: value.size)
-      )
-
-    tokens << node
-    node
+    Backref.new(
+      value: value,
+      location: Location.token(line: lineno, char: char_pos, size: value.size)
+    )
   end
 
   # Backtick represents the use of the ` operator. It's usually found being used
@@ -3756,14 +3748,10 @@ class SyntaxTree < Ripper
   # :call-seq:
   #   on_const: (String value) -> Const
   def on_const(value)
-    node =
-      Const.new(
-        value: value,
-        location: Location.token(line: lineno, char: char_pos, size: value.size)
-      )
-
-    tokens << node
-    node
+    Const.new(
+      value: value,
+      location: Location.token(line: lineno, char: char_pos, size: value.size)
+    )
   end
 
   # ConstPathField represents the child node of some kind of assignment. It
@@ -4012,14 +4000,10 @@ class SyntaxTree < Ripper
   # :call-seq:
   #   on_cvar: (String value) -> CVar
   def on_cvar(value)
-    node =
-      CVar.new(
-        value: value,
-        location: Location.token(line: lineno, char: char_pos, size: value.size)
-      )
-
-    tokens << node
-    node
+    CVar.new(
+      value: value,
+      location: Location.token(line: lineno, char: char_pos, size: value.size)
+    )
   end
 
   # Def represents defining a regular method on the current self object.
@@ -5645,14 +5629,10 @@ class SyntaxTree < Ripper
   # :call-seq:
   #   on_float: (String value) -> FloatLiteral
   def on_float(value)
-    node =
-      FloatLiteral.new(
-        value: value,
-        location: Location.token(line: lineno, char: char_pos, size: value.size)
-      )
-
-    tokens << node
-    node
+    FloatLiteral.new(
+      value: value,
+      location: Location.token(line: lineno, char: char_pos, size: value.size)
+    )
   end
 
   # FndPtn represents matching against a pattern where you find a pattern in an
@@ -5927,14 +5907,10 @@ class SyntaxTree < Ripper
   # :call-seq:
   #   on_gvar: (String value) -> GVar
   def on_gvar(value)
-    node =
-      GVar.new(
-        value: value,
-        location: Location.token(line: lineno, char: char_pos, size: value.size)
-      )
-
-    tokens << node
-    node
+    GVar.new(
+      value: value,
+      location: Location.token(line: lineno, char: char_pos, size: value.size)
+    )
   end
 
   # HashLiteral represents a hash literal.
@@ -6417,14 +6393,10 @@ class SyntaxTree < Ripper
   # :call-seq:
   #   on_ident: (String value) -> Ident
   def on_ident(value)
-    node =
-      Ident.new(
-        value: value,
-        location: Location.token(line: lineno, char: char_pos, size: value.size)
-      )
-
-    tokens << node
-    node
+    Ident.new(
+      value: value,
+      location: Location.token(line: lineno, char: char_pos, size: value.size)
+    )
   end
 
   # Formats an If or Unless node.
@@ -6832,14 +6804,10 @@ class SyntaxTree < Ripper
   # :call-seq:
   #   on_imaginary: (String value) -> Imaginary
   def on_imaginary(value)
-    node =
-      Imaginary.new(
-        value: value,
-        location: Location.token(line: lineno, char: char_pos, size: value.size)
-      )
-
-    tokens << node
-    node
+    Imaginary.new(
+      value: value,
+      location: Location.token(line: lineno, char: char_pos, size: value.size)
+    )
   end
 
   # In represents using the +in+ keyword within the Ruby 2.7+ pattern matching
@@ -7011,14 +6979,10 @@ class SyntaxTree < Ripper
   # :call-seq:
   #   on_int: (String value) -> Int
   def on_int(value)
-    node =
-      Int.new(
-        value: value,
-        location: Location.token(line: lineno, char: char_pos, size: value.size)
-      )
-
-    tokens << node
-    node
+    Int.new(
+      value: value,
+      location: Location.token(line: lineno, char: char_pos, size: value.size)
+    )
   end
 
   # IVar represents an instance variable literal.
@@ -7070,14 +7034,10 @@ class SyntaxTree < Ripper
   # :call-seq:
   #   on_ivar: (String value) -> IVar
   def on_ivar(value)
-    node =
-      IVar.new(
-        value: value,
-        location: Location.token(line: lineno, char: char_pos, size: value.size)
-      )
-
-    tokens << node
-    node
+    IVar.new(
+      value: value,
+      location: Location.token(line: lineno, char: char_pos, size: value.size)
+    )
   end
 
   # Kw represents the use of a keyword. It can be almost anywhere in the syntax
@@ -7265,14 +7225,10 @@ class SyntaxTree < Ripper
   # :call-seq:
   #   on_label: (String value) -> Label
   def on_label(value)
-    node =
-      Label.new(
-        value: value,
-        location: Location.token(line: lineno, char: char_pos, size: value.size)
-      )
-
-    tokens << node
-    node
+    Label.new(
+      value: value,
+      location: Location.token(line: lineno, char: char_pos, size: value.size)
+    )
   end
 
   # LabelEnd represents the end of a dynamic symbol.
@@ -9295,14 +9251,10 @@ class SyntaxTree < Ripper
   # :call-seq:
   #   on_rational: (String value) -> RationalLiteral
   def on_rational(value)
-    node =
-      RationalLiteral.new(
-        value: value,
-        location: Location.token(line: lineno, char: char_pos, size: value.size)
-      )
-
-    tokens << node
-    node
+    RationalLiteral.new(
+      value: value,
+      location: Location.token(line: lineno, char: char_pos, size: value.size)
+    )
   end
 
   # RBrace represents the use of a right brace, i.e., +++.
@@ -10988,7 +10940,7 @@ class SyntaxTree < Ripper
   #     (Backtick | Const | CVar | GVar | Ident | IVar | Kw | Op) value
   #   ) -> SymbolContent
   def on_symbol(value)
-    tokens.pop
+    tokens.delete(value)
 
     SymbolContent.new(value: value, location: value.location)
   end
@@ -11053,15 +11005,16 @@ class SyntaxTree < Ripper
   #     ) value
   #   ) -> SymbolLiteral
   def on_symbol_literal(value)
-    if tokens[-1] == value
-      SymbolLiteral.new(value: tokens.pop, location: value.location)
-    else
+    if value.is_a?(SymbolContent)
       symbeg = find_token(SymBeg)
 
       SymbolLiteral.new(
         value: value.value,
         location: symbeg.location.to(value.location)
       )
+    else
+      tokens.delete(value)
+      SymbolLiteral.new(value: value, location: value.location)
     end
   end
 
