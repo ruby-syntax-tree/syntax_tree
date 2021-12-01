@@ -590,37 +590,6 @@ class PrettyPrint
     output
   end
 
-  # This method provides a way to walk through the print tree with a specified
-  # +visitor+ object. +visitor+ should respond to both #on_enter(doc) and
-  # #on_exit(doc).
-  def self.visit(doc, visitor)
-    marker = Object.new
-    stack = [doc]
-
-    while stack.any?
-      doc = stack.pop
-
-      if doc == marker
-        visitor.on_exit(stack.pop)
-        next
-      end
-
-      stack += [doc, marker]
-
-      if visitor.on_enter(doc)
-        case doc
-        when Array
-          doc.reverse_each { |part| stack << part }
-        when IfBreak
-          stack << doc.break_contents if doc.break_contents
-          stack << doc.flat_contents if doc.flat_contents
-        when Align, Indent, Group, LineSuffix
-          stack << doc.contents
-        end
-      end
-    end
-  end
-
   # The output object. It represents the final destination of the contents of
   # the print tree. It should respond to <<.
   #
@@ -717,10 +686,8 @@ class PrettyPrint
   # Flushes all of the generated print tree onto the output buffer, then clears
   # the generated tree from memory.
   def flush
-    # First, ensure that we've propagated all of the necessary break-parent
-    # nodes throughout the tree.
+    # First, get the root group, since we placed one at the top to begin with.
     doc = groups.first
-    propagate_breaks(doc)
 
     # This represents how far along the current line we are. It gets reset
     # back to 0 when we encounter a newline.
@@ -878,6 +845,11 @@ class PrettyPrint
   def break_parent
     doc = BreakParent.new
     target << doc
+
+    groups.reverse_each do |group|
+      break if group.break?
+      group.break
+    end
 
     doc
   end
@@ -1099,37 +1071,6 @@ class PrettyPrint
     end
 
     false
-  end
-
-  # This will walk the doc tree and propagate BreakParent nodes all of the way
-  # up the tree. When a BreakParent is encountered, it will break the
-  # surrounding group, and then that group will break its parent, and so on.
-  def propagate_breaks(doc)
-    marker = Object.new
-    stack = [doc]
-    groups = []
-
-    while doc = stack.pop
-      if doc == marker
-        groups.last&.break if stack.pop.is_a?(Group) && groups.pop.break?
-      else
-        stack += [doc, marker]
-        enter = false
-
-        case doc
-        when BreakParent
-          groups.last&.break
-        when Group
-          groups << doc
-          stack += doc.contents.reverse
-        when IfBreak
-          stack += doc.break_contents.reverse
-          stack += doc.flat_contents.reverse
-        when Align, Indent, LineSuffix
-          stack += doc.contents.reverse
-        end
-      end
-    end
   end
 
   # Resets the group stack and target array so that this pretty printer object

@@ -14,3 +14,6 @@ StackProf.run(mode: :cpu, out: "tmp/profile.dump", raw: true) do
 end
 
 GC.enable
+
+`bundle exec stackprof --d3-flamegraph tmp/profile.dump > tmp/flamegraph.html`
+puts "open tmp/flamegraph.html"

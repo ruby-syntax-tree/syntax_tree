@@ -2303,39 +2303,48 @@ class SyntaxTree < Ripper
     )
   end
 
-  # This is a visitor that can be passed to PrettyPrint.visit that will
-  # propagate BreakParent nodes all of the way up the tree. When a BreakParent
-  # is encountered, it will break the surrounding group, and then that group
-  # will break its parent, and so on.
-  class RemoveBreaksVisitor
-    def on_enter(doc)
-      case doc
-      when PrettyPrint::Indent, PrettyPrint::Align, PrettyPrint::Group
-        doc.contents.map! { |child| remove_breaks(child) }
-      when PrettyPrint::IfBreak
-        doc.flat_contents.map! { |child| remove_breaks(child) }
-      when PrettyPrint::LineSuffix
-        return false
+  # This module will remove any breakables from the list of contents so that no
+  # newlines are present in the output.
+  module RemoveBreaks
+    class << self
+      def call(doc)
+        marker = Object.new
+        stack = [doc]
+
+        while stack.any?
+          doc = stack.pop
+
+          if doc == marker
+            stack.pop
+            next
+          end
+
+          stack += [doc, marker]
+
+          case doc
+          when PrettyPrint::Align, PrettyPrint::Indent, PrettyPrint::Group
+            doc.contents.map! { |child| remove_breaks(child) }
+            stack += doc.contents.reverse
+          when PrettyPrint::IfBreak
+            doc.flat_contents.map! { |child| remove_breaks(child) }
+            stack += doc.flat_contents.reverse
+          end
+        end
       end
 
-      true
-    end
+      private
 
-    def on_exit(doc)
-    end
-
-    private
-
-    def remove_breaks(doc)
-      case doc
-      when PrettyPrint::Breakable
-        text = PrettyPrint::Text.new
-        text.add(object: doc.force? ? "; " : doc.separator, width: doc.width)
-        text
-      when PrettyPrint::IfBreak
-        PrettyPrint::Align.new(indent: 0, contents: doc.flat_contents)
-      else
-        doc
+      def remove_breaks(doc)
+        case doc
+        when PrettyPrint::Breakable
+          text = PrettyPrint::Text.new
+          text.add(object: doc.force? ? "; " : doc.separator, width: doc.width)
+          text
+        when PrettyPrint::IfBreak
+          PrettyPrint::Align.new(indent: 0, contents: doc.flat_contents)
+        else
+          doc
+        end
       end
     end
   end
@@ -2374,7 +2383,7 @@ class SyntaxTree < Ripper
     def format(q)
       q.group(0, "|", "|") do
         doc = q.format(params)
-        PrettyPrint.visit(doc, RemoveBreaksVisitor.new)
+        RemoveBreaks.call(doc)
 
         if locals.any?
           q.text("; ")
@@ -10647,7 +10656,7 @@ class SyntaxTree < Ripper
         # assume that's the way the developer wanted this expression
         # represented.
         doc = q.group(0, '#{', "}") { q.format(statements) }
-        PrettyPrint.visit(doc, RemoveBreaksVisitor.new)
+        RemoveBreaks.call(doc)
       else
         q.group do
           q.text('#{')
