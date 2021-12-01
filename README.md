@@ -3,14 +3,14 @@
 [![Build Status](https://github.com/kddnewton/syntax_tree/workflows/Main/badge.svg)](https://github.com/kddnewton/syntax_tree/actions)
 [![Gem Version](https://img.shields.io/gem/v/syntax_tree.svg)](https://rubygems.org/gems/syntax_tree)
 
-A fast ripper subclass used for generating syntax trees from Ruby code.
+A fast ripper subclass used for parsing and formatting Ruby code.
 
 ## Installation
 
 Add this line to your application's Gemfile:
 
 ```ruby
-gem 'syntax_tree'
+gem "syntax_tree"
 ```
 
 And then execute:
@@ -26,23 +26,27 @@ Or install it yourself as:
 From code:
 
 ```ruby
-require 'syntax_tree'
+require "syntax_tree"
 
-parser = SyntaxTree.new(source)
-
-node = parser.parse
-raise if parser.error?
-
-pp node
+pp SyntaxTree.parse(source) # print out the AST
+puts SyntaxTree.format(source) # format the AST
 ```
 
 From the CLI:
 
 ```sh
-$ stree program.rb
+$ stree ast program.rb
 (program
   (statements
     ...
+```
+
+or
+
+```sh
+$ stree format program.rb
+class MyClass
+  ...
 ```
 
 ## Development
