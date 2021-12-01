@@ -6,7 +6,7 @@ require_relative File.expand_path('../lib/syntax_tree', __dir__)
 help = <<~EOF
   stree MDOE FILE
 
-  MODE: one of "a", "ast", "d", "doc", "f", or "format"
+  MODE: one of "a", "ast", "d", "doc", "f", "format", "w", or "write"
   FILE: one or more paths to files to parse
 EOF
 
@@ -17,22 +17,28 @@ end
 
 module SyntaxTree::CLI
   class AST
-    def run(source)
-      pp SyntaxTree.parse(source)
+    def run(filepath)
+      pp SyntaxTree.parse(File.read(filepath))
     end
   end
 
   class Doc
-    def run(source)
+    def run(filepath)
       formatter = SyntaxTree::Formatter.new([])
-      SyntaxTree.parse(source).format(formatter)
+      SyntaxTree.parse(File.read(filepath)).format(formatter)
       pp formatter.groups.first
     end
   end
 
   class Format
-    def run(source)
-      puts SyntaxTree.format(source)
+    def run(filepath)
+      puts SyntaxTree.format(File.read(filepath))
+    end
+  end
+
+  class Write
+    def run(filepath)
+      File.write(SyntaxTree.format(File.read(filepath)))
     end
   end
 end
@@ -45,6 +51,8 @@ mode =
     SyntaxTree::CLI::Doc.new
   when 'f', 'format'
     SyntaxTree::CLI::Format.new
+  when 'w', 'write'
+    SyntaxTree::CLI::Write.new
   else
     warn(help)
     exit(1)
@@ -55,7 +63,7 @@ ARGV.each { |pattern| Dir[pattern].each { |filepath| queue << filepath } }
 
 if queue.size <= 1
   filepath = queue.shift
-  mode.run(File.read(filepath)) if File.file?(filepath)
+  mode.run(filepath) if File.file?(filepath)
   return
 end
 
@@ -67,7 +75,7 @@ threads =
         filepath = queue.shift
         break if filepath == :exit
 
-        mode.run(File.read(filepath)) if File.file?(filepath)
+        mode.run(filepath) if File.file?(filepath)
       end
     end
   end
