@@ -197,7 +197,7 @@ class SyntaxTree < Ripper
     # check if certain lines contain certain characters. For example, we'll use
     # this to generate the content that goes after the __END__ keyword. Or we'll
     # use this to check if a comment has other content on its line.
-    @lines = source.split("\n")
+    @lines = source.split(/\r?\n/)
 
     # This is the full set of comments that have been found by the parser. It's
     # a running list. At the end of every block of statements, they will go in
@@ -4650,6 +4650,48 @@ class SyntaxTree < Ripper
     )
   end
 
+  # Responsible for providing information about quotes to be used for strings
+  # and dynamic symbols.
+  module Quotes
+    # The matching pairs of quotes that can be used with % literals.
+    PAIRS = { '(' => ')', '[' => ']', '{' => '}', '<' => '>' }.freeze
+
+    # If there is some part of this string that matches an escape sequence or
+    # that contains the interpolation pattern ("#{"), then we are locked into
+    # whichever quote the user chose. (If they chose single quotes, then double
+    # quoting would activate the escape sequence, and if they chose double
+    # quotes, then single quotes would deactivate it.)
+    def self.locked?(node)
+      node.parts.any? do |part|
+        part.is_a?(TStringContent) &&
+          (part.value.include?('#{') || part.value.include?('\\'))
+      end
+    end
+
+    # Find the matching closing quote for the given opening quote.
+    def self.matching(quote)
+      PAIRS.fetch(quote) { quote }
+    end
+
+    # Escape and unescape single and double quotes as needed to be able to
+    # enclose +content+ with +enclosing+.
+    def self.normalize(content, enclosing)
+      return content if enclosing != '"' && enclosing != "'"
+
+      content.gsub(/\\([\s\S])|(['"])/) do
+        _match, escaped, quote = Regexp.last_match.to_a
+
+        if quote == enclosing
+          "\\#{quote}"
+        elsif quote
+          quote
+        else
+          "\\#{escaped}"
+        end
+      end
+    end
+  end
+
   # DynaSymbol represents a symbol literal that uses quotes to dynamically
   # define its value.
   #
@@ -4685,15 +4727,18 @@ class SyntaxTree < Ripper
     end
 
     def format(q)
-      q.group do
-        # If we're inside of an assoc node as the key, then it will handle
-        # printing the : on its own since it could change sides.
-        parent = q.parent
-        q.text(':') if !parent.is_a?(Assoc) || parent.key != self
+      opening_quote, closing_quote = quotes(q)
 
-        q.text(q.quote)
-        q.format_each(parts)
-        q.text(q.quote)
+      q.group(0, opening_quote, closing_quote) do
+        parts.each do |part|
+          if part.is_a?(TStringContent)
+            value = Quotes.normalize(part.value, closing_quote)
+            separator = -> { q.breakable(force: true, indent: false) }
+            q.seplist(value.split(/\r?\n/, -1), separator) { |text| q.text(text) }
+          else
+            q.format(part)
+          end
+        end
       end
     end
 
@@ -4712,6 +4757,43 @@ class SyntaxTree < Ripper
       { type: :dyna_symbol, parts: parts, quote: quote, loc: location, cmts: comments }.to_json(
         *opts
       )
+    end
+
+    private
+
+    # Here we determine the quotes to use for a dynamic symbol. It's bound by a
+    # lot of rules because it could be in many different contexts with many
+    # different kinds of escaping.
+    def quotes(q)
+      # If we're inside of an assoc node as the key, then it will handle
+      # printing the : on its own since it could change sides.
+      parent = q.parent
+      hash_key = parent.is_a?(Assoc) && parent.key == self
+
+      if quote.start_with?('%s')
+        # Here we're going to check if there is a closing character, a new line,
+        # or a quote in the content of the dyna symbol. If there is, then
+        # quoting could get weird, so just bail out and stick to the original
+        # quotes in the source.
+        matching = Quotes.matching(quote[2])
+        pattern = /[\n#{Regexp.escape(matching)}'"]/
+
+        if parts.any? { |part| part.is_a?(TStringContent) && part.value.match?(pattern) }
+          [quote, matching]
+        elsif Quotes.locked?(self)
+          ["#{':' unless hash_key}'", "'"]
+        else
+          ["#{':' unless hash_key}#{q.quote}", q.quote]
+        end
+      elsif Quotes.locked?(self)
+        if quote.start_with?(':')
+          [hash_key ? quote[1..-1] : quote, quote[1..-1]]
+        else
+          [hash_key ? quote : ":#{quote}", quote]
+        end
+      else
+        [hash_key ? q.quote : ":#{q.quote}", q.quote]
+      end
     end
   end
 
@@ -10444,8 +10526,30 @@ class SyntaxTree < Ripper
     end
 
     def format(q)
-      q.group(0, quote, quote) do
-        q.format_each(parts)
+      if parts.empty?
+        q.text("#{q.quote}#{q.quote}")
+        return
+      end
+
+      opening_quote, closing_quote =
+        if !Quotes.locked?(self)
+          [q.quote, q.quote]
+        elsif quote.start_with?('%')
+          [quote, Quotes.matching(quote[/%[qQ]?(.)/, 1])]
+        else
+          [quote, quote]
+        end
+
+      q.group(0, opening_quote, closing_quote) do
+        parts.each do |part|
+          if part.is_a?(TStringContent)
+            value = Quotes.normalize(part.value, closing_quote)
+            separator = -> { q.breakable(force: true, indent: false) }
+            q.seplist(value.split(/\r?\n/, -1), separator) { |text| q.text(text) }
+          else
+            q.format(part)
+          end
+        end
       end
     end
 
