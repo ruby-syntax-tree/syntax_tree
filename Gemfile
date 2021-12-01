@@ -7,3 +7,4 @@ gemspec
 gem 'benchmark-ips'
 gem 'parser'
 gem 'ruby_parser'
+gem 'stackprof'

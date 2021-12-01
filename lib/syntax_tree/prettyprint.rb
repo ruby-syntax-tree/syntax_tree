@@ -540,37 +540,6 @@ class PrettyPrint
     end
   end
 
-  # This is a visitor that can be passed to PrettyPrint.visit that will
-  # propagate BreakParent nodes all of the way up the tree. When a BreakParent
-  # is encountered, it will break the surrounding group, and then that group
-  # will break its parent, and so on.
-  class PropagateBreaksVisitor
-    attr_reader :groups, :visited
-
-    def initialize
-      @groups = []
-      @visited = []
-    end
-
-    def on_enter(doc)
-      case doc
-      when BreakParent
-        groups.last&.break
-      when Group
-        groups << doc
-        return false if visited.include?(doc)
-
-        visited << doc
-      end
-
-      true
-    end
-
-    def on_exit(doc)
-      groups.last&.break if doc.is_a?(Group) && groups.pop.break?
-    end
-  end
-
   # When printing, you can optionally specify the value that should be used
   # whenever a group needs to be broken onto multiple lines. In this case the
   # default is \n.
@@ -751,7 +720,7 @@ class PrettyPrint
     # First, ensure that we've propagated all of the necessary break-parent
     # nodes throughout the tree.
     doc = groups.first
-    PrettyPrint.visit(doc, PropagateBreaksVisitor.new)
+    propagate_breaks(doc)
 
     # This represents how far along the current line we are. It gets reset
     # back to 0 when we encounter a newline.
@@ -1130,6 +1099,37 @@ class PrettyPrint
     end
 
     false
+  end
+
+  # This will walk the doc tree and propagate BreakParent nodes all of the way
+  # up the tree. When a BreakParent is encountered, it will break the
+  # surrounding group, and then that group will break its parent, and so on.
+  def propagate_breaks(doc)
+    marker = Object.new
+    stack = [doc]
+    groups = []
+
+    while doc = stack.pop
+      if doc == marker
+        groups.last&.break if stack.pop.is_a?(Group) && groups.pop.break?
+      else
+        stack += [doc, marker]
+        enter = false
+
+        case doc
+        when BreakParent
+          groups.last&.break
+        when Group
+          groups << doc
+          stack += doc.contents.reverse
+        when IfBreak
+          stack += doc.break_contents.reverse
+          stack += doc.flat_contents.reverse
+        when Align, Indent, LineSuffix
+          stack += doc.contents.reverse
+        end
+      end
+    end
   end
 
   # Resets the group stack and target array so that this pretty printer object

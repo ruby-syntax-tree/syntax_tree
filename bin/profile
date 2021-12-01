@@ -1,0 +1,16 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+require 'bundler/setup'
+require 'stackprof'
+
+filepath = File.expand_path('../lib/syntax_tree', __dir__)
+require_relative filepath
+
+GC.disable
+
+StackProf.run(mode: :cpu, out: "tmp/profile.dump", raw: true) do
+  SyntaxTree.format(File.read("#{filepath}.rb"))
+end
+
+GC.enable
