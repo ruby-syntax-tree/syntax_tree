@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 
 ## [Unreleased]
 
+### Changed
+
+- Force a break if a block is attached to a `Command` or `CommandCall` node.
+
 ## [0.1.0] - 2021-11-16
 
 ### Added

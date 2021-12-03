@@ -1,2 +1,2 @@
 %
-::Foo::Bar = baz
+::Foo = baz

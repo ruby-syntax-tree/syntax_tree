@@ -7,7 +7,7 @@ require "stringio"
 
 require_relative "syntax_tree/version"
 
-# If PrettyPrint::Assign isn't defined, then we haven't gotten the updated
+# If PrettyPrint::Align isn't defined, then we haven't gotten the updated
 # version of prettyprint. In that case we'll define our own. This is going to
 # overwrite a bunch of methods, so silencing them as well.
 unless PrettyPrint.const_defined?(:Align)
@@ -248,6 +248,12 @@ class SyntaxTree < Ripper
 
       last_index += line.size
     end
+
+    # Make sure line counts is filled out with the first and last line at
+    # minimum so that it has something to compare against if the parser is in a
+    # lineno=2 state for an empty file.
+    @line_counts << SingleByteString.new(0) if @line_counts.empty?
+    @line_counts << SingleByteString.new(last_index)
   end
 
   def self.parse(source)
@@ -2695,44 +2701,58 @@ class SyntaxTree < Ripper
     end
 
     def format(q)
-      q.group do
+      receiver = q.parent.call
+
+      # If the parent node is a command node, then there are no parentheses
+      # around the arguments to that command, so we need to break the block.
+      if receiver.is_a?(Command) || receiver.is_a?(CommandCall)
+        q.break_parent
+        format_break(q)
+        return
+      end
+
+      q.group { q.if_break { format_break(q) }.if_flat { format_flat(q) } }
+    end
+
+    private
+
+    def format_break(q)
+      q.text(" ")
+      q.format(BlockOpenFormatter.new("do", block_open))
+
+      if node.block_var
         q.text(" ")
+        q.format(node.block_var)
+      end
 
-        q.if_break do
-          q.format(BlockOpenFormatter.new("do", block_open))
-
-          if node.block_var
-            q.text(" ")
-            q.format(node.block_var)
-          end
-
-          unless statements.empty?
-            q.indent do
-              q.breakable
-              q.format(statements)
-            end
-          end
-
+      unless statements.empty?
+        q.indent do
           q.breakable
-          q.text("end")
-        end.if_flat do
-          q.format(BlockOpenFormatter.new("{", block_open))
-
-          if node.block_var
-            q.breakable
-            q.format(node.block_var)
-            q.breakable
-          end
-
-          unless statements.empty?
-            q.breakable unless node.block_var
-            q.format(statements)
-            q.breakable
-          end
-
-          q.text("}")
+          q.format(statements)
         end
       end
+
+      q.breakable
+      q.text("end")
+    end
+
+    def format_flat(q)
+      q.text(" ")
+      q.format(BlockOpenFormatter.new("{", block_open))
+
+      if node.block_var
+        q.breakable
+        q.format(node.block_var)
+        q.breakable
+      end
+
+      unless statements.empty?
+        q.breakable unless node.block_var
+        q.format(statements)
+        q.breakable
+      end
+
+      q.text("}")
     end
   end
 
@@ -2854,8 +2874,13 @@ class SyntaxTree < Ripper
           if arguments.parts.length == 1 && arguments.parts.first.is_a?(Paren)
             q.format(arguments)
           else
-            q.text(" ")
-            q.nest(keyword.length + 1) { q.format(arguments) }
+            q.if_break { q.text("(") }
+            q.indent do
+              q.breakable(" ")
+              q.format(arguments)
+            end
+            q.breakable("")
+            q.if_break { q.text(")") }
           end
         end
       end
@@ -5009,6 +5034,7 @@ class SyntaxTree < Ripper
 
     node = tokens[index]
     ending = node.value == "end" ? tokens.delete_at(index) : node
+    # ending = node
 
     statements.bind(beginning.location.end_char, ending.location.start_char)
 
@@ -11256,6 +11282,11 @@ class SyntaxTree < Ripper
 
     def child_nodes
       [constant]
+    end
+
+    def format(q)
+      q.text("::")
+      q.format(constant)
     end
 
     def pretty_print(q)

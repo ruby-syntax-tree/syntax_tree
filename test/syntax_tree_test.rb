@@ -16,6 +16,11 @@ class SyntaxTree
     # Tests for behavior
     # --------------------------------------------------------------------------
 
+    def test_empty
+      void_stmt = SyntaxTree.parse("").statements.body.first
+      assert_kind_of(VoidStmt, void_stmt)
+    end
+
     def test_multibyte
       assign = SyntaxTree.parse("🎉 + 🎉").statements.body.first
       assert_equal(5, assign.location.end_char)

@@ -58,27 +58,14 @@ mode =
     exit(1)
   end
 
-queue = Queue.new
-ARGV.each { |pattern| Dir[pattern].each { |filepath| queue << filepath } }
-
-if queue.size <= 1
-  filepath = queue.shift
-  mode.run(filepath) if File.file?(filepath)
-  return
-end
-
-count = [8, queue.size].min
-threads =
-  count.times.map do
-    Thread.new do
-      loop do
-        filepath = queue.shift
-        break if filepath == :exit
-
-        mode.run(filepath) if File.file?(filepath)
-      end
+ARGV.each do |pattern|
+  Dir.glob(pattern).each do |filepath|
+    begin
+      mode.run(filepath) if File.file?(filepath)
+    rescue => error
+      warn("!!! Failed on #{filepath}")
+      warn(error.message)
+      warn(error.backtrace)
     end
   end
-
-count.times { queue << :exit }
-threads.each(&:join)
+end

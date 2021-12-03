@@ -10,3 +10,7 @@ end
 %
 foo do # comment
 end
+%
+foo :bar do
+  baz
+end
