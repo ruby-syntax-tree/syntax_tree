@@ -7388,9 +7388,11 @@ class SyntaxTree < Ripper
         if params.is_a?(Paren)
           q.format(params) unless params.contents.empty?
         elsif !params.empty?
-          q.text("(")
-          q.format(params)
-          q.text(")")
+          q.group do
+            q.text("(")
+            q.format(params)
+            q.text(")")
+          end
         end
 
         q.text(" ")

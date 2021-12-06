@@ -20,6 +20,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 - Skip indentation for special array literals on assignment nodes.
 - Ensure a final breakable is inserted when converting an `ArrayLiteral` to a `QSymbols`.
 - Fix up the `doc_width` calculation for `CommandCall` nodes.
+- Ensure parameters inside a lambda literal when there are no parentheses are grouped.
 
 ## [0.1.0] - 2021-11-16
 
