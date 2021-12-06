@@ -16,6 +16,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 - Don't indent `CommandCall` arguments if they don't fit aligned.
 - Force a break in `Call` nodes if there are comments on the receiver.
 - Do not change block bounds if inside of a `Command` or `CommandCall` node.
+- Handle empty parentheses inside method calls.
 
 ## [0.1.0] - 2021-11-16
 

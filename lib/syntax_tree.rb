@@ -8763,7 +8763,7 @@ class SyntaxTree < Ripper
     # [LParen] the left parenthesis that opened this statement
     attr_reader :lparen
 
-    # [untyped] the expression inside the parentheses
+    # [nil | untyped] the expression inside the parentheses
     attr_reader :contents
 
     # [Location] the location of this node
@@ -8787,7 +8787,7 @@ class SyntaxTree < Ripper
       q.group do
         q.format(lparen)
 
-        if !contents.is_a?(Params) || !contents.empty?
+        if contents && (!contents.is_a?(Params) || !contents.empty?)
           q.indent do
             q.breakable("")
             q.format(contents)
@@ -8852,7 +8852,7 @@ class SyntaxTree < Ripper
 
     Paren.new(
       lparen: lparen,
-      contents: contents,
+      contents: contents || nil,
       location: lparen.location.to(rparen.location)
     )
   end
