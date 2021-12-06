@@ -8,6 +8,10 @@ break foo, bar
 break(foo)
 %
 break fooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo
+-
+break(
+  fooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo
+)
 %
 break(fooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo)
 -

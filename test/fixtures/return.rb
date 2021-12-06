@@ -8,6 +8,10 @@ return foo, bar
 return(foo)
 %
 return fooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo
+-
+return(
+  fooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo
+)
 %
 return(fooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo)
 -
