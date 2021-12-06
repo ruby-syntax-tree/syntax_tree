@@ -3546,8 +3546,8 @@ class SyntaxTree < Ripper
         q.text(" ")
 
         width = doc_width(doc)
-        if width > (q.maxwidth / 2) || width < 2
-          q.indent { q.format(arguments) }
+        if width > (q.maxwidth / 2)
+          q.format(arguments)
         else
           q.nest(width) { q.format(arguments) }
         end
