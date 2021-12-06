@@ -6,7 +6,7 @@ require_relative File.expand_path("../lib/syntax_tree", __dir__)
 help = <<~EOF
   stree MDOE FILE
 
-  MODE: one of "a", "ast", "d", "doc", "f", "format", "w", or "write"
+  MODE: one of "a", "ast", "c", "check", "d", "doc", "f", "format", "w", or "write"
   FILE: one or more paths to files to parse
 EOF
 
@@ -19,6 +19,13 @@ module SyntaxTree::CLI
   class AST
     def run(filepath)
       pp SyntaxTree.parse(File.read(filepath))
+    end
+  end
+
+  class Check
+    def run(filepath)
+      formatted = SyntaxTree.format(File.read(filepath))
+      raise if formatted != SyntaxTree.format(formatted)
     end
   end
 
@@ -47,6 +54,8 @@ mode =
   case ARGV.shift
   when "a", "ast"
     SyntaxTree::CLI::AST.new
+  when "c", "check"
+    SyntaxTree::CLI::Check.new
   when "d", "doc"
     SyntaxTree::CLI::Doc.new
   when "f", "format"
@@ -58,6 +67,8 @@ mode =
     exit(1)
   end
 
+errored = false
+
 ARGV.each do |pattern|
   Dir.glob(pattern).each do |filepath|
     begin
@@ -66,6 +77,9 @@ ARGV.each do |pattern|
       warn("!!! Failed on #{filepath}")
       warn(error.message)
       warn(error.backtrace)
+      errored = true
     end
   end
 end
+
+exit(errored ? 1 : 0)

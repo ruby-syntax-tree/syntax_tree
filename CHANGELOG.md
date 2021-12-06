@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 
 ## [Unreleased]
 
+### Added
+
+- The ability to "check" formatting by formatting the output of the first format.
+
 ### Changed
 
 - Force a break if a block is attached to a `Command` or `CommandCall` node.
