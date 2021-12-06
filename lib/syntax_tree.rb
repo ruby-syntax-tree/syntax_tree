@@ -3634,11 +3634,11 @@ class SyntaxTree < Ripper
         when PrettyPrint::Text
           width += doc.width
         when PrettyPrint::Indent, PrettyPrint::Align, PrettyPrint::Group
-          queue += doc.contents.reverse
+          queue = doc.contents + queue
         when PrettyPrint::IfBreak
-          queue += doc.flat_contents.reverse
+          queue = doc.break_contents + queue
         when PrettyPrint::Breakable
-          width = doc.force? ? 0 : width + doc.width
+          width = 0
         end
       end
 
