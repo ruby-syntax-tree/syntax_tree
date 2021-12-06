@@ -1684,7 +1684,7 @@ class SyntaxTree < Ripper
         q.format(target)
         q.text(" =")
 
-        if skip_indent?
+        if skip_indent_target? || skip_indent_value?
           q.text(" ")
           q.format(value)
         else
@@ -1722,11 +1722,21 @@ class SyntaxTree < Ripper
 
     private
 
-    def skip_indent?
-      target.is_a?(ARefField) || value.is_a?(ArrayLiteral) ||
-        value.is_a?(HashLiteral) ||
-        value.is_a?(Heredoc) ||
-        value.is_a?(Lambda)
+    def skip_indent_target?
+      target.is_a?(ARefField)
+    end
+
+    def skip_indent_value?
+      [
+        ArrayLiteral,
+        HashLiteral,
+        Heredoc,
+        Lambda,
+        QSymbols,
+        QWords,
+        Symbols,
+        Words
+      ].any? { |type| value.is_a?(type) }
     end
   end
 
