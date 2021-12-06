@@ -3010,6 +3010,7 @@ class SyntaxTree < Ripper
         q.format(receiver)
         q.group do
           q.indent do
+            q.breakable(force: true) if receiver.comments.any?
             q.format(CallOperatorFormatter.new(operator))
             q.format(message) if message != :call
           end

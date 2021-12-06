@@ -15,6 +15,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 
 - Force a break if a block is attached to a `Command` or `CommandCall` node.
 - Don't indent `CommandCall` arguments if they don't fit aligned.
+- Force a break in `Call` nodes if there are comments on the receiver.
 
 ## [0.1.0] - 2021-11-16
 
