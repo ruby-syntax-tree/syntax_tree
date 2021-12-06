@@ -7463,8 +7463,8 @@ class SyntaxTree < Ripper
   def on_lambda(params, statements)
     beginning = find_token(TLambda)
 
-    if token = find_token(TLamBeg, consume: false)
-      opening = tokens.delete(token)
+    if tokens.any? { |token| token.is_a?(TLamBeg) && token.location.start_char > beginning.location.start_char }
+      opening = find_token(TLamBeg)
       closing = find_token(RBrace)
     else
       opening = find_token(Kw, "do")

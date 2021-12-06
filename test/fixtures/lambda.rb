@@ -36,3 +36,7 @@ command.call foo, ->(bar) { barrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr 
 -
 command.call foo,
              ->(bar) { barrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr }
+%
+-> { -> foo do bar end.baz }.qux
+-
+-> { ->(foo) { bar }.baz }.qux
