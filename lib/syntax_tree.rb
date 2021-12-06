@@ -2720,8 +2720,20 @@ class SyntaxTree < Ripper
 
       # If this is nested anywhere inside of a Command or CommandCall node, then
       # we can't change which operators we're using for the bounds of the block.
+      found_command =
+        q.parents.any? do |parent|
+          # If we hit a statements, then we're safe to use whatever since we
+          # know for certain we're going to get split over multiple lines
+          # anyway.
+          break false if parent.is_a?(Statements)
+
+          parent.is_a?(Command) || parent.is_a?(CommandCall)
+        end
+
+      # If this is nested anywhere inside of a Command or CommandCall node, then
+      # we can't change which operators we're using for the bounds of the block.
       break_opening, break_closing, flat_opening, flat_closing =
-        if q.parents.any? { |node| node.is_a?(Command) || node.is_a?(CommandCall) }
+        if found_command
           [block_open.value, block_close, block_open.value, block_close]
         else
           ["do", "end", "{", "}"]
