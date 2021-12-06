@@ -2716,31 +2716,21 @@ class SyntaxTree < Ripper
     end
 
     def format(q)
-      receiver = q.parent.call
-
-      # If this is nested anywhere inside of a Command or CommandCall node, then
-      # we can't change which operators we're using for the bounds of the block.
-      found_command =
-        q.parents.any? do |parent|
-          # If we hit a statements, then we're safe to use whatever since we
-          # know for certain we're going to get split over multiple lines
-          # anyway.
-          break false if parent.is_a?(Statements)
-
-          parent.is_a?(Command) || parent.is_a?(CommandCall)
-        end
-
       # If this is nested anywhere inside of a Command or CommandCall node, then
       # we can't change which operators we're using for the bounds of the block.
       break_opening, break_closing, flat_opening, flat_closing =
-        if found_command
+        if unchangeable_bounds?(q)
           [block_open.value, block_close, block_open.value, block_close]
+        elsif forced_do_end_bounds?(q)
+          ["do", "end", "do", "end"]
         else
           ["do", "end", "{", "}"]
         end
 
-      # If the parent node is a command node, then there are no parentheses
-      # around the arguments to that command, so we need to break the block.
+      # If the receiver of this block a Command or CommandCall node, then there
+      # are no parentheses around the arguments to that command, so we need to
+      # break the block.
+      receiver = q.parent.call
       if receiver.is_a?(Command) || receiver.is_a?(CommandCall)
         q.break_parent
         format_break(q, break_opening, break_closing)
@@ -2754,6 +2744,25 @@ class SyntaxTree < Ripper
     end
 
     private
+
+    # If this is nested anywhere inside certain nodes, then we can't change
+    # which operators/keywords we're using for the bounds of the block.
+    def unchangeable_bounds?(q)
+      q.parents.any? do |parent|
+        # If we hit a statements, then we're safe to use whatever since we
+        # know for certain we're going to get split over multiple lines
+        # anyway.
+        break false if parent.is_a?(Statements)
+
+        [Command, CommandCall].include?(parent.class)
+      end
+    end
+
+    # If we're a sibling of a control-flow keyword, then we're going to have to
+    # use the do..end bounds.
+    def forced_do_end_bounds?(q)
+      [Break, Next, Return, Super].include?(q.parent.call.class)
+    end
 
     def format_break(q, opening, closing)
       q.text(" ")
@@ -2785,7 +2794,9 @@ class SyntaxTree < Ripper
         q.breakable
       end
 
-      unless statements.empty?
+      if statements.empty?
+        q.text(" ") if opening == "do"
+      else
         q.breakable unless node.block_var
         q.format(statements)
         q.breakable
