@@ -6509,6 +6509,51 @@ class SyntaxTree < Ripper
     )
   end
 
+  # If you have a modifier statement (for instance a modifier if statement or a
+  # modifier while loop) there are times when you need to wrap the entire
+  # statement in parentheses. This occurs when you have something like:
+  #
+  #     foo[:foo] =
+  #       if bar?
+  #         baz
+  #       end
+  #
+  # Normally we would shorten this to an inline version, which would result in:
+  #
+  #     foo[:foo] = baz if bar?
+  #
+  # but this actually has different semantic meaning. The first example will
+  # result in a nil being inserted into the hash for the :foo key, whereas the
+  # second example will result in an empty hash because the if statement applies
+  # to the entire assignment.
+  #
+  # We can fix this in a couple of ways. We can use the then keyword, as in:
+  #
+  #     foo[:foo] = if bar? then baz end
+  #
+  # But this isn't used very often. We can also just leave it as is with the
+  # multi-line version, but for a short predicate and short value it looks
+  # verbose. The last option and the one used here is to add parentheses on
+  # both sides of the expression, as in:
+  #
+  #     foo[:foo] = (baz if bar?)
+  #
+  # This approach maintains the nice conciseness of the inline version, while
+  # keeping the correct semantic meaning.
+  module ModifierParentheses
+    def self.call(q)
+      parens = [Args, Assign, Assoc, Binary, Call, Defined, MAssign, OpAssign]
+
+      if parens.include?(q.parent.class)
+        q.text("(")
+        yield
+        q.text(")")
+      else
+        yield
+      end
+    end
+  end
+
   # Formats an If or Unless node.
   class ConditionalFormatter
     # [String] the keyword associated with this conditional
@@ -6549,9 +6594,11 @@ class SyntaxTree < Ripper
       else
         q.group do
           q.if_break { break_format.call(force: false) }.if_flat do
-            q.format(node.statements)
-            q.text(" #{keyword} ")
-            q.format(node.predicate)
+            ModifierParentheses.call(q) do
+              q.format(node.statements)
+              q.text(" #{keyword} ")
+              q.format(node.predicate)
+            end
           end
         end
       end
@@ -6784,9 +6831,11 @@ class SyntaxTree < Ripper
           q.breakable
           q.text("end")
         end.if_flat do
-          q.format(node.statement)
-          q.text(" #{keyword} ")
-          q.format(node.predicate)
+          ModifierParentheses.call(q) do
+            q.format(node.statement)
+            q.text(" #{keyword} ")
+            q.format(node.predicate)
+          end
         end
       end
     end
@@ -12018,9 +12067,11 @@ class SyntaxTree < Ripper
           q.breakable("")
           q.text("end")
         end.if_flat do
-          q.format(statements)
-          q.text(" #{keyword} ")
-          q.format(node.predicate)
+          ModifierParentheses.call(q) do
+            q.format(statements)
+            q.text(" #{keyword} ")
+            q.format(node.predicate)
+          end
         end
       end
     end

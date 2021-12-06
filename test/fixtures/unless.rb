@@ -16,3 +16,7 @@ unless foo
   bar
 else
 end
+%
+foo = unless bar then baz end
+-
+foo = (baz unless bar)

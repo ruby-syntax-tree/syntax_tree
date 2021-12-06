@@ -934,10 +934,6 @@ class SyntaxTree
       assert_node(VarRef, "var_ref", "true")
     end
 
-    def test_access_ctrl
-      assert_node(AccessCtrl, "access_ctrl", "private")
-    end
-
     def test_vcall
       assert_node(VCall, "vcall", "variable")
     end
