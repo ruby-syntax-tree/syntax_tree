@@ -7781,9 +7781,7 @@ class SyntaxTree < Ripper
 
     def format(q)
       q.format(call)
-
-      width = call.is_a?(Command) ? call.message.value.length + 1 : 0
-      q.nest(width) { q.format(block) }
+      q.format(block)
     end
 
     def pretty_print(q)
