@@ -1379,6 +1379,7 @@ class SyntaxTree < Ripper
               q.format(part.value)
             end
           end
+          q.breakable("")
         end
       end
     end

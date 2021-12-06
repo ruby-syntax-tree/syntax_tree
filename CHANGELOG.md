@@ -18,6 +18,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 - Do not change block bounds if inside of a `Command` or `CommandCall` node.
 - Handle empty parentheses inside method calls.
 - Skip indentation for special array literals on assignment nodes.
+- Ensure a final breakable is inserted when converting an `ArrayLiteral` to a `QSymbols`.
 
 ## [0.1.0] - 2021-11-16
 
