@@ -26,6 +26,10 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 - Ensure nested `Lambda` nodes get their correct bounds.
 - Ensure we do not change block bounds within control flow constructs.
 
+### Removed
+
+- The `AccessCtrl` node in favor of just formatting correctly when you hit a `Statements` node.
+
 ## [0.1.0] - 2021-11-16
 
 ### Added

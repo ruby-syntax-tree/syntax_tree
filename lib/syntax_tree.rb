@@ -10468,6 +10468,11 @@ class SyntaxTree < Ripper
         return
       end
 
+      access_controls =
+        Hash.new do |hash, node|
+          hash[node] = node.is_a?(VCall) && %w[private protected public].include?(node.value.value)
+        end
+
       body.each_with_index do |statement, index|
         next if statement.is_a?(VoidStmt)
 
@@ -10477,7 +10482,7 @@ class SyntaxTree < Ripper
           q.breakable(force: true)
           q.breakable(force: true)
           q.format(statement)
-        elsif statement.is_a?(AccessCtrl) || body[index - 1].is_a?(AccessCtrl)
+        elsif access_controls[statement] || access_controls[body[index - 1]]
           q.breakable(force: true)
           q.breakable(force: true)
           q.format(statement)
@@ -12379,56 +12384,6 @@ class SyntaxTree < Ripper
     VarRef.new(value: value, location: value.location)
   end
 
-  # AccessCtrl represents a call to a method visibility control, i.e., +public+,
-  # +protected+, or +private+.
-  #
-  #     private
-  #
-  class AccessCtrl
-    # [Ident] the value of this expression
-    attr_reader :value
-
-    # [Location] the location of this node
-    attr_reader :location
-
-    # [Array[ Comment | EmbDoc ]] the comments attached to this node
-    attr_reader :comments
-
-    def initialize(value:, location:, comments: [])
-      @value = value
-      @location = location
-      @comments = comments
-    end
-
-    def child_nodes
-      [value]
-    end
-
-    def format(q)
-      q.format(value)
-    end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("access_ctrl")
-
-        q.breakable
-        q.pp(value)
-
-        q.pp(Comment::List.new(comments))
-      end
-    end
-
-    def to_json(*opts)
-      {
-        type: :access_ctrl,
-        value: value,
-        loc: location,
-        cmts: comments
-      }.to_json(*opts)
-    end
-  end
-
   # VCall represent any plain named object with Ruby that could be either a
   # local variable or a method call.
   #
@@ -12477,19 +12432,9 @@ class SyntaxTree < Ripper
   end
 
   # :call-seq:
-  #   on_vcall: (Ident ident) -> AccessCtrl | VCall
+  #   on_vcall: (Ident ident) -> VCall
   def on_vcall(ident)
-    @controls ||= %w[private protected public].freeze
-
-    if @controls.include?(ident.value) && ident.value == lines[lineno - 1].strip
-      # Access controls like private, protected, and public are reported as
-      # vcall nodes since they're technically method calls. We want to be able
-      # add new lines around them as necessary, so here we're going to
-      # explicitly track those as a different node type.
-      AccessCtrl.new(value: ident, location: ident.location)
-    else
-      VCall.new(value: ident, location: ident.location)
-    end
+    VCall.new(value: ident, location: ident.location)
   end
 
   # VoidStmt represents an empty lexical block of code.
