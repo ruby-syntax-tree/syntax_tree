@@ -1453,7 +1453,7 @@ class SyntaxTree < Ripper
           part.is_a?(StringLiteral) && part.comments.empty? &&
             part.parts.length == 1 &&
             part.parts.first.is_a?(TStringContent) &&
-            !part.parts.first.value.match?(/[\s\\\]]/)
+            !part.parts.first.value.match?(/[\s\[\]\\]/)
         end
     end
 
