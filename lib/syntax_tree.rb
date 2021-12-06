@@ -2691,34 +2691,50 @@ class SyntaxTree < Ripper
     # [LBrace | Keyword] the node that opens the block
     attr_reader :block_open
 
+    # [String] the string that closes the block
+    attr_reader :block_close
+
     # [BodyStmt | Statements] the statements inside the block
     attr_reader :statements
 
-    def initialize(node, block_open, statements)
+    def initialize(node, block_open, block_close, statements)
       @node = node
       @block_open = block_open
+      @block_close = block_close
       @statements = statements
     end
 
     def format(q)
       receiver = q.parent.call
 
+      # If this is nested anywhere inside of a Command or CommandCall node, then
+      # we can't change which operators we're using for the bounds of the block.
+      break_opening, break_closing, flat_opening, flat_closing =
+        if q.parents.any? { |node| node.is_a?(Command) || node.is_a?(CommandCall) }
+          [block_open.value, block_close, block_open.value, block_close]
+        else
+          ["do", "end", "{", "}"]
+        end
+
       # If the parent node is a command node, then there are no parentheses
       # around the arguments to that command, so we need to break the block.
       if receiver.is_a?(Command) || receiver.is_a?(CommandCall)
         q.break_parent
-        format_break(q)
+        format_break(q, break_opening, break_closing)
         return
       end
 
-      q.group { q.if_break { format_break(q) }.if_flat { format_flat(q) } }
+      q.group do
+        q.if_break { format_break(q, break_opening, break_closing) }
+         .if_flat { format_flat(q, flat_opening, flat_closing) }
+      end
     end
 
     private
 
-    def format_break(q)
+    def format_break(q, opening, closing)
       q.text(" ")
-      q.format(BlockOpenFormatter.new("do", block_open))
+      q.format(BlockOpenFormatter.new(opening, block_open))
 
       if node.block_var
         q.text(" ")
@@ -2733,12 +2749,12 @@ class SyntaxTree < Ripper
       end
 
       q.breakable
-      q.text("end")
+      q.text(closing)
     end
 
-    def format_flat(q)
+    def format_flat(q, opening, closing)
       q.text(" ")
-      q.format(BlockOpenFormatter.new("{", block_open))
+      q.format(BlockOpenFormatter.new(opening, block_open))
 
       if node.block_var
         q.breakable
@@ -2752,7 +2768,7 @@ class SyntaxTree < Ripper
         q.breakable
       end
 
-      q.text("}")
+      q.text(closing)
     end
   end
 
@@ -2790,7 +2806,7 @@ class SyntaxTree < Ripper
     end
 
     def format(q)
-      BlockFormatter.new(self, lbrace, statements).format(q)
+      BlockFormatter.new(self, lbrace, "}", statements).format(q)
     end
 
     def pretty_print(q)
@@ -3541,12 +3557,16 @@ class SyntaxTree < Ripper
 
     def format(q)
       q.group do
-        doc = q.format(receiver)
-        q.format(CallOperatorFormatter.new(operator))
-        q.format(message)
-        q.text(" ")
+        doc =
+          q.nest(0) do
+            q.format(receiver)
+            q.format(CallOperatorFormatter.new(operator))
+            q.format(message)
+            q.text(" ")
+          end
 
         width = doc_width(doc)
+
         if width > (q.maxwidth / 2)
           q.format(arguments)
         else
@@ -4538,7 +4558,7 @@ class SyntaxTree < Ripper
     end
 
     def format(q)
-      BlockFormatter.new(self, keyword, bodystmt).format(q)
+      BlockFormatter.new(self, keyword, "end", bodystmt).format(q)
     end
 
     def pretty_print(q)
