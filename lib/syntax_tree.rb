@@ -2789,7 +2789,7 @@ class SyntaxTree < Ripper
     # to go with the {..} bounds.
     def forced_brace_bounds?(q)
       parent, grandparent, = q.parents.to_a
-      [If, IfMod, Unless, UnlessMod, While, WhileMod, Until, UntilMod].include?(grandparent.class) && parent == grandparent.predicate
+      [If, IfMod, IfOp, Unless, UnlessMod, While, WhileMod, Until, UntilMod].include?(grandparent.class) && parent == grandparent.predicate
     end
 
     def format_break(q, opening, closing)

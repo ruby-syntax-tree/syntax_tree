@@ -53,6 +53,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 - Allow `IfMod` and `UnlessMod` to know about heredocs moving their bounds.
 - Properly handle breaking parameters when there are no parentheses.
 - Properly handle trailing operators in call chains with attached comments.
+- Force using braces if the block is within the predicate of a ternary.
 
 ### Removed
 
