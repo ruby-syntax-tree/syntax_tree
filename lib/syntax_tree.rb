@@ -12759,7 +12759,10 @@ class SyntaxTree < Ripper
     beginning = find_token(Kw, "when")
     ending = consequent || find_token(Kw, "end")
 
-    statements.bind(arguments.location.end_char, ending.location.start_char)
+    statements.bind(
+      find_next_statement_start(arguments.location.end_char),
+      ending.location.start_char
+    )
 
     When.new(
       arguments: arguments,
