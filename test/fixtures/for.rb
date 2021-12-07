@@ -34,3 +34,7 @@ foo do
     bar
   end
 end
+%
+for foo, in [[foo, bar]]
+  foo
+end

@@ -5957,6 +5957,7 @@ class SyntaxTree < Ripper
   #   ) -> For
   def on_for(index, collection, statements)
     beginning = find_token(Kw, "for")
+    in_keyword = find_token(Kw, "in")
     ending = find_token(Kw, "end")
 
     # Consume the do keyword if it exists so that it doesn't get confused for
@@ -5971,6 +5972,11 @@ class SyntaxTree < Ripper
       (keyword || collection).location.end_char,
       ending.location.start_char
     )
+
+    if index.is_a?(MLHS)
+      comma_range = index.location.end_char...in_keyword.location.start_char
+      index.comma = true if source[comma_range].strip.start_with?(",")
+    end
 
     For.new(
       index: index,
@@ -7736,11 +7742,7 @@ class SyntaxTree < Ripper
 
     def format(q)
       q.group do
-        q.group do
-          q.format(target)
-          q.text(",") if target.is_a?(MLHS) && target.comma
-        end
-
+        q.group { q.format(target) }
         q.text(" =")
         q.indent do
           q.breakable
@@ -7954,7 +7956,6 @@ class SyntaxTree < Ripper
     # list, which impacts destructuring. It's an attr_accessor so that while
     # the syntax tree is being built it can be set by its parent node
     attr_accessor :comma
-    alias comma? comma
 
     # [Location] the location of this node
     attr_reader :location
@@ -7975,6 +7976,7 @@ class SyntaxTree < Ripper
 
     def format(q)
       q.seplist(parts) { |part| q.format(part) }
+      q.text(",") if comma
     end
 
     def pretty_print(q)
@@ -8077,7 +8079,6 @@ class SyntaxTree < Ripper
           q.indent do
             q.breakable("")
             q.format(contents)
-            q.text(",") if contents.is_a?(MLHS) && contents.comma?
           end
 
           q.breakable("")
