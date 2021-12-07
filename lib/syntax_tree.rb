@@ -2288,11 +2288,14 @@ class SyntaxTree < Ripper
       q.group do
         q.group { q.format(left) }
         q.text(" ") unless power
-        q.text(operator)
 
-        q.indent do
-          q.breakable(power ? "" : " ")
-          q.format(right)
+        q.group do
+          q.text(operator)
+
+          q.indent do
+            q.breakable(power ? "" : " ")
+            q.format(right)
+          end
         end
       end
     end
@@ -2788,8 +2791,14 @@ class SyntaxTree < Ripper
     # If we're the predicate of a loop or conditional, then we're going to have
     # to go with the {..} bounds.
     def forced_brace_bounds?(q)
-      parent, grandparent, = q.parents.to_a
-      [If, IfMod, IfOp, Unless, UnlessMod, While, WhileMod, Until, UntilMod].include?(grandparent.class) && parent == grandparent.predicate
+      parents = q.parents.to_a
+      parents.each_with_index.any? do |parent, index|
+        # If we hit certain breakpoints then we know we're safe.
+        break false if [Paren, Statements].include?(parent.class)
+
+        [If, IfMod, IfOp, Unless, UnlessMod, While, WhileMod, Until, UntilMod].include?(parent.class) &&
+          parent.predicate == parents[index - 1]
+      end
     end
 
     def format_break(q, opening, closing)
