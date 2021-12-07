@@ -2723,6 +2723,8 @@ class SyntaxTree < Ripper
           [block_open.value, block_close, block_open.value, block_close]
         elsif forced_do_end_bounds?(q)
           ["do", "end", "do", "end"]
+        elsif forced_brace_bounds?(q)
+          ["{", "}", "{", "}"]
         else
           ["do", "end", "{", "}"]
         end
@@ -2762,6 +2764,13 @@ class SyntaxTree < Ripper
     # use the do..end bounds.
     def forced_do_end_bounds?(q)
       [Break, Next, Return, Super].include?(q.parent.call.class)
+    end
+
+    # If we're the predicate of a loop or conditional, then we're going to have
+    # to go with the {..} bounds.
+    def forced_brace_bounds?(q)
+      parent = q.parents.to_a[1]
+      [If, IfMod, Unless, UnlessMod, While, WhileMod, Until, UntilMod].include?(parent.class) && node == parent.predicate.block
     end
 
     def format_break(q, opening, closing)
