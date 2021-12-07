@@ -4708,8 +4708,7 @@ class SyntaxTree < Ripper
     end
 
     def format(q)
-      parent = q.parent
-      space = parent.is_a?(If) || parent.is_a?(Unless)
+      space = [If, IfMod, Unless, UnlessMod].include?(q.parent.class)
 
       left = node.left
       right = node.right

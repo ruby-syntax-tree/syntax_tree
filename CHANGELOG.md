@@ -42,6 +42,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 - Make `Command` and `CommandCall` aware that their arguments could exceed their normal expected bounds because of heredocs.
 - Only unescape forward slashes in regular expressions if converting from slash bounds to `%r` bounds.
 - Allow `When` nodes to grab trailing comments away from their statements lists.
+- Allow flip-flop operators to be formatted correctly within `IfMod` and `UnlessMod` nodes.
 
 ### Removed
 
