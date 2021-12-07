@@ -26,6 +26,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 - Ensure nested `Lambda` nodes get their correct bounds.
 - Ensure we do not change block bounds within control flow constructs.
 - Ensure parentheses are added around keywords changing to their modifier forms.
+- Allow conditionals to take modifier form if they are using the `then` keyword with a `VoidStmt`.
 
 ### Removed
 

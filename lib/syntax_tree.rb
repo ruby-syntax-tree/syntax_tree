@@ -6568,32 +6568,11 @@ class SyntaxTree < Ripper
     end
 
     def format(q)
-      statements = node.statements
-      break_format = ->(force:) do
-        q.text("#{keyword} ")
-        q.nest(keyword.length + 1) { q.format(node.predicate) }
-
-        unless statements.empty?
-          q.indent do
-            q.breakable(force: force)
-            q.format(statements)
-          end
-        end
-
-        if node.consequent
-          q.breakable(force: force)
-          q.format(node.consequent)
-        end
-
-        q.breakable(force: force)
-        q.text("end")
-      end
-
-      if node.consequent || statements.empty?
-        q.group { break_format.call(force: true) }
+      if node.consequent || node.statements.empty?
+        q.group { format_break(q, force: true) }
       else
         q.group do
-          q.if_break { break_format.call(force: false) }.if_flat do
+          q.if_break { format_break(q, force: false) }.if_flat do
             ModifierParentheses.call(q) do
               q.format(node.statements)
               q.text(" #{keyword} ")
@@ -6602,6 +6581,28 @@ class SyntaxTree < Ripper
           end
         end
       end
+    end
+
+    private
+
+    def format_break(q, force:)
+      q.text("#{keyword} ")
+      q.nest(keyword.length + 1) { q.format(node.predicate) }
+
+      unless node.statements.empty?
+        q.indent do
+          q.breakable(force: force)
+          q.format(node.statements)
+        end
+      end
+
+      if node.consequent
+        q.breakable(force: force)
+        q.format(node.consequent)
+      end
+
+      q.breakable(force: force)
+      q.text("end")
     end
   end
 
@@ -10511,10 +10512,14 @@ class SyntaxTree < Ripper
       # the only value is a comment. In that case a lot of nodes like
       # brace_block will attempt to format as a single line, but since that
       # wouldn't work with a comment, we intentionally break the parent group.
-      if body.length == 2 && body.first.is_a?(VoidStmt)
-        q.format(body.last)
-        q.break_parent
-        return
+      if body.length == 2
+        void_stmt, comment = body
+
+        if void_stmt.is_a?(VoidStmt) && comment.is_a?(Comment)
+          q.format(comment)
+          q.break_parent
+          return
+        end
       end
 
       access_controls =
