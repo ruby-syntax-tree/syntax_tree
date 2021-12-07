@@ -482,7 +482,7 @@ class SyntaxTree < Ripper
         q.text(value)
       else
         q.text(q.quote)
-        q.text(value[1])
+        q.text(value[1] == "\"" ? "\\\"" : value[1])
         q.text(q.quote)
       end
     end
@@ -2769,8 +2769,8 @@ class SyntaxTree < Ripper
     # If we're the predicate of a loop or conditional, then we're going to have
     # to go with the {..} bounds.
     def forced_brace_bounds?(q)
-      parent = q.parents.to_a[1]
-      [If, IfMod, Unless, UnlessMod, While, WhileMod, Until, UntilMod].include?(parent.class) && node == parent.predicate.block
+      parent, grandparent, = q.parents.to_a
+      [If, IfMod, Unless, UnlessMod, While, WhileMod, Until, UntilMod].include?(grandparent.class) && parent == grandparent.predicate
     end
 
     def format_break(q, opening, closing)

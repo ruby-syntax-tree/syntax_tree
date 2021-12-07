@@ -35,6 +35,8 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 - Keep block `If`, `Unless`, `While`, and `Until` forms if there is an assignment in the predicate.
 - Force using braces if the block is within the predicate of a conditional or loop.
 - Allow for the possibility that `CommandCall` nodes might not have arguments.
+- Explicitly handle `?"` so that it formats properly.
+- Check that a block is within the predicate in a more relaxed way.
 
 ### Removed
 
