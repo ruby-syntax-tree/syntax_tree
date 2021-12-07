@@ -464,10 +464,7 @@ class SyntaxTree
     end
 
     def test_fcall
-      source = "method(argument)"
-
-      at = location(chars: 0..6)
-      assert_node(FCall, "fcall", source, at: at, &:call)
+      assert_node(FCall, "fcall", "method(argument)")
     end
 
     def test_field
@@ -632,10 +629,6 @@ class SyntaxTree
 
     def test_massign
       assert_node(MAssign, "massign", "first, second, third = value")
-    end
-
-    def test_method_add_arg
-      assert_node(MethodAddArg, "method_add_arg", "method(argument)")
     end
 
     def test_method_add_block

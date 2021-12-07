@@ -3056,9 +3056,7 @@ class SyntaxTree < Ripper
     end
   end
 
-  # Call represents a method call. This node doesn't contain the arguments being
-  # passed (if arguments are passed, this node will get nested under a
-  # MethodAddArg node).
+  # Call represents a method call.
   #
   #     receiver.message
   #
@@ -3072,22 +3070,26 @@ class SyntaxTree < Ripper
     # [:call | Backtick | Const | Ident | Op] the message being sent
     attr_reader :message
 
+    # [nil | ArgParen | Args] the arguments to the method call
+    attr_reader :arguments
+
     # [Location] the location of this node
     attr_reader :location
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(receiver:, operator:, message:, location:, comments: [])
+    def initialize(receiver:, operator:, message:, arguments:, location:, comments: [])
       @receiver = receiver
       @operator = operator
       @message = message
+      @arguments = arguments
       @location = location
       @comments = comments
     end
 
     def child_nodes
-      [receiver, (operator if operator != :"::"), (message if message != :call)]
+      [receiver, (operator if operator != :"::"), (message if message != :call), arguments]
     end
 
     def format(q)
@@ -3098,6 +3100,7 @@ class SyntaxTree < Ripper
             q.breakable(force: true) if receiver.comments.any?
             q.format(CallOperatorFormatter.new(operator))
             q.format(message) if message != :call
+            q.format(arguments) if arguments
           end
         end
       end
@@ -3116,6 +3119,11 @@ class SyntaxTree < Ripper
         q.breakable
         q.pp(message)
 
+        if arguments
+          q.breakable
+          q.pp(arguments)
+        end
+
         q.pp(Comment::List.new(comments))
       end
     end
@@ -3126,6 +3134,7 @@ class SyntaxTree < Ripper
         receiver: receiver,
         op: operator,
         message: message,
+        args: arguments,
         loc: location,
         cmts: comments
       }.to_json(*opts)
@@ -3146,6 +3155,7 @@ class SyntaxTree < Ripper
       receiver: receiver,
       operator: operator,
       message: message,
+      arguments: nil,
       location: receiver.location.to(ending.location)
     )
   end
@@ -5617,24 +5627,29 @@ class SyntaxTree < Ripper
     # [Const | Ident] the name of the method
     attr_reader :value
 
+    # [nil | ArgParen | Args] the arguments to the method call
+    attr_reader :arguments
+
     # [Location] the location of this node
     attr_reader :location
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(value:, location:, comments: [])
+    def initialize(value:, arguments:, location:, comments: [])
       @value = value
+      @arguments = arguments
       @location = location
       @comments = comments
     end
 
     def child_nodes
-      [value]
+      [value, arguments]
     end
 
     def format(q)
       q.format(value)
+      q.format(arguments)
     end
 
     def pretty_print(q)
@@ -5644,12 +5659,17 @@ class SyntaxTree < Ripper
         q.breakable
         q.pp(value)
 
+        if arguments
+          q.breakable
+          q.pp(arguments)
+        end
+
         q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :fcall, value: value, loc: location, cmts: comments }.to_json(
+      { type: :fcall, value: value, args: arguments, loc: location, cmts: comments }.to_json(
         *opts
       )
     end
@@ -5658,7 +5678,7 @@ class SyntaxTree < Ripper
   # :call-seq:
   #   on_fcall: ((Const | Ident) value) -> FCall
   def on_fcall(value)
-    FCall.new(value: value, location: value.location)
+    FCall.new(value: value, arguments: nil, location: value.location)
   end
 
   # Field is always the child of an assignment. It represents assigning to a
@@ -7847,86 +7867,26 @@ class SyntaxTree < Ripper
     )
   end
 
-  # MethodAddArg represents a method call with arguments and parentheses.
-  #
-  #     method(argument)
-  #
-  # MethodAddArg can also represent with a method on an object, as in:
-  #
-  #     object.method(argument)
-  #
-  # Finally, MethodAddArg can represent calling a method with no receiver that
-  # ends in a ?. In this case, the parser knows it's a method call and not a
-  # local variable, so it uses a MethodAddArg node as opposed to a VCall node,
-  # as in:
-  #
-  #     method?
-  #
-  class MethodAddArg
-    # [Call | FCall] the method call
-    attr_reader :call
-
-    # [ArgParen | Args] the arguments to the method call
-    attr_reader :arguments
-
-    # [Location] the location of this node
-    attr_reader :location
-
-    # [Array[ Comment | EmbDoc ]] the comments attached to this node
-    attr_reader :comments
-
-    def initialize(call:, arguments:, location:, comments: [])
-      @call = call
-      @arguments = arguments
-      @location = location
-      @comments = comments
-    end
-
-    def child_nodes
-      [call, arguments]
-    end
-
-    def format(q)
-      q.format(call)
-      q.text(" ") if !arguments.is_a?(ArgParen) && arguments.parts.any?
-      q.format(arguments)
-    end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("method_add_arg")
-
-        q.breakable
-        q.pp(call)
-
-        q.breakable
-        q.pp(arguments)
-
-        q.pp(Comment::List.new(comments))
-      end
-    end
-
-    def to_json(*opts)
-      {
-        type: :method_add_arg,
-        call: call,
-        args: arguments,
-        loc: location,
-        cmts: comments
-      }.to_json(*opts)
-    end
-  end
-
   # :call-seq:
   #   on_method_add_arg: (
   #     (Call | FCall) call,
   #     (ArgParen | Args) arguments
-  #   ) -> MethodAddArg
+  #   ) -> Call | FCall
   def on_method_add_arg(call, arguments)
     location = call.location
-    location = location.to(arguments.location) unless arguments.is_a?(Args)
+    location = location.to(arguments.location) if arguments.is_a?(ArgParen)
 
-    MethodAddArg.new(call: call, arguments: arguments, location: location)
+    if call.is_a?(FCall)
+      FCall.new(value: call.value, arguments: arguments, location: location)
+    else
+      Call.new(
+        receiver: call.receiver,
+        operator: call.operator,
+        message: call.message,
+        arguments: arguments,
+        location: location
+      )
+    end
   end
 
   # MethodAddBlock represents a method call with a block argument.
@@ -7934,7 +7894,7 @@ class SyntaxTree < Ripper
   #     method {}
   #
   class MethodAddBlock
-    # [Call | Command | CommandCall | FCall | MethodAddArg] the method call
+    # [Call | Command | CommandCall | FCall] the method call
     attr_reader :call
 
     # [BraceBlock | DoBlock] the block being sent with the method call
@@ -7989,7 +7949,7 @@ class SyntaxTree < Ripper
 
   # :call-seq:
   #   on_method_add_block: (
-  #     (Call | Command | CommandCall | FCall | MethodAddArg) call,
+  #     (Call | Command | CommandCall | FCall) call,
   #     (BraceBlock | DoBlock) block
   #   ) -> MethodAddBlock
   def on_method_add_block(call, block)

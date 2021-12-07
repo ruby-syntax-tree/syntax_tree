@@ -54,6 +54,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 ### Removed
 
 - The `AccessCtrl` node in favor of just formatting correctly when you hit a `Statements` node.
+- The `MethodAddArg` node is removed in favor of an optional `arguments` field on `Call` and `FCall`.
 
 ## [0.1.0] - 2021-11-16
 
