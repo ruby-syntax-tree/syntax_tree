@@ -34,6 +34,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 - Replicate content for `__END__` keyword exactly.
 - Keep block `If`, `Unless`, `While`, and `Until` forms if there is an assignment in the predicate.
 - Force using braces if the block is within the predicate of a conditional or loop.
+- Allow for the possibility that `CommandCall` nodes might not have arguments.
 
 ### Removed
 

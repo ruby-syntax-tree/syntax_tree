@@ -3581,7 +3581,7 @@ class SyntaxTree < Ripper
     # [Const | Ident | Op] the message being send
     attr_reader :message
 
-    # [Args] the arguments going along with the message
+    # [nil | Args] the arguments going along with the message
     attr_reader :arguments
 
     # [Location] the location of this node
@@ -3617,15 +3617,17 @@ class SyntaxTree < Ripper
             q.format(receiver)
             q.format(CallOperatorFormatter.new(operator))
             q.format(message)
-            q.text(" ")
           end
 
-        width = doc_width(doc)
+        if arguments
+          width = doc_width(doc) + 1
+          q.text(" ")
 
-        if width > (q.maxwidth / 2)
-          q.format(arguments)
-        else
-          q.nest(width) { q.format(arguments) }
+          if width > (q.maxwidth / 2)
+            q.format(arguments)
+          else
+            q.nest(width) { q.format(arguments) }
+          end
         end
       end
     end
@@ -3643,8 +3645,10 @@ class SyntaxTree < Ripper
         q.breakable
         q.pp(message)
 
-        q.breakable
-        q.pp(arguments)
+        if arguments
+          q.breakable
+          q.pp(arguments)
+        end
 
         q.pp(Comment::List.new(comments))
       end
@@ -3695,7 +3699,7 @@ class SyntaxTree < Ripper
   #     untyped receiver,
   #     (:"::" | Op | Period) operator,
   #     (Const | Ident | Op) message,
-  #     Args arguments
+  #     (nil | Args) arguments
   #   ) -> CommandCall
   def on_command_call(receiver, operator, message, arguments)
     ending = arguments || message
