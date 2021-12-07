@@ -7220,7 +7220,7 @@ class SyntaxTree < Ripper
     end
 
     def format(q)
-      if !value.start_with?("0") && value.length >= 5 && !value.include?("_")
+      if !value.start_with?(/\+?0/) && value.length >= 5 && !value.include?("_")
         # If it's a plain integer and it doesn't have any underscores separating
         # the values, then we're going to insert them every 3 characters
         # starting from the right.
