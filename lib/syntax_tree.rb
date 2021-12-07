@@ -48,8 +48,11 @@ class SyntaxTree < Ripper
       end
     end
 
+    # Technically it's possible for the column index to be a negative value if
+    # there's a BOM at the beginning of the file, which is the reason we need to
+    # compare it to 0 here.
     def [](byteindex)
-      @indices[byteindex]
+      @indices[byteindex < 0 ? 0 : byteindex]
     end
   end
 
