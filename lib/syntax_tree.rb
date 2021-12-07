@@ -10522,21 +10522,6 @@ class SyntaxTree < Ripper
   #   value
   # end
 
-  # stmts_add is a parser event that represents a single statement inside a
-  # list of statements within any lexical block. It accepts as arguments the
-  # parent stmts node as well as an stmt which can be any expression in
-  # Ruby.
-  def on_stmts_add(statements, statement)
-    location =
-      if statements.body.empty?
-        statement.location
-      else
-        statements.location.to(statement.location)
-      end
-
-    Statements.new(self, body: statements.body << statement, location: location)
-  end
-
   # Everything that has a block of code inside of it has a list of statements.
   # Normally we would just track those as a node that has an array body, but we
   # have some special handling in order to handle empty statement lists. They
@@ -10709,6 +10694,21 @@ class SyntaxTree < Ripper
         end
       end
     end
+  end
+
+  # stmts_add is a parser event that represents a single statement inside a
+  # list of statements within any lexical block. It accepts as arguments the
+  # parent stmts node as well as an stmt which can be any expression in
+  # Ruby.
+  def on_stmts_add(statements, statement)
+    location =
+      if statements.body.empty?
+        statement.location
+      else
+        statements.location.to(statement.location)
+      end
+
+    Statements.new(self, body: statements.body << statement, location: location)
   end
 
   # :call-seq:
@@ -10982,10 +10982,15 @@ class SyntaxTree < Ripper
       embexpr_end.location.start_char
     )
 
-    StringEmbExpr.new(
-      statements: statements,
-      location: embexpr_beg.location.to(embexpr_end.location)
-    )
+    location =
+      Location.new(
+        start_line: embexpr_beg.location.start_line,
+        start_char: embexpr_beg.location.start_char,
+        end_line: [embexpr_end.location.end_line, statements.location.end_line].max,
+        end_char: embexpr_end.location.end_char
+      )
+
+    StringEmbExpr.new(statements: statements, location: location)
   end
 
   # StringLiteral represents a string literal.
@@ -11087,10 +11092,18 @@ class SyntaxTree < Ripper
       tstring_beg = find_token(TStringBeg)
       tstring_end = find_token(TStringEnd)
 
+      location =
+        Location.new(
+          start_line: tstring_beg.location.start_line,
+          start_char: tstring_beg.location.start_char,
+          end_line: [tstring_end.location.end_line, string.location.end_line].max,
+          end_char: tstring_end.location.end_char
+        )
+
       StringLiteral.new(
         parts: string.parts,
         quote: tstring_beg.value,
-        location: tstring_beg.location.to(tstring_end.location)
+        location: location
       )
     end
   end

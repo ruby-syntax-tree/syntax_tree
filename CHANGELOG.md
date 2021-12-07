@@ -57,6 +57,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 - Properly handle trailing comments after a `then` operator on a `When` or `In` clause.
 - Ensure nested `HshPtn` nodes use braces.
 - Force using braces if the block is within a `Binary` within the predicate of a loop or conditional.
+- Make sure `StringLiteral` and `StringEmbExpr` know that they can be extended by heredocs.
 
 ### Removed
 
