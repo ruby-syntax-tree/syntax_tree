@@ -7166,8 +7166,9 @@ class SyntaxTree < Ripper
     beginning = find_token(Kw, "in")
     ending = consequent || find_token(Kw, "end")
 
+    statements_start = find_token(Kw, "then", consume: false) || pattern
     statements.bind(
-      find_next_statement_start(pattern.location.end_char),
+      find_next_statement_start(statements_start.location.end_char),
       ending.location.start_char
     )
 
@@ -12758,8 +12759,9 @@ class SyntaxTree < Ripper
     beginning = find_token(Kw, "when")
     ending = consequent || find_token(Kw, "end")
 
+    statements_start = find_token(Kw, "then", consume: false) || arguments
     statements.bind(
-      find_next_statement_start(arguments.location.end_char),
+      find_next_statement_start(statements_start.location.end_char),
       ending.location.start_char
     )
 
