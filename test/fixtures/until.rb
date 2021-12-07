@@ -15,3 +15,7 @@ end
 foo = until bar do baz end
 -
 foo = (baz until bar)
+%
+until foo += 1
+  foo
+end

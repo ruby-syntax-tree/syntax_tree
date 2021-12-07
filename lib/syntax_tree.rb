@@ -6586,6 +6586,15 @@ class SyntaxTree < Ripper
     end
 
     def format(q)
+      # If the predicate of the conditional contains an assignment (in which
+      # case we can't know for certain that that assignment doesn't impact the
+      # statements inside the conditional) then we can't use the modifier form
+      # and we must use the block form.
+      if [Assign, MAssign, OpAssign].include?(node.predicate.class)
+        format_break(q, force: true)
+        return
+      end
+
       if node.consequent || node.statements.empty?
         q.group { format_break(q, force: true) }
       else
@@ -12093,17 +12102,18 @@ class SyntaxTree < Ripper
     end
 
     def format(q)
+      # If the predicate of the loop contains an assignment (in which case we
+      # can't know for certain that that assignment doesn't impact the
+      # statements inside the loop) then we can't use the modifier form and we
+      # must use the block form.
+      if [Assign, MAssign, OpAssign].include?(node.predicate.class)
+        format_break(q)
+        q.break_parent
+        return
+      end
+
       q.group do
-        q.if_break do
-          q.text("#{keyword} ")
-          q.nest(keyword.length + 1) { q.format(node.predicate) }
-          q.indent do
-            q.breakable("")
-            q.format(statements)
-          end
-          q.breakable("")
-          q.text("end")
-        end.if_flat do
+        q.if_break { format_break(q) }.if_flat do
           ModifierParentheses.call(q) do
             q.format(statements)
             q.text(" #{keyword} ")
@@ -12111,6 +12121,19 @@ class SyntaxTree < Ripper
           end
         end
       end
+    end
+
+    private
+
+    def format_break(q)
+      q.text("#{keyword} ")
+      q.nest(keyword.length + 1) { q.format(node.predicate) }
+      q.indent do
+        q.breakable("")
+        q.format(statements)
+      end
+      q.breakable("")
+      q.text("end")
     end
   end
 

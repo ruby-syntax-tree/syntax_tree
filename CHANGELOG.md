@@ -32,6 +32,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 - `UntilMod` and `WhileMod` nodes that wrap a `Begin` should be forced into their modifier forms.
 - Ensure `For` loops keep their trailing commas.
 - Replicate content for `__END__` keyword exactly.
+- Keep block `If`, `Unless`, `While`, and `Until` forms if there is an assignment in the predicate.
 
 ### Removed
 

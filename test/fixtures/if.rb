@@ -20,3 +20,7 @@ end
 foo = if bar then baz end
 -
 foo = (baz if bar)
+%
+if foo += 1
+  foo
+end
