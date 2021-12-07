@@ -30,6 +30,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 - Allow conditionals to take modifier form if they are using the `then` keyword with a `VoidStmt`.
 - `UntilMod` and `WhileMod` nodes that wrap a `Begin` should be forced into their modifier forms.
 - Ensure `For` loops keep their trailing commas.
+- Replicate content for `__END__` keyword exactly.
 
 ### Removed
 

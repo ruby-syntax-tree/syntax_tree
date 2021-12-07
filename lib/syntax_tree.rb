@@ -612,7 +612,7 @@ class SyntaxTree < Ripper
   #     some other content that is not executed by the program
   #
   class EndContent
-    # [String] the content after the script
+    # [Array[ String ]] the content after the script
     attr_reader :value
 
     # [Location] the location of this node
@@ -634,7 +634,10 @@ class SyntaxTree < Ripper
     def format(q)
       q.text("__END__")
       q.breakable(force: true)
-      q.text(value)
+
+      q.seplist(value, -> { q.breakable(literal: true, force: true) }) do |line|
+        q.text(line)
+      end
     end
 
     def pretty_print(q)
@@ -642,16 +645,15 @@ class SyntaxTree < Ripper
         q.text("__end__")
 
         q.breakable
-        q.pp(value)
+        q.pp(value.join("\n"))
 
         q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :__end__, value: value, loc: location, cmts: comments }.to_json(
-        *opts
-      )
+      { type: :__end__, value: value.join("\n"), loc: location, cmts: comments }
+        .to_json(*opts)
     end
   end
 
@@ -660,7 +662,7 @@ class SyntaxTree < Ripper
   def on___end__(value)
     @__end__ =
       EndContent.new(
-        value: lines[lineno..-1].join("\n"),
+        value: lines[lineno..-1],
         location: Location.token(line: lineno, char: char_pos, size: value.size)
       )
   end
@@ -9042,7 +9044,11 @@ class SyntaxTree < Ripper
 
     def format(q)
       q.format(statements)
-      q.breakable(force: true)
+
+      # We're going to put a newline on the end so that it always has one unless
+      # it ends with the special __END__ syntax. In that case we want to
+      # replicate the text exactly so we will just let it be.
+      q.breakable(force: true) unless statements.body.last.is_a?(EndContent)
     end
 
     def pretty_print(q)
