@@ -4206,12 +4206,18 @@ class SyntaxTree < Ripper
           q.text("def ")
           q.format(name)
 
-          if params.is_a?(Params) && !params.empty?
-            q.text("(")
+          if !params.is_a?(Params)
             q.format(params)
-            q.text(")")
-          else
-            q.format(params)
+          elsif !params.empty?
+            q.group do
+              q.text("(")
+              q.indent do
+                q.breakable("")
+                q.format(params)
+              end
+              q.breakable("")
+              q.text(")")
+            end
           end
         end
 
@@ -4515,12 +4521,18 @@ class SyntaxTree < Ripper
           q.format(CallOperatorFormatter.new(operator))
           q.format(name)
 
-          if params.is_a?(Params) && !params.empty?
-            q.text("(")
+          if !params.is_a?(Params)
             q.format(params)
-            q.text(")")
-          else
-            q.format(params)
+          elsif !params.empty?
+            q.group do
+              q.text("(")
+              q.indent do
+                q.breakable("")
+                q.format(params)
+              end
+              q.breakable("")
+              q.text(")")
+            end
           end
         end
 
@@ -8787,12 +8799,10 @@ class SyntaxTree < Ripper
       parts << KeywordRestFormatter.new(keyword_rest) if keyword_rest
       parts << block if block
 
-      contents = -> {
+      q.nest(0) do
         q.seplist(parts) { |part| q.format(part) }
         q.format(rest) if rest && rest.is_a?(ExcessedComma)
-      }
-
-      q.parent.is_a?(Paren) ? q.nest(0, &contents) : q.group(&contents)
+      end
     end
 
     def pretty_print(q)

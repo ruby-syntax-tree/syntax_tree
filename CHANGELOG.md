@@ -46,6 +46,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 - Allow `When` nodes to grab trailing comments away from their statements lists.
 - Allow flip-flop operators to be formatted correctly within `IfMod` and `UnlessMod` nodes.
 - Allow `IfMod` and `UnlessMod` to know about heredocs moving their bounds.
+- Properly handle breaking parameters when there are no parentheses.
 
 ### Removed
 
