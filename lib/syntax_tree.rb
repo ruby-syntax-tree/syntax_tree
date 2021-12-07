@@ -75,7 +75,7 @@ class SyntaxTree < Ripper
       Location.new(
         start_line: start_line,
         start_char: start_char,
-        end_line: other.end_line,
+        end_line: [end_line, other.end_line].max,
         end_char: other.end_char
       )
     end
@@ -3146,13 +3146,7 @@ class SyntaxTree < Ripper
       receiver: receiver,
       operator: operator,
       message: message,
-      location:
-        Location.new(
-          start_line: receiver.location.start_line,
-          start_char: receiver.location.start_char,
-          end_line: [ending.location.end_line, receiver.location.end_line].max,
-          end_char: ending.location.end_char
-        )
+      location: receiver.location.to(ending.location)
     )
   end
 
@@ -3588,13 +3582,7 @@ class SyntaxTree < Ripper
     Command.new(
       message: message,
       arguments: arguments,
-      location:
-        Location.new(
-          start_line: message.location.start_line,
-          start_char: message.location.start_char,
-          end_line: [message.location.end_line, arguments.location.end_line].max,
-          end_char: arguments.location.end_char
-        )
+      location: message.location.to(arguments.location)
     )
   end
 
@@ -3741,13 +3729,7 @@ class SyntaxTree < Ripper
       operator: operator,
       message: message,
       arguments: arguments,
-      location:
-        Location.new(
-          start_line: receiver.location.start_line,
-          start_char: receiver.location.start_char,
-          end_line: [receiver.location.end_line, ending.location.end_line].max,
-          end_char: ending.location.end_char
-        )
+      location: receiver.location.to(ending.location)
     )
   end
 
@@ -7001,13 +6983,7 @@ class SyntaxTree < Ripper
     IfMod.new(
       statement: statement,
       predicate: predicate,
-      location:
-        Location.new(
-          start_line: statement.location.start_line,
-          start_char: statement.location.start_char,
-          end_line: [statement.location.end_line, predicate.location.end_line].max,
-          end_char: predicate.location.end_char
-        )
+      location: statement.location.to(predicate.location)
     )
   end
 
@@ -12159,13 +12135,7 @@ class SyntaxTree < Ripper
     UnlessMod.new(
       statement: statement,
       predicate: predicate,
-      location:
-        Location.new(
-          start_line: statement.location.start_line,
-          start_char: statement.location.start_char,
-          end_line: [statement.location.end_line, predicate.location.end_line].max,
-          end_char: predicate.location.end_char
-        )
+      location: statement.location.to(predicate.location)
     )
   end
 

@@ -14,6 +14,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 - Allow arrays of `CHAR` nodes to be converted to `QWords` under certain conditions.
 - Allow `Hash` opening braces to have trailing comments.
 - Add parentheses if `Yield` breaks onto multiple lines.
+- Ensure all nodes that could have heredocs nested know about their end lines.
 
 ### Changed
 
