@@ -3093,12 +3093,19 @@ class SyntaxTree < Ripper
     end
 
     def format(q)
+      call_operator = CallOperatorFormatter.new(operator)
+
       q.group do
         q.format(receiver)
+
+        # If there are trailing comments on the call operator, then we need to
+        # use the trailing form as opposed to the leading form.
+        q.format(call_operator) if call_operator.comments.any?
+
         q.group do
           q.indent do
-            q.breakable(force: true) if receiver.comments.any?
-            q.format(CallOperatorFormatter.new(operator))
+            q.breakable(force: true) if receiver.comments.any? || call_operator.comments.any?
+            q.format(call_operator) if call_operator.comments.empty?
             q.format(message) if message != :call
             q.format(arguments) if arguments
           end
