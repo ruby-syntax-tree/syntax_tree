@@ -6096,6 +6096,9 @@ class SyntaxTree < Ripper
   #     { key => value }
   #
   class HashLiteral
+    # [LBrace] the left brace that opens this hash
+    attr_reader :lbrace
+
     # [Array[ AssocNew | AssocSplat ]] the optional contents of the hash
     attr_reader :assocs
 
@@ -6105,19 +6108,20 @@ class SyntaxTree < Ripper
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(assocs:, location:, comments: [])
+    def initialize(lbrace:, assocs:, location:, comments: [])
+      @lbrace = lbrace
       @assocs = assocs
       @location = location
       @comments = comments
     end
 
     def child_nodes
-      assocs
+      [lbrace] + assocs
     end
 
     def format(q)
       contents = -> do
-        q.text("{")
+        q.format(lbrace)
         q.indent do
           q.breakable
           q.format(HashFormatter.for(self))
@@ -6156,6 +6160,7 @@ class SyntaxTree < Ripper
     rbrace = find_token(RBrace)
 
     HashLiteral.new(
+      lbrace: lbrace,
       assocs: assocs || [],
       location: lbrace.location.to(rbrace.location)
     )
