@@ -1388,6 +1388,9 @@ class SyntaxTree < Ripper
       end
     end
 
+    # [LBracket] the bracket that opens this array
+    attr_reader :lbracket
+
     # [nil | Args] the contents of the array
     attr_reader :contents
 
@@ -1397,22 +1400,18 @@ class SyntaxTree < Ripper
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(contents:, location:, comments: [])
+    def initialize(lbracket:, contents:, location:, comments: [])
+      @lbracket = lbracket
       @contents = contents
       @location = location
       @comments = comments
     end
 
     def child_nodes
-      [contents]
+      [lbracket, contents]
     end
 
     def format(q)
-      unless contents
-        q.text("[]")
-        return
-      end
-
       if qwords?
         QWordsFormatter.new(contents).format(q)
         return
@@ -1423,12 +1422,18 @@ class SyntaxTree < Ripper
         return
       end
 
-      q.group(0, "[", "]") do
-        q.indent do
-          q.breakable("")
-          q.format(contents)
+      q.group do
+        q.format(lbracket)
+
+        if contents
+          q.indent do
+            q.breakable("")
+            q.format(contents)
+          end
         end
+
         q.breakable("")
+        q.text("]")
       end
     end
 
@@ -1452,6 +1457,7 @@ class SyntaxTree < Ripper
     private
 
     def qwords?
+      lbracket.comments.empty? &&
       contents && contents.comments.empty? && contents.parts.length > 1 &&
         contents.parts.all? do |part|
           case part
@@ -1469,6 +1475,7 @@ class SyntaxTree < Ripper
     end
 
     def qsymbols?
+      lbracket.comments.empty? &&
       contents && contents.comments.empty? && contents.parts.length > 1 &&
         contents.parts.all? do |part|
           part.is_a?(SymbolLiteral) && part.comments.empty?
@@ -1485,6 +1492,7 @@ class SyntaxTree < Ripper
       rbracket = find_token(RBracket)
 
       ArrayLiteral.new(
+        lbracket: lbracket,
         contents: contents,
         location: lbracket.location.to(rbracket.location)
       )
@@ -7688,9 +7696,34 @@ class SyntaxTree < Ripper
     # [Location] the location of this node
     attr_reader :location
 
-    def initialize(value:, location:)
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(value:, location:, comments: [])
       @value = value
       @location = location
+      @comments = comments
+    end
+
+    def format(q)
+      q.text(value)
+    end
+
+    def pretty_print(q)
+      q.group(2, "(", ")") do
+        q.text("lbracket")
+
+        q.breakable
+        q.pp(value)
+
+        q.pp(Comment::List.new(comments))
+      end
+    end
+
+    def to_json(*opts)
+      { type: :lbracket, value: value, loc: location, cmts: comments }.to_json(
+        *opts
+      )
     end
   end
 
