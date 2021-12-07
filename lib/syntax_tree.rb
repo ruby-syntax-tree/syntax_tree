@@ -9755,12 +9755,18 @@ class SyntaxTree < Ripper
         q.group do
           q.text("%r{")
 
-          parts.each do |part|
-            if part.is_a?(TStringContent)
-              q.text(part.value.gsub("\\/", "/"))
-            else
-              q.format(part)
+          if beginning == "/"
+            # If we're changing from a forward slash to a %r{, then we can
+            # replace any escaped forward slashes with regular forward slashes.
+            parts.each do |part|
+              if part.is_a?(TStringContent)
+                q.text(part.value.gsub("\\/", "/"))
+              else
+                q.format(part)
+              end
             end
+          else
+            q.format_each(parts)
           end
 
           q.text("}")

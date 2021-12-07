@@ -40,6 +40,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 - Ensure the `Return` breaks with brackets and not parentheses.
 - Ensure trailing comments on parameter declarations are consistent.
 - Make `Command` and `CommandCall` aware that their arguments could exceed their normal expected bounds because of heredocs.
+- Only unescape forward slashes in regular expressions if converting from slash bounds to `%r` bounds.
 
 ### Removed
 
