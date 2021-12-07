@@ -15,3 +15,5 @@
 %w[foo]
 %
 %w[foo] # comment
+%
+%w{foo[]}

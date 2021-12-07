@@ -1506,6 +1506,7 @@ class SyntaxTree < Ripper
       tstring_end = find_token(TStringEnd)
 
       contents.class.new(
+        beginning: contents.beginning,
         elements: contents.elements,
         location: contents.location.to(tstring_end.location)
       )
@@ -9257,6 +9258,9 @@ class SyntaxTree < Ripper
   #     %i[one two three]
   #
   class QSymbols
+    # [QSymbolsBeg] the token that opens this array literal
+    attr_reader :beginning
+
     # [Array[ TStringContent ]] the elements of the array
     attr_reader :elements
 
@@ -9266,7 +9270,8 @@ class SyntaxTree < Ripper
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(elements:, location:, comments: [])
+    def initialize(beginning:, elements:, location:, comments: [])
+      @beginning = beginning
       @elements = elements
       @location = location
       @comments = comments
@@ -9277,7 +9282,14 @@ class SyntaxTree < Ripper
     end
 
     def format(q)
-      q.group(0, "%i[", "]") do
+      opening, closing = "%i[", "]"
+
+      if elements.any? { |element| element.match?(/[\[\]]/) }
+        opening = beginning.value
+        closing = Quotes.matching(opening[2])
+      end
+
+      q.group(0, opening, closing) do
         q.indent do
           q.breakable("")
           q.seplist(elements, -> { q.breakable }) do |element|
@@ -9313,6 +9325,7 @@ class SyntaxTree < Ripper
   #   on_qsymbols_add: (QSymbols qsymbols, TStringContent element) -> QSymbols
   def on_qsymbols_add(qsymbols, element)
     QSymbols.new(
+      beginning: qsymbols.beginning,
       elements: qsymbols.elements << element,
       location: qsymbols.location.to(element.location)
     )
@@ -9354,9 +9367,9 @@ class SyntaxTree < Ripper
   # :call-seq:
   #   on_qsymbols_new: () -> QSymbols
   def on_qsymbols_new
-    qsymbols_beg = find_token(QSymbolsBeg)
+    beginning = find_token(QSymbolsBeg)
 
-    QSymbols.new(elements: [], location: qsymbols_beg.location)
+    QSymbols.new(beginning: beginning, elements: [], location: beginning.location)
   end
 
   # QWords represents a string literal array without interpolation.
@@ -9364,6 +9377,9 @@ class SyntaxTree < Ripper
   #     %w[one two three]
   #
   class QWords
+    # [QWordsBeg] the token that opens this array literal
+    attr_reader :beginning
+
     # [Array[ TStringContent ]] the elements of the array
     attr_reader :elements
 
@@ -9373,7 +9389,8 @@ class SyntaxTree < Ripper
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(elements:, location:, comments: [])
+    def initialize(beginning:, elements:, location:, comments: [])
+      @beginning = beginning
       @elements = elements
       @location = location
       @comments = comments
@@ -9384,7 +9401,14 @@ class SyntaxTree < Ripper
     end
 
     def format(q)
-      q.group(0, "%w[", "]") do
+      opening, closing = "%w[", "]"
+
+      if elements.any? { |element| element.match?(/[\[\]]/) }
+        opening = beginning.value
+        closing = Quotes.matching(opening[2])
+      end
+
+      q.group(0, opening, closing) do
         q.indent do
           q.breakable("")
           q.seplist(elements, -> { q.breakable }) do |element|
@@ -9417,6 +9441,7 @@ class SyntaxTree < Ripper
   #   on_qwords_add: (QWords qwords, TStringContent element) -> QWords
   def on_qwords_add(qwords, element)
     QWords.new(
+      beginning: qwords.beginning,
       elements: qwords.elements << element,
       location: qwords.location.to(element.location)
     )
@@ -9458,9 +9483,9 @@ class SyntaxTree < Ripper
   # :call-seq:
   #   on_qwords_new: () -> QWords
   def on_qwords_new
-    qwords_beg = find_token(QWordsBeg)
+    beginning = find_token(QWordsBeg)
 
-    QWords.new(elements: [], location: qwords_beg.location)
+    QWords.new(beginning: beginning, elements: [], location: beginning.location)
   end
 
   # RationalLiteral represents the use of a rational number literal.
@@ -11331,6 +11356,9 @@ class SyntaxTree < Ripper
   #     %I[one two three]
   #
   class Symbols
+    # [SymbolsBeg] the token that opens this array literal
+    attr_reader :beginning
+
     # [Array[ Word ]] the words in the symbol array literal
     attr_reader :elements
 
@@ -11340,7 +11368,8 @@ class SyntaxTree < Ripper
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(elements:, location:, comments: [])
+    def initialize(beginning:, elements:, location:, comments: [])
+      @beginning = beginning
       @elements = elements
       @location = location
       @comments = comments
@@ -11351,7 +11380,14 @@ class SyntaxTree < Ripper
     end
 
     def format(q)
-      q.group(0, "%I[", "]") do
+      opening, closing = "%I[", "]"
+
+      if elements.any? { |element| element.match?(/[\[\]]/) }
+        opening = beginning.value
+        closing = Quotes.matching(opening[2])
+      end
+
+      q.group(0, opening, closing) do
         q.indent do
           q.breakable("")
           q.seplist(elements, -> { q.breakable }) do |element|
@@ -11387,6 +11423,7 @@ class SyntaxTree < Ripper
   #   on_symbols_add: (Symbols symbols, Word word) -> Symbols
   def on_symbols_add(symbols, word)
     Symbols.new(
+      beginning: symbols.beginning,
       elements: symbols.elements << word,
       location: symbols.location.to(word.location)
     )
@@ -11429,9 +11466,9 @@ class SyntaxTree < Ripper
   # :call-seq:
   #   on_symbols_new: () -> Symbols
   def on_symbols_new
-    symbols_beg = find_token(SymbolsBeg)
+    beginning = find_token(SymbolsBeg)
 
-    Symbols.new(elements: [], location: symbols_beg.location)
+    Symbols.new(beginning: beginning, elements: [], location: beginning.location)
   end
 
   # TLambda represents the beginning of a lambda literal.
@@ -11680,6 +11717,10 @@ class SyntaxTree < Ripper
       @value = value
       @location = location
       @comments = comments
+    end
+
+    def match?(pattern)
+      value.match?(pattern)
     end
 
     def child_nodes
@@ -13008,6 +13049,10 @@ class SyntaxTree < Ripper
       @comments = comments
     end
 
+    def match?(pattern)
+      parts.any? { |part| part.is_a?(TStringContent) && part.match?(pattern) }
+    end
+
     def child_nodes
       parts
     end
@@ -13057,6 +13102,9 @@ class SyntaxTree < Ripper
   #     %W[one two three]
   #
   class Words
+    # [WordsBeg] the token that opens this array literal
+    attr_reader :beginning
+
     # [Array[ Word ]] the elements of this array
     attr_reader :elements
 
@@ -13066,7 +13114,8 @@ class SyntaxTree < Ripper
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(elements:, location:, comments: [])
+    def initialize(beginning:, elements:, location:, comments: [])
+      @beginning = beginning
       @elements = elements
       @location = location
       @comments = comments
@@ -13077,7 +13126,14 @@ class SyntaxTree < Ripper
     end
 
     def format(q)
-      q.group(0, "%W[", "]") do
+      opening, closing = "%W[", "]"
+
+      if elements.any? { |element| element.match?(/[\[\]]/) }
+        opening = beginning.value
+        closing = Quotes.matching(opening[2])
+      end
+
+      q.group(0, opening, closing) do
         q.indent do
           q.breakable("")
           q.seplist(elements, -> { q.breakable }) do |element|
@@ -13110,6 +13166,7 @@ class SyntaxTree < Ripper
   #   on_words_add: (Words words, Word word) -> Words
   def on_words_add(words, word)
     Words.new(
+      beginning: words.beginning,
       elements: words.elements << word,
       location: words.location.to(word.location)
     )
@@ -13152,9 +13209,9 @@ class SyntaxTree < Ripper
   # :call-seq:
   #   on_words_new: () -> Words
   def on_words_new
-    words_beg = find_token(WordsBeg)
+    beginning = find_token(WordsBeg)
 
-    Words.new(elements: [], location: words_beg.location)
+    Words.new(beginning: beginning, elements: [], location: beginning.location)
   end
 
   # def on_words_sep(value)

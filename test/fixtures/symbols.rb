@@ -17,3 +17,5 @@
 %I[foo]
 %
 %I[foo] # comment
+%
+%I{foo[]}

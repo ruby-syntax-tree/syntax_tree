@@ -62,6 +62,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 - Make sure `StringLiteral` and `StringEmbExpr` know that they can be extended by heredocs.
 - Ensure `Int` nodes with preceding unary `+` get formatted properly.
 - Properly handle byte-order mark column offsets at the beginnings of files.
+- Ensure `Words`, `Symbols`, `QWords`, and `QSymbols` properly format when their contents contain brackets.
 
 ### Removed
 
