@@ -19,6 +19,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 - Trailing comments on parameters with no parentheses now do not force a break.
 - Allow `ArrayLiteral` opening brackets to have trailing comments.
 - Allow different line suffix nodes to have different priorities.
+- Better support for encoding by properly reading encoding magic comments.
 
 ### Changed
 

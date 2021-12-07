@@ -17,35 +17,35 @@ end
 
 module SyntaxTree::CLI
   class AST
-    def run(filepath)
-      pp SyntaxTree.parse(File.read(filepath))
+    def run(filepath, source)
+      pp SyntaxTree.parse(source)
     end
   end
 
   class Check
-    def run(filepath)
-      formatted = SyntaxTree.format(File.read(filepath))
+    def run(filepath, source)
+      formatted = SyntaxTree.format(source)
       raise if formatted != SyntaxTree.format(formatted)
     end
   end
 
   class Doc
-    def run(filepath)
+    def run(filepath, source)
       formatter = SyntaxTree::Formatter.new([])
-      SyntaxTree.parse(File.read(filepath)).format(formatter)
+      SyntaxTree.parse(source).format(formatter)
       pp formatter.groups.first
     end
   end
 
   class Format
-    def run(filepath)
-      puts SyntaxTree.format(File.read(filepath))
+    def run(filepath, source)
+      puts SyntaxTree.format(source)
     end
   end
 
   class Write
-    def run(filepath)
-      File.write(filepath, SyntaxTree.format(File.read(filepath)))
+    def run(filepath, source)
+      File.write(filepath, SyntaxTree.format(source))
     end
   end
 end
@@ -71,8 +71,18 @@ errored = false
 
 ARGV.each do |pattern|
   Dir.glob(pattern).each do |filepath|
+    next unless File.file?(filepath)
+
     begin
-      mode.run(filepath) if File.file?(filepath)
+      encoding =
+        File.open(filepath, "r") do |file|
+          header = file.readline
+          header += file.readline if header.start_with?("#!")
+          Ripper.new(header).tap(&:parse).encoding
+        end
+
+      source = File.read(filepath, encoding: encoding)
+      mode.run(filepath, source)
     rescue => error
       warn("!!! Failed on #{filepath}")
       warn(error.message)
