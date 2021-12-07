@@ -2930,19 +2930,34 @@ class SyntaxTree < Ripper
         q.text(keyword)
 
         if arguments.parts.any?
-          if arguments.parts.length == 1 && arguments.parts.first.is_a?(Paren)
-            q.format(arguments)
-          else
-            q.if_break { q.text("(") }
-            q.indent do
-              q.breakable(" ")
+          if arguments.parts.length == 1
+            part = arguments.parts.first
+
+            if part.is_a?(Paren)
               q.format(arguments)
+            elsif part.is_a?(ArrayLiteral)
+              q.text(" ")
+              q.format(arguments)
+            else
+              format_arguments(q, "(", ")")
             end
-            q.breakable("")
-            q.if_break { q.text(")") }
+          else
+            format_arguments(q, " [", "]")
           end
         end
       end
+    end
+
+    private
+
+    def format_arguments(q, opening, closing)
+      q.if_break { q.text(opening) }
+      q.indent do
+        q.breakable(" ")
+        q.format(node.arguments)
+      end
+      q.breakable("")
+      q.if_break { q.text(closing) }
     end
   end
 

@@ -37,6 +37,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 - Allow for the possibility that `CommandCall` nodes might not have arguments.
 - Explicitly handle `?"` so that it formats properly.
 - Check that a block is within the predicate in a more relaxed way.
+- Ensure the `Return` breaks with brackets and not parentheses.
 
 ### Removed
 
