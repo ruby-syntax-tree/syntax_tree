@@ -1696,7 +1696,7 @@ class SyntaxTree < Ripper
         q.format(target)
         q.text(" =")
 
-        if skip_indent_target? || skip_indent_value?
+        if target.comments.empty? && (skip_indent_target? || skip_indent_value?)
           q.text(" ")
           q.format(value)
         else

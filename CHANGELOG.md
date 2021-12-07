@@ -15,6 +15,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 - Allow `Hash` opening braces to have trailing comments.
 - Add parentheses if `Yield` breaks onto multiple lines.
 - Ensure all nodes that could have heredocs nested know about their end lines.
+- Ensure comments on assignment after the `=` before the value keep their place.
 
 ### Changed
 
