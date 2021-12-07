@@ -11,6 +11,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 - The ability to "check" formatting by formatting the output of the first format.
 - Comments can now be attached to the `case` keyword.
 - Remove escaped forward slashes from regular expression literals when converting to `%r`.
+- Allow arrays of `CHAR` nodes to be converted to `QWords` under certain conditions.
 
 ### Changed
 

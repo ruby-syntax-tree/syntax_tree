@@ -1355,7 +1355,11 @@ class SyntaxTree < Ripper
           q.indent do
             q.breakable("")
             q.seplist(contents.parts, -> { q.breakable }) do |part|
-              q.format(part.parts.first)
+              if part.is_a?(StringLiteral)
+                q.format(part.parts.first)
+              else
+                q.text(part.value[1..-1])
+              end
             end
           end
           q.breakable("")
@@ -1450,10 +1454,17 @@ class SyntaxTree < Ripper
     def qwords?
       contents && contents.comments.empty? && contents.parts.length > 1 &&
         contents.parts.all? do |part|
-          part.is_a?(StringLiteral) && part.comments.empty? &&
-            part.parts.length == 1 &&
-            part.parts.first.is_a?(TStringContent) &&
-            !part.parts.first.value.match?(/[\s\[\]\\]/)
+          case part
+          when StringLiteral
+            part.comments.empty? &&
+              part.parts.length == 1 &&
+              part.parts.first.is_a?(TStringContent) &&
+              !part.parts.first.value.match?(/[\s\[\]\\]/)
+          when CHAR
+            !part.value.match?(/[\[\]\\]/)
+          else
+            false
+          end
         end
     end
 
