@@ -18,6 +18,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 - Ensure comments on assignment after the `=` before the value keep their place.
 - Trailing comments on parameters with no parentheses now do not force a break.
 - Allow `ArrayLiteral` opening brackets to have trailing comments.
+- Allow different line suffix nodes to have different priorities.
 
 ### Changed
 

@@ -213,9 +213,12 @@ class PrettyPrint
   # constantly check where the line ends to avoid accidentally printing some
   # content after a line suffix node.
   class LineSuffix
-    attr_reader :contents
+    DEFAULT_PRIORITY = 1
 
-    def initialize(contents: [])
+    attr_reader :priority, :contents
+
+    def initialize(priority: DEFAULT_PRIORITY, contents: [])
+      @priority = priority
       @contents = contents
     end
 
@@ -741,9 +744,16 @@ class PrettyPrint
 
     # This is a separate command stack that includes the same kind of triplets
     # as the commands variable. It is used to keep track of things that should
-    # go at the end of printed lines once the other doc nodes are
-    # accounted for. Typically this is used to implement comments.
+    # go at the end of printed lines once the other doc nodes are accounted for.
+    # Typically this is used to implement comments.
     line_suffixes = []
+
+    # This is a special sort used to order the line suffixes by both the
+    # priority set on the line suffix and the index it was in the original
+    # array.
+    line_suffix_sort = ->(line_suffix) {
+      [-line_suffix.last, -line_suffixes.index(line_suffix)]
+    }
 
     # This is a linear stack instead of a mutually recursive call defined on
     # the individual doc nodes for efficiency.
@@ -783,7 +793,7 @@ class PrettyPrint
           commands << [indent, mode, doc.flat_contents] if doc.flat_contents
         end
       when LineSuffix
-        line_suffixes << [indent, mode, doc.contents]
+        line_suffixes << [indent, mode, doc.contents, doc.priority]
       when Breakable
         if mode == MODE_FLAT
           if doc.force?
@@ -804,7 +814,7 @@ class PrettyPrint
         # to flush them now, as we are about to add a newline.
         if line_suffixes.any?
           commands << [indent, mode, doc]
-          commands += line_suffixes.reverse
+          commands += line_suffixes.sort_by(&line_suffix_sort)
           line_suffixes = []
           next
         end
@@ -838,7 +848,7 @@ class PrettyPrint
       end
 
       if commands.empty? && line_suffixes.any?
-        commands += line_suffixes.reverse
+        commands += line_suffixes.sort_by(&line_suffix_sort)
         line_suffixes = []
       end
     end
@@ -1012,8 +1022,8 @@ class PrettyPrint
 
   # Inserts a LineSuffix node into the print tree. The contents of the node are
   # determined by the block.
-  def line_suffix
-    doc = LineSuffix.new
+  def line_suffix(priority: LineSuffix::DEFAULT_PRIORITY)
+    doc = LineSuffix.new(priority: priority)
     target << doc
 
     with_target(doc.contents) { yield }

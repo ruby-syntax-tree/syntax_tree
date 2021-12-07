@@ -113,6 +113,9 @@ class SyntaxTree < Ripper
   # A slightly enhanced PP that knows how to format recursively including
   # comments.
   class Formatter < PP
+    COMMENT_PRIORITY = 1
+    HEREDOC_PRIORITY = 2
+
     attr_reader :stack, :quote
 
     def initialize(*)
@@ -140,7 +143,7 @@ class SyntaxTree < Ripper
 
         # Print all comments that were found after the node.
         trailing.each do |comment|
-          line_suffix do
+          line_suffix(priority: COMMENT_PRIORITY) do
             text(" ")
             comment.format(self)
             break_parent
@@ -6231,7 +6234,7 @@ class SyntaxTree < Ripper
       q.group do
         q.format(beginning)
 
-        q.line_suffix do
+        q.line_suffix(priority: Formatter::HEREDOC_PRIORITY) do
           q.group do
             breakable.call
 
