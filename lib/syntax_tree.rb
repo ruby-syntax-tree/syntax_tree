@@ -13309,8 +13309,18 @@ class SyntaxTree < Ripper
     def format(q)
       q.group do
         q.text("yield")
-        q.text(" ") if arguments.is_a?(Args)
-        q.format(arguments)
+
+        if arguments.is_a?(Paren)
+          q.format(arguments)
+        else
+          q.if_break { q.text("(") }.if_flat { q.text(" ") }
+          q.indent do
+            q.breakable("")
+            q.format(arguments)
+          end
+          q.breakable("")
+          q.if_break { q.text(")") }
+        end
       end
     end
 

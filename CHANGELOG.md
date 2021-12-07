@@ -13,6 +13,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 - Remove escaped forward slashes from regular expression literals when converting to `%r`.
 - Allow arrays of `CHAR` nodes to be converted to `QWords` under certain conditions.
 - Allow `Hash` opening braces to have trailing comments.
+- Add parentheses if `Yield` breaks onto multiple lines.
 
 ### Changed
 
