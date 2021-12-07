@@ -12216,7 +12216,22 @@ class SyntaxTree < Ripper
     end
 
     def format(q)
-      LoopFormatter.new("until", self, statement).format(q)
+      # If we're in the modifier form and we're modifying a `begin`, then this
+      # is a special case where we need to explicitly use the modifier form
+      # because otherwise the semantic meaning changes. This looks like:
+      #
+      #     begin
+      #       foo
+      #     end until bar
+      #
+      # The above is effectively a `do...until` loop.
+      if statement.is_a?(Begin)
+        q.format(statement)
+        q.text(" until ")
+        q.format(predicate)
+      else
+        LoopFormatter.new("until", self, statement).format(q)
+      end
     end
 
     def pretty_print(q)
@@ -12785,7 +12800,22 @@ class SyntaxTree < Ripper
     end
 
     def format(q)
-      LoopFormatter.new("while", self, statement).format(q)
+      # If we're in the modifier form and we're modifying a `begin`, then this
+      # is a special case where we need to explicitly use the modifier form
+      # because otherwise the semantic meaning changes. This looks like:
+      #
+      #     begin
+      #       foo
+      #     end while bar
+      #
+      # The above is effectively a `do...while` loop.
+      if statement.is_a?(Begin)
+        q.format(statement)
+        q.text(" while ")
+        q.format(predicate)
+      else
+        LoopFormatter.new("while", self, statement).format(q)
+      end
     end
 
     def pretty_print(q)
