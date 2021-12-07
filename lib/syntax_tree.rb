@@ -4277,6 +4277,12 @@ class SyntaxTree < Ripper
   #     def method = result
   #
   class DefEndless
+    # [untyped] the target where the method is being defined
+    attr_reader :target
+
+    # [Op | Period] the operator being used to declare the method
+    attr_reader :operator
+
     # [Backtick | Const | Ident | Kw | Op] the name of the method
     attr_reader :name
 
@@ -4292,7 +4298,9 @@ class SyntaxTree < Ripper
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(name:, paren:, statement:, location:, comments: [])
+    def initialize(target:, operator:, name:, paren:, statement:, location:, comments: [])
+      @target = target
+      @operator = operator
       @name = name
       @paren = paren
       @statement = statement
@@ -4301,14 +4309,21 @@ class SyntaxTree < Ripper
     end
 
     def child_nodes
-      [name, paren, statement]
+      [target, operator, name, paren, statement]
     end
 
     def format(q)
       q.group do
         q.text("def ")
+
+        if target
+          q.format(target)
+          q.format(CallOperatorFormatter.new(operator))
+        end
+
         q.format(name)
         q.format(paren) if paren && !paren.contents.empty?
+
         q.text(" =")
         q.group do
           q.indent do
@@ -4322,6 +4337,14 @@ class SyntaxTree < Ripper
     def pretty_print(q)
       q.group(2, "(", ")") do
         q.text("def_endless")
+
+        if target
+          q.breakable
+          q.pp(target)
+
+          q.breakable
+          q.pp(operator)
+        end
 
         q.breakable
         q.pp(name)
@@ -4369,6 +4392,8 @@ class SyntaxTree < Ripper
     unless bodystmt.is_a?(BodyStmt)
       node =
         DefEndless.new(
+          target: nil,
+          operator: nil,
           name: name,
           paren: params,
           statement: bodystmt,
@@ -4612,6 +4637,22 @@ class SyntaxTree < Ripper
     end
 
     beginning = find_token(Kw, "def")
+
+    # If we don't have a bodystmt node, then we have a single-line method
+    unless bodystmt.is_a?(BodyStmt)
+      node =
+        DefEndless.new(
+          target: target,
+          operator: operator,
+          name: name,
+          paren: params,
+          statement: bodystmt,
+          location: beginning.location.to(bodystmt.location)
+        )
+
+      return node
+    end
+
     ending = find_token(Kw, "end")
 
     bodystmt.bind(
