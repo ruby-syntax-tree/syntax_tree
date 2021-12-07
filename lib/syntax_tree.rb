@@ -3577,7 +3577,13 @@ class SyntaxTree < Ripper
     Command.new(
       message: message,
       arguments: arguments,
-      location: message.location.to(arguments.location)
+      location:
+        Location.new(
+          start_line: message.location.start_line,
+          start_char: message.location.start_char,
+          end_line: [message.location.end_line, arguments.location.end_line].max,
+          end_char: arguments.location.end_char
+        )
     )
   end
 
@@ -3724,7 +3730,13 @@ class SyntaxTree < Ripper
       operator: operator,
       message: message,
       arguments: arguments,
-      location: receiver.location.to(ending.location)
+      location:
+        Location.new(
+          start_line: receiver.location.start_line,
+          start_char: receiver.location.start_char,
+          end_line: [receiver.location.end_line, ending.location.end_line].max,
+          end_char: ending.location.end_char
+        )
     )
   end
 
