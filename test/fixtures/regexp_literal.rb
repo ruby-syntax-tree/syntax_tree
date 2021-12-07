@@ -49,3 +49,7 @@ foo %r{ bar}
 foo %r{= bar}
 %
 foo(/ bar/)
+%
+/foo\/bar/
+-
+%r{foo/bar}

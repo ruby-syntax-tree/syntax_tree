@@ -612,7 +612,7 @@ class SyntaxTree < Ripper
   #     some other content that is not executed by the program
   #
   class EndContent
-    # [Array[ String ]] the content after the script
+    # [String] the content after the script
     attr_reader :value
 
     # [Location] the location of this node
@@ -635,9 +635,8 @@ class SyntaxTree < Ripper
       q.text("__END__")
       q.breakable(force: true)
 
-      q.seplist(value, -> { q.breakable(literal: true, force: true) }) do |line|
-        q.text(line)
-      end
+      separator = -> { q.breakable(indent: false, force: true) }
+      q.seplist(value.split(/\r?\n/, -1), separator) { |line| q.text(line) }
     end
 
     def pretty_print(q)
@@ -645,15 +644,14 @@ class SyntaxTree < Ripper
         q.text("__end__")
 
         q.breakable
-        q.pp(value.join("\n"))
+        q.pp(value)
 
         q.pp(Comment::List.new(comments))
       end
     end
 
     def to_json(*opts)
-      { type: :__end__, value: value.join("\n"), loc: location, cmts: comments }
-        .to_json(*opts)
+      { type: :__end__, value: value, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
@@ -662,7 +660,7 @@ class SyntaxTree < Ripper
   def on___end__(value)
     @__end__ =
       EndContent.new(
-        value: lines[lineno..-1],
+        value: source[(char_pos + value.length)..-1],
         location: Location.token(line: lineno, char: char_pos, size: value.size)
       )
   end
@@ -9702,11 +9700,26 @@ class SyntaxTree < Ripper
           q.format_each(parts)
           q.text(ending)
         end
+      elsif braces
+        q.group do
+          q.text("%r{")
+
+          parts.each do |part|
+            if part.is_a?(TStringContent)
+              q.text(part.value.gsub("\\/", "/"))
+            else
+              q.format(part)
+            end
+          end
+
+          q.text("}")
+          q.text(ending[1..-1])
+        end
       else
         q.group do
-          q.text(braces ? "%r{" : "/")
+          q.text("/")
           q.format_each(parts)
-          q.text(braces ? "}" : "/")
+          q.text("/")
           q.text(ending[1..-1])
         end
       end
