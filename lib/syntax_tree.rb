@@ -4204,20 +4204,7 @@ class SyntaxTree < Ripper
         q.group do
           q.text("def ")
           q.format(name)
-
-          if !params.is_a?(Params)
-            q.format(params)
-          elsif !params.empty?
-            q.group do
-              q.text("(")
-              q.indent do
-                q.breakable("")
-                q.format(params)
-              end
-              q.breakable("")
-              q.text(")")
-            end
-          end
+          q.format(params) if !params.is_a?(Params) || !params.empty?
         end
 
         unless bodystmt.empty?
@@ -4519,20 +4506,7 @@ class SyntaxTree < Ripper
           q.format(target)
           q.format(CallOperatorFormatter.new(operator))
           q.format(name)
-
-          if !params.is_a?(Params)
-            q.format(params)
-          elsif !params.empty?
-            q.group do
-              q.text("(")
-              q.indent do
-                q.breakable("")
-                q.format(params)
-              end
-              q.breakable("")
-              q.text(")")
-            end
-          end
+          q.format(params) if !params.is_a?(Params) || !params.empty?
         end
 
         unless bodystmt.empty?
@@ -6143,11 +6117,17 @@ class SyntaxTree < Ripper
     def format(q)
       contents = -> do
         q.format(lbrace)
-        q.indent do
+
+        if assocs.empty?
+          q.breakable("")
+        else
+          q.indent do
+            q.breakable
+            q.format(HashFormatter.for(self))
+          end
           q.breakable
-          q.format(HashFormatter.for(self))
         end
-        q.breakable
+
         q.text("}")
       end
 
@@ -8742,9 +8722,21 @@ class SyntaxTree < Ripper
       parts << KeywordRestFormatter.new(keyword_rest) if keyword_rest
       parts << block if block
 
-      q.nest(0) do
+      contents = -> {
         q.seplist(parts) { |part| q.format(part) }
         q.format(rest) if rest && rest.is_a?(ExcessedComma)
+      }
+
+      if [Def, Defs].include?(q.parent.class)
+        q.group(0, "(", ")") do
+          q.indent do
+            q.breakable("")
+            contents.call
+          end
+          q.breakable("")
+        end
+      else
+        q.nest(0, &contents)
       end
     end
 
