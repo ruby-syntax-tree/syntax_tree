@@ -1597,7 +1597,7 @@ class SyntaxTree < Ripper
       end
 
       parent = q.parent
-      if parts.length == 1 || PATTERNS.any? { |pattern| parent.is_a?(pattern) }
+      if parts.length == 1 || PATTERNS.include?(parent.class)
         q.text("[")
         q.seplist(parts) { |part| q.format(part) }
         q.text("]")
@@ -6382,6 +6382,12 @@ class SyntaxTree < Ripper
         @value = value
       end
 
+      # This is here so that when checking if its contained within a parent
+      # pattern that it will return true.
+      def class
+        HshPtn
+      end
+
       def comments
         []
       end
@@ -6456,7 +6462,7 @@ class SyntaxTree < Ripper
       end
 
       parent = q.parent
-      if PATTERNS.any? { |pattern| parent.is_a?(pattern) }
+      if PATTERNS.include?(parent.class)
         q.text("{ ")
         contents.call
         q.text(" }")

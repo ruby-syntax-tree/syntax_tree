@@ -55,6 +55,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 - Properly handle trailing operators in call chains with attached comments.
 - Force using braces if the block is within the predicate of a ternary.
 - Properly handle trailing comments after a `then` operator on a `When` or `In` clause.
+- Ensure nested `HshPtn` nodes use braces.
 
 ### Removed
 
