@@ -3133,6 +3133,9 @@ class SyntaxTree < Ripper
   #     end
   #
   class Case
+    # [Kw] the keyword that opens this expression
+    attr_reader :keyword
+
     # [nil | untyped] optional value being switched on
     attr_reader :value
 
@@ -3145,7 +3148,8 @@ class SyntaxTree < Ripper
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(value:, consequent:, location:, comments: [])
+    def initialize(keyword:, value:, consequent:, location:, comments: [])
+      @keyword = keyword
       @value = value
       @consequent = consequent
       @location = location
@@ -3153,11 +3157,13 @@ class SyntaxTree < Ripper
     end
 
     def child_nodes
-      [value, consequent]
+      [keyword, value, consequent]
     end
 
     def format(q)
-      q.group(0, "case", "end") do
+      q.group do
+        q.format(keyword)
+
         if value
           q.text(" ")
           q.format(value)
@@ -3166,12 +3172,17 @@ class SyntaxTree < Ripper
         q.breakable(force: true)
         q.format(consequent)
         q.breakable(force: true)
+
+        q.text("end")
       end
     end
 
     def pretty_print(q)
       q.group(2, "(", ")") do
         q.text("case")
+
+        q.breakable
+        q.pp(keyword)
 
         if value
           q.breakable
@@ -3280,6 +3291,7 @@ class SyntaxTree < Ripper
       tokens.delete(keyword)
 
       Case.new(
+        keyword: keyword,
         value: value,
         consequent: consequent,
         location: keyword.location.to(consequent.location)

@@ -9,6 +9,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 ### Added
 
 - The ability to "check" formatting by formatting the output of the first format.
+- Comments can now be attached to the `case` keyword.
 
 ### Changed
 
