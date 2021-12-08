@@ -21,6 +21,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 - Allow different line suffix nodes to have different priorities.
 - Better support for encoding by properly reading encoding magic comments.
 - Support singleton single-line method definitions.
+- Support `stree-ignore` comments to ignore formatting nodes.
 
 ### Changed
 
@@ -64,6 +65,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 - Ensure `Int` nodes with preceding unary `+` get formatted properly.
 - Properly handle byte-order mark column offsets at the beginnings of files.
 - Ensure `Words`, `Symbols`, `QWords`, and `QSymbols` properly format when their contents contain brackets.
+- Ensure ternaries being broken out into `if`...`else`...`end` get wrapped in parentheses if necessary.
 
 ### Removed
 

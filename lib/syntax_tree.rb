@@ -119,10 +119,12 @@ class SyntaxTree < Ripper
     COMMENT_PRIORITY = 1
     HEREDOC_PRIORITY = 2
 
-    attr_reader :stack, :quote
+    attr_reader :source, :stack, :quote
 
-    def initialize(*)
-      super
+    def initialize(source, ...)
+      super(...)
+
+      @source = source
       @stack = []
       @quote = "\""
     end
@@ -142,7 +144,13 @@ class SyntaxTree < Ripper
           breakable(force: true)
         end
 
-        doc = node.format(self)
+        # If the node has a stree-ignore comment right before it, then we're
+        # going to just print out the node as it was seen in the source.
+        if leading.last&.value&.include?("stree-ignore")
+          doc = text(source[node.location.start_char...node.location.end_char])
+        else
+          doc = node.format(self)
+        end
 
         # Print all comments that were found after the node.
         trailing.each do |comment|
@@ -271,7 +279,7 @@ class SyntaxTree < Ripper
   def self.format(source)
     output = []
 
-    formatter = Formatter.new(output)
+    formatter = Formatter.new(source, output)
     parse(source).format(formatter)
 
     formatter.flush
@@ -6654,51 +6662,6 @@ class SyntaxTree < Ripper
     )
   end
 
-  # If you have a modifier statement (for instance a modifier if statement or a
-  # modifier while loop) there are times when you need to wrap the entire
-  # statement in parentheses. This occurs when you have something like:
-  #
-  #     foo[:foo] =
-  #       if bar?
-  #         baz
-  #       end
-  #
-  # Normally we would shorten this to an inline version, which would result in:
-  #
-  #     foo[:foo] = baz if bar?
-  #
-  # but this actually has different semantic meaning. The first example will
-  # result in a nil being inserted into the hash for the :foo key, whereas the
-  # second example will result in an empty hash because the if statement applies
-  # to the entire assignment.
-  #
-  # We can fix this in a couple of ways. We can use the then keyword, as in:
-  #
-  #     foo[:foo] = if bar? then baz end
-  #
-  # But this isn't used very often. We can also just leave it as is with the
-  # multi-line version, but for a short predicate and short value it looks
-  # verbose. The last option and the one used here is to add parentheses on
-  # both sides of the expression, as in:
-  #
-  #     foo[:foo] = (baz if bar?)
-  #
-  # This approach maintains the nice conciseness of the inline version, while
-  # keeping the correct semantic meaning.
-  module ModifierParentheses
-    def self.call(q)
-      parens = [Args, Assign, Assoc, Binary, Call, Defined, MAssign, OpAssign]
-
-      if parens.include?(q.parent.class)
-        q.text("(")
-        yield
-        q.text(")")
-      else
-        yield
-      end
-    end
-  end
-
   # Formats an If or Unless node.
   class ConditionalFormatter
     # [String] the keyword associated with this conditional
@@ -6727,7 +6690,7 @@ class SyntaxTree < Ripper
       else
         q.group do
           q.if_break { format_break(q, force: false) }.if_flat do
-            ModifierParentheses.call(q) do
+            Parentheses.flat(q) do
               q.format(node.statements)
               q.text(" #{keyword} ")
               q.format(node.predicate)
@@ -6887,38 +6850,20 @@ class SyntaxTree < Ripper
     end
 
     def format(q)
-      q.group do
-        q.if_break do
-          q.text("if ")
-          q.nest("if ".length) { q.format(predicate) }
+      # stree-ignore
+      no_ternary = [
+        Alias, Assign, Break, Command, CommandCall, Heredoc, If, IfMod, IfOp,
+        Lambda, MAssign, Next, OpAssign, RescueMod, Return, Return0, Super,
+        Undef, Unless, UnlessMod, UntilMod, VarAlias, VoidStmt, WhileMod, Yield,
+        Yield0, ZSuper
+      ]
 
-          q.indent do
-            q.breakable
-            q.format(truthy)
-          end
-
-          q.breakable
-          q.text("else")
-
-          q.indent do
-            q.breakable
-            q.format(falsy)
-          end
-
-          q.breakable
-          q.text("end")
-        end.if_flat do
-          q.format(predicate)
-          q.text(" ?")
-
-          q.breakable
-          q.format(truthy)
-          q.text(" :")
-
-          q.breakable
-          q.format(falsy)
-        end
+      if force_flat.include?(truthy.class) || force_flat.include?(falsy.class)
+        q.group { format_flat(q) }
+        return
       end
+
+      q.group { q.if_break { format_break(q) }.if_flat { format_flat(q) } }
     end
 
     def pretty_print(q)
@@ -6947,6 +6892,43 @@ class SyntaxTree < Ripper
         loc: location,
         cmts: comments
       }.to_json(*opts)
+    end
+
+    private
+
+    def format_break(q)
+      Parentheses.break(q) do
+        q.text("if ")
+        q.nest("if ".length) { q.format(predicate) }
+
+        q.indent do
+          q.breakable
+          q.format(truthy)
+        end
+
+        q.breakable
+        q.text("else")
+
+        q.indent do
+          q.breakable
+          q.format(falsy)
+        end
+
+        q.breakable
+        q.text("end")
+      end
+    end
+
+    def format_flat(q)
+      q.format(predicate)
+      q.text(" ?")
+
+      q.breakable
+      q.format(truthy)
+      q.text(" :")
+
+      q.breakable
+      q.format(falsy)
     end
   end
 
@@ -6986,7 +6968,7 @@ class SyntaxTree < Ripper
           q.breakable
           q.text("end")
         end.if_flat do
-          ModifierParentheses.call(q) do
+          Parentheses.flat(q) do
             q.format(node.statement)
             q.text(" #{keyword} ")
             q.format(node.predicate)
@@ -8646,6 +8628,61 @@ class SyntaxTree < Ripper
       value: value,
       location: target.location.to(value.location)
     )
+  end
+
+  # If you have a modifier statement (for instance a modifier if statement or a
+  # modifier while loop) there are times when you need to wrap the entire
+  # statement in parentheses. This occurs when you have something like:
+  #
+  #     foo[:foo] =
+  #       if bar?
+  #         baz
+  #       end
+  #
+  # Normally we would shorten this to an inline version, which would result in:
+  #
+  #     foo[:foo] = baz if bar?
+  #
+  # but this actually has different semantic meaning. The first example will
+  # result in a nil being inserted into the hash for the :foo key, whereas the
+  # second example will result in an empty hash because the if statement applies
+  # to the entire assignment.
+  #
+  # We can fix this in a couple of ways. We can use the then keyword, as in:
+  #
+  #     foo[:foo] = if bar? then baz end
+  #
+  # But this isn't used very often. We can also just leave it as is with the
+  # multi-line version, but for a short predicate and short value it looks
+  # verbose. The last option and the one used here is to add parentheses on
+  # both sides of the expression, as in:
+  #
+  #     foo[:foo] = (baz if bar?)
+  #
+  # This approach maintains the nice conciseness of the inline version, while
+  # keeping the correct semantic meaning.
+  module Parentheses
+    NODES = [Args, Assign, Assoc, Binary, Call, Defined, MAssign, OpAssign]
+
+    def self.flat(q)
+      return yield unless NODES.include?(q.parent.class)
+
+      q.text("(")
+      yield
+      q.text(")")
+    end
+
+    def self.break(q)
+      return yield unless NODES.include?(q.parent.class)
+
+      q.text("(")
+      q.indent do
+        q.breakable("")
+        yield
+      end
+      q.breakable("")
+      q.text(")")
+    end
   end
 
   # def on_operator_ambiguous(value)
@@ -10749,7 +10786,7 @@ class SyntaxTree < Ripper
         location = comment.location
 
         if !comment.inline? && (start_char <= location.start_char) &&
-             (end_char >= location.end_char)
+             (end_char >= location.end_char) && !comment.value.include?("stree-ignore")
           parser_comments.delete_at(comment_index)
 
           while (node = body[body_index]) &&
@@ -12278,7 +12315,7 @@ class SyntaxTree < Ripper
 
       q.group do
         q.if_break { format_break(q) }.if_flat do
-          ModifierParentheses.call(q) do
+          Parentheses.flat(q) do
             q.format(statements)
             q.text(" #{keyword} ")
             q.format(node.predicate)
