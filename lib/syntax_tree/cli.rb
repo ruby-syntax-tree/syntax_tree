@@ -2,8 +2,36 @@
 
 class SyntaxTree
   module CLI
+    # A utility wrapper around colored strings in the output.
+    class ColoredString
+      COLORS = { default: "0", gray: "38;5;102", yellow: "33" }
+
+      attr_reader :code, :string
+
+      def initialize(color, string)
+        @code = COLORS[color]
+        @string = string
+      end
+
+      def to_s
+        "\033[#{code}m#{string}\033[0m"
+      end
+    end
+
+    # The parent action class for the CLI that implements the basics.
+    class Action
+      def run(filepath, source)
+      end
+
+      def success
+      end
+
+      def failure
+      end
+    end
+
     # An action of the CLI that prints out the AST for the given source.
-    class AST
+    class AST < Action
       def run(filepath, source)
         pp SyntaxTree.parse(source)
       end
@@ -11,15 +39,26 @@ class SyntaxTree
 
     # An action of the CLI that formats the source twice to check if the first
     # format is not idempotent.
-    class Check
+    class Check < Action
       def run(filepath, source)
         formatted = SyntaxTree.format(source)
-        raise if formatted != SyntaxTree.format(formatted)
+        return true if formatted == SyntaxTree.format(formatted)
+
+        puts "[#{ColoredString.new(:yellow, "warn")}] #{filepath}"
+        false
+      end
+
+      def success
+        puts "All files matched expected format."
+      end
+
+      def failure
+        warn("The listed files did not match the expected format.")
       end
     end
 
     # An action of the CLI that prints out the doc tree IR for the given source.
-    class Doc
+    class Doc < Action
       def run(filepath, source)
         formatter = Formatter.new([])
         SyntaxTree.parse(source).format(formatter)
@@ -28,7 +67,7 @@ class SyntaxTree
     end
 
     # An action of the CLI that formats the input source and prints it out.
-    class Format
+    class Format < Action
       def run(filepath, source)
         puts SyntaxTree.format(source)
       end
@@ -36,9 +75,18 @@ class SyntaxTree
 
     # An action of the CLI that formats the input source and writes the
     # formatted output back to the file.
-    class Write
+    class Write < Action
       def run(filepath, source)
-        File.write(filepath, SyntaxTree.format(source))
+        print filepath
+        start = Time.now
+
+        formatted = SyntaxTree.format(source)
+        File.write(filepath, formatted)
+
+        delta = ((Time.now - start) * 1000).round
+        color = source == formatted ? :gray : :default
+
+        puts "\r#{ColoredString.new(color, filepath)} #{delta}ms"
       end
     end
 
@@ -81,15 +129,32 @@ class SyntaxTree
         errored = false
         patterns.each do |pattern|
           Dir.glob(pattern).each do |filepath|
-            errored |= run_for(action, filepath) if File.file?(filepath)
+            next unless File.file?(filepath)
+
+            begin
+              action.run(filepath, source_for(filepath))
+            rescue => error
+              warn("!!! Failed on #{filepath}")
+              warn(error.message)
+              warn(error.backtrace)
+              errored = true
+            end
           end
         end
-        
-        errored ? 1 : 0
+
+        if errored
+          action.failure
+          1
+        else
+          action.success
+          0
+        end
       end
 
       private
 
+      # Returns the source from the given filepath taking into account any
+      # potential magic encoding comments.
       def source_for(filepath)
         encoding =
           File.open(filepath, "r") do |file|
@@ -99,16 +164,6 @@ class SyntaxTree
           end
 
         File.read(filepath, encoding: encoding)
-      end
-
-      def run_for(action, filepath)
-        action.run(filepath, source_for(filepath))
-        false
-      rescue => error
-        warn("!!! Failed on #{filepath}")
-        warn(error.message)
-        warn(error.backtrace)
-        true
       end
     end
   end
