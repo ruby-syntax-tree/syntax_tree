@@ -3,7 +3,7 @@
 [![Build Status](https://github.com/kddnewton/syntax_tree/workflows/Main/badge.svg)](https://github.com/kddnewton/syntax_tree/actions)
 [![Gem Version](https://img.shields.io/gem/v/syntax_tree.svg)](https://rubygems.org/gems/syntax_tree)
 
-A fast ripper subclass used for parsing and formatting Ruby code.
+A fast Ruby parser and formatter with only standard library dependencies.
 
 ## Installation
 
