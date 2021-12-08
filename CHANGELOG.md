@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 
 ## [Unreleased]
 
+## [1.0.0]
+
 ### Added
 
 - The ability to "check" formatting by formatting the output of the first format.
@@ -80,5 +82,6 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 
 - 🎉 Initial release! 🎉
 
-[unreleased]: https://github.com/kddnewton/syntax_tree/compare/v0.1.0...HEAD
+[unreleased]: https://github.com/kddnewton/syntax_tree/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/kddnewton/syntax_tree/compare/v0.1.0...v1.0.0
 [0.1.0]: https://github.com/kddnewton/syntax_tree/compare/8aa1f5...v0.1.0
