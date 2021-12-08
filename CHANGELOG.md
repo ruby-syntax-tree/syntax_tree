@@ -6,12 +6,14 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 
 ## [Unreleased]
 
+## [1.1.0] - 2021-12-08
+
 ### Added
 
 - Better handling for formatting files with errors.
 - Colorize the output snippet using IRB.
 
-## [1.0.0]
+## [1.0.0] - 2021-12-08
 
 ### Added
 
