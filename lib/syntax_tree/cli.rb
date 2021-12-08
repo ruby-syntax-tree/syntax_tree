@@ -126,6 +126,9 @@ class SyntaxTree
         delta = ((Time.now - start) * 1000).round
 
         puts "\r#{color} #{delta}ms"
+      rescue
+        puts "\r#{filepath}"
+        raise
       end
     end
 
@@ -177,25 +180,12 @@ class SyntaxTree
               action.run(filepath, source)
             rescue ParseError => error
               warn("Error: #{error.message}")
-              lines = source.lines
 
-              maximum = [error.lineno + 3, lines.length].min
-              digits = Math.log10(maximum).ceil
-
-              ([error.lineno - 3, 0].max...maximum).each do |line_index|
-                line_number = line_index + 1
-
-                if line_number == error.lineno
-                  part1 = Color.red(">")
-                  part2 = Color.gray("%#{digits}d |" % line_number)
-                  warn("#{part1} #{part2} #{lines[line_index]}")
-
-                  part3 = Color.gray("  %#{digits}s |" % " ")
-                  warn("#{part3} #{" " * error.column}#{Color.red("^")}")
-                else
-                  prefix = Color.gray("  %#{digits}d |" % line_number)
-                  warn("#{prefix} #{lines[line_index]}")
-                end
+              if error.lineno
+                highlight_error(error, source)
+              else
+                warn(error.message)
+                warn(error.backtrace)
               end
 
               errored = true
@@ -231,6 +221,30 @@ class SyntaxTree
           end
 
         File.read(filepath, encoding: encoding)
+      end
+
+      # Highlights a snippet from a source and parse error.
+      def highlight_error(error, source)
+        lines = source.lines
+
+        maximum = [error.lineno + 3, lines.length].min
+        digits = Math.log10(maximum).ceil
+
+        ([error.lineno - 3, 0].max...maximum).each do |line_index|
+          line_number = line_index + 1
+
+          if line_number == error.lineno
+            part1 = Color.red(">")
+            part2 = Color.gray("%#{digits}d |" % line_number)
+            warn("#{part1} #{part2} #{lines[line_index]}")
+
+            part3 = Color.gray("  %#{digits}s |" % " ")
+            warn("#{part3} #{" " * error.column}#{Color.red("^")}")
+          else
+            prefix = Color.gray("  %#{digits}d |" % line_number)
+            warn("#{prefix} #{lines[line_index]}")
+          end
+        end
       end
     end
   end
