@@ -236,15 +236,21 @@ class SyntaxTree
           if line_number == error.lineno
             part1 = Color.red(">")
             part2 = Color.gray("%#{digits}d |" % line_number)
-            warn("#{part1} #{part2} #{lines[line_index]}")
+            warn("#{part1} #{part2} #{colorize_line(lines[line_index])}")
 
             part3 = Color.gray("  %#{digits}s |" % " ")
             warn("#{part3} #{" " * error.column}#{Color.red("^")}")
           else
             prefix = Color.gray("  %#{digits}d |" % line_number)
-            warn("#{prefix} #{lines[line_index]}")
+            warn("#{prefix} #{colorize_line(lines[line_index])}")
           end
         end
+      end
+
+      # Take a line of Ruby source and colorize the output.
+      def colorize_line(line)
+        require "irb"
+        IRB::Color.colorize_code(line, complete: false, ignore_error: true)
       end
     end
   end

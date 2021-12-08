@@ -9,6 +9,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 ### Added
 
 - Better handling for formatting files with errors.
+- Colorize the output snippet using IRB.
 
 ## [1.0.0]
 
