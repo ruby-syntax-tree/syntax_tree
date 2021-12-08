@@ -22,6 +22,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 - Better support for encoding by properly reading encoding magic comments.
 - Support singleton single-line method definitions.
 - Support `stree-ignore` comments to ignore formatting nodes.
+- Add special formatting for arrays of `VarRef` nodes whose sum width is greater than 2 * the maximum width.
 
 ### Changed
 

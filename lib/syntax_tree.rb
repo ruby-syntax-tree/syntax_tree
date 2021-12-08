@@ -1402,6 +1402,27 @@ class SyntaxTree < Ripper
       end
     end
 
+    class VarRefsFormatter
+      # [Args] the contents of the array
+      attr_reader :contents
+
+      def initialize(contents)
+        @contents = contents
+      end
+
+      def format(q)
+        q.group(0, "[", "]") do
+          q.indent do
+            q.breakable("")
+            q.seplist(contents.parts, -> { q.fill_breakable(", ") }) do |part|
+              q.format(part)
+            end
+          end
+          q.breakable("")
+        end
+      end
+    end
+
     # [LBracket] the bracket that opens this array
     attr_reader :lbracket
 
@@ -1433,6 +1454,11 @@ class SyntaxTree < Ripper
 
       if qsymbols?
         QSymbolsFormatter.new(contents).format(q)
+        return
+      end
+
+      if var_refs?(q)
+        VarRefsFormatter.new(contents).format(q)
         return
       end
 
@@ -1494,6 +1520,14 @@ class SyntaxTree < Ripper
         contents.parts.all? do |part|
           part.is_a?(SymbolLiteral) && part.comments.empty?
         end
+    end
+
+    def var_refs?(q)
+      lbracket.comments.empty? &&
+        contents &&
+        contents.comments.empty? &&
+        contents.parts.all? { |part| part.is_a?(VarRef) && part.comments.empty? } &&
+        (contents.parts.sum { |part| part.value.value.length + 2 } > q.maxwidth * 2)
     end
   end
 
@@ -6850,7 +6884,6 @@ class SyntaxTree < Ripper
     end
 
     def format(q)
-      # stree-ignore
       no_ternary = [
         Alias, Assign, Break, Command, CommandCall, Heredoc, If, IfMod, IfOp,
         Lambda, MAssign, Next, OpAssign, RescueMod, Return, Return0, Super,
