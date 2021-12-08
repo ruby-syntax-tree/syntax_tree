@@ -751,9 +751,9 @@ class PrettyPrint
     # This is a special sort used to order the line suffixes by both the
     # priority set on the line suffix and the index it was in the original
     # array.
-    line_suffix_sort = ->(line_suffix) {
+    line_suffix_sort = ->(line_suffix) do
       [-line_suffix.last, -line_suffixes.index(line_suffix)]
-    }
+    end
 
     # This is a linear stack instead of a mutually recursive call defined on
     # the individual doc nodes for efficiency.

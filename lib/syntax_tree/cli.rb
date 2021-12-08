@@ -3,18 +3,28 @@
 class SyntaxTree
   module CLI
     # A utility wrapper around colored strings in the output.
-    class ColoredString
-      COLORS = { default: "0", gray: "38;5;102", yellow: "33" }
+    class Color
+      attr_reader :value, :code
 
-      attr_reader :code, :string
-
-      def initialize(color, string)
-        @code = COLORS[color]
-        @string = string
+      def initialize(value, code)
+        @value = value
+        @code = code
       end
 
       def to_s
-        "\033[#{code}m#{string}\033[0m"
+        "\033[#{code}m#{value}\033[0m"
+      end
+
+      def self.gray(value)
+        new(value, "38;5;102")
+      end
+
+      def self.red(value)
+        new(value, "1;31")
+      end
+
+      def self.yellow(value)
+        new(value, "33")
       end
     end
 
@@ -37,23 +47,52 @@ class SyntaxTree
       end
     end
 
-    # An action of the CLI that formats the source twice to check if the first
-    # format is not idempotent.
+    # An action of the CLI that ensures that the filepath is formatted as
+    # expected.
     class Check < Action
-      def run(filepath, source)
-        formatted = SyntaxTree.format(source)
-        return true if formatted == SyntaxTree.format(formatted)
+      class UnformattedError < StandardError
+      end
 
-        puts "[#{ColoredString.new(:yellow, "warn")}] #{filepath}"
-        false
+      def run(filepath, source)
+        raise UnformattedError if source != SyntaxTree.format(source)
+      rescue
+        warn("[#{Color.yellow("warn")}] #{filepath}")
+        raise
       end
 
       def success
-        puts "All files matched expected format."
+        puts("All files matched expected format.")
       end
 
       def failure
         warn("The listed files did not match the expected format.")
+      end
+    end
+
+    # An action of the CLI that formats the source twice to check if the first
+    # format is not idempotent.
+    class Debug < Action
+      class NonIdempotentFormatError < StandardError
+      end
+
+      def run(filepath, source)
+        warning = "[#{Color.yellow("warn")}] #{filepath}"
+        formatted = SyntaxTree.format(source)
+
+        if formatted != SyntaxTree.format(formatted)
+          raise NonIdempotentFormatError
+        end
+      rescue
+        warn(warning)
+        raise
+      end
+
+      def success
+        puts("All files can be formatted idempotently.")
+      end
+
+      def failure
+        warn("The listed files could not be formatted idempotently.")
       end
     end
 
@@ -83,10 +122,10 @@ class SyntaxTree
         formatted = SyntaxTree.format(source)
         File.write(filepath, formatted)
 
+        color = source == formatted ? Color.gray(filepath) : filepath
         delta = ((Time.now - start) * 1000).round
-        color = source == formatted ? :gray : :default
 
-        puts "\r#{ColoredString.new(color, filepath)} #{delta}ms"
+        puts "\r#{color} #{delta}ms"
       end
     end
 
@@ -95,7 +134,7 @@ class SyntaxTree
     HELP = <<~HELP
       stree MODE FILE
 
-      MODE: ast | check | doc | format | write
+      MODE: ast | check | debug | doc | format | write
       FILE: one or more paths to files to parse
     HELP
 
@@ -115,7 +154,9 @@ class SyntaxTree
             AST.new
           when "c", "check"
             Check.new
-          when "d", "doc"
+          when "debug"
+            Debug.new
+          when "doc"
             Doc.new
           when "f", "format"
             Format.new
@@ -130,11 +171,37 @@ class SyntaxTree
         patterns.each do |pattern|
           Dir.glob(pattern).each do |filepath|
             next unless File.file?(filepath)
+            source = source_for(filepath)
 
             begin
-              action.run(filepath, source_for(filepath))
+              action.run(filepath, source)
+            rescue ParseError => error
+              warn("Error: #{error.message}")
+              lines = source.lines
+
+              maximum = [error.lineno + 3, lines.length].min
+              digits = Math.log10(maximum).ceil
+
+              ([error.lineno - 3, 0].max...maximum).each do |line_index|
+                line_number = line_index + 1
+
+                if line_number == error.lineno
+                  part1 = Color.red(">")
+                  part2 = Color.gray("%#{digits}d |" % line_number)
+                  warn("#{part1} #{part2} #{lines[line_index]}")
+
+                  part3 = Color.gray("  %#{digits}s |" % " ")
+                  warn("#{part3} #{" " * error.column}#{Color.red("^")}")
+                else
+                  prefix = Color.gray("  %#{digits}d |" % line_number)
+                  warn("#{prefix} #{lines[line_index]}")
+                end
+              end
+
+              errored = true
+            rescue Check::UnformattedError, Debug::NonIdempotentFormatError
+              errored = true
             rescue => error
-              warn("!!! Failed on #{filepath}")
               warn(error.message)
               warn(error.backtrace)
               errored = true

@@ -26,12 +26,14 @@ class SyntaxTree < Ripper
   # every character in the string is 1 byte in length, so we can just return the
   # start of the line + the index.
   class SingleByteString
+    attr_reader :start
+
     def initialize(start)
       @start = start
     end
 
     def [](byteindex)
-      @start + byteindex
+      start + byteindex
     end
   end
 
@@ -40,7 +42,10 @@ class SyntaxTree < Ripper
   # an array of indices, such that array[byteindex] will be equal to the index
   # of the character within the string.
   class MultiByteString
+    attr_reader :start, :indices
+
     def initialize(start, line)
+      @start = start
       @indices = []
 
       line.each_char.with_index(start) do |char, index|
@@ -52,7 +57,7 @@ class SyntaxTree < Ripper
     # there's a BOM at the beginning of the file, which is the reason we need to
     # compare it to 0 here.
     def [](byteindex)
-      @indices[byteindex < 0 ? 0 : byteindex]
+      indices[byteindex < 0 ? 0 : byteindex]
     end
   end
 
@@ -186,6 +191,10 @@ class SyntaxTree < Ripper
   # [Array[ String ]] the list of lines in the source
   attr_reader :lines
 
+  # [Array[ SingleByteString | MultiByteString ]] the list of objects that
+  # represent the start of each line in character offsets
+  attr_reader :line_counts
+
   # [Array[ untyped ]] a running list of tokens that have been found in the
   # source. This list changes a lot as certain nodes will "consume" these tokens
   # to determine their bounds.
@@ -299,7 +308,7 @@ class SyntaxTree < Ripper
   # this line, then we add the number of columns into this line that we've gone
   # through.
   def char_pos
-    @line_counts[lineno - 1][column]
+    line_counts[lineno - 1][column]
   end
 
   # As we build up a list of tokens, we'll periodically need to go backwards and
@@ -313,7 +322,7 @@ class SyntaxTree < Ripper
   # (which would happen to be the innermost keyword). Then the outer one would
   # only be able to grab the first one. In this way all of the tokens act as
   # their own stack.
-  def find_token(type, value = :any, consume: true)
+  def find_token(type, value = :any, consume: true, location: nil)
     index =
       tokens.rindex do |token|
         token.is_a?(type) && (value == :any || (token.value == value))
@@ -326,8 +335,16 @@ class SyntaxTree < Ripper
       # could also be caused by accidentally attempting to consume a token twice
       # by two different parser event handlers.
       unless index
-        message = "Cannot find expected #{value == :any ? type : value}"
-        raise ParseError.new(message, lineno, column)
+        token = value == :any ? type.name.split("::", 2).last : value
+        message = "Cannot find expected #{token}"
+
+        if location
+          lineno = location.start_line
+          column = location.start_char - line_counts[lineno - 1].start
+          raise ParseError.new(message, lineno, column)
+        else
+          raise ParseError.new(message, lineno, column)
+        end
       end
 
       tokens.delete_at(index)
@@ -1552,7 +1569,8 @@ class SyntaxTree < Ripper
         location: lbracket.location.to(rbracket.location)
       )
     else
-      tstring_end = find_token(TStringEnd)
+      tstring_end =
+        find_token(TStringEnd, location: contents.beginning.location)
 
       contents.class.new(
         beginning: contents.beginning,
@@ -5195,7 +5213,7 @@ class SyntaxTree < Ripper
     if find_token(SymBeg, consume: false)
       # A normal dynamic symbol
       symbeg = find_token(SymBeg)
-      tstring_end = find_token(TStringEnd)
+      tstring_end = find_token(TStringEnd, location: symbeg.location)
 
       DynaSymbol.new(
         quote: symbeg.value,
@@ -11291,7 +11309,7 @@ class SyntaxTree < Ripper
       )
     else
       tstring_beg = find_token(TStringBeg)
-      tstring_end = find_token(TStringEnd)
+      tstring_end = find_token(TStringEnd, location: tstring_beg.location)
 
       location =
         Location.new(
@@ -13503,7 +13521,7 @@ class SyntaxTree < Ripper
         location: heredoc.location
       )
     else
-      ending = find_token(TStringEnd)
+      ending = find_token(TStringEnd, location: xstring.location)
 
       XStringLiteral.new(
         parts: xstring.parts,
