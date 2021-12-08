@@ -69,8 +69,7 @@ class SyntaxTree < Ripper
 
     def ==(other)
       other.is_a?(Location) && start_line == other.start_line &&
-        start_char == other.start_char &&
-        end_line == other.end_line &&
+        start_char == other.start_char && end_line == other.end_line &&
         end_char == other.end_char
     end
 
@@ -146,7 +145,7 @@ class SyntaxTree < Ripper
 
         # If the node has a stree-ignore comment right before it, then we're
         # going to just print out the node as it was seen in the source.
-        if leading.last&.value&.include?("stree-ignore")
+        if leading.last&.ignore?
           doc = text(source[node.location.start_char...node.location.end_char])
         else
           doc = node.format(self)
@@ -665,7 +664,9 @@ class SyntaxTree < Ripper
     end
 
     def to_json(*opts)
-      { type: :__end__, value: value, loc: location, cmts: comments }.to_json(*opts)
+      { type: :__end__, value: value, loc: location, cmts: comments }.to_json(
+        *opts
+      )
     end
   end
 
@@ -1414,9 +1415,13 @@ class SyntaxTree < Ripper
         q.group(0, "[", "]") do
           q.indent do
             q.breakable("")
-            q.seplist(contents.parts, -> { q.fill_breakable(", ") }) do |part|
-              q.format(part)
+
+            separator = -> do
+              q.text(",")
+              q.fill_breakable
             end
+
+            q.seplist(contents.parts, separator) { |part| q.format(part) }
           end
           q.breakable("")
         end
@@ -1497,13 +1502,12 @@ class SyntaxTree < Ripper
     private
 
     def qwords?
-      lbracket.comments.empty? &&
-      contents && contents.comments.empty? && contents.parts.length > 1 &&
+      lbracket.comments.empty? && contents && contents.comments.empty? &&
+        contents.parts.length > 1 &&
         contents.parts.all? do |part|
           case part
           when StringLiteral
-            part.comments.empty? &&
-              part.parts.length == 1 &&
+            part.comments.empty? && part.parts.length == 1 &&
               part.parts.first.is_a?(TStringContent) &&
               !part.parts.first.value.match?(/[\s\[\]\\]/)
           when CHAR
@@ -1515,19 +1519,22 @@ class SyntaxTree < Ripper
     end
 
     def qsymbols?
-      lbracket.comments.empty? &&
-      contents && contents.comments.empty? && contents.parts.length > 1 &&
+      lbracket.comments.empty? && contents && contents.comments.empty? &&
+        contents.parts.length > 1 &&
         contents.parts.all? do |part|
           part.is_a?(SymbolLiteral) && part.comments.empty?
         end
     end
 
     def var_refs?(q)
-      lbracket.comments.empty? &&
-        contents &&
-        contents.comments.empty? &&
-        contents.parts.all? { |part| part.is_a?(VarRef) && part.comments.empty? } &&
-        (contents.parts.sum { |part| part.value.value.length + 2 } > q.maxwidth * 2)
+      lbracket.comments.empty? && contents && contents.comments.empty? &&
+        contents.parts.all? do |part|
+          part.is_a?(VarRef) && part.comments.empty?
+        end &&
+        (
+          contents.parts.sum { |part| part.value.value.length + 2 } >
+            q.maxwidth * 2
+        )
     end
   end
 
@@ -2793,11 +2800,11 @@ class SyntaxTree < Ripper
         if unchangeable_bounds?(q)
           [block_open.value, block_close, block_open.value, block_close]
         elsif forced_do_end_bounds?(q)
-          ["do", "end", "do", "end"]
+          %w[do end do end]
         elsif forced_brace_bounds?(q)
-          ["{", "}", "{", "}"]
+          %w[{ } { }]
         else
-          ["do", "end", "{", "}"]
+          %w[do end { }]
         end
 
       # If the receiver of this block a Command or CommandCall node, then there
@@ -2811,8 +2818,9 @@ class SyntaxTree < Ripper
       end
 
       q.group do
-        q.if_break { format_break(q, break_opening, break_closing) }
-         .if_flat { format_flat(q, flat_opening, flat_closing) }
+        q.if_break { format_break(q, break_opening, break_closing) }.if_flat do
+          format_flat(q, flat_opening, flat_closing)
+        end
       end
     end
 
@@ -2845,8 +2853,17 @@ class SyntaxTree < Ripper
         # If we hit certain breakpoints then we know we're safe.
         break false if [Paren, Statements].include?(parent.class)
 
-        [If, IfMod, IfOp, Unless, UnlessMod, While, WhileMod, Until, UntilMod].include?(parent.class) &&
-          parent.predicate == parents[index - 1]
+        [
+          If,
+          IfMod,
+          IfOp,
+          Unless,
+          UnlessMod,
+          While,
+          WhileMod,
+          Until,
+          UntilMod
+        ].include?(parent.class) && parent.predicate == parents[index - 1]
       end
     end
 
@@ -3145,7 +3162,14 @@ class SyntaxTree < Ripper
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(receiver:, operator:, message:, arguments:, location:, comments: [])
+    def initialize(
+      receiver:,
+      operator:,
+      message:,
+      arguments:,
+      location:,
+      comments: []
+    )
       @receiver = receiver
       @operator = operator
       @message = message
@@ -3155,7 +3179,12 @@ class SyntaxTree < Ripper
     end
 
     def child_nodes
-      [receiver, (operator if operator != :"::"), (message if message != :call), arguments]
+      [
+        receiver,
+        (operator if operator != :"::"),
+        (message if message != :call),
+        arguments
+      ]
     end
 
     def format(q)
@@ -3170,11 +3199,14 @@ class SyntaxTree < Ripper
 
         q.group do
           q.indent do
-            q.breakable(force: true) if receiver.comments.any? || call_operator.comments.any?
+            if receiver.comments.any? || call_operator.comments.any?
+              q.breakable(force: true)
+            end
             q.format(call_operator) if call_operator.comments.empty?
             q.format(message) if message != :call
-            q.format(arguments) if arguments
           end
+
+          q.format(arguments) if arguments
         end
       end
     end
@@ -3873,6 +3905,10 @@ class SyntaxTree < Ripper
       @trailing
     end
 
+    def ignore?
+      value[1..-1].strip == "stree-ignore"
+    end
+
     def comments
       []
     end
@@ -4340,7 +4376,15 @@ class SyntaxTree < Ripper
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(target:, operator:, name:, paren:, statement:, location:, comments: [])
+    def initialize(
+      target:,
+      operator:,
+      name:,
+      paren:,
+      statement:,
+      location:,
+      comments: []
+    )
       @target = target
       @operator = operator
       @name = name
@@ -5124,9 +5168,9 @@ class SyntaxTree < Ripper
         matching = Quotes.matching(quote[2])
         pattern = /[\n#{Regexp.escape(matching)}'"]/
 
-        if parts.any? do |part|
+        if parts.any? { |part|
              part.is_a?(TStringContent) && part.value.match?(pattern)
-           end
+           }
           [quote, matching]
         elsif Quotes.locked?(self)
           ["#{":" unless hash_key}'", "'"]
@@ -5387,6 +5431,10 @@ class SyntaxTree < Ripper
     end
 
     def inline?
+      false
+    end
+
+    def ignore?
       false
     end
 
@@ -5757,9 +5805,13 @@ class SyntaxTree < Ripper
     end
 
     def to_json(*opts)
-      { type: :fcall, value: value, args: arguments, loc: location, cmts: comments }.to_json(
-        *opts
-      )
+      {
+        type: :fcall,
+        value: value,
+        args: arguments,
+        loc: location,
+        cmts: comments
+      }.to_json(*opts)
     end
   end
 
@@ -6884,7 +6936,7 @@ class SyntaxTree < Ripper
     end
 
     def format(q)
-      no_ternary = [
+      force_flat = [
         Alias, Assign, Break, Command, CommandCall, Heredoc, If, IfMod, IfOp,
         Lambda, MAssign, Next, OpAssign, RescueMod, Return, Return0, Super,
         Undef, Unless, UnlessMod, UntilMod, VarAlias, VoidStmt, WhileMod, Yield,
@@ -7694,7 +7746,10 @@ class SyntaxTree < Ripper
   def on_lambda(params, statements)
     beginning = find_token(TLambda)
 
-    if tokens.any? { |token| token.is_a?(TLamBeg) && token.location.start_char > beginning.location.start_char }
+    if tokens.any? { |token|
+         token.is_a?(TLamBeg) &&
+           token.location.start_char > beginning.location.start_char
+       }
       opening = find_token(TLamBeg)
       closing = find_token(RBrace)
     else
@@ -8856,9 +8911,7 @@ class SyntaxTree < Ripper
     # it's missing.
     def empty?
       requireds.empty? && optionals.empty? && !rest && posts.empty? &&
-        keywords.empty? &&
-        !keyword_rest &&
-        !block
+        keywords.empty? && !keyword_rest && !block
     end
 
     def child_nodes
@@ -8889,10 +8942,10 @@ class SyntaxTree < Ripper
       parts << KeywordRestFormatter.new(keyword_rest) if keyword_rest
       parts << block if block
 
-      contents = -> {
+      contents = -> do
         q.seplist(parts) { |part| q.format(part) }
         q.format(rest) if rest && rest.is_a?(ExcessedComma)
-      }
+      end
 
       if [Def, Defs].include?(q.parent.class)
         q.group(0, "(", ")") do
@@ -9480,7 +9533,11 @@ class SyntaxTree < Ripper
   def on_qsymbols_new
     beginning = find_token(QSymbolsBeg)
 
-    QSymbols.new(beginning: beginning, elements: [], location: beginning.location)
+    QSymbols.new(
+      beginning: beginning,
+      elements: [],
+      location: beginning.location
+    )
   end
 
   # QWords represents a string literal array without interpolation.
@@ -10755,7 +10812,8 @@ class SyntaxTree < Ripper
 
       access_controls =
         Hash.new do |hash, node|
-          hash[node] = node.is_a?(VCall) && %w[private protected public].include?(node.value.value)
+          hash[node] = node.is_a?(VCall) &&
+            %w[private protected public].include?(node.value.value)
         end
 
       body.each_with_index do |statement, index|
@@ -10819,7 +10877,7 @@ class SyntaxTree < Ripper
         location = comment.location
 
         if !comment.inline? && (start_char <= location.start_char) &&
-             (end_char >= location.end_char) && !comment.value.include?("stree-ignore")
+             (end_char >= location.end_char) && !comment.ignore?
           parser_comments.delete_at(comment_index)
 
           while (node = body[body_index]) &&
@@ -11128,7 +11186,8 @@ class SyntaxTree < Ripper
       Location.new(
         start_line: embexpr_beg.location.start_line,
         start_char: embexpr_beg.location.start_char,
-        end_line: [embexpr_end.location.end_line, statements.location.end_line].max,
+        end_line:
+          [embexpr_end.location.end_line, statements.location.end_line].max,
         end_char: embexpr_end.location.end_char
       )
 
@@ -11238,7 +11297,8 @@ class SyntaxTree < Ripper
         Location.new(
           start_line: tstring_beg.location.start_line,
           start_char: tstring_beg.location.start_char,
-          end_line: [tstring_end.location.end_line, string.location.end_line].max,
+          end_line:
+            [tstring_end.location.end_line, string.location.end_line].max,
           end_char: tstring_end.location.end_char
         )
 
@@ -11579,7 +11639,11 @@ class SyntaxTree < Ripper
   def on_symbols_new
     beginning = find_token(SymbolsBeg)
 
-    Symbols.new(beginning: beginning, elements: [], location: beginning.location)
+    Symbols.new(
+      beginning: beginning,
+      elements: [],
+      location: beginning.location
+    )
   end
 
   # TLambda represents the beginning of a lambda literal.
