@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 
 ## [Unreleased]
 
+## [1.1.1] - 2021-12-09
+
 ### Added
 
 - [#7](https://github.com/kddnewton/syntax_tree/issues/7) Better formatting for hashes and arrays that are values in hashes.
@@ -95,6 +97,8 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 
 - 🎉 Initial release! 🎉
 
-[unreleased]: https://github.com/kddnewton/syntax_tree/compare/v1.0.0...HEAD
+[unreleased]: https://github.com/kddnewton/syntax_tree/compare/v1.1.1...HEAD
+[1.1.1]: https://github.com/kddnewton/syntax_tree/compare/v1.1.0...v1.1.1
+[1.1.0]: https://github.com/kddnewton/syntax_tree/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/kddnewton/syntax_tree/compare/v0.1.0...v1.0.0
 [0.1.0]: https://github.com/kddnewton/syntax_tree/compare/8aa1f5...v0.1.0
