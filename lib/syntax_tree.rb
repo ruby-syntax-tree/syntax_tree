@@ -3771,14 +3771,8 @@ class SyntaxTree < Ripper
           end
 
         if arguments
-          width = doc_width(doc) + 1
           q.text(" ")
-
-          if width > (q.maxwidth / 2)
-            q.format(arguments)
-          else
-            q.nest(width) { q.format(arguments) }
-          end
+          q.nest(argument_alignment(q, doc)) { q.format(arguments) }
         end
       end
     end
@@ -3842,6 +3836,28 @@ class SyntaxTree < Ripper
       end
 
       width
+    end
+
+    def argument_alignment(q, doc)
+      # Very special handling case for rspec matchers. In general with rspec
+      # matchers you expect to see something like:
+      #
+      #     expect(foo).to receive(:bar).with(
+      #       'one',
+      #       'two',
+      #       'three',
+      #       'four',
+      #       'five'
+      #     )
+      #
+      # In this case the arguments are aligned to the left side as opposed to
+      # being aligned with the `receive` call.
+      if ["to", "not_to", "to_not"].include?(message.value)
+        0
+      else
+        width = doc_width(doc) + 1
+        width > (q.maxwidth / 2) ? 0 : width
+      end
     end
   end
 
