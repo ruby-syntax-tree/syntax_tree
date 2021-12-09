@@ -55,7 +55,7 @@ class SyntaxTree
 
       def run(filepath, source)
         raise UnformattedError if source != SyntaxTree.format(source)
-      rescue
+      rescue StandardError
         warn("[#{Color.yellow("warn")}] #{filepath}")
         raise
       end
@@ -82,7 +82,7 @@ class SyntaxTree
         if formatted != SyntaxTree.format(formatted)
           raise NonIdempotentFormatError
         end
-      rescue
+      rescue StandardError
         warn(warning)
         raise
       end
@@ -126,7 +126,7 @@ class SyntaxTree
         delta = ((Time.now - start) * 1000).round
 
         puts "\r#{color} #{delta}ms"
-      rescue
+      rescue StandardError
         puts "\r#{filepath}"
         raise
       end

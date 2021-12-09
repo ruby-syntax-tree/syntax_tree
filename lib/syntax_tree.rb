@@ -1759,7 +1759,16 @@ class SyntaxTree < Ripper
   module AssignFormatting
     def self.skip_indent?(value)
       (value.is_a?(Call) && skip_indent?(value.receiver)) ||
-        [ArrayLiteral, HashLiteral, Heredoc, Lambda, QSymbols, QWords, Symbols, Words].include?(value.class)
+        [
+          ArrayLiteral,
+          HashLiteral,
+          Heredoc,
+          Lambda,
+          QSymbols,
+          QWords,
+          Symbols,
+          Words
+        ].include?(value.class)
     end
   end
 
@@ -1838,7 +1847,8 @@ class SyntaxTree < Ripper
     private
 
     def skip_indent?
-      target.comments.empty? && (target.is_a?(ARefField) || AssignFormatting.skip_indent?(value))
+      target.comments.empty? &&
+        (target.is_a?(ARefField) || AssignFormatting.skip_indent?(value))
     end
   end
 
@@ -3865,7 +3875,7 @@ class SyntaxTree < Ripper
       #
       # In this case the arguments are aligned to the left side as opposed to
       # being aligned with the `receive` call.
-      if ["to", "not_to", "to_not"].include?(message.value)
+      if %w[to not_to to_not].include?(message.value)
         0
       else
         width = doc_width(doc) + 1
@@ -6651,7 +6661,9 @@ class SyntaxTree < Ripper
     def format(q)
       parts = keywords.map { |(key, value)| KeywordFormatter.new(key, value) }
       parts << KeywordRestFormatter.new(keyword_rest) if keyword_rest
-      contents = -> { q.seplist(parts) { |part| q.format(part, stackable: false) } }
+      contents = -> do
+        q.seplist(parts) { |part| q.format(part, stackable: false) }
+      end
 
       if constant
         q.format(constant)
@@ -9142,16 +9154,15 @@ class SyntaxTree < Ripper
     keyword_rest,
     block
   )
-    parts =
-      [
-        *requireds,
-        *optionals&.flatten(1),
-        rest,
-        *posts,
-        *keywords&.flat_map { |(key, value)| [key, value || nil] },
-        (keyword_rest if keyword_rest != :nil),
-        block
-      ].compact
+    parts = [
+      *requireds,
+      *optionals&.flatten(1),
+      rest,
+      *posts,
+      *keywords&.flat_map { |(key, value)| [key, value || nil] },
+      (keyword_rest if keyword_rest != :nil),
+      block
+    ].compact
 
     location =
       if parts.any?
@@ -11269,8 +11280,10 @@ class SyntaxTree < Ripper
       Location.new(
         start_line: embexpr_beg.location.start_line,
         start_char: embexpr_beg.location.start_char,
-        end_line:
-          [embexpr_end.location.end_line, statements.location.end_line].max,
+        end_line: [
+          embexpr_end.location.end_line,
+          statements.location.end_line
+        ].max,
         end_char: embexpr_end.location.end_char
       )
 
@@ -11380,8 +11393,10 @@ class SyntaxTree < Ripper
         Location.new(
           start_line: tstring_beg.location.start_line,
           start_char: tstring_beg.location.start_char,
-          end_line:
-            [tstring_end.location.end_line, string.location.end_line].max,
+          end_line: [
+            tstring_end.location.end_line,
+            string.location.end_line
+          ].max,
           end_char: tstring_end.location.end_char
         )
 

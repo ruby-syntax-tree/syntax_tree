@@ -113,8 +113,10 @@ class PrettyPrint
     def pretty_print(q)
       q.text("breakable")
 
-      attributes =
-        [("force=true" if force?), ("indent=false" unless indent?)].compact
+      attributes = [
+        ("force=true" if force?),
+        ("indent=false" unless indent?)
+      ].compact
 
       if attributes.any?
         q.text("(")
