@@ -1654,7 +1654,7 @@ class SyntaxTree < Ripper
     end
 
     def child_nodes
-      [constant, *required, rest, *posts]
+      [constant, *requireds, rest, *posts]
     end
 
     def format(q)
@@ -6784,6 +6784,23 @@ class SyntaxTree < Ripper
     )
   end
 
+  # If the predicate of a conditional or loop contains an assignment (in which
+  # case we can't know for certain that that assignment doesn't impact the
+  # statements inside the conditional) then we can't use the modifier form
+  # and we must use the block form.
+  module ContainsAssignment
+    def self.call(parent)
+      queue = [parent]
+
+      while node = queue.shift
+        return true if [Assign, MAssign, OpAssign].include?(node.class)
+        queue += node.child_nodes
+      end
+
+      false
+    end
+  end
+
   # Formats an If or Unless node.
   class ConditionalFormatter
     # [String] the keyword associated with this conditional
@@ -6802,7 +6819,7 @@ class SyntaxTree < Ripper
       # case we can't know for certain that that assignment doesn't impact the
       # statements inside the conditional) then we can't use the modifier form
       # and we must use the block form.
-      if [Assign, MAssign, OpAssign].include?(node.predicate.class)
+      if ContainsAssignment.call(node.predicate)
         format_break(q, force: true)
         return
       end
@@ -7078,23 +7095,31 @@ class SyntaxTree < Ripper
     end
 
     def format(q)
-      q.group do
-        q.if_break do
-          q.text("#{keyword} ")
-          q.nest(keyword.length + 1) { q.format(node.predicate) }
-          q.indent do
-            q.breakable
-            q.format(node.statement)
-          end
-          q.breakable
-          q.text("end")
-        end.if_flat do
-          Parentheses.flat(q) do
-            q.format(node.statement)
-            q.text(" #{keyword} ")
-            q.format(node.predicate)
-          end
-        end
+      if ContainsAssignment.call(node.statement)
+        q.group { format_flat(q) }
+      else
+        q.group { q.if_break { format_break(q) }.if_flat { format_flat(q) } }
+      end
+    end
+
+    private
+
+    def format_break(q)
+      q.text("#{keyword} ")
+      q.nest(keyword.length + 1) { q.format(node.predicate) }
+      q.indent do
+        q.breakable
+        q.format(node.statement)
+      end
+      q.breakable
+      q.text("end")
+    end
+
+    def format_flat(q)
+      Parentheses.flat(q) do
+        q.format(node.statement)
+        q.text(" #{keyword} ")
+        q.format(node.predicate)
       end
     end
   end
@@ -12436,11 +12461,7 @@ class SyntaxTree < Ripper
     end
 
     def format(q)
-      # If the predicate of the loop contains an assignment (in which case we
-      # can't know for certain that that assignment doesn't impact the
-      # statements inside the loop) then we can't use the modifier form and we
-      # must use the block form.
-      if [Assign, MAssign, OpAssign].include?(node.predicate.class)
+      if ContainsAssignment.call(node.predicate)
         format_break(q)
         q.break_parent
         return
@@ -12601,8 +12622,13 @@ class SyntaxTree < Ripper
       #       foo
       #     end until bar
       #
-      # The above is effectively a `do...until` loop.
-      if statement.is_a?(Begin)
+      # Also, if the statement of the modifier includes an assignment, then we
+      # can't know for certain that it won't impact the predicate, so we need to
+      # force it to stay as it is. This looks like:
+      #
+      #     foo = bar until foo
+      #
+      if statement.is_a?(Begin) || ContainsAssignment.call(statement)
         q.format(statement)
         q.text(" until ")
         q.format(predicate)
@@ -13189,8 +13215,13 @@ class SyntaxTree < Ripper
       #       foo
       #     end while bar
       #
-      # The above is effectively a `do...while` loop.
-      if statement.is_a?(Begin)
+      # Also, if the statement of the modifier includes an assignment, then we
+      # can't know for certain that it won't impact the predicate, so we need to
+      # force it to stay as it is. This looks like:
+      #
+      #     foo = bar while foo
+      #
+      if statement.is_a?(Begin) || ContainsAssignment.call(statement)
         q.format(statement)
         q.text(" while ")
         q.format(predicate)

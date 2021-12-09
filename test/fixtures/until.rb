@@ -19,3 +19,7 @@ foo = (baz until bar)
 until foo += 1
   foo
 end
+%
+until (foo += 1)
+  foo
+end

@@ -19,3 +19,7 @@ foo = (baz while bar)
 while foo += 1
   foo
 end
+%
+while (foo += 1)
+  foo
+end

@@ -8,3 +8,8 @@ unless foo
 end
 %
 bar unless foo # comment
+%
+foo = barrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr unless foo
+-
+foo =
+  barrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr unless foo
