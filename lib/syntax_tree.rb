@@ -133,8 +133,8 @@ class SyntaxTree < Ripper
       @quote = "\""
     end
 
-    def format(node)
-      stack << node
+    def format(node, stackable: true)
+      stack << node if stackable
       doc = nil
 
       # If there are comments, then we're going to format them around the node
@@ -168,7 +168,7 @@ class SyntaxTree < Ripper
         doc = node.format(self)
       end
 
-      stack.pop
+      stack.pop if stackable
       doc
     end
 
@@ -763,11 +763,11 @@ class SyntaxTree < Ripper
 
       q.group do
         q.text(keyword)
-        q.format(left_argument)
+        q.format(left_argument, stackable: false)
         q.group do
           q.nest(keyword.length) do
             q.breakable(force: left_argument.comments.any?)
-            q.format(AliasArgumentFormatter.new(right))
+            q.format(AliasArgumentFormatter.new(right), stackable: false)
           end
         end
       end
@@ -1742,6 +1742,14 @@ class SyntaxTree < Ripper
     )
   end
 
+  # Determins if the following value should be indented or not.
+  module AssignFormatting
+    def self.skip_indent?(value)
+      (value.is_a?(Call) && skip_indent?(value.receiver)) ||
+        [ArrayLiteral, HashLiteral, Heredoc, Lambda, QSymbols, QWords, Symbols, Words].include?(value.class)
+    end
+  end
+
   # Assign represents assigning something to a variable or constant. Generally,
   # the left side of the assignment is going to be any node that ends with the
   # name "Field".
@@ -1778,7 +1786,7 @@ class SyntaxTree < Ripper
         q.format(target)
         q.text(" =")
 
-        if target.comments.empty? && (skip_indent_target? || skip_indent_value?)
+        if skip_indent?
           q.text(" ")
           q.format(value)
         else
@@ -1816,21 +1824,8 @@ class SyntaxTree < Ripper
 
     private
 
-    def skip_indent_target?
-      target.is_a?(ARefField)
-    end
-
-    def skip_indent_value?
-      [
-        ArrayLiteral,
-        HashLiteral,
-        Heredoc,
-        Lambda,
-        QSymbols,
-        QWords,
-        Symbols,
-        Words
-      ].any? { |type| value.is_a?(type) }
+    def skip_indent?
+      target.comments.empty? && (target.is_a?(ARefField) || AssignFormatting.skip_indent?(value))
     end
   end
 
@@ -1878,15 +1873,11 @@ class SyntaxTree < Ripper
     end
 
     def format(q)
-      contents = -> do
-        q.parent.format_key(q, key)
-        q.indent do
-          q.breakable
-          q.format(value)
-        end
+      if value.is_a?(HashLiteral)
+        format_contents(q)
+      else
+        q.group { format_contents(q) }
       end
-
-      value.is_a?(HashLiteral) ? contents.call : q.group(&contents)
     end
 
     def pretty_print(q)
@@ -1911,6 +1902,22 @@ class SyntaxTree < Ripper
         loc: location,
         cmts: comments
       }.to_json(*opts)
+    end
+
+    private
+
+    def format_contents(q)
+      q.parent.format_key(q, key)
+
+      if key.comments.empty? && AssignFormatting.skip_indent?(value)
+        q.text(" ")
+        q.format(value)
+      else
+        q.indent do
+          q.breakable
+          q.format(value)
+        end
+      end
     end
   end
 
@@ -2100,25 +2107,8 @@ class SyntaxTree < Ripper
   # This module is responsible for formatting the assocs contained within a
   # hash or bare hash. It first determines if every key in the hash can use
   # labels. If it can, it uses labels. Otherwise it uses hash rockets.
-  module HashFormatter
-    class Base
-      # [HashLiteral | BareAssocHash] the source of the assocs
-      attr_reader :container
-
-      def initialize(container)
-        @container = container
-      end
-
-      def comments
-        container.comments
-      end
-
-      def format(q)
-        q.seplist(container.assocs) { |assoc| q.format(assoc) }
-      end
-    end
-
-    class Labels < Base
+  module HashKeyFormatter
+    class Labels
       def format_key(q, key)
         case key
         when Label
@@ -2133,7 +2123,7 @@ class SyntaxTree < Ripper
       end
     end
 
-    class Rockets < Base
+    class Rockets
       def format_key(q, key)
         case key
         when Label
@@ -2173,7 +2163,7 @@ class SyntaxTree < Ripper
           end
         end
 
-      (labels ? Labels : Rockets).new(container)
+      (labels ? Labels : Rockets).new
     end
   end
 
@@ -2204,7 +2194,11 @@ class SyntaxTree < Ripper
     end
 
     def format(q)
-      q.format(HashFormatter.for(self))
+      q.seplist(assocs) { |assoc| q.format(assoc) }
+    end
+
+    def format_key(q, key)
+      (@key_formatter ||= HashKeyFormatter.for(self)).format_key(q, key)
     end
 
     def pretty_print(q)
@@ -2887,7 +2881,7 @@ class SyntaxTree < Ripper
 
     def format_break(q, opening, closing)
       q.text(" ")
-      q.format(BlockOpenFormatter.new(opening, block_open))
+      q.format(BlockOpenFormatter.new(opening, block_open), stackable: false)
 
       if node.block_var
         q.text(" ")
@@ -2907,7 +2901,7 @@ class SyntaxTree < Ripper
 
     def format_flat(q, opening, closing)
       q.text(" ")
-      q.format(BlockOpenFormatter.new(opening, block_open))
+      q.format(BlockOpenFormatter.new(opening, block_open), stackable: false)
 
       if node.block_var
         q.breakable
@@ -3220,7 +3214,11 @@ class SyntaxTree < Ripper
             if receiver.comments.any? || call_operator.comments.any?
               q.breakable(force: true)
             end
-            q.format(call_operator) if call_operator.comments.empty?
+
+            if call_operator.comments.empty?
+              q.format(call_operator, stackable: false)
+            end
+
             q.format(message) if message != :call
           end
 
@@ -3768,7 +3766,7 @@ class SyntaxTree < Ripper
         doc =
           q.nest(0) do
             q.format(receiver)
-            q.format(CallOperatorFormatter.new(operator))
+            q.format(CallOperatorFormatter.new(operator), stackable: false)
             q.format(message)
           end
 
@@ -4422,7 +4420,7 @@ class SyntaxTree < Ripper
 
         if target
           q.format(target)
-          q.format(CallOperatorFormatter.new(operator))
+          q.format(CallOperatorFormatter.new(operator), stackable: false)
         end
 
         q.format(name)
@@ -4657,7 +4655,7 @@ class SyntaxTree < Ripper
         q.group do
           q.text("def ")
           q.format(target)
-          q.format(CallOperatorFormatter.new(operator))
+          q.format(CallOperatorFormatter.new(operator), stackable: false)
           q.format(name)
           q.format(params) if !params.is_a?(Params) || !params.empty?
         end
@@ -5875,7 +5873,7 @@ class SyntaxTree < Ripper
     def format(q)
       q.group do
         q.format(parent)
-        q.format(CallOperatorFormatter.new(operator))
+        q.format(CallOperatorFormatter.new(operator), stackable: false)
         q.format(name)
       end
     end
@@ -6292,23 +6290,15 @@ class SyntaxTree < Ripper
     end
 
     def format(q)
-      contents = -> do
-        q.format(lbrace)
-
-        if assocs.empty?
-          q.breakable("")
-        else
-          q.indent do
-            q.breakable
-            q.format(HashFormatter.for(self))
-          end
-          q.breakable
-        end
-
-        q.text("}")
+      if q.parent.is_a?(Assoc)
+        format_contents(q)
+      else
+        q.group { format_contents(q) }
       end
+    end
 
-      q.parent.is_a?(Assoc) ? contents.call : q.group(&contents)
+    def format_key(q, key)
+      (@key_formatter ||= HashKeyFormatter.for(self)).format_key(q, key)
     end
 
     def pretty_print(q)
@@ -6328,6 +6318,24 @@ class SyntaxTree < Ripper
       { type: :hash, assocs: assocs, loc: location, cmts: comments }.to_json(
         *opts
       )
+    end
+
+    private
+
+    def format_contents(q)
+      q.format(lbrace)
+
+      if assocs.empty?
+        q.breakable("")
+      else
+        q.indent do
+          q.breakable
+          q.seplist(assocs) { |assoc| q.format(assoc) }
+        end
+        q.breakable
+      end
+
+      q.text("}")
     end
   end
 
@@ -6551,12 +6559,6 @@ class SyntaxTree < Ripper
         @value = value
       end
 
-      # This is here so that when checking if its contained within a parent
-      # pattern that it will return true.
-      def class
-        HshPtn
-      end
-
       def comments
         []
       end
@@ -6620,7 +6622,7 @@ class SyntaxTree < Ripper
     def format(q)
       parts = keywords.map { |(key, value)| KeywordFormatter.new(key, value) }
       parts << KeywordRestFormatter.new(keyword_rest) if keyword_rest
-      contents = -> { q.seplist(parts) { |part| q.format(part) } }
+      contents = -> { q.seplist(parts) { |part| q.format(part, stackable: false) } }
 
       if constant
         q.format(constant)
