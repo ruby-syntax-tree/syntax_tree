@@ -1,54 +1,9 @@
 # frozen_string_literal: true
 
-require "simplecov"
-SimpleCov.start { add_filter("prettyprint.rb") }
-
-$LOAD_PATH.unshift(File.expand_path("../lib", __dir__))
-require "syntax_tree"
-
-require "json"
-require "pp"
-require "minitest/autorun"
+require_relative "test_helper"
 
 class SyntaxTree
-  class SyntaxTreeTest < Minitest::Test
-    # --------------------------------------------------------------------------
-    # Tests for behavior
-    # --------------------------------------------------------------------------
-
-    def test_empty
-      void_stmt = SyntaxTree.parse("").statements.body.first
-      assert_kind_of(VoidStmt, void_stmt)
-    end
-
-    def test_multibyte
-      assign = SyntaxTree.parse("🎉 + 🎉").statements.body.first
-      assert_equal(5, assign.location.end_char)
-    end
-
-    def test_parse_error
-      assert_raises(ParseError) { SyntaxTree.parse("<>") }
-    end
-
-    def test_next_statement_start
-      source = <<~SOURCE
-        def method # comment
-          expression
-        end
-      SOURCE
-
-      bodystmt = SyntaxTree.parse(source).statements.body.first.bodystmt
-      assert_equal(20, bodystmt.location.start_char)
-    end
-
-    def test_version
-      refute_nil(VERSION)
-    end
-
-    # --------------------------------------------------------------------------
-    # Tests for nodes
-    # --------------------------------------------------------------------------
-
+  class NodeTest < Minitest::Test
     def test_BEGIN
       assert_node(BEGINBlock, "BEGIN", "BEGIN {}")
     end

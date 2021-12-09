@@ -174,7 +174,7 @@ class SyntaxTree
         patterns.each do |pattern|
           Dir.glob(pattern).each do |filepath|
             next unless File.file?(filepath)
-            source = source_for(filepath)
+            source = SyntaxTree.read(filepath)
 
             begin
               action.run(filepath, source)
@@ -209,19 +209,6 @@ class SyntaxTree
       end
 
       private
-
-      # Returns the source from the given filepath taking into account any
-      # potential magic encoding comments.
-      def source_for(filepath)
-        encoding =
-          File.open(filepath, "r") do |file|
-            header = file.readline
-            header += file.readline if header.start_with?("#!")
-            Ripper.new(header).tap(&:parse).encoding
-          end
-
-        File.read(filepath, encoding: encoding)
-      end
 
       # Highlights a snippet from a source and parse error.
       def highlight_error(error, source)

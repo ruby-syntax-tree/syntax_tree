@@ -294,6 +294,19 @@ class SyntaxTree < Ripper
     output.join
   end
 
+  # Returns the source from the given filepath taking into account any potential
+  # magic encoding comments.
+  def self.read(filepath)
+    encoding =
+      File.open(filepath, "r") do |file|
+        header = file.readline
+        header += file.readline if header.start_with?("#!")
+        Ripper.new(header).tap(&:parse).encoding
+      end
+
+    File.read(filepath, encoding: encoding)
+  end
+
   private
 
   # ----------------------------------------------------------------------------
@@ -7357,7 +7370,12 @@ class SyntaxTree < Ripper
     beginning = find_token(Kw, "in")
     ending = consequent || find_token(Kw, "end")
 
-    statements_start = find_token(Kw, "then", consume: false) || pattern
+    statements_start = pattern
+    if token = find_token(Kw, "then", consume: false)
+      tokens.delete(token)
+      statements_start = token
+    end
+
     statements.bind(
       find_next_statement_start(statements_start.location.end_char),
       ending.location.start_char
@@ -7898,6 +7916,10 @@ class SyntaxTree < Ripper
       @value = value
       @location = location
       @comments = comments
+    end
+
+    def child_nodes
+      []
     end
 
     def format(q)
@@ -13071,7 +13093,12 @@ class SyntaxTree < Ripper
     beginning = find_token(Kw, "when")
     ending = consequent || find_token(Kw, "end")
 
-    statements_start = find_token(Kw, "then", consume: false) || arguments
+    statements_start = arguments
+    if token = find_token(Kw, "then", consume: false)
+      tokens.delete(token)
+      statements_start = token
+    end
+
     statements.bind(
       find_next_statement_start(statements_start.location.end_char),
       ending.location.start_char
