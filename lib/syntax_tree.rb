@@ -3968,6 +3968,10 @@ class SyntaxTree < Ripper
       []
     end
 
+    def child_nodes
+      []
+    end
+
     def format(q)
       q.text(value)
     end
@@ -12974,6 +12978,10 @@ class SyntaxTree < Ripper
     def initialize(location:, comments: [])
       @location = location
       @comments = comments
+    end
+
+    def child_nodes
+      []
     end
 
     def format(q)
