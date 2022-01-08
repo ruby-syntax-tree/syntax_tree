@@ -1173,7 +1173,7 @@ class SyntaxTree < Ripper
   #     method(&expression)
   #
   class ArgBlock
-    # [untyped] the expression being turned into a block
+    # [nil | untyped] the expression being turned into a block
     attr_reader :value
 
     # [Location] the location of this node
@@ -1194,15 +1194,17 @@ class SyntaxTree < Ripper
 
     def format(q)
       q.text("&")
-      q.format(value)
+      q.format(value) if value
     end
 
     def pretty_print(q)
       q.group(2, "(", ")") do
         q.text("arg_block")
 
-        q.breakable
-        q.pp(value)
+        if value
+          q.breakable
+          q.pp(value)
+        end
 
         q.pp(Comment::List.new(comments))
       end
@@ -1221,17 +1223,34 @@ class SyntaxTree < Ripper
   #     (false | untyped) block
   #   ) -> Args
   def on_args_add_block(arguments, block)
-    return arguments unless block
+    operator = find_token(Op, "&", consume: false)
 
-    arg_block =
-      ArgBlock.new(
-        value: block,
-        location: find_token(Op, "&").location.to(block.location)
-      )
+    # If we can't find the & operator, then there's no block to add to the list,
+    # so we're just going to return the arguments as-is.
+    return arguments unless operator
+
+    # Now we know we have an & operator, so we're going to delete it from the
+    # list of tokens to make sure it doesn't get confused with anything else.
+    tokens.delete(operator)
+
+    # Construct the location that represents the block argument.
+    location = operator.location
+    location = operator.location.to(block.location) if block
+
+    # If there are any arguments and the operator we found from the list is not
+    # after them, then we're going to return the arguments as-is because we're
+    # looking at an & that occurs before the arguments are done.
+    if arguments.parts.any? && location.start_char < arguments.location.end_char
+      return arguments
+    end
+
+    # Otherwise, we're looking at an actual block argument (with or without a
+    # block, which could be missing because it could be a bare & since 3.1.0).
+    arg_block = ArgBlock.new(value: block, location: location)
 
     Args.new(
       parts: arguments.parts << arg_block,
-      location: arguments.location.to(arg_block.location)
+      location: arguments.location.to(location)
     )
   end
 
@@ -1896,7 +1915,7 @@ class SyntaxTree < Ripper
     end
 
     def format(q)
-      if value.is_a?(HashLiteral)
+      if value&.is_a?(HashLiteral)
         format_contents(q)
       else
         q.group { format_contents(q) }
@@ -1910,8 +1929,10 @@ class SyntaxTree < Ripper
         q.breakable
         q.pp(key)
 
-        q.breakable
-        q.pp(value)
+        if value
+          q.breakable
+          q.pp(value)
+        end
 
         q.pp(Comment::List.new(comments))
       end
@@ -1931,6 +1952,7 @@ class SyntaxTree < Ripper
 
     def format_contents(q)
       q.parent.format_key(q, key)
+      return unless value
 
       if key.comments.empty? && AssignFormatting.skip_indent?(value)
         q.text(" ")
@@ -1947,7 +1969,10 @@ class SyntaxTree < Ripper
   # :call-seq:
   #   on_assoc_new: (untyped key, untyped value) -> Assoc
   def on_assoc_new(key, value)
-    Assoc.new(key: key, value: value, location: key.location.to(value.location))
+    location = key.location
+    location = location.to(value.location) if value
+
+    Assoc.new(key: key, value: value, location: location)
   end
 
   # AssocSplat represents double-splatting a value into a hash (either a hash
@@ -2423,12 +2448,22 @@ class SyntaxTree < Ripper
   # :call-seq:
   #   on_binary: (untyped left, (Op | Symbol) operator, untyped right) -> Binary
   def on_binary(left, operator, right)
-    # On most Ruby implementations, operator is a Symbol that represents that
-    # operation being performed. For instance in the example `1 < 2`, the
-    # `operator` object would be `:<`. However, on JRuby, it's an `@op` node,
-    # so here we're going to explicitly convert it into the same normalized
-    # form.
-    operator = tokens.delete(operator).value unless operator.is_a?(Symbol)
+    if operator.is_a?(Symbol)
+      # Here, we're going to search backward for the nearest token that matches
+      # the operator so we can delete it from the list.
+      token = find_token(Op, operator.to_s, consume: false)
+
+      if token && token.location.start_char > left.location.end_char
+        tokens.delete(token)
+      end
+    else
+      # On most Ruby implementations, operator is a Symbol that represents that
+      # operation being performed. For instance in the example `1 < 2`, the
+      # `operator` object would be `:<`. However, on JRuby, it's an `@op` node,
+      # so here we're going to explicitly convert it into the same normalized
+      # form.
+      operator = tokens.delete(operator).value
+    end
 
     Binary.new(
       left: left,
@@ -2578,7 +2613,7 @@ class SyntaxTree < Ripper
   #     def method(&block); end
   #
   class BlockArg
-    # [Ident] the name of the block argument
+    # [nil | Ident] the name of the block argument
     attr_reader :name
 
     # [Location] the location of this node
@@ -2599,15 +2634,17 @@ class SyntaxTree < Ripper
 
     def format(q)
       q.text("&")
-      q.format(name)
+      q.format(name) if name
     end
 
     def pretty_print(q)
       q.group(2, "(", ")") do
         q.text("blockarg")
 
-        q.breakable
-        q.pp(name)
+        if name
+          q.breakable
+          q.pp(name)
+        end
 
         q.pp(Comment::List.new(comments))
       end
@@ -2625,7 +2662,10 @@ class SyntaxTree < Ripper
   def on_blockarg(name)
     operator = find_token(Op, "&")
 
-    BlockArg.new(name: name, location: operator.location.to(name.location))
+    location = operator.location
+    location = location.to(name.location) if name
+
+    BlockArg.new(name: name, location: location)
   end
 
   # bodystmt can't actually determine its bounds appropriately because it
@@ -4423,7 +4463,7 @@ class SyntaxTree < Ripper
     # [Backtick | Const | Ident | Kw | Op] the name of the method
     attr_reader :name
 
-    # [nil | Paren] the parameter declaration for the method
+    # [nil | Params | Paren] the parameter declaration for the method
     attr_reader :paren
 
     # [untyped] the expression to be executed by the method
@@ -4467,7 +4507,12 @@ class SyntaxTree < Ripper
         end
 
         q.format(name)
-        q.format(paren) if paren && !paren.contents.empty?
+
+        if paren
+          params = paren
+          params = params.contents if params.is_a?(Paren)
+          q.format(paren) unless params.empty?
+        end
 
         q.text(" =")
         q.group do
@@ -4533,21 +4578,6 @@ class SyntaxTree < Ripper
     # and normal method definitions.
     beginning = find_token(Kw, "def")
 
-    # If we don't have a bodystmt node, then we have a single-line method
-    unless bodystmt.is_a?(BodyStmt)
-      node =
-        DefEndless.new(
-          target: nil,
-          operator: nil,
-          name: name,
-          paren: params,
-          statement: bodystmt,
-          location: beginning.location.to(bodystmt.location)
-        )
-
-      return node
-    end
-
     # If there aren't any params then we need to correct the params node
     # location information
     if params.is_a?(Params) && params.empty?
@@ -4563,18 +4593,35 @@ class SyntaxTree < Ripper
       params = Params.new(location: location)
     end
 
-    ending = find_token(Kw, "end")
-    bodystmt.bind(
-      find_next_statement_start(params.location.end_char),
-      ending.location.start_char
-    )
+    ending = find_token(Kw, "end", consume: false)
 
-    Def.new(
-      name: name,
-      params: params,
-      bodystmt: bodystmt,
-      location: beginning.location.to(ending.location)
-    )
+    if ending
+      tokens.delete(ending)
+      bodystmt.bind(
+        find_next_statement_start(params.location.end_char),
+        ending.location.start_char
+      )
+
+      Def.new(
+        name: name,
+        params: params,
+        bodystmt: bodystmt,
+        location: beginning.location.to(ending.location)
+      )
+    else
+      # In Ruby >= 3.1.0, this is a BodyStmt that wraps a single statement in
+      # the statements list. Before, it was just the individual statement.
+      statement = bodystmt.is_a?(BodyStmt) ? bodystmt.statements : bodystmt
+
+      DefEndless.new(
+        target: nil,
+        operator: nil,
+        name: name,
+        paren: params,
+        statement: statement,
+        location: beginning.location.to(bodystmt.location)
+      )
+    end
   end
 
   # Defined represents the use of the +defined?+ operator. It can be used with
@@ -4782,37 +4829,37 @@ class SyntaxTree < Ripper
     end
 
     beginning = find_token(Kw, "def")
+    ending = find_token(Kw, "end", consume: false)
 
-    # If we don't have a bodystmt node, then we have a single-line method
-    unless bodystmt.is_a?(BodyStmt)
-      node =
-        DefEndless.new(
-          target: target,
-          operator: operator,
-          name: name,
-          paren: params,
-          statement: bodystmt,
-          location: beginning.location.to(bodystmt.location)
-        )
+    if ending
+      tokens.delete(ending)
+      bodystmt.bind(
+        find_next_statement_start(params.location.end_char),
+        ending.location.start_char
+      )
 
-      return node
+      Defs.new(
+        target: target,
+        operator: operator,
+        name: name,
+        params: params,
+        bodystmt: bodystmt,
+        location: beginning.location.to(ending.location)
+      )
+    else
+      # In Ruby >= 3.1.0, this is a BodyStmt that wraps a single statement in
+      # the statements list. Before, it was just the individual statement.
+      statement = bodystmt.is_a?(BodyStmt) ? bodystmt.statements : bodystmt
+
+      DefEndless.new(
+        target: target,
+        operator: operator,
+        name: name,
+        paren: params,
+        statement: statement,
+        location: beginning.location.to(bodystmt.location)
+      )
     end
-
-    ending = find_token(Kw, "end")
-
-    bodystmt.bind(
-      find_next_statement_start(params.location.end_char),
-      ending.location.start_char
-    )
-
-    Defs.new(
-      target: target,
-      operator: operator,
-      name: name,
-      params: params,
-      bodystmt: bodystmt,
-      location: beginning.location.to(ending.location)
-    )
   end
 
   # DoBlock represents passing a block to a method call using the +do+ and +end+
@@ -8931,7 +8978,7 @@ class SyntaxTree < Ripper
     end
 
     class KeywordRestFormatter
-      # [:nil | KwRestParam] the value of the parameter
+      # [:nil | ArgsForward | KwRestParam] the value of the parameter
       attr_reader :value
 
       def initialize(value)
@@ -9046,7 +9093,7 @@ class SyntaxTree < Ripper
         q.format(rest) if rest && rest.is_a?(ExcessedComma)
       end
 
-      if [Def, Defs].include?(q.parent.class)
+      if [Def, Defs, DefEndless].include?(q.parent.class)
         q.group(0, "(", ")") do
           q.indent do
             q.breakable("")
@@ -9146,8 +9193,8 @@ class SyntaxTree < Ripper
   #     (nil | ArgsForward | ExcessedComma | RestParam) rest,
   #     (nil | Array[Ident]) posts,
   #     (nil | Array[[Ident, nil | untyped]]) keywords,
-  #     (nil | :nil | KwRestParam) keyword_rest,
-  #     (nil | BlockArg) block
+  #     (nil | :nil | ArgsForward | KwRestParam) keyword_rest,
+  #     (nil | :& | BlockArg) block
   #   ) -> Params
   def on_params(
     requireds,
@@ -9165,7 +9212,7 @@ class SyntaxTree < Ripper
       *posts,
       *keywords&.flat_map { |(key, value)| [key, value || nil] },
       (keyword_rest if keyword_rest != :nil),
-      block
+      (block if block != :&)
     ].compact
 
     location =
@@ -9182,7 +9229,7 @@ class SyntaxTree < Ripper
       posts: posts || [],
       keywords: keywords || [],
       keyword_rest: keyword_rest,
-      block: block,
+      block: (block if block != :&),
       location: location
     )
   end
