@@ -4,6 +4,10 @@ require_relative "test_helper"
 
 class SyntaxTree
   class NodeTest < Minitest::Test
+    def self.guard_version(version)
+      yield if Gem::Version.new(RUBY_VERSION) >= Gem::Version.new(version)
+    end
+
     def test_BEGIN
       assert_node(BEGINBlock, "BEGIN", "BEGIN {}")
     end
@@ -78,6 +82,21 @@ class SyntaxTree
       end
     end
 
+    guard_version("3.1.0") do
+      def test_arg_block_anonymous
+        source = <<~SOURCE
+          def method(&)
+            child_method(&)
+          end
+        SOURCE
+
+        at = location(lines: 2..2, chars: 29..30)
+        assert_node(ArgBlock, "arg_block", source, at: at) do |node|
+          node.bodystmt.statements.body.first.arguments.arguments.parts[0]
+        end
+      end
+    end
+
     def test_arg_star
       source = "method(prefix, *arguments, suffix)"
 
@@ -127,6 +146,15 @@ class SyntaxTree
 
       at = location(chars: 2..14)
       assert_node(Assoc, "assoc", source, at: at) { |node| node.assocs.first }
+    end
+
+    guard_version("3.1.0") do
+      def test_assoc_no_value
+        source = "{ key1:, key2: }"
+  
+        at = location(chars: 2..7)
+        assert_node(Assoc, "assoc", source, at: at) { |node| node.assocs.first }
+      end
     end
 
     def test_assoc_splat
@@ -204,6 +232,17 @@ class SyntaxTree
       at = location(chars: 11..17)
       assert_node(BlockArg, "blockarg", source, at: at) do |node|
         node.params.contents.block
+      end
+    end
+
+    guard_version("3.1.0") do
+      def test_blockarg_anonymous
+        source = "def method(&); end"
+  
+        at = location(chars: 11..12)
+        assert_node(BlockArg, "blockarg", source, at: at) do |node|
+          node.params.contents.block
+        end
       end
     end
 
@@ -315,6 +354,12 @@ class SyntaxTree
 
     def test_def_endless
       assert_node(DefEndless, "def_endless", "def method = result")
+    end
+
+    guard_version("3.1.0") do
+      def test_def_endless_command
+        assert_node(DefEndless, "def_endless", "def method = result argument")
+      end
     end
 
     def test_defined
@@ -946,23 +991,6 @@ class SyntaxTree
 
     def test_zsuper
       assert_node(ZSuper, "zsuper", "super")
-    end
-
-    # --------------------------------------------------------------------------
-    # Tests for formatting
-    # --------------------------------------------------------------------------
-
-    Dir[File.join(__dir__, "fixtures", "*.rb")].each do |filepath|
-      basename = File.basename(filepath, ".rb")
-
-      File.read(filepath).split(/%(?: #.+?)?\n/).drop(
-        1
-      ).each_with_index do |source, index|
-        define_method(:"test_formatting_#{basename}_#{index}") do
-          original, expected = source.split("-\n")
-          assert_equal(expected || original, SyntaxTree.format(original))
-        end
-      end
     end
 
     private
