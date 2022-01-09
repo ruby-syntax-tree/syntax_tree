@@ -2407,12 +2407,14 @@ class SyntaxTree < Ripper
   # :call-seq:
   #   on_begin: (untyped bodystmt) -> Begin | PinnedBegin
   def on_begin(bodystmt)
-    if beginning = find_token(Op, "^", consume: false)
-      tokens.delete(beginning)
+    pin = find_token(Op, "^", consume: false)
+
+    if pin && pin.location.start_char < bodystmt.location.start_char
+      tokens.delete(pin)
       find_token(LParen)
 
-      ending = find_token(RParen)
-      location = beginning.location.to(ending.location)
+      rparen = find_token(RParen)
+      location = pin.location.to(rparen.location)
 
       PinnedBegin.new(statement: bodystmt, location: location)
     else
@@ -13087,7 +13089,9 @@ class SyntaxTree < Ripper
   # :call-seq:
   #   on_var_ref: ((Const | CVar | GVar | Ident | IVar | Kw) value) -> VarRef
   def on_var_ref(value)
-    if pin = find_token(Op, "^", consume: false)
+    pin = find_token(Op, "^", consume: false)
+
+    if pin && pin.location.start_char == value.location.start_char - 1
       tokens.delete(pin)
       PinnedVarRef.new(value: value, location: pin.location.to(value.location))
     else
