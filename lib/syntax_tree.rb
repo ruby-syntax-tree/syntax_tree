@@ -1695,10 +1695,13 @@ class SyntaxTree < Ripper
       parts += posts
 
       if constant
-        q.format(constant)
-        q.text("[")
-        q.seplist(parts) { |part| q.format(part) }
-        q.text("]")
+        q.group do
+          q.format(constant)
+          q.text("[")
+          q.seplist(parts) { |part| q.format(part) }
+          q.text("]")
+        end
+
         return
       end
 
@@ -1708,7 +1711,7 @@ class SyntaxTree < Ripper
         q.seplist(parts) { |part| q.format(part) }
         q.text("]")
       else
-        q.seplist(parts) { |part| q.format(part) }
+        q.group { q.seplist(parts) { |part| q.format(part) } }
       end
     end
 
@@ -2340,24 +2343,93 @@ class SyntaxTree < Ripper
     end
   end
 
-  # :call-seq:
-  #   on_begin: (BodyStmt bodystmt) -> Begin
-  def on_begin(bodystmt)
-    keyword = find_token(Kw, "begin")
-    end_char =
-      if bodystmt.rescue_clause || bodystmt.ensure_clause ||
-           bodystmt.else_clause
-        bodystmt.location.end_char
-      else
-        find_token(Kw, "end").location.end_char
+  # PinnedBegin represents a pinning a nested statement within pattern matching.
+  #
+  #     case value
+  #     in ^(statement)
+  #     end
+  #
+  class PinnedBegin
+    # [untyped] the expression being pinned
+    attr_reader :statement
+
+    # [Location] the location of this node
+    attr_reader :location
+
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(statement:, location:, comments: [])
+      @statement = statement
+      @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [statement]
+    end
+
+    def format(q)
+      q.group do
+        q.text("^(")
+        q.nest(1) do
+          q.indent do
+            q.breakable("")
+            q.format(statement)
+          end
+          q.breakable("")
+          q.text(")")
+        end
       end
+    end
 
-    bodystmt.bind(keyword.location.end_char, end_char)
+    def pretty_print(q)
+      q.group(2, "(", ")") do
+        q.text("pinned_begin")
 
-    Begin.new(
-      bodystmt: bodystmt,
-      location: keyword.location.to(bodystmt.location)
-    )
+        q.breakable
+        q.pp(statement)
+
+        q.pp(Comment::List.new(comments))
+      end
+    end
+
+    def to_json(*opts)
+      {
+        type: :pinned_begin,
+        stmt: statement,
+        loc: location,
+        cmts: comments
+      }.to_json(*opts)
+    end
+  end
+
+  # :call-seq:
+  #   on_begin: (untyped bodystmt) -> Begin | PinnedBegin
+  def on_begin(bodystmt)
+    if beginning = find_token(Op, "^", consume: false)
+      tokens.delete(beginning)
+      find_token(LParen)
+
+      ending = find_token(RParen)
+      location = beginning.location.to(ending.location)
+
+      PinnedBegin.new(statement: bodystmt, location: location)
+    else
+      keyword = find_token(Kw, "begin")
+      end_char =
+        if bodystmt.rescue_clause || bodystmt.ensure_clause ||
+            bodystmt.else_clause
+          bodystmt.location.end_char
+        else
+          find_token(Kw, "end").location.end_char
+        end
+
+      bodystmt.bind(keyword.location.end_char, end_char)
+      location = keyword.location.to(bodystmt.location)
+
+      Begin.new(bodystmt: bodystmt, location: location)
+    end
   end
 
   # Binary represents any expression that involves two sub-expressions with an
@@ -12952,10 +13024,68 @@ class SyntaxTree < Ripper
     end
   end
 
+  # PinnedVarRef represents a pinned variable reference within a pattern
+  # matching pattern.
+  #
+  #     case value
+  #     in ^variable
+  #     end
+  #
+  # This can be a plain local variable like the example above. It can also be a
+  # a class variable, a global variable, or an instance variable.
+  class PinnedVarRef
+    # [VarRef] the value of this node
+    attr_reader :value
+
+    # [Location] the location of this node
+    attr_reader :location
+
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(value:, location:, comments: [])
+      @value = value
+      @location = location
+      @comments = comments
+    end
+
+    def child_nodes
+      [value]
+    end
+
+    def format(q)
+      q.group do
+        q.text("^")
+        q.format(value)
+      end
+    end
+
+    def pretty_print(q)
+      q.group(2, "(", ")") do
+        q.text("pinned_var_ref")
+
+        q.breakable
+        q.pp(value)
+
+        q.pp(Comment::List.new(comments))
+      end
+    end
+
+    def to_json(*opts)
+      { type: :pinned_var_ref, value: value, loc: location, cmts: comments }
+        .to_json(*opts)
+    end
+  end
+
   # :call-seq:
   #   on_var_ref: ((Const | CVar | GVar | Ident | IVar | Kw) value) -> VarRef
   def on_var_ref(value)
-    VarRef.new(value: value, location: value.location)
+    if pin = find_token(Op, "^", consume: false)
+      tokens.delete(pin)
+      PinnedVarRef.new(value: value, location: pin.location.to(value.location))
+    else
+      VarRef.new(value: value, location: value.location)
+    end
   end
 
   # VCall represent any plain named object with Ruby that could be either a
