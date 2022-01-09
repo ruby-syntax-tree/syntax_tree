@@ -2521,13 +2521,20 @@ class SyntaxTree < Ripper
   #   on_binary: (untyped left, (Op | Symbol) operator, untyped right) -> Binary
   def on_binary(left, operator, right)
     if operator.is_a?(Symbol)
-      # Here, we're going to search backward for the nearest token that matches
-      # the operator so we can delete it from the list.
-      token = find_token(Op, operator.to_s, consume: false)
+      # Here, we're going to search backward for the token that's between the
+      # two operands that matches the operator so we can delete it from the
+      # list.
+      index =
+        tokens.rindex do |token|
+          location = token.location
 
-      if token && token.location.start_char > left.location.end_char
-        tokens.delete(token)
-      end
+          token.is_a?(Op) &&
+            token.value == operator.to_s &&
+            location.start_char > left.location.end_char &&
+            location.end_char < right.location.start_char
+        end
+
+      tokens.delete_at(index) if index
     else
       # On most Ruby implementations, operator is a Symbol that represents that
       # operation being performed. For instance in the example `1 < 2`, the
