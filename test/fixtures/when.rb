@@ -46,3 +46,11 @@ case
 when foo
 else
 end
+%
+case
+when foo.. then
+end
+%
+case
+when foo... then
+end

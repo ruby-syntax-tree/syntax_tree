@@ -13246,6 +13246,14 @@ class SyntaxTree < Ripper
               separator = -> { q.group { q.comma_breakable } }
               q.seplist(arguments.parts, separator) { |part| q.format(part) }
             end
+
+            # Very special case here. If you're inside of a when clause and the
+            # last argument to the predicate is and endless range, then you are
+            # forced to use the "then" keyword to make it parse properly.
+            last = arguments.parts.last
+            if (last.is_a?(Dot2) || last.is_a?(Dot3)) && !last.right
+              q.text(" then")
+            end
           end
         end
 

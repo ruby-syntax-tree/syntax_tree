@@ -10,6 +10,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 
 - Support for Ruby 3.1 syntax, including: blocks without names, hash keys without values, endless methods without parentheses, and new argument forwarding.
 - Support for pinned expressions and variables within pattern matching.
+- Support endless ranges as the final argument to a `when` clause.
 
 ## [1.1.1] - 2021-12-09
 
