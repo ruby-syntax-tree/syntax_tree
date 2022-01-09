@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 
 ## [Unreleased]
 
+## [1.2.0] - 2022-01-09
+
 ### Added
 
 - Support for Ruby 3.1 syntax, including: blocks without names, hash keys without values, endless methods without parentheses, and new argument forwarding.
@@ -103,7 +105,8 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 
 - 🎉 Initial release! 🎉
 
-[unreleased]: https://github.com/kddnewton/syntax_tree/compare/v1.1.1...HEAD
+[unreleased]: https://github.com/kddnewton/syntax_tree/compare/v1.2.0...HEAD
+[1.2.0]: https://github.com/kddnewton/syntax_tree/compare/v1.1.1...v1.2.0
 [1.1.1]: https://github.com/kddnewton/syntax_tree/compare/v1.1.0...v1.1.1
 [1.1.0]: https://github.com/kddnewton/syntax_tree/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/kddnewton/syntax_tree/compare/v0.1.0...v1.0.0
