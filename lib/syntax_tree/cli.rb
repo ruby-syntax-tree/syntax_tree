@@ -135,22 +135,58 @@ class SyntaxTree
     # The help message displayed if the input arguments are not correctly
     # ordered or formatted.
     HELP = <<~HELP
-      stree MODE FILE
+      stree ast [FILE]
+        Print out the AST corresponding to the given files
 
-      MODE: ast | check | debug | doc | format | write
-      FILE: one or more paths to files to parse
+      stree check [FILE]
+        Check that the given files are formatted as syntax tree would format them
+
+      stree debug [FILE]
+        Check that the given files can be formatted idempotently
+
+      stree doc [FILE]
+        Print out the doc tree that would be used to format the given files
+
+      stree format [FILE]
+        Print out the formatted version of the given files
+
+      stree help
+        Display this help message
+
+      stree lsp
+        Run syntax tree in language server mode
+
+      stree version
+        Output the current version of syntax tree
+
+      stree write [FILE]
+        Read, format, and write back the source of the given files
     HELP
 
     class << self
       # Run the CLI over the given array of strings that make up the arguments
       # passed to the invocation.
       def run(argv)
-        if argv.length < 2
+        arg, *patterns = argv
+
+        case arg
+        when "help"
+          puts HELP
+          return 0
+        when "lsp"
+          require "syntax_tree/language_server"
+          LanguageServer.new.run
+          return 0
+        when "version"
+          puts SyntaxTree::VERSION
+          return 0
+        end
+
+        if patterns.empty?
           warn(HELP)
           return 1
         end
 
-        arg, *patterns = argv
         action =
           case arg
           when "a", "ast"

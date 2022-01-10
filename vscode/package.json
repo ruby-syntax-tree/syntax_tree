@@ -1,0 +1,67 @@
+{
+  "name": "syntax_tree",
+  "displayName": "Syntax Tree",
+  "description": "VSCode integration for syntax tree",
+  "version": "0.1.0",
+  "publisher": "kddnewton",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/kddnewton/syntax_tree.git"
+  },
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/kddnewton/syntax_tree/issues"
+  },
+  "engines": {
+    "vscode": "^1.46.0"
+  },
+  "activationEvents": [
+    "onLanguage:ruby",
+    "workspaceContains:Gemfile.lock",
+    "onCommand:syntaxTree.start",
+    "onCommand:syntaxTree.stop",
+    "onCommand:syntaxTree.restart",
+    "onCommand:syntaxTree.showOutputChannel",
+    "onCommand:syntaxTree.visualize"
+  ],
+  "main": "./out/extension",
+  "contributes": {
+    "commands": [
+      {
+        "command": "syntaxTree.start",
+        "title": "Syntax Tree: Start"
+      },
+      {
+        "command": "syntaxTree.stop",
+        "title": "Syntax Tree: Stop"
+      },
+      {
+        "command": "syntaxTree.restart",
+        "title": "Syntax Tree: Restart"
+      },
+      {
+        "command": "syntaxTree.showOutputChannel",
+        "title": "Syntax Tree: Show Output Channel"
+      },
+      {
+        "command": "syntaxTree.visualize",
+        "title": "Syntax Tree: Visualize"
+      }
+    ]
+  },
+  "scripts": {
+    "compile": "tsc -p ./",
+    "package": "vsce package --yarn --githubBranch main",
+    "publish": "vsce publish --yarn --githubBranch main",
+    "vscode:prepublish": "yarn compile",
+    "watch": "tsc --watch -p ./"
+  },
+  "dependencies": {
+    "vscode-languageclient": "^7.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^17.0.8",
+    "@types/vscode": "^1.46.0",
+    "typescript": "^4.2.2"
+  }
+}
