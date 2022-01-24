@@ -1,10 +1,10 @@
 #!/usr/bin/env ruby
 # frozen_string_literal: true
 
-require 'bundler/setup'
-require 'stackprof'
+require "bundler/setup"
+require "stackprof"
 
-filepath = File.expand_path('../lib/syntax_tree', __dir__)
+filepath = File.expand_path("../lib/syntax_tree", __dir__)
 require_relative filepath
 
 GC.disable

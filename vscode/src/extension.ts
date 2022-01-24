@@ -5,6 +5,8 @@ import { LanguageClient } from "vscode-languageclient/node";
 import { promisify } from "util";
 import { exec } from "child_process";
 
+import Implicits from "./Implicits";
+
 const promiseExec = promisify(exec);
 
 export function activate(context: ExtensionContext) {
@@ -88,6 +90,10 @@ export function activate(context: ExtensionContext) {
 
     if (languageClient) {
       context.subscriptions.push(languageClient.start());
+      await languageClient.onReady();
+
+      const implicits = new Implicits(languageClient, outputChannel)
+      context.subscriptions.push(implicits);
     }
   }
 
@@ -121,3 +127,27 @@ export function activate(context: ExtensionContext) {
     }
   }
 }
+
+
+
+// #   const paren = { before: "₍", after: "₎" };
+
+// # def to_vscode
+// #   { before: before, after: after }.flat_map do |type, positions|
+// #     positions.map do |position, count|
+
+// #     end
+// #   end
+
+// #   left.map do |position, count|
+    
+// #   end
+// # end
+
+// # # range: new Range(
+// # #   editor.document.positionAt(pos),
+// # #   editor.document.positionAt(pos)
+// # # ),
+// # # renderOptions: {
+// # #   [beforeAfter]: { contentText: repeat(paren[beforeAfter], count) },
+// # # },

@@ -1825,6 +1825,15 @@ class SyntaxTree < Ripper
       [target, value]
     end
 
+    def deconstruct_keys(keys)
+      {
+        target: target,
+        value: value,
+        location: location,
+        comments: comments
+      }
+    end
+
     def format(q)
       q.group do
         q.format(target)
@@ -1915,6 +1924,15 @@ class SyntaxTree < Ripper
 
     def child_nodes
       [key, value]
+    end
+
+    def deconstruct_keys(keys)
+      {
+        key: key,
+        value: value,
+        location: location,
+        comments: comments
+      }
     end
 
     def format(q)
@@ -2470,6 +2488,16 @@ class SyntaxTree < Ripper
 
     def child_nodes
       [left, right]
+    end
+
+    def deconstruct_keys(keys)
+      {
+        left: left,
+        operator: operator,
+        right: right,
+        location: location,
+        comments: comments
+      }
     end
 
     def format(q)
@@ -6799,9 +6827,7 @@ class SyntaxTree < Ripper
 
       if constant
         q.format(constant)
-        q.text("[")
-        contents.call
-        q.text("]")
+        q.group(0, "[", "]", &contents)
         return
       end
 
@@ -7145,6 +7171,16 @@ class SyntaxTree < Ripper
       [predicate, truthy, falsy]
     end
 
+    def deconstruct_keys(keys)
+      {
+        predicate: predicate,
+        truthy: truthy,
+        falsy: falsy,
+        location: location,
+        comments: comments
+      }
+    end
+
     def format(q)
       force_flat = [
         Alias, Assign, Break, Command, CommandCall, Heredoc, If, IfMod, IfOp,
@@ -7252,7 +7288,7 @@ class SyntaxTree < Ripper
     end
 
     def format(q)
-      if ContainsAssignment.call(node.statement)
+      if ContainsAssignment.call(node.statement) || q.parent.is_a?(In)
         q.group { format_flat(q) }
       else
         q.group { q.if_break { format_break(q) }.if_flat { format_flat(q) } }
@@ -7806,6 +7842,10 @@ class SyntaxTree < Ripper
 
     def child_nodes
       []
+    end
+
+    def deconstruct_keys(keys)
+      { value: value, location: location, comments: comments }
     end
 
     def format(q)
@@ -10418,6 +10458,16 @@ class SyntaxTree < Ripper
       [exception, statements, consequent]
     end
 
+    def deconstruct_keys(keys)
+      {
+        exception: exception,
+        statements: statements,
+        consequent: consequent,
+        location: location,
+        comments: comments 
+      }
+    end
+
     def format(q)
       q.group do
         q.text("rescue")
@@ -12285,6 +12335,15 @@ class SyntaxTree < Ripper
 
     def child_nodes
       [statement]
+    end
+
+    def deconstruct_keys(keys)
+      {
+        operator: operator,
+        statement: statement,
+        location: location,
+        comments: comments
+      }
     end
 
     def format(q)

@@ -1,8 +1,8 @@
 #!/usr/bin/env ruby
 # frozen_string_literal: true
 
-require 'bundler/setup'
-require 'syntax_tree'
+require "bundler/setup"
+require "syntax_tree"
 
-require 'irb'
+require "irb"
 IRB.start(__FILE__)

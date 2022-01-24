@@ -4,6 +4,8 @@ require "cgi"
 require "json"
 require "uri"
 
+require_relative "implicits"
+
 class SyntaxTree
   class LanguageServer
     attr_reader :input, :output
@@ -40,6 +42,8 @@ class SyntaxTree
           store.delete(uri)
         in { method: "textDocument/formatting", id:, params: { textDocument: { uri: } } }
           write(id: id, result: [format(store[uri])])
+        in { method: "syntaxTree/implicits", id:, params: { textDocument: { uri: } } }
+          write(id: id, result: implicits(store[uri]))
         in { method: "syntaxTree/visualizing", id:, params: { textDocument: { uri: } } }
           output = []
           PP.pp(SyntaxTree.parse(store[uri]), output)
@@ -68,6 +72,16 @@ class SyntaxTree
           end: { line: source.lines.size + 1, character: 0 }
         },
         newText: SyntaxTree.format(source)
+      }
+    end
+
+    def implicits(source)
+      implicits = Implicits.find(SyntaxTree.parse(source))
+      serialize = ->(position, text) { { position: position, text: text } }
+
+      {
+        before: implicits.before.map(&serialize),
+        after: implicits.after.map(&serialize)
       }
     end
 

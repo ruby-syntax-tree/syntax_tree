@@ -15,6 +15,10 @@ class SyntaxTree
         "\033[#{code}m#{value}\033[0m"
       end
 
+      def self.bold(value)
+        new(value, "1")
+      end
+
       def self.gray(value)
         new(value, "38;5;102")
       end
@@ -135,31 +139,31 @@ class SyntaxTree
     # The help message displayed if the input arguments are not correctly
     # ordered or formatted.
     HELP = <<~HELP
-      stree ast [FILE]
+      #{Color.bold("stree ast [FILE]")}
         Print out the AST corresponding to the given files
 
-      stree check [FILE]
+      #{Color.bold("stree check [FILE]")}
         Check that the given files are formatted as syntax tree would format them
 
-      stree debug [FILE]
+      #{Color.bold("stree debug [FILE]")}
         Check that the given files can be formatted idempotently
 
-      stree doc [FILE]
+      #{Color.bold("stree doc [FILE]")}
         Print out the doc tree that would be used to format the given files
 
-      stree format [FILE]
+      #{Color.bold("stree format [FILE]")}
         Print out the formatted version of the given files
 
-      stree help
+      #{Color.bold("stree help")}
         Display this help message
 
-      stree lsp
+      #{Color.bold("stree lsp")}
         Run syntax tree in language server mode
 
-      stree version
+      #{Color.bold("stree version")}
         Output the current version of syntax tree
 
-      stree write [FILE]
+      #{Color.bold("stree write [FILE]")}
         Read, format, and write back the source of the given files
     HELP
 

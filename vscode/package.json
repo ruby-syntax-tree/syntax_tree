@@ -47,6 +47,17 @@
         "command": "syntaxTree.visualize",
         "title": "Syntax Tree: Visualize"
       }
+    ],
+    "colors": [
+      {
+        "id": "syntaxTree.implicits",
+        "description": "Text color for the inserted implicits",
+        "defaults": {
+          "dark": "#707070",
+          "light": "#999999",
+          "highContrast": "foreground"
+        }
+      }
     ]
   },
   "scripts": {
