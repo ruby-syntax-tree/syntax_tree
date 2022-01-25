@@ -83,6 +83,7 @@ class SyntaxTree
         before: implicits.before.map(&serialize),
         after: implicits.after.map(&serialize)
       }
+    rescue ParseError
     end
 
     def write(value)
