@@ -3698,7 +3698,11 @@ class SyntaxTree < Ripper
     end
 
     def child_nodes
-      [constant, superclass, bodystmt]
+      [].tap do |nodes|
+        nodes << constant
+        nodes << superclass if superclass
+        nodes << bodystmt
+      end
     end
 
     def format(q)
