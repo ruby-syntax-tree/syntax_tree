@@ -439,6 +439,17 @@ class SyntaxTree < Ripper
       [lbrace, statements]
     end
 
+    alias deconstruct child_nodes
+
+    def deconstruct_keys(keys)
+      {
+        lbrace: lbrace,
+        statements: statements,
+        location: location,
+        comments: comments
+      }
+    end
+
     def format(q)
       q.group do
         q.text("BEGIN ")
@@ -520,6 +531,12 @@ class SyntaxTree < Ripper
       []
     end
 
+    alias deconstruct child_nodes
+
+    def deconstruct_keys(keys)
+      { value: value, location: location, comments: comments }
+    end
+
     def format(q)
       if value.length != 2
         q.text(value)
@@ -588,6 +605,17 @@ class SyntaxTree < Ripper
 
     def child_nodes
       [lbrace, statements]
+    end
+
+    alias deconstruct child_nodes
+
+    def deconstruct_keys(keys)
+      {
+        lbrace: lbrace,
+        statements: statements,
+        location: location,
+        comments: comments
+      }
     end
 
     def format(q)
@@ -672,6 +700,12 @@ class SyntaxTree < Ripper
 
     def child_nodes
       []
+    end
+
+    alias deconstruct child_nodes
+
+    def deconstruct_keys(keys)
+      { value: value, location: location, comments: comments }
     end
 
     def format(q)
@@ -770,6 +804,12 @@ class SyntaxTree < Ripper
       [left, right]
     end
 
+    alias deconstruct child_nodes
+
+    def deconstruct_keys(keys)
+      { left: left, right: right, location: location, comments: comments }
+    end
+
     def format(q)
       keyword = "alias "
       left_argument = AliasArgumentFormatter.new(left)
@@ -863,6 +903,17 @@ class SyntaxTree < Ripper
       [collection, index]
     end
 
+    alias deconstruct child_nodes
+
+    def deconstruct_keys(keys)
+      {
+        collection: collection,
+        index: index,
+        location: location,
+        comments: comments
+      }
+    end
+
     def format(q)
       q.group do
         q.format(collection)
@@ -947,6 +998,17 @@ class SyntaxTree < Ripper
 
     def child_nodes
       [collection, index]
+    end
+
+    alias deconstruct child_nodes
+
+    def deconstruct_keys(keys)
+      {
+        collection: collection,
+        index: index,
+        location: location,
+        comments: comments
+      }
     end
 
     def format(q)
@@ -1043,6 +1105,12 @@ class SyntaxTree < Ripper
       [arguments]
     end
 
+    alias deconstruct child_nodes
+
+    def deconstruct_keys(keys)
+      { arguments: arguments, location: location, comments: comments }
+    end
+
     def format(q)
       unless arguments
         q.text("()")
@@ -1128,6 +1196,12 @@ class SyntaxTree < Ripper
       parts
     end
 
+    alias deconstruct child_nodes
+
+    def deconstruct_keys(keys)
+      { parts: parts, location: location, comments: comments }
+    end
+
     def format(q)
       q.seplist(parts) { |part| q.format(part) }
     end
@@ -1190,6 +1264,12 @@ class SyntaxTree < Ripper
 
     def child_nodes
       [value]
+    end
+
+    alias deconstruct child_nodes
+
+    def deconstruct_keys(keys)
+      { value: value, location: location, comments: comments }
     end
 
     def format(q)
@@ -1278,6 +1358,12 @@ class SyntaxTree < Ripper
       [value]
     end
 
+    alias deconstruct child_nodes
+
+    def deconstruct_keys(keys)
+      { value: value, location: location, comments: comments }
+    end
+
     def format(q)
       q.text("*")
       q.format(value) if value
@@ -1358,6 +1444,12 @@ class SyntaxTree < Ripper
 
     def child_nodes
       []
+    end
+
+    alias deconstruct child_nodes
+
+    def deconstruct_keys(keys)
+      { value: value, location: location, comments: comments }
     end
 
     def format(q)
@@ -1498,6 +1590,17 @@ class SyntaxTree < Ripper
 
     def child_nodes
       [lbracket, contents]
+    end
+
+    alias deconstruct child_nodes
+
+    def deconstruct_keys(keys)
+      {
+        lbracket: lbracket,
+        contents: contents,
+        location: location,
+        comments: comments
+      }
     end
 
     def format(q)
@@ -1689,6 +1792,19 @@ class SyntaxTree < Ripper
       [constant, *requireds, rest, *posts]
     end
 
+    alias deconstruct child_nodes
+
+    def deconstruct_keys(keys)
+      {
+        constant: constant,
+        requireds: requireds,
+        rest: rest,
+        posts: posts,
+        location: location,
+        comments: comments
+      }
+    end
+
     def format(q)
       parts = [*requireds]
       parts << RestFormatter.new(rest) if rest
@@ -1825,6 +1941,8 @@ class SyntaxTree < Ripper
       [target, value]
     end
 
+    alias deconstruct child_nodes
+
     def deconstruct_keys(keys)
       { target: target, value: value, location: location, comments: comments }
     end
@@ -1921,6 +2039,8 @@ class SyntaxTree < Ripper
       [key, value]
     end
 
+    alias deconstruct child_nodes
+
     def deconstruct_keys(keys)
       { key: key, value: value, location: location, comments: comments }
     end
@@ -2011,6 +2131,12 @@ class SyntaxTree < Ripper
       [value]
     end
 
+    alias deconstruct child_nodes
+
+    def deconstruct_keys(keys)
+      { value: value, location: location, comments: comments }
+    end
+
     def format(q)
       q.text("**")
       q.format(value)
@@ -2074,6 +2200,12 @@ class SyntaxTree < Ripper
       []
     end
 
+    alias deconstruct child_nodes
+
+    def deconstruct_keys(keys)
+      { value: value, location: location, comments: comments }
+    end
+
     def format(q)
       q.text(value)
     end
@@ -2126,6 +2258,12 @@ class SyntaxTree < Ripper
 
     def child_nodes
       []
+    end
+
+    alias deconstruct child_nodes
+
+    def deconstruct_keys(keys)
+      { value: value, location: location, comments: comments }
     end
 
     def format(q)
@@ -2252,6 +2390,12 @@ class SyntaxTree < Ripper
       assocs
     end
 
+    alias deconstruct child_nodes
+
+    def deconstruct_keys(keys)
+      { assocs: assocs, location: location, comments: comments }
+    end
+
     def format(q)
       q.seplist(assocs) { |assoc| q.format(assoc) }
     end
@@ -2316,6 +2460,12 @@ class SyntaxTree < Ripper
       [bodystmt]
     end
 
+    alias deconstruct child_nodes
+
+    def deconstruct_keys(keys)
+      { bodystmt: bodystmt, location: location, comments: comments }
+    end
+
     def format(q)
       q.text("begin")
 
@@ -2375,6 +2525,12 @@ class SyntaxTree < Ripper
 
     def child_nodes
       [statement]
+    end
+
+    alias deconstruct child_nodes
+
+    def deconstruct_keys(keys)
+      { statement: statement, location: location, comments: comments }
     end
 
     def format(q)
@@ -2479,6 +2635,8 @@ class SyntaxTree < Ripper
     def child_nodes
       [left, right]
     end
+
+    alias deconstruct child_nodes
 
     def deconstruct_keys(keys)
       {
@@ -2648,6 +2806,12 @@ class SyntaxTree < Ripper
       [params, *locals]
     end
 
+    alias deconstruct child_nodes
+
+    def deconstruct_keys(keys)
+      { params: params, locals: locals, location: location, comments: comments }
+    end
+
     def format(q)
       q.group(0, "|", "|") do
         doc = q.format(params)
@@ -2728,6 +2892,12 @@ class SyntaxTree < Ripper
 
     def child_nodes
       [name]
+    end
+
+    alias deconstruct child_nodes
+
+    def deconstruct_keys(keys)
+      { name: name, location: location, comments: comments }
     end
 
     def format(q)
@@ -2837,6 +3007,19 @@ class SyntaxTree < Ripper
 
     def child_nodes
       [statements, rescue_clause, else_clause, ensure_clause]
+    end
+
+    alias deconstruct child_nodes
+
+    def deconstruct_keys(keys)
+      {
+        statements: statements,
+        rescue_clause: rescue_clause,
+        else_clause: else_clause,
+        ensure_clause: ensure_clause,
+        location: location,
+        comments: comments
+      }
     end
 
     def format(q)
@@ -3115,6 +3298,18 @@ class SyntaxTree < Ripper
       [lbrace, block_var, statements]
     end
 
+    alias deconstruct child_nodes
+
+    def deconstruct_keys(keys)
+      {
+        lbrace: lbrace,
+        block_var: block_var,
+        statements: statements,
+        location: location,
+        comments: comments
+      }
+    end
+
     def format(q)
       BlockFormatter.new(self, lbrace, "}", statements).format(q)
     end
@@ -3256,6 +3451,12 @@ class SyntaxTree < Ripper
       [arguments]
     end
 
+    alias deconstruct child_nodes
+
+    def deconstruct_keys(keys)
+      { arguments: arguments, location: location, comments: comments }
+    end
+
     def format(q)
       FlowControlFormatter.new("break", self).format(q)
     end
@@ -3358,6 +3559,19 @@ class SyntaxTree < Ripper
         (message if message != :call),
         arguments
       ]
+    end
+
+    alias deconstruct child_nodes
+
+    def deconstruct_keys(keys)
+      {
+        receiver: receiver,
+        operator: operator,
+        message: message,
+        arguments: arguments,
+        location: location,
+        comments: comments
+      }
     end
 
     def format(q)
@@ -3481,6 +3695,18 @@ class SyntaxTree < Ripper
       [keyword, value, consequent]
     end
 
+    alias deconstruct child_nodes
+
+    def deconstruct_keys(keys)
+      {
+        keyword: keyword,
+        value: value,
+        consequent: consequent,
+        location: location,
+        comments: comments
+      }
+    end
+
     def format(q)
       q.group do
         q.format(keyword)
@@ -3560,6 +3786,18 @@ class SyntaxTree < Ripper
 
     def child_nodes
       [value, operator, pattern]
+    end
+
+    alias deconstruct child_nodes
+
+    def deconstruct_keys(keys)
+      {
+        value: value,
+        operator: operator,
+        pattern: pattern,
+        location: location,
+        comments: comments
+      }
     end
 
     def format(q)
@@ -3688,6 +3926,18 @@ class SyntaxTree < Ripper
 
     def child_nodes
       [constant, superclass, bodystmt]
+    end
+
+    alias deconstruct child_nodes
+
+    def deconstruct_keys(keys)
+      {
+        constant: constant,
+        superclass: superclass,
+        bodystmt: bodystmt,
+        location: location,
+        comments: comments
+      }
     end
 
     def format(q)
@@ -3835,6 +4085,17 @@ class SyntaxTree < Ripper
       [message, arguments]
     end
 
+    alias deconstruct child_nodes
+
+    def deconstruct_keys(keys)
+      {
+        message: message,
+        arguments: arguments,
+        location: location,
+        comments: comments
+      }
+    end
+
     def format(q)
       q.group do
         q.format(message)
@@ -3920,6 +4181,19 @@ class SyntaxTree < Ripper
 
     def child_nodes
       [receiver, message, arguments]
+    end
+
+    alias deconstruct child_nodes
+
+    def deconstruct_keys(keys)
+      {
+        receiver: receiver,
+        operator: operator,
+        message: message,
+        arguments: arguments,
+        location: location,
+        comments: comments
+      }
     end
 
     def format(q)
@@ -4110,6 +4384,12 @@ class SyntaxTree < Ripper
       []
     end
 
+    alias deconstruct child_nodes
+
+    def deconstruct_keys(keys)
+      { value: value, inline: inline, location: location }
+    end
+
     def format(q)
       q.text(value)
     end
@@ -4183,6 +4463,12 @@ class SyntaxTree < Ripper
       []
     end
 
+    alias deconstruct child_nodes
+
+    def deconstruct_keys(keys)
+      { value: value, location: location, comments: comments }
+    end
+
     def format(q)
       q.text(value)
     end
@@ -4242,6 +4528,17 @@ class SyntaxTree < Ripper
 
     def child_nodes
       [parent, constant]
+    end
+
+    alias deconstruct child_nodes
+
+    def deconstruct_keys(keys)
+      {
+        parent: parent,
+        constant: constant,
+        location: location,
+        comments: comments
+      }
     end
 
     def format(q)
@@ -4313,6 +4610,17 @@ class SyntaxTree < Ripper
       [parent, constant]
     end
 
+    alias deconstruct child_nodes
+
+    def deconstruct_keys(keys)
+      {
+        parent: parent,
+        constant: constant,
+        location: location,
+        comments: comments
+      }
+    end
+
     def format(q)
       q.format(parent)
       q.text("::")
@@ -4380,6 +4688,12 @@ class SyntaxTree < Ripper
       [constant]
     end
 
+    alias deconstruct child_nodes
+
+    def deconstruct_keys(keys)
+      { constant: constant, location: location, comments: comments }
+    end
+
     def format(q)
       q.format(constant)
     end
@@ -4433,6 +4747,12 @@ class SyntaxTree < Ripper
 
     def child_nodes
       []
+    end
+
+    alias deconstruct child_nodes
+
+    def deconstruct_keys(keys)
+      { value: value, location: location, comments: comments }
     end
 
     def format(q)
@@ -4496,6 +4816,18 @@ class SyntaxTree < Ripper
 
     def child_nodes
       [name, params, bodystmt]
+    end
+
+    alias deconstruct child_nodes
+
+    def deconstruct_keys(keys)
+      {
+        name: name,
+        params: params,
+        bodystmt: bodystmt,
+        location: location,
+        comments: comments
+      }
     end
 
     def format(q)
@@ -4593,6 +4925,20 @@ class SyntaxTree < Ripper
 
     def child_nodes
       [target, operator, name, paren, statement]
+    end
+
+    alias deconstruct child_nodes
+
+    def deconstruct_keys(keys)
+      {
+        target: target,
+        operator: operator,
+        name: name,
+        paren: paren,
+        statement: statement,
+        location: location,
+        comments: comments
+      }
     end
 
     def format(q)
@@ -4747,6 +5093,12 @@ class SyntaxTree < Ripper
       [value]
     end
 
+    alias deconstruct child_nodes
+
+    def deconstruct_keys(keys)
+      { value: value, location: location, comments: comments }
+    end
+
     def format(q)
       q.group(0, "defined?(", ")") do
         q.indent do
@@ -4836,6 +5188,20 @@ class SyntaxTree < Ripper
 
     def child_nodes
       [target, operator, name, params, bodystmt]
+    end
+
+    alias deconstruct child_nodes
+
+    def deconstruct_keys(keys)
+      {
+        target: target,
+        operator: operator,
+        name: name,
+        params: params,
+        bodystmt: bodystmt,
+        location: location,
+        comments: comments
+      }
     end
 
     def format(q)
@@ -4994,6 +5360,18 @@ class SyntaxTree < Ripper
       [keyword, block_var, bodystmt]
     end
 
+    alias deconstruct child_nodes
+
+    def deconstruct_keys(keys)
+      {
+        keyword: keyword,
+        block_var: block_var,
+        bodystmt: bodystmt,
+        location: location,
+        comments: comments
+      }
+    end
+
     def format(q)
       BlockFormatter.new(self, keyword, "end", bodystmt).format(q)
     end
@@ -5107,6 +5485,12 @@ class SyntaxTree < Ripper
       [left, right]
     end
 
+    alias deconstruct child_nodes
+
+    def deconstruct_keys(keys)
+      { left: left, right: right, location: location, comments: comments }
+    end
+
     def format(q)
       DotFormatter.new("..", self).format(q)
     end
@@ -5189,6 +5573,12 @@ class SyntaxTree < Ripper
 
     def child_nodes
       [left, right]
+    end
+
+    alias deconstruct child_nodes
+
+    def deconstruct_keys(keys)
+      { left: left, right: right, location: location, comments: comments }
     end
 
     def format(q)
@@ -5312,6 +5702,12 @@ class SyntaxTree < Ripper
 
     def child_nodes
       parts
+    end
+
+    alias deconstruct child_nodes
+
+    def deconstruct_keys(keys)
+      { parts: parts, quote: quote, location: location, comments: comments }
     end
 
     def format(q)
@@ -5445,6 +5841,12 @@ class SyntaxTree < Ripper
       [statements]
     end
 
+    alias deconstruct child_nodes
+
+    def deconstruct_keys(keys)
+      { statements: statements, location: location, comments: comments }
+    end
+
     def format(q)
       q.group do
         q.text("else")
@@ -5539,6 +5941,18 @@ class SyntaxTree < Ripper
 
     def child_nodes
       [predicate, statements, consequent]
+    end
+
+    alias deconstruct child_nodes
+
+    def deconstruct_keys(keys)
+      {
+        predicate: predicate,
+        statements: statements,
+        consequent: consequent,
+        location: location,
+        comments: comments
+      }
     end
 
     def format(q)
@@ -5648,6 +6062,12 @@ class SyntaxTree < Ripper
 
     def child_nodes
       []
+    end
+
+    alias deconstruct child_nodes
+
+    def deconstruct_keys(keys)
+      { value: value, location: location }
     end
 
     def format(q)
@@ -5837,6 +6257,17 @@ class SyntaxTree < Ripper
       [keyword, statements]
     end
 
+    alias deconstruct child_nodes
+
+    def deconstruct_keys(keys)
+      {
+        keyword: keyword,
+        statements: statements,
+        location: location,
+        comments: comments
+      }
+    end
+
     def format(q)
       q.format(keyword)
 
@@ -5920,6 +6351,12 @@ class SyntaxTree < Ripper
       []
     end
 
+    alias deconstruct child_nodes
+
+    def deconstruct_keys(keys)
+      { value: value, location: location, comments: comments }
+    end
+
     def format(q)
       q.text(value)
     end
@@ -5985,6 +6422,17 @@ class SyntaxTree < Ripper
 
     def child_nodes
       [value, arguments]
+    end
+
+    alias deconstruct child_nodes
+
+    def deconstruct_keys(keys)
+      {
+        value: value,
+        arguments: arguments,
+        location: location,
+        comments: comments
+      }
     end
 
     def format(q)
@@ -6056,6 +6504,18 @@ class SyntaxTree < Ripper
 
     def child_nodes
       [parent, (operator if operator != :"::"), name]
+    end
+
+    alias deconstruct child_nodes
+
+    def deconstruct_keys(keys)
+      {
+        parent: parent,
+        operator: operator,
+        name: name,
+        location: location,
+        comments: comments
+      }
     end
 
     def format(q)
@@ -6134,6 +6594,12 @@ class SyntaxTree < Ripper
       []
     end
 
+    alias deconstruct child_nodes
+
+    def deconstruct_keys(keys)
+      { value: value, location: location, comments: comments }
+    end
+
     def format(q)
       q.text(value)
     end
@@ -6203,6 +6669,19 @@ class SyntaxTree < Ripper
 
     def child_nodes
       [constant, left, *values, right]
+    end
+
+    alias deconstruct child_nodes
+
+    def deconstruct_keys(keys)
+      {
+        constant: constant,
+        left: left,
+        values: values,
+        right: right,
+        location: location,
+        comments: comments
+      }
     end
 
     def format(q)
@@ -6307,6 +6786,18 @@ class SyntaxTree < Ripper
 
     def child_nodes
       [index, collection, statements]
+    end
+
+    alias deconstruct child_nodes
+
+    def deconstruct_keys(keys)
+      {
+        index: index,
+        collection: collection,
+        statements: statements,
+        location: location,
+        comments: comments
+      }
     end
 
     def format(q)
@@ -6418,6 +6909,12 @@ class SyntaxTree < Ripper
       []
     end
 
+    alias deconstruct child_nodes
+
+    def deconstruct_keys(keys)
+      { value: value, location: location, comments: comments }
+    end
+
     def format(q)
       q.text(value)
     end
@@ -6475,6 +6972,12 @@ class SyntaxTree < Ripper
 
     def child_nodes
       [lbrace] + assocs
+    end
+
+    alias deconstruct child_nodes
+
+    def deconstruct_keys(keys)
+      { lbrace: lbrace, assocs: assocs, location: location, comments: comments }
     end
 
     def format(q)
@@ -6575,6 +7078,18 @@ class SyntaxTree < Ripper
       [beginning, *parts]
     end
 
+    alias deconstruct child_nodes
+
+    def deconstruct_keys(keys)
+      {
+        beginning: beginning,
+        location: location,
+        ending: ending,
+        parts: parts,
+        comments: comments
+      }
+    end
+
     def format(q)
       # This is a very specific behavior that should probably be included in the
       # prettyprint module. It's when you want to force a newline, but don't
@@ -6654,6 +7169,12 @@ class SyntaxTree < Ripper
 
     def child_nodes
       []
+    end
+
+    alias deconstruct child_nodes
+
+    def deconstruct_keys(keys)
+      { value: value, location: location, comments: comments }
     end
 
     def format(q)
@@ -6807,6 +7328,18 @@ class SyntaxTree < Ripper
       [constant, *keywords.flatten(1), keyword_rest]
     end
 
+    alias deconstruct child_nodes
+
+    def deconstruct_keys(keys)
+      {
+        constant: constant,
+        keywords: keywords,
+        keyword_rest: keyword_rest,
+        location: location,
+        comments: comments
+      }
+    end
+
     def format(q)
       parts = keywords.map { |(key, value)| KeywordFormatter.new(key, value) }
       parts << KeywordRestFormatter.new(keyword_rest) if keyword_rest
@@ -6920,6 +7453,12 @@ class SyntaxTree < Ripper
 
     def child_nodes
       []
+    end
+
+    alias deconstruct child_nodes
+
+    def deconstruct_keys(keys)
+      { value: value, location: location, comments: comments }
     end
 
     def format(q)
@@ -7073,6 +7612,18 @@ class SyntaxTree < Ripper
       [predicate, statements, consequent]
     end
 
+    alias deconstruct child_nodes
+
+    def deconstruct_keys(keys)
+      {
+        predicate: predicate,
+        statements: statements,
+        consequent: consequent,
+        location: location,
+        comments: comments
+      }
+    end
+
     def format(q)
       ConditionalFormatter.new("if", self).format(q)
     end
@@ -7159,6 +7710,8 @@ class SyntaxTree < Ripper
     def child_nodes
       [predicate, truthy, falsy]
     end
+
+    alias deconstruct child_nodes
 
     def deconstruct_keys(keys)
       {
@@ -7334,6 +7887,17 @@ class SyntaxTree < Ripper
       [statement, predicate]
     end
 
+    alias deconstruct child_nodes
+
+    def deconstruct_keys(keys)
+      {
+        statement: statement,
+        predicate: predicate,
+        location: location,
+        comments: comments
+      }
+    end
+
     def format(q)
       ConditionalModFormatter.new("if", self).format(q)
     end
@@ -7407,6 +7971,12 @@ class SyntaxTree < Ripper
       []
     end
 
+    alias deconstruct child_nodes
+
+    def deconstruct_keys(keys)
+      { value: value, location: location, comments: comments }
+    end
+
     def format(q)
       q.text(value)
     end
@@ -7471,6 +8041,18 @@ class SyntaxTree < Ripper
 
     def child_nodes
       [pattern, statements, consequent]
+    end
+
+    alias deconstruct child_nodes
+
+    def deconstruct_keys(keys)
+      {
+        pattern: pattern,
+        statements: statements,
+        consequent: consequent,
+        location: location,
+        comments: comments
+      }
     end
 
     def format(q)
@@ -7582,6 +8164,12 @@ class SyntaxTree < Ripper
       []
     end
 
+    alias deconstruct child_nodes
+
+    def deconstruct_keys(keys)
+      { value: value, location: location, comments: comments }
+    end
+
     def format(q)
       if !value.start_with?(/\+?0/) && value.length >= 5 && !value.include?("_")
         # If it's a plain integer and it doesn't have any underscores separating
@@ -7641,6 +8229,12 @@ class SyntaxTree < Ripper
 
     def child_nodes
       []
+    end
+
+    alias deconstruct child_nodes
+
+    def deconstruct_keys(keys)
+      { value: value, location: location, comments: comments }
     end
 
     def format(q)
@@ -7707,6 +8301,12 @@ class SyntaxTree < Ripper
       []
     end
 
+    alias deconstruct child_nodes
+
+    def deconstruct_keys(keys)
+      { value: value, location: location, comments: comments }
+    end
+
     def format(q)
       q.text(value)
     end
@@ -7763,6 +8363,12 @@ class SyntaxTree < Ripper
 
     def child_nodes
       [name]
+    end
+
+    alias deconstruct child_nodes
+
+    def deconstruct_keys(keys)
+      { name: name, location: location, comments: comments }
     end
 
     def format(q)
@@ -7832,6 +8438,8 @@ class SyntaxTree < Ripper
     def child_nodes
       []
     end
+
+    alias deconstruct child_nodes
 
     def deconstruct_keys(keys)
       { value: value, location: location, comments: comments }
@@ -7928,6 +8536,17 @@ class SyntaxTree < Ripper
 
     def child_nodes
       [params, statements]
+    end
+
+    alias deconstruct child_nodes
+
+    def deconstruct_keys(keys)
+      {
+        params: params,
+        statements: statements,
+        location: location,
+        comments: comments
+      }
     end
 
     def format(q)
@@ -8039,6 +8658,12 @@ class SyntaxTree < Ripper
       []
     end
 
+    alias deconstruct child_nodes
+
+    def deconstruct_keys(keys)
+      { value: value, location: location, comments: comments }
+    end
+
     def format(q)
       q.text(value)
     end
@@ -8095,6 +8720,12 @@ class SyntaxTree < Ripper
       []
     end
 
+    alias deconstruct child_nodes
+
+    def deconstruct_keys(keys)
+      { value: value, location: location, comments: comments }
+    end
+
     def format(q)
       q.text(value)
     end
@@ -8149,6 +8780,12 @@ class SyntaxTree < Ripper
 
     def child_nodes
       []
+    end
+
+    alias deconstruct child_nodes
+
+    def deconstruct_keys(keys)
+      { value: value, location: location, comments: comments }
     end
 
     def format(q)
@@ -8226,6 +8863,12 @@ class SyntaxTree < Ripper
 
     def child_nodes
       [target, value]
+    end
+
+    alias deconstruct child_nodes
+
+    def deconstruct_keys(keys)
+      { target: target, value: value, location: location, comments: comments }
     end
 
     def format(q)
@@ -8327,6 +8970,12 @@ class SyntaxTree < Ripper
       [call, block]
     end
 
+    alias deconstruct child_nodes
+
+    def deconstruct_keys(keys)
+      { call: call, block: block, location: location, comments: comments }
+    end
+
     def format(q)
       q.format(call)
       q.format(block)
@@ -8400,6 +9049,12 @@ class SyntaxTree < Ripper
 
     def child_nodes
       parts
+    end
+
+    alias deconstruct child_nodes
+
+    def deconstruct_keys(keys)
+      { parts: parts, location: location, comma: comma, comments: comments }
     end
 
     def format(q)
@@ -8497,6 +9152,12 @@ class SyntaxTree < Ripper
       [contents]
     end
 
+    alias deconstruct child_nodes
+
+    def deconstruct_keys(keys)
+      { contents: contents, location: location, comments: comments }
+    end
+
     def format(q)
       parent = q.parent
 
@@ -8577,6 +9238,17 @@ class SyntaxTree < Ripper
 
     def child_nodes
       [constant, bodystmt]
+    end
+
+    alias deconstruct child_nodes
+
+    def deconstruct_keys(keys)
+      {
+        constant: constant,
+        bodystmt: bodystmt,
+        location: location,
+        comments: comments
+      }
     end
 
     def format(q)
@@ -8677,6 +9349,12 @@ class SyntaxTree < Ripper
 
     def child_nodes
       parts
+    end
+
+    alias deconstruct child_nodes
+
+    def deconstruct_keys(keys)
+      { parts: parts, location: location, comments: comments }
     end
 
     def format(q)
@@ -8785,6 +9463,12 @@ class SyntaxTree < Ripper
       [arguments]
     end
 
+    alias deconstruct child_nodes
+
+    def deconstruct_keys(keys)
+      { arguments: arguments, location: location, comments: comments }
+    end
+
     def format(q)
       FlowControlFormatter.new("next", self).format(q)
     end
@@ -8849,6 +9533,12 @@ class SyntaxTree < Ripper
 
     def child_nodes
       []
+    end
+
+    alias deconstruct child_nodes
+
+    def deconstruct_keys(keys)
+      { value: value, location: location, comments: comments }
     end
 
     def format(q)
@@ -8916,6 +9606,18 @@ class SyntaxTree < Ripper
 
     def child_nodes
       [target, operator, value]
+    end
+
+    alias deconstruct child_nodes
+
+    def deconstruct_keys(keys)
+      {
+        target: target,
+        operator: operator,
+        value: value,
+        location: location,
+        comments: comments
+      }
     end
 
     def format(q)
@@ -9182,6 +9884,22 @@ class SyntaxTree < Ripper
       ]
     end
 
+    alias deconstruct child_nodes
+
+    def deconstruct_keys(keys)
+      {
+        location: location,
+        requireds: requireds,
+        optionals: optionals,
+        rest: rest,
+        posts: posts,
+        keywords: keywords,
+        keyword_rest: keyword_rest,
+        block: block,
+        comments: comments
+      }
+    end
+
     def format(q)
       parts = [
         *requireds,
@@ -9374,6 +10092,17 @@ class SyntaxTree < Ripper
       [lparen, contents]
     end
 
+    alias deconstruct child_nodes
+
+    def deconstruct_keys(keys)
+      {
+        lparen: lparen,
+        contents: contents,
+        location: location,
+        comments: comments
+      }
+    end
+
     def format(q)
       q.group do
         q.format(lparen)
@@ -9480,6 +10209,12 @@ class SyntaxTree < Ripper
       []
     end
 
+    alias deconstruct child_nodes
+
+    def deconstruct_keys(keys)
+      { value: value, location: location, comments: comments }
+    end
+
     def format(q)
       q.text(value)
     end
@@ -9530,6 +10265,12 @@ class SyntaxTree < Ripper
 
     def child_nodes
       [statements]
+    end
+
+    alias deconstruct child_nodes
+
+    def deconstruct_keys(keys)
+      { statements: statements, location: location, comments: comments }
     end
 
     def format(q)
@@ -9700,6 +10441,17 @@ class SyntaxTree < Ripper
       []
     end
 
+    alias deconstruct child_nodes
+
+    def deconstruct_keys(keys)
+      {
+        beginning: beginning,
+        elements: elements,
+        location: location,
+        comments: comments
+      }
+    end
+
     def format(q)
       opening, closing = "%i[", "]"
 
@@ -9823,6 +10575,17 @@ class SyntaxTree < Ripper
       []
     end
 
+    alias deconstruct child_nodes
+
+    def deconstruct_keys(keys)
+      {
+        beginning: beginning,
+        elements: elements,
+        location: location,
+        comments: comments
+      }
+    end
+
     def format(q)
       opening, closing = "%w[", "]"
 
@@ -9935,6 +10698,12 @@ class SyntaxTree < Ripper
       []
     end
 
+    alias deconstruct child_nodes
+
+    def deconstruct_keys(keys)
+      { value: value, location: location, comments: comments }
+    end
+
     def format(q)
       q.text(value)
     end
@@ -10042,6 +10811,12 @@ class SyntaxTree < Ripper
 
     def child_nodes
       []
+    end
+
+    alias deconstruct child_nodes
+
+    def deconstruct_keys(keys)
+      { value: value, location: location, comments: comments }
     end
 
     def format(q)
@@ -10211,6 +10986,18 @@ class SyntaxTree < Ripper
       parts
     end
 
+    alias deconstruct child_nodes
+
+    def deconstruct_keys(keys)
+      {
+        beginning: beginning,
+        ending: ending,
+        parts: parts,
+        location: location,
+        comments: comments
+      }
+    end
+
     def format(q)
       braces = ambiguous?(q) || include?(%r{\/})
 
@@ -10351,6 +11138,17 @@ class SyntaxTree < Ripper
       [*exceptions, variable]
     end
 
+    alias deconstruct child_nodes
+
+    def deconstruct_keys(keys)
+      {
+        exceptions: exceptions,
+        variable: variable,
+        location: location,
+        comments: comments
+      }
+    end
+
     def format(q)
       q.group do
         if exceptions
@@ -10446,6 +11244,8 @@ class SyntaxTree < Ripper
     def child_nodes
       [exception, statements, consequent]
     end
+
+    alias deconstruct child_nodes
 
     def deconstruct_keys(keys)
       {
@@ -10591,6 +11391,17 @@ class SyntaxTree < Ripper
       [statement, value]
     end
 
+    alias deconstruct child_nodes
+
+    def deconstruct_keys(keys)
+      {
+        statement: statement,
+        value: value,
+        location: location,
+        comments: comments
+      }
+    end
+
     def format(q)
       q.group(0, "begin", "end") do
         q.indent do
@@ -10669,6 +11480,12 @@ class SyntaxTree < Ripper
       [name]
     end
 
+    alias deconstruct child_nodes
+
+    def deconstruct_keys(keys)
+      { name: name, location: location, comments: comments }
+    end
+
     def format(q)
       q.text("*")
       q.format(name) if name
@@ -10725,6 +11542,12 @@ class SyntaxTree < Ripper
       []
     end
 
+    alias deconstruct child_nodes
+
+    def deconstruct_keys(keys)
+      { value: value, location: location, comments: comments }
+    end
+
     def format(q)
       q.text(value)
     end
@@ -10777,6 +11600,12 @@ class SyntaxTree < Ripper
 
     def child_nodes
       [arguments]
+    end
+
+    alias deconstruct child_nodes
+
+    def deconstruct_keys(keys)
+      { arguments: arguments, location: location, comments: comments }
     end
 
     def format(q)
@@ -10834,6 +11663,12 @@ class SyntaxTree < Ripper
 
     def child_nodes
       []
+    end
+
+    alias deconstruct child_nodes
+
+    def deconstruct_keys(keys)
+      { value: value, location: location, comments: comments }
     end
 
     def format(q)
@@ -10922,6 +11757,17 @@ class SyntaxTree < Ripper
 
     def child_nodes
       [target, bodystmt]
+    end
+
+    alias deconstruct child_nodes
+
+    def deconstruct_keys(keys)
+      {
+        target: target,
+        bodystmt: bodystmt,
+        location: location,
+        comments: comments
+      }
     end
 
     def format(q)
@@ -11056,6 +11902,12 @@ class SyntaxTree < Ripper
 
     def child_nodes
       body
+    end
+
+    alias deconstruct child_nodes
+
+    def deconstruct_keys(keys)
+      { parser: parser, body: body, location: location, comments: comments }
     end
 
     def format(q)
@@ -11246,6 +12098,12 @@ class SyntaxTree < Ripper
       [left, right]
     end
 
+    alias deconstruct child_nodes
+
+    def deconstruct_keys(keys)
+      { left: left, right: right, location: location, comments: comments }
+    end
+
     def format(q)
       q.group do
         q.format(left)
@@ -11330,6 +12188,12 @@ class SyntaxTree < Ripper
       [variable]
     end
 
+    alias deconstruct child_nodes
+
+    def deconstruct_keys(keys)
+      { variable: variable, location: location, comments: comments }
+    end
+
     def format(q)
       q.text('#{')
       q.format(variable)
@@ -11392,6 +12256,12 @@ class SyntaxTree < Ripper
 
     def child_nodes
       [statements]
+    end
+
+    alias deconstruct child_nodes
+
+    def deconstruct_keys(keys)
+      { statements: statements, location: location, comments: comments }
     end
 
     def format(q)
@@ -11488,6 +12358,12 @@ class SyntaxTree < Ripper
 
     def child_nodes
       parts
+    end
+
+    alias deconstruct child_nodes
+
+    def deconstruct_keys(keys)
+      { parts: parts, quote: quote, location: location, comments: comments }
     end
 
     def format(q)
@@ -11602,6 +12478,12 @@ class SyntaxTree < Ripper
 
     def child_nodes
       [arguments]
+    end
+
+    alias deconstruct child_nodes
+
+    def deconstruct_keys(keys)
+      { arguments: arguments, location: location, comments: comments }
     end
 
     def format(q)
@@ -11744,6 +12626,12 @@ class SyntaxTree < Ripper
       [value]
     end
 
+    alias deconstruct child_nodes
+
+    def deconstruct_keys(keys)
+      { value: value, location: location, comments: comments }
+    end
+
     def format(q)
       q.text(":")
       q.format(value)
@@ -11817,6 +12705,17 @@ class SyntaxTree < Ripper
 
     def child_nodes
       []
+    end
+
+    alias deconstruct child_nodes
+
+    def deconstruct_keys(keys)
+      {
+        beginning: beginning,
+        elements: elements,
+        location: location,
+        comments: comments
+      }
     end
 
     def format(q)
@@ -12004,6 +12903,12 @@ class SyntaxTree < Ripper
       [constant]
     end
 
+    alias deconstruct child_nodes
+
+    def deconstruct_keys(keys)
+      { constant: constant, location: location, comments: comments }
+    end
+
     def format(q)
       q.text("::")
       q.format(constant)
@@ -12064,6 +12969,12 @@ class SyntaxTree < Ripper
 
     def child_nodes
       [constant]
+    end
+
+    alias deconstruct child_nodes
+
+    def deconstruct_keys(keys)
+      { constant: constant, location: location, comments: comments }
     end
 
     def format(q)
@@ -12171,6 +13082,12 @@ class SyntaxTree < Ripper
       []
     end
 
+    alias deconstruct child_nodes
+
+    def deconstruct_keys(keys)
+      { value: value, location: location, comments: comments }
+    end
+
     def format(q)
       q.text(value)
     end
@@ -12269,6 +13186,17 @@ class SyntaxTree < Ripper
       [statement]
     end
 
+    alias deconstruct child_nodes
+
+    def deconstruct_keys(keys)
+      {
+        statement: statement,
+        parentheses: parentheses,
+        location: location,
+        comments: comments
+      }
+    end
+
     def format(q)
       q.text(parentheses ? "not(" : "not ")
       q.format(statement)
@@ -12325,6 +13253,8 @@ class SyntaxTree < Ripper
     def child_nodes
       [statement]
     end
+
+    alias deconstruct child_nodes
 
     def deconstruct_keys(keys)
       {
@@ -12456,6 +13386,12 @@ class SyntaxTree < Ripper
       symbols
     end
 
+    alias deconstruct child_nodes
+
+    def deconstruct_keys(keys)
+      { symbols: symbols, location: location, comments: comments }
+    end
+
     def format(q)
       keyword = "undef "
       formatters = symbols.map { |symbol| UndefArgumentFormatter.new(symbol) }
@@ -12534,6 +13470,18 @@ class SyntaxTree < Ripper
 
     def child_nodes
       [predicate, statements, consequent]
+    end
+
+    alias deconstruct child_nodes
+
+    def deconstruct_keys(keys)
+      {
+        predicate: predicate,
+        statements: statements,
+        consequent: consequent,
+        location: location,
+        comments: comments
+      }
     end
 
     def format(q)
@@ -12617,6 +13565,17 @@ class SyntaxTree < Ripper
 
     def child_nodes
       [statement, predicate]
+    end
+
+    alias deconstruct child_nodes
+
+    def deconstruct_keys(keys)
+      {
+        statement: statement,
+        predicate: predicate,
+        location: location,
+        comments: comments
+      }
     end
 
     def format(q)
@@ -12738,6 +13697,17 @@ class SyntaxTree < Ripper
       [predicate, statements]
     end
 
+    alias deconstruct child_nodes
+
+    def deconstruct_keys(keys)
+      {
+        predicate: predicate,
+        statements: statements,
+        location: location,
+        comments: comments
+      }
+    end
+
     def format(q)
       if statements.empty?
         keyword = "until "
@@ -12830,6 +13800,17 @@ class SyntaxTree < Ripper
       [statement, predicate]
     end
 
+    alias deconstruct child_nodes
+
+    def deconstruct_keys(keys)
+      {
+        statement: statement,
+        predicate: predicate,
+        location: location,
+        comments: comments
+      }
+    end
+
     def format(q)
       # If we're in the modifier form and we're modifying a `begin`, then this
       # is a special case where we need to explicitly use the modifier form
@@ -12920,6 +13901,12 @@ class SyntaxTree < Ripper
       [left, right]
     end
 
+    alias deconstruct child_nodes
+
+    def deconstruct_keys(keys)
+      { left: left, right: right, location: location, comments: comments }
+    end
+
     def format(q)
       keyword = "alias "
 
@@ -12992,6 +13979,12 @@ class SyntaxTree < Ripper
       [value]
     end
 
+    alias deconstruct child_nodes
+
+    def deconstruct_keys(keys)
+      { value: value, location: location, comments: comments }
+    end
+
     def format(q)
       q.format(value) if value
     end
@@ -13059,6 +14052,12 @@ class SyntaxTree < Ripper
       [value]
     end
 
+    alias deconstruct child_nodes
+
+    def deconstruct_keys(keys)
+      { value: value, location: location, comments: comments }
+    end
+
     def format(q)
       q.format(value)
     end
@@ -13108,6 +14107,12 @@ class SyntaxTree < Ripper
 
     def child_nodes
       [value]
+    end
+
+    alias deconstruct child_nodes
+
+    def deconstruct_keys(keys)
+      { value: value, location: location, comments: comments }
     end
 
     def format(q)
@@ -13176,6 +14181,12 @@ class SyntaxTree < Ripper
       [value]
     end
 
+    alias deconstruct child_nodes
+
+    def deconstruct_keys(keys)
+      { value: value, location: location, comments: comments }
+    end
+
     def format(q)
       q.format(value)
     end
@@ -13222,6 +14233,12 @@ class SyntaxTree < Ripper
 
     def child_nodes
       []
+    end
+
+    alias deconstruct child_nodes
+
+    def deconstruct_keys(keys)
+      { location: location, comments: comments }
     end
 
     def format(q)
@@ -13283,6 +14300,18 @@ class SyntaxTree < Ripper
 
     def child_nodes
       [arguments, statements, consequent]
+    end
+
+    alias deconstruct child_nodes
+
+    def deconstruct_keys(keys)
+      {
+        arguments: arguments,
+        statements: statements,
+        consequent: consequent,
+        location: location,
+        comments: comments
+      }
     end
 
     def format(q)
@@ -13412,6 +14441,17 @@ class SyntaxTree < Ripper
       [predicate, statements]
     end
 
+    alias deconstruct child_nodes
+
+    def deconstruct_keys(keys)
+      {
+        predicate: predicate,
+        statements: statements,
+        location: location,
+        comments: comments
+      }
+    end
+
     def format(q)
       if statements.empty?
         keyword = "while "
@@ -13502,6 +14542,17 @@ class SyntaxTree < Ripper
 
     def child_nodes
       [statement, predicate]
+    end
+
+    alias deconstruct child_nodes
+
+    def deconstruct_keys(keys)
+      {
+        statement: statement,
+        predicate: predicate,
+        location: location,
+        comments: comments
+      }
     end
 
     def format(q)
@@ -13597,6 +14648,12 @@ class SyntaxTree < Ripper
       parts
     end
 
+    alias deconstruct child_nodes
+
+    def deconstruct_keys(keys)
+      { parts: parts, location: location, comments: comments }
+    end
+
     def format(q)
       q.format_each(parts)
     end
@@ -13663,6 +14720,17 @@ class SyntaxTree < Ripper
 
     def child_nodes
       []
+    end
+
+    alias deconstruct child_nodes
+
+    def deconstruct_keys(keys)
+      {
+        beginning: beginning,
+        elements: elements,
+        location: location,
+        comments: comments
+      }
     end
 
     def format(q)
@@ -13828,6 +14896,12 @@ class SyntaxTree < Ripper
       parts
     end
 
+    alias deconstruct child_nodes
+
+    def deconstruct_keys(keys)
+      { parts: parts, location: location, comments: comments }
+    end
+
     def format(q)
       q.text("`")
       q.format_each(parts)
@@ -13901,6 +14975,12 @@ class SyntaxTree < Ripper
       [arguments]
     end
 
+    alias deconstruct child_nodes
+
+    def deconstruct_keys(keys)
+      { arguments: arguments, location: location, comments: comments }
+    end
+
     def format(q)
       q.group do
         q.text("yield")
@@ -13972,6 +15052,12 @@ class SyntaxTree < Ripper
       []
     end
 
+    alias deconstruct child_nodes
+
+    def deconstruct_keys(keys)
+      { value: value, location: location, comments: comments }
+    end
+
     def format(q)
       q.text(value)
     end
@@ -14024,6 +15110,12 @@ class SyntaxTree < Ripper
 
     def child_nodes
       []
+    end
+
+    alias deconstruct child_nodes
+
+    def deconstruct_keys(keys)
+      { value: value, location: location, comments: comments }
     end
 
     def format(q)
