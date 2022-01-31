@@ -1826,12 +1826,7 @@ class SyntaxTree < Ripper
     end
 
     def deconstruct_keys(keys)
-      {
-        target: target,
-        value: value,
-        location: location,
-        comments: comments
-      }
+      { target: target, value: value, location: location, comments: comments }
     end
 
     def format(q)
@@ -1927,12 +1922,7 @@ class SyntaxTree < Ripper
     end
 
     def deconstruct_keys(keys)
-      {
-        key: key,
-        value: value,
-        location: location,
-        comments: comments
-      }
+      { key: key, value: value, location: location, comments: comments }
     end
 
     def format(q)
@@ -2439,7 +2429,7 @@ class SyntaxTree < Ripper
       keyword = find_token(Kw, "begin")
       end_char =
         if bodystmt.rescue_clause || bodystmt.ensure_clause ||
-            bodystmt.else_clause
+             bodystmt.else_clause
           bodystmt.location.end_char
         else
           find_token(Kw, "end").location.end_char
@@ -2558,8 +2548,7 @@ class SyntaxTree < Ripper
         tokens.rindex do |token|
           location = token.location
 
-          token.is_a?(Op) &&
-            token.value == operator.to_s &&
+          token.is_a?(Op) && token.value == operator.to_s &&
             location.start_char > left.location.end_char &&
             location.end_char < right.location.start_char
         end
@@ -10464,7 +10453,7 @@ class SyntaxTree < Ripper
         statements: statements,
         consequent: consequent,
         location: location,
-        comments: comments 
+        comments: comments
       }
     end
 
@@ -13140,8 +13129,12 @@ class SyntaxTree < Ripper
     end
 
     def to_json(*opts)
-      { type: :pinned_var_ref, value: value, loc: location, cmts: comments }
-        .to_json(*opts)
+      {
+        type: :pinned_var_ref,
+        value: value,
+        loc: location,
+        cmts: comments
+      }.to_json(*opts)
     end
   end
 
