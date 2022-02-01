@@ -1,3 +1,7 @@
+<div align="center">
+  <img alt="Syntax Tree" height="400px" src="./doc/logo.svg">
+</div>
+
 # SyntaxTree
 
 [![Build Status](https://github.com/kddnewton/syntax_tree/workflows/Main/badge.svg)](https://github.com/kddnewton/syntax_tree/actions)
