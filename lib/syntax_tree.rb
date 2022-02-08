@@ -72,6 +72,10 @@ class SyntaxTree < Ripper
       @end_char = end_char
     end
 
+    def lines
+      start_line..end_line
+    end
+
     def ==(other)
       other.is_a?(Location) && start_line == other.start_line &&
         start_char == other.start_char && end_line == other.end_line &&
@@ -3098,12 +3102,14 @@ class SyntaxTree < Ripper
   #     (nil | Ensure) ensure_clause
   #   ) -> BodyStmt
   def on_bodystmt(statements, rescue_clause, else_clause, ensure_clause)
+    ending = [ensure_clause, else_clause, rescue_clause, statements].detect(&:itself)
+
     BodyStmt.new(
       statements: statements,
       rescue_clause: rescue_clause,
       else_clause: else_clause,
       ensure_clause: ensure_clause,
-      location: Location.fixed(line: lineno, char: char_pos)
+      location: statements.location.to(ending.location)
     )
   end
 

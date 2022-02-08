@@ -22,7 +22,8 @@
     "onCommand:syntaxTree.stop",
     "onCommand:syntaxTree.restart",
     "onCommand:syntaxTree.showOutputChannel",
-    "onCommand:syntaxTree.visualize"
+    "onCommand:syntaxTree.visualize",
+    "onCommand:syntaxTree.disasm"
   ],
   "main": "./out/extension",
   "contributes": {
@@ -46,6 +47,10 @@
       {
         "command": "syntaxTree.visualize",
         "title": "Syntax Tree: Visualize"
+      },
+      {
+        "command": "syntaxTree.disasm",
+        "title": "Syntax Tree: Disassemble"
       }
     ],
     "colors": [

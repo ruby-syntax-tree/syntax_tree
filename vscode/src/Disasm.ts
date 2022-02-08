@@ -1,7 +1,7 @@
 import { commands, Disposable, languages, OutputChannel, ProviderResult, TextDocumentContentProvider, Uri, ViewColumn, window, workspace } from "vscode";
 import { LanguageClient } from "vscode-languageclient/node";
 
-class Visualize implements Disposable, TextDocumentContentProvider {
+class Disasm implements Disposable, TextDocumentContentProvider {
   // The client used to communicate with the language server.
   private readonly languageClient: LanguageClient;
 
@@ -17,8 +17,8 @@ class Visualize implements Disposable, TextDocumentContentProvider {
     this.languageClient = languageClient;
     this.outputChannel = outputChannel;
     this.disposables = [
-      commands.registerCommand("syntaxTree.visualize", this.visualize),
-      workspace.registerTextDocumentContentProvider("syntaxTree.visualize", this)
+      commands.registerCommand("syntaxTree.disasm", this.disasm),
+      workspace.registerTextDocumentContentProvider("syntaxTree.disasm", this)
     ];
   }
 
@@ -27,15 +27,22 @@ class Visualize implements Disposable, TextDocumentContentProvider {
   }
 
   provideTextDocumentContent(uri: Uri): ProviderResult<string> {
-    this.outputChannel.appendLine("Requesting visualization");
-    return this.languageClient.sendRequest("syntaxTree/visualizing", { textDocument: { uri: uri.path } });
+    this.outputChannel.appendLine("Requesting disassembly");
+
+    const query: Record<string, string> = {};
+    uri.query.split("&").forEach((pair) => {
+      const [key, value] = pair.split("=");
+      query[key] = value;
+    });
+
+    return this.languageClient.sendRequest("syntaxTree/disasm", { textDocument: { uri: uri.path, query } });
   }
 
-  async visualize() {
+  async disasm(line: number, name: string) {
     const document = window.activeTextEditor?.document;
 
     if (document && document.languageId === "ruby" && document.uri.scheme === "file") {
-      const uri = Uri.parse(`syntaxTree.visualize:${document.uri.toString()}`);
+      const uri = Uri.parse(`syntaxTree.disasm:${document.uri.toString()}?line=${line}&name=${name}`);
 
       const doc = await workspace.openTextDocument(uri);
       languages.setTextDocumentLanguage(doc, "plaintext");
@@ -45,4 +52,4 @@ class Visualize implements Disposable, TextDocumentContentProvider {
   }
 }
 
-export default Visualize;
+export default Disasm;
