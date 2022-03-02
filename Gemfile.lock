@@ -7,7 +7,7 @@ GEM
   remote: https://rubygems.org/
   specs:
     ast (2.4.2)
-    benchmark-ips (2.9.3)
+    benchmark-ips (2.10.0)
     docile (1.4.0)
     minitest (5.15.0)
     parser (3.1.1.0)
