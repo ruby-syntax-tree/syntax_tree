@@ -1,0 +1,25 @@
+name: Github Pages (rdoc)
+on: [push]
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout 🛎️
+        uses: actions/checkout@master
+
+      - name: Set up Ruby 💎
+        uses: ruby/setup-ruby@v1
+        with:
+          bundler-cache: true
+          ruby-version: '3.1'
+
+      - name: Install rdoc and generate docs 🔧
+        run: |
+          gem install rdoc
+          rdoc --op rdocs
+
+      - name: Deploy 🚀
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./rdocs
