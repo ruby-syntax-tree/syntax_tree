@@ -11,7 +11,7 @@ class SyntaxTree
 
     # Adds the implicitly rescued StandardError into a bare rescue clause. For
     # example,
-    # 
+    #
     #     begin
     #     rescue
     #     end
@@ -29,7 +29,7 @@ class SyntaxTree
     # Adds the implicitly referenced value (local variable or method call) that
     # is added into a hash when the value of a key-value pair is omitted. For
     # example,
-    # 
+    #
     #     { value: }
     #
     # becomes
@@ -57,14 +57,14 @@ class SyntaxTree
     def self.find(program)
       implicits = new
       queue = [[nil, program]]
-  
+
       until queue.empty?
         parent_node, child_node = queue.shift
-  
+
         child_node.child_nodes.each do |grand_child_node|
           queue << [child_node, grand_child_node] if grand_child_node
         end
-  
+
         case [parent_node, child_node]
         in _, Rescue[exception: nil, location:]
           implicits.bare_rescue(location)
