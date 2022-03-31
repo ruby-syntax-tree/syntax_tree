@@ -6,5 +6,6 @@
 /rdocs/
 /spec/reports/
 /tmp/
+/vendor/
 
 test.rb
