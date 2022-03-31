@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 
 ## [Unreleased]
 
+## [2.0.0] - 2022-03-30
+
+### Changed
+
+- Changed `SyntaxTree` from being a class to being a module. The parser functionality is moved into `SyntaxTree::Parser`.
+- There is now a parent class for all of the nodes named `SyntaxTree::Node`.
+
 ## [1.2.0] - 2022-01-09
 
 ### Added
