@@ -150,19 +150,19 @@ module SyntaxTree
     # The help message displayed if the input arguments are not correctly
     # ordered or formatted.
     HELP = <<~HELP
-      #{Color.bold("stree ast [FILE]")}
+      #{Color.bold("stree ast [OPTIONS] [FILE]")}
         Print out the AST corresponding to the given files
 
-      #{Color.bold("stree check [FILE]")}
+      #{Color.bold("stree check [OPTIONS] [FILE]")}
         Check that the given files are formatted as syntax tree would format them
 
-      #{Color.bold("stree debug [FILE]")}
+      #{Color.bold("stree debug [OPTIONS] [FILE]")}
         Check that the given files can be formatted idempotently
 
-      #{Color.bold("stree doc [FILE]")}
+      #{Color.bold("stree doc [OPTIONS] [FILE]")}
         Print out the doc tree that would be used to format the given files
 
-      #{Color.bold("stree format [FILE]")}
+      #{Color.bold("stree format [OPTIONS] [FILE]")}
         Print out the formatted version of the given files
 
       #{Color.bold("stree help")}
@@ -174,17 +174,22 @@ module SyntaxTree
       #{Color.bold("stree version")}
         Output the current version of syntax tree
 
-      #{Color.bold("stree write [FILE]")}
+      #{Color.bold("stree write [OPTIONS] [FILE]")}
         Read, format, and write back the source of the given files
+
+      [OPTIONS]
+
+      --plugins=...
+        A comma-separated list of plugins to load.
     HELP
 
     class << self
       # Run the CLI over the given array of strings that make up the arguments
       # passed to the invocation.
       def run(argv)
-        arg, *patterns = argv
+        name, *arguments = argv
 
-        case arg
+        case name
         when "help"
           puts HELP
           return 0
@@ -197,13 +202,13 @@ module SyntaxTree
           return 0
         end
 
-        if patterns.empty?
+        if arguments.empty?
           warn(HELP)
           return 1
         end
 
         action =
-          case arg
+          case name
           when "a", "ast"
             AST.new
           when "c", "check"
@@ -221,17 +226,31 @@ module SyntaxTree
             return 1
           end
 
+        # If there are any plugins specified on the command line, then load them
+        # by requiring them here. We do this by transforming something like
+        #
+        #     stree format --plugins=haml template.haml
+        #
+        # into
+        #
+        #     require "syntax_tree/haml"
+        #
+        if arguments.first.start_with?("--plugins=")
+          plugins = arguments.shift[/^--plugins=(.*)$/, 1]
+          plugins.split(",").each { |plugin| require "syntax_tree/#{plugin}" }
+        end
+
         errored = false
-        patterns.each do |pattern|
+        arguments.each do |pattern|
           Dir.glob(pattern).each do |filepath|
             next unless File.file?(filepath)
 
             handler = HANDLERS[File.extname(filepath)]
-            source = SyntaxTree.read(filepath)
+            source = handler.read(filepath)
 
             begin
               action.run(handler, filepath, source)
-            rescue ParseError => error
+            rescue Parser::ParseError => error
               warn("Error: #{error.message}")
 
               if error.lineno
