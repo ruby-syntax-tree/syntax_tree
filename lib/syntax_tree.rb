@@ -25,6 +25,17 @@ unless PrettyPrint.const_defined?(:Align)
 end
 
 module SyntaxTree
+  # This holds references to objects that respond to both #parse and #format
+  # so that we can use them in the CLI.
+  HANDLERS = {}
+  HANDLERS.default = SyntaxTree
+
+  # This is a hook provided so that plugins can register themselves as the
+  # handler for a particular file type.
+  def self.register_handler(extension, handler)
+    HANDLERS[extension] = handler
+  end
+
   # Parses the given source and returns the syntax tree.
   def self.parse(source)
     parser = Parser.new(source)
