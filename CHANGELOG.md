@@ -12,6 +12,11 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 
 - Changed `SyntaxTree` from being a class to being a module. The parser functionality is moved into `SyntaxTree::Parser`.
 - There is now a parent class for all of the nodes named `SyntaxTree::Node`.
+- The `Implicits` class has been renamed to `InlayHints` to match the new LSP spec.
+
+### Removed
+
+- The disassembly code action has been removed to limit the scope of this project overall.
 
 ## [1.2.0] - 2022-01-09
 
