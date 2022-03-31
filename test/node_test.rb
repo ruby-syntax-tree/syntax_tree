@@ -151,7 +151,7 @@ class SyntaxTree
     guard_version("3.1.0") do
       def test_assoc_no_value
         source = "{ key1:, key2: }"
-  
+
         at = location(chars: 2..7)
         assert_node(Assoc, "assoc", source, at: at) { |node| node.assocs.first }
       end
@@ -238,7 +238,7 @@ class SyntaxTree
     guard_version("3.1.0") do
       def test_blockarg_anonymous
         source = "def method(&); end"
-  
+
         at = location(chars: 11..12)
         assert_node(BlockArg, "blockarg", source, at: at) do |node|
           node.params.contents.block
