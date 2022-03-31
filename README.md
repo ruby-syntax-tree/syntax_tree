@@ -4,7 +4,7 @@
 
 # SyntaxTree
 
-[![Build Status](https://github.com/kddnewton/syntax_tree/workflows/Main/badge.svg)](https://github.com/kddnewton/syntax_tree/actions)
+[![Build Status](https://github.com/ruby-syntax-tree/syntax_tree/actions/workflows/main.yml/badge.svg)](https://github.com/ruby-syntax-tree/syntax_tree/actions/workflows/main.yml)
 [![Gem Version](https://img.shields.io/gem/v/syntax_tree.svg)](https://rubygems.org/gems/syntax_tree)
 
 A fast Ruby parser and formatter with only standard library dependencies.
@@ -68,12 +68,8 @@ To install this gem onto your local machine, run `bundle exec rake install`. To 
 
 ## Contributing
 
-Bug reports and pull requests are welcome on GitHub at https://github.com/kddnewton/syntax_tree. This project is intended to be a safe, welcoming space for collaboration, and contributors are expected to adhere to the [code of conduct](https://github.com/kddnewton/syntax_tree/blob/main/CODE_OF_CONDUCT.md).
+Bug reports and pull requests are welcome on GitHub at https://github.com/ruby-syntax-tree/syntax_tree.
 
 ## License
 
 The gem is available as open source under the terms of the [MIT License](https://opensource.org/licenses/MIT).
-
-## Code of Conduct
-
-Everyone interacting in the syntax_tree project's codebases, issue trackers, chat rooms and mailing lists is expected to follow the [code of conduct](https://github.com/kddnewton/syntax_tree/blob/main/CODE_OF_CONDUCT.md).

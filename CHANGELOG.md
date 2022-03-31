@@ -122,9 +122,10 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 
 - 🎉 Initial release! 🎉
 
-[unreleased]: https://github.com/kddnewton/syntax_tree/compare/v1.2.0...HEAD
-[1.2.0]: https://github.com/kddnewton/syntax_tree/compare/v1.1.1...v1.2.0
-[1.1.1]: https://github.com/kddnewton/syntax_tree/compare/v1.1.0...v1.1.1
-[1.1.0]: https://github.com/kddnewton/syntax_tree/compare/v1.0.0...v1.1.0
-[1.0.0]: https://github.com/kddnewton/syntax_tree/compare/v0.1.0...v1.0.0
-[0.1.0]: https://github.com/kddnewton/syntax_tree/compare/8aa1f5...v0.1.0
+[unreleased]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v2.0.0...HEAD
+[2.0.0]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v1.2.0...v2.0.0
+[1.2.0]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v1.1.1...v1.2.0
+[1.1.1]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v1.1.0...v1.1.1
+[1.1.0]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v1.0.0...v1.1.0
+[1.0.0]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v0.1.0...v1.0.0
+[0.1.0]: https://github.com/ruby-syntax-tree/syntax_tree/compare/8aa1f5...v0.1.0
