@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require "syntax_tree/visitor"
+
 module SyntaxTree
   # Represents the location of a node in the tree from the source code.
   class Location
@@ -55,6 +57,29 @@ module SyntaxTree
   class Node
     # [Location] the location of this node
     attr_reader :location
+
+    def self.inherited(child)
+      child.class_eval(<<~EOS, __FILE__, __LINE__ + 1)
+        def accept(visitor)
+          visitor.#{child.visit_method_name}(self)
+        end
+      EOS
+
+      Visitor.class_eval(<<~EOS, __FILE__, __LINE__ + 1)
+        def #{child.visit_method_name}(node)
+          visit_all(node.child_nodes)
+        end
+      EOS
+    end
+
+    def self.visit_method_name
+      method_suffix = name.split("::").last
+      method_suffix.gsub!(/([A-Z\d]+)([A-Z][a-z])/, '\1_\2')
+      method_suffix.gsub!(/([a-z\d])([A-Z])/, '\1_\2')
+      method_suffix.tr!("-", "_")
+      method_suffix.downcase!
+      "visit_#{method_suffix}"
+    end
 
     def child_nodes
       raise NotImplementedError
