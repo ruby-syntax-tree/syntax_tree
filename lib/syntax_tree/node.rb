@@ -53,6 +53,9 @@ module SyntaxTree
   # exclusively here to make it easier to operate with the tree in cases where
   # you're trying to monkey-patch or strictly type.
   class Node
+    # [Location] the location of this node
+    attr_reader :location
+
     def child_nodes
       raise NotImplementedError
     end
@@ -93,9 +96,6 @@ module SyntaxTree
 
     # [Statements] the expressions to be executed
     attr_reader :statements
-
-    # [Location] the location of this node
-    attr_reader :location
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
@@ -167,9 +167,6 @@ module SyntaxTree
     # [String] the value of the character literal
     attr_reader :value
 
-    # [Location] the location of this node
-    attr_reader :location
-
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
@@ -232,9 +229,6 @@ module SyntaxTree
 
     # [Statements] the expressions to be executed
     attr_reader :statements
-
-    # [Location] the location of this node
-    attr_reader :location
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
@@ -308,9 +302,6 @@ module SyntaxTree
   class EndContent < Node
     # [String] the content after the script
     attr_reader :value
-
-    # [Location] the location of this node
-    attr_reader :location
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
@@ -400,9 +391,6 @@ module SyntaxTree
     # [DynaSymbol | SymbolLiteral] the old name of the method
     attr_reader :right
 
-    # [Location] the location of this node
-    attr_reader :location
-
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
@@ -484,9 +472,6 @@ module SyntaxTree
     # [nil | Args] the value being passed within the brackets
     attr_reader :index
 
-    # [Location] the location of this node
-    attr_reader :location
-
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
@@ -567,9 +552,6 @@ module SyntaxTree
 
     # [nil | Args] the value being passed within the brackets
     attr_reader :index
-
-    # [Location] the location of this node
-    attr_reader :location
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
@@ -654,9 +636,6 @@ module SyntaxTree
     # parentheses
     attr_reader :arguments
 
-    # [Location] the location of this node
-    attr_reader :location
-
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
@@ -721,9 +700,6 @@ module SyntaxTree
     # [Array[ untyped ]] the arguments that this node wraps
     attr_reader :parts
 
-    # [Location] the location of this node
-    attr_reader :location
-
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
@@ -772,9 +748,6 @@ module SyntaxTree
   class ArgBlock < Node
     # [nil | untyped] the expression being turned into a block
     attr_reader :value
-
-    # [Location] the location of this node
-    attr_reader :location
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
@@ -827,9 +800,6 @@ module SyntaxTree
   class ArgStar < Node
     # [nil | untyped] the expression being splatted
     attr_reader :value
-
-    # [Location] the location of this node
-    attr_reader :location
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
@@ -893,9 +863,6 @@ module SyntaxTree
   class ArgsForward < Node
     # [String] the value of the operator
     attr_reader :value
-
-    # [Location] the location of this node
-    attr_reader :location
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
@@ -1024,9 +991,6 @@ module SyntaxTree
 
     # [nil | Args] the contents of the array
     attr_reader :contents
-
-    # [Location] the location of this node
-    attr_reader :location
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
@@ -1191,9 +1155,6 @@ module SyntaxTree
     # optional star if there is one
     attr_reader :posts
 
-    # [Location] the location of this node
-    attr_reader :location
-
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
@@ -1330,9 +1291,6 @@ module SyntaxTree
     # [untyped] the expression to be assigned
     attr_reader :value
 
-    # [Location] the location of this node
-    attr_reader :location
-
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
@@ -1415,9 +1373,6 @@ module SyntaxTree
     # [untyped] the value of this pair
     attr_reader :value
 
-    # [Location] the location of this node
-    attr_reader :location
-
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
@@ -1499,9 +1454,6 @@ module SyntaxTree
     # [untyped] the expression that is being splatted
     attr_reader :value
 
-    # [Location] the location of this node
-    attr_reader :location
-
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
@@ -1556,9 +1508,6 @@ module SyntaxTree
     # [String] the name of the global backreference variable
     attr_reader :value
 
-    # [Location] the location of this node
-    attr_reader :location
-
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
@@ -1606,9 +1555,6 @@ module SyntaxTree
   class Backtick < Node
     # [String] the backtick in the string
     attr_reader :value
-
-    # [Location] the location of this node
-    attr_reader :location
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
@@ -1724,9 +1670,6 @@ module SyntaxTree
     # [Array[ AssocNew | AssocSplat ]]
     attr_reader :assocs
 
-    # [Location] the location of this node
-    attr_reader :location
-
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
@@ -1784,9 +1727,6 @@ module SyntaxTree
   class Begin < Node
     # [BodyStmt] the bodystmt that contains the contents of this begin block
     attr_reader :bodystmt
-
-    # [Location] the location of this node
-    attr_reader :location
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
@@ -1851,9 +1791,6 @@ module SyntaxTree
   class PinnedBegin < Node
     # [untyped] the expression being pinned
     attr_reader :statement
-
-    # [Location] the location of this node
-    attr_reader :location
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
@@ -1929,9 +1866,6 @@ module SyntaxTree
 
     # [untyped] the right-hand side of the expression
     attr_reader :right
-
-    # [Location] the location of this node
-    attr_reader :location
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
@@ -2067,9 +2001,6 @@ module SyntaxTree
     # [Array[ Ident ]] the list of block-local variable declarations
     attr_reader :locals
 
-    # [Location] the location of this node
-    attr_reader :location
-
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
@@ -2137,9 +2068,6 @@ module SyntaxTree
     # [nil | Ident] the name of the block argument
     attr_reader :name
 
-    # [Location] the location of this node
-    attr_reader :location
-
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
@@ -2199,9 +2127,6 @@ module SyntaxTree
 
     # [nil | Ensure] the optional ensure clause
     attr_reader :ensure_clause
-
-    # [Location] the location of this node
-    attr_reader :location
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
@@ -2511,9 +2436,6 @@ module SyntaxTree
     # [Statements] the list of expressions to evaluate within the block
     attr_reader :statements
 
-    # [Location] the location of this node
-    attr_reader :location
-
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
@@ -2636,9 +2558,6 @@ module SyntaxTree
     # [Args] the arguments being sent to the keyword
     attr_reader :arguments
 
-    # [Location] the location of this node
-    attr_reader :location
-
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
@@ -2719,9 +2638,6 @@ module SyntaxTree
 
     # [nil | ArgParen | Args] the arguments to the method call
     attr_reader :arguments
-
-    # [Location] the location of this node
-    attr_reader :location
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
@@ -2848,9 +2764,6 @@ module SyntaxTree
     # [In | When] the next clause in the chain
     attr_reader :consequent
 
-    # [Location] the location of this node
-    attr_reader :location
-
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
@@ -2940,9 +2853,6 @@ module SyntaxTree
 
     # [untyped] the pattern on the right-hand side of the expression
     attr_reader :pattern
-
-    # [Location] the location of this node
-    attr_reader :location
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
@@ -3057,9 +2967,6 @@ module SyntaxTree
     # [BodyStmt] the expressions to execute within the context of the class
     attr_reader :bodystmt
 
-    # [Location] the location of this node
-    attr_reader :location
-
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
@@ -3157,9 +3064,6 @@ module SyntaxTree
     # [String] the comma in the string
     attr_reader :value
 
-    # [Location] the location of this node
-    attr_reader :location
-
     def initialize(value:, location:)
       @value = value
       @location = location
@@ -3178,9 +3082,6 @@ module SyntaxTree
 
     # [Args] the arguments being sent with the message
     attr_reader :arguments
-
-    # [Location] the location of this node
-    attr_reader :location
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
@@ -3257,9 +3158,6 @@ module SyntaxTree
 
     # [nil | Args] the arguments going along with the message
     attr_reader :arguments
-
-    # [Location] the location of this node
-    attr_reader :location
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
@@ -3426,9 +3324,6 @@ module SyntaxTree
     attr_reader :inline
     alias inline? inline
 
-    # [Location] the location of this node
-    attr_reader :location
-
     def initialize(value:, inline:, location:)
       @value = value
       @inline = inline
@@ -3513,9 +3408,6 @@ module SyntaxTree
     # [String] the name of the constant
     attr_reader :value
 
-    # [Location] the location of this node
-    attr_reader :location
-
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
@@ -3569,9 +3461,6 @@ module SyntaxTree
 
     # [Const] the constant itself
     attr_reader :constant
-
-    # [Location] the location of this node
-    attr_reader :location
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
@@ -3640,9 +3529,6 @@ module SyntaxTree
     # [Const] the constant itself
     attr_reader :constant
 
-    # [Location] the location of this node
-    attr_reader :location
-
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
@@ -3709,9 +3595,6 @@ module SyntaxTree
     # [Const] the constant itself
     attr_reader :constant
 
-    # [Location] the location of this node
-    attr_reader :location
-
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
@@ -3763,9 +3646,6 @@ module SyntaxTree
   class CVar < Node
     # [String] the name of the class variable
     attr_reader :value
-
-    # [Location] the location of this node
-    attr_reader :location
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
@@ -3821,9 +3701,6 @@ module SyntaxTree
 
     # [BodyStmt] the expressions to be executed by the method
     attr_reader :bodystmt
-
-    # [Location] the location of this node
-    attr_reader :location
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
@@ -3920,9 +3797,6 @@ module SyntaxTree
 
     # [untyped] the expression to be executed by the method
     attr_reader :statement
-
-    # [Location] the location of this node
-    attr_reader :location
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
@@ -4038,9 +3912,6 @@ module SyntaxTree
     # [untyped] the value being sent to the keyword
     attr_reader :value
 
-    # [Location] the location of this node
-    attr_reader :location
-
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
@@ -4107,9 +3978,6 @@ module SyntaxTree
 
     # [BodyStmt] the expressions to be executed by the method
     attr_reader :bodystmt
-
-    # [Location] the location of this node
-    attr_reader :location
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
@@ -4225,9 +4093,6 @@ module SyntaxTree
     # [BodyStmt] the expressions to be executed within this block
     attr_reader :bodystmt
 
-    # [Location] the location of this node
-    attr_reader :location
-
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
@@ -4332,9 +4197,6 @@ module SyntaxTree
     # [nil | untyped] the right side of the expression
     attr_reader :right
 
-    # [Location] the location of this node
-    attr_reader :location
-
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
@@ -4406,9 +4268,6 @@ module SyntaxTree
 
     # [nil | untyped] the right side of the expression
     attr_reader :right
-
-    # [Location] the location of this node
-    attr_reader :location
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
@@ -4521,9 +4380,6 @@ module SyntaxTree
     # [String] the quote used to delimit the dynamic symbol
     attr_reader :quote
 
-    # [Location] the location of this node
-    attr_reader :location
-
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
@@ -4633,9 +4489,6 @@ module SyntaxTree
     # [Statements] the expressions to be executed
     attr_reader :statements
 
-    # [Location] the location of this node
-    attr_reader :location
-
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
@@ -4701,9 +4554,6 @@ module SyntaxTree
 
     # [nil | Elsif | Else] the next clause in the chain
     attr_reader :consequent
-
-    # [Location] the location of this node
-    attr_reader :location
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
@@ -4803,9 +4653,6 @@ module SyntaxTree
     # [String] the contents of the comment
     attr_reader :value
 
-    # [Location] the location of this node
-    attr_reader :location
-
     def initialize(value:, location:)
       @value = value
       @location = location
@@ -4862,9 +4709,6 @@ module SyntaxTree
     # [String] the #{ used in the string
     attr_reader :value
 
-    # [Location] the location of this node
-    attr_reader :location
-
     def initialize(value:, location:)
       @value = value
       @location = location
@@ -4880,9 +4724,6 @@ module SyntaxTree
   class EmbExprEnd < Node
     # [String] the } used in the string
     attr_reader :value
-
-    # [Location] the location of this node
-    attr_reader :location
 
     def initialize(value:, location:)
       @value = value
@@ -4901,9 +4742,6 @@ module SyntaxTree
   class EmbVar < Node
     # [String] the # used in the string
     attr_reader :value
-
-    # [Location] the location of this node
-    attr_reader :location
 
     def initialize(value:, location:)
       @value = value
@@ -4924,9 +4762,6 @@ module SyntaxTree
 
     # [Statements] the expressions to be executed
     attr_reader :statements
-
-    # [Location] the location of this node
-    attr_reader :location
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
@@ -5000,9 +4835,6 @@ module SyntaxTree
     # [String] the comma
     attr_reader :value
 
-    # [Location] the location of this node
-    attr_reader :location
-
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
@@ -5060,9 +4892,6 @@ module SyntaxTree
 
     # [nil | ArgParen | Args] the arguments to the method call
     attr_reader :arguments
-
-    # [Location] the location of this node
-    attr_reader :location
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
@@ -5136,9 +4965,6 @@ module SyntaxTree
     # [Const | Ident] the name of the field being assigned
     attr_reader :name
 
-    # [Location] the location of this node
-    attr_reader :location
-
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
@@ -5211,9 +5037,6 @@ module SyntaxTree
     # [String] the value of the floating point number literal
     attr_reader :value
 
-    # [Location] the location of this node
-    attr_reader :location
-
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
@@ -5275,9 +5098,6 @@ module SyntaxTree
 
     # [VarField] the splat on the right-hand side
     attr_reader :right
-
-    # [Location] the location of this node
-    attr_reader :location
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
@@ -5374,9 +5194,6 @@ module SyntaxTree
     # [Statements] the statements to be executed
     attr_reader :statements
 
-    # [Location] the location of this node
-    attr_reader :location
-
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
@@ -5460,9 +5277,6 @@ module SyntaxTree
     # [String] the name of the global variable
     attr_reader :value
 
-    # [Location] the location of this node
-    attr_reader :location
-
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
@@ -5514,9 +5328,6 @@ module SyntaxTree
 
     # [Array[ AssocNew | AssocSplat ]] the optional contents of the hash
     attr_reader :assocs
-
-    # [Location] the location of this node
-    attr_reader :location
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
@@ -5604,9 +5415,6 @@ module SyntaxTree
     # [Array[ StringEmbExpr | StringDVar | TStringContent ]] the parts of the
     # heredoc string literal
     attr_reader :parts
-
-    # [Location] the location of this node
-    attr_reader :location
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
@@ -5699,9 +5507,6 @@ module SyntaxTree
   class HeredocBeg < Node
     # [String] the opening declaration of the heredoc
     attr_reader :value
-
-    # [Location] the location of this node
-    attr_reader :location
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
@@ -5808,9 +5613,6 @@ module SyntaxTree
 
     # [nil | VarField] an optional parameter to gather up all remaining keywords
     attr_reader :keyword_rest
-
-    # [Location] the location of this node
-    attr_reader :location
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
@@ -5920,9 +5722,6 @@ module SyntaxTree
   class Ident < Node
     # [String] the value of the identifier
     attr_reader :value
-
-    # [Location] the location of this node
-    attr_reader :location
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
@@ -6061,9 +5860,6 @@ module SyntaxTree
     # [nil, Elsif, Else] the next clause in the chain
     attr_reader :consequent
 
-    # [Location] the location of this node
-    attr_reader :location
-
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
@@ -6145,9 +5941,6 @@ module SyntaxTree
 
     # [untyped] the expression to be executed if the predicate is falsy
     attr_reader :falsy
-
-    # [Location] the location of this node
-    attr_reader :location
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
@@ -6312,9 +6105,6 @@ module SyntaxTree
     # [untyped] the expression to be checked
     attr_reader :predicate
 
-    # [Location] the location of this node
-    attr_reader :location
-
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
@@ -6377,9 +6167,6 @@ module SyntaxTree
     # [String] the value of the imaginary number literal
     attr_reader :value
 
-    # [Location] the location of this node
-    attr_reader :location
-
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
@@ -6437,9 +6224,6 @@ module SyntaxTree
 
     # [nil | In | Else] the next clause in the chain
     attr_reader :consequent
-
-    # [Location] the location of this node
-    attr_reader :location
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
@@ -6528,9 +6312,6 @@ module SyntaxTree
     # [String] the value of the integer
     attr_reader :value
 
-    # [Location] the location of this node
-    attr_reader :location
-
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
@@ -6585,9 +6366,6 @@ module SyntaxTree
   class IVar < Node
     # [String] the name of the instance variable
     attr_reader :value
-
-    # [Location] the location of this node
-    attr_reader :location
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
@@ -6647,9 +6425,6 @@ module SyntaxTree
     # [String] the value of the keyword
     attr_reader :value
 
-    # [Location] the location of this node
-    attr_reader :location
-
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
@@ -6697,9 +6472,6 @@ module SyntaxTree
   class KwRestParam < Node
     # [nil | Ident] the name of the parameter
     attr_reader :name
-
-    # [Location] the location of this node
-    attr_reader :location
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
@@ -6763,9 +6535,6 @@ module SyntaxTree
     # [String] the value of the label
     attr_reader :value
 
-    # [Location] the location of this node
-    attr_reader :location
-
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
@@ -6819,9 +6588,6 @@ module SyntaxTree
     # [String] the end of the label
     attr_reader :value
 
-    # [Location] the location of this node
-    attr_reader :location
-
     def initialize(value:, location:)
       @value = value
       @location = location
@@ -6838,9 +6604,6 @@ module SyntaxTree
 
     # [BodyStmt | Statements] the expressions to be executed in this lambda
     attr_reader :statements
-
-    # [Location] the location of this node
-    attr_reader :location
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
@@ -6932,9 +6695,6 @@ module SyntaxTree
     # [String] the left brace
     attr_reader :value
 
-    # [Location] the location of this node
-    attr_reader :location
-
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
@@ -6981,9 +6741,6 @@ module SyntaxTree
     # [String] the left bracket
     attr_reader :value
 
-    # [Location] the location of this node
-    attr_reader :location
-
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
@@ -7029,9 +6786,6 @@ module SyntaxTree
   class LParen < Node
     # [String] the left parenthesis
     attr_reader :value
-
-    # [Location] the location of this node
-    attr_reader :location
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
@@ -7094,9 +6848,6 @@ module SyntaxTree
 
     # [untyped] the value being assigned
     attr_reader :value
-
-    # [Location] the location of this node
-    attr_reader :location
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
@@ -7165,9 +6916,6 @@ module SyntaxTree
     # [BraceBlock | DoBlock] the block being sent with the method call
     attr_reader :block
 
-    # [Location] the location of this node
-    attr_reader :location
-
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
@@ -7233,9 +6981,6 @@ module SyntaxTree
     # the syntax tree is being built it can be set by its parent node
     attr_accessor :comma
 
-    # [Location] the location of this node
-    attr_reader :location
-
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
@@ -7291,9 +7036,6 @@ module SyntaxTree
   class MLHSParen < Node
     # [MLHS | MLHSParen] the contents inside of the parentheses
     attr_reader :contents
-
-    # [Location] the location of this node
-    attr_reader :location
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
@@ -7363,9 +7105,6 @@ module SyntaxTree
 
     # [BodyStmt] the expressions to be executed in the context of the module
     attr_reader :bodystmt
-
-    # [Location] the location of this node
-    attr_reader :location
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
@@ -7455,9 +7194,6 @@ module SyntaxTree
     # Array[untyped] the parts that are being assigned
     attr_reader :parts
 
-    # [Location] the location of this node
-    attr_reader :location
-
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
@@ -7520,9 +7256,6 @@ module SyntaxTree
     # [Args] the arguments passed to the next keyword
     attr_reader :arguments
 
-    # [Location] the location of this node
-    attr_reader :location
-
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
@@ -7572,9 +7305,6 @@ module SyntaxTree
   class Op < Node
     # [String] the operator
     attr_reader :value
-
-    # [Location] the location of this node
-    attr_reader :location
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
@@ -7630,9 +7360,6 @@ module SyntaxTree
 
     # [untyped] the expression to be assigned
     attr_reader :value
-
-    # [Location] the location of this node
-    attr_reader :location
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
@@ -7861,9 +7588,6 @@ module SyntaxTree
     # [nil | BlockArg] the optional block parameter
     attr_reader :block
 
-    # [Location] the location of this node
-    attr_reader :location
-
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
@@ -8053,9 +7777,6 @@ module SyntaxTree
     # [nil | untyped] the expression inside the parentheses
     attr_reader :contents
 
-    # [Location] the location of this node
-    attr_reader :location
-
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
@@ -8125,9 +7846,6 @@ module SyntaxTree
     # [String] the period
     attr_reader :value
 
-    # [Location] the location of this node
-    attr_reader :location
-
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
@@ -8173,9 +7891,6 @@ module SyntaxTree
   class Program < Node
     # [Statements] the top-level expressions of the program
     attr_reader :statements
-
-    # [Location] the location of this node
-    attr_reader :location
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
@@ -8237,9 +7952,6 @@ module SyntaxTree
 
     # [Array[ TStringContent ]] the elements of the array
     attr_reader :elements
-
-    # [Location] the location of this node
-    attr_reader :location
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
@@ -8317,9 +8029,6 @@ module SyntaxTree
     # [String] the beginning of the array literal
     attr_reader :value
 
-    # [Location] the location of this node
-    attr_reader :location
-
     def initialize(value:, location:)
       @value = value
       @location = location
@@ -8336,9 +8045,6 @@ module SyntaxTree
 
     # [Array[ TStringContent ]] the elements of the array
     attr_reader :elements
-
-    # [Location] the location of this node
-    attr_reader :location
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
@@ -8413,9 +8119,6 @@ module SyntaxTree
     # [String] the beginning of the array literal
     attr_reader :value
 
-    # [Location] the location of this node
-    attr_reader :location
-
     def initialize(value:, location:)
       @value = value
       @location = location
@@ -8429,9 +8132,6 @@ module SyntaxTree
   class RationalLiteral < Node
     # [String] the rational number literal
     attr_reader :value
-
-    # [Location] the location of this node
-    attr_reader :location
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
@@ -8479,9 +8179,6 @@ module SyntaxTree
     # [String] the right brace
     attr_reader :value
 
-    # [Location] the location of this node
-    attr_reader :location
-
     def initialize(value:, location:)
       @value = value
       @location = location
@@ -8492,9 +8189,6 @@ module SyntaxTree
   class RBracket < Node
     # [String] the right bracket
     attr_reader :value
-
-    # [Location] the location of this node
-    attr_reader :location
 
     def initialize(value:, location:)
       @value = value
@@ -8509,9 +8203,6 @@ module SyntaxTree
   class Redo < Node
     # [String] the value of the keyword
     attr_reader :value
-
-    # [Location] the location of this node
-    attr_reader :location
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
@@ -8568,9 +8259,6 @@ module SyntaxTree
     # regular expression
     attr_reader :parts
 
-    # [Location] the location of this node
-    attr_reader :location
-
     def initialize(beginning:, parts:, location:)
       @beginning = beginning
       @parts = parts
@@ -8590,9 +8278,6 @@ module SyntaxTree
   class RegexpBeg < Node
     # [String] the beginning of the regular expression
     attr_reader :value
-
-    # [Location] the location of this node
-    attr_reader :location
 
     def initialize(value:, location:)
       @value = value
@@ -8614,9 +8299,6 @@ module SyntaxTree
     # [String] the end of the regular expression
     attr_reader :value
 
-    # [Location] the location of this node
-    attr_reader :location
-
     def initialize(value:, location:)
       @value = value
       @location = location
@@ -8637,9 +8319,6 @@ module SyntaxTree
     # [Array[ StringEmbExpr | StringDVar | TStringContent ]] the parts of the
     # regular expression literal
     attr_reader :parts
-
-    # [Location] the location of this node
-    attr_reader :location
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
@@ -8765,9 +8444,6 @@ module SyntaxTree
     # exception
     attr_reader :variable
 
-    # [Location] the location of this node
-    attr_reader :location
-
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
@@ -8847,9 +8523,6 @@ module SyntaxTree
 
     # [nil | Rescue] the optional next clause in the chain
     attr_reader :consequent
-
-    # [Location] the location of this node
-    attr_reader :location
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
@@ -8969,9 +8642,6 @@ module SyntaxTree
     # [untyped] the value to use if the executed expression raises an error
     attr_reader :value
 
-    # [Location] the location of this node
-    attr_reader :location
-
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
@@ -9047,9 +8717,6 @@ module SyntaxTree
     # [nil | Ident] the name of the parameter
     attr_reader :name
 
-    # [Location] the location of this node
-    attr_reader :location
-
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
@@ -9100,9 +8767,6 @@ module SyntaxTree
     # [String] the value of the keyword
     attr_reader :value
 
-    # [Location] the location of this node
-    attr_reader :location
-
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
@@ -9151,9 +8815,6 @@ module SyntaxTree
   class Return < Node
     # [Args] the arguments being passed to the keyword
     attr_reader :arguments
-
-    # [Location] the location of this node
-    attr_reader :location
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
@@ -9204,9 +8865,6 @@ module SyntaxTree
     # [String] the value of the keyword
     attr_reader :value
 
-    # [Location] the location of this node
-    attr_reader :location
-
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
@@ -9253,9 +8911,6 @@ module SyntaxTree
     # [String] the parenthesis
     attr_reader :value
 
-    # [Location] the location of this node
-    attr_reader :location
-
     def initialize(value:, location:)
       @value = value
       @location = location
@@ -9275,9 +8930,6 @@ module SyntaxTree
 
     # [BodyStmt] the expressions to be executed
     attr_reader :bodystmt
-
-    # [Location] the location of this node
-    attr_reader :location
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
@@ -9353,9 +9005,6 @@ module SyntaxTree
 
     # [Array[ untyped ]] the list of expressions contained within this node
     attr_reader :body
-
-    # [Location] the location of this node
-    attr_reader :location
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
@@ -9530,9 +9179,6 @@ module SyntaxTree
     # string
     attr_reader :parts
 
-    # [Location] the location of this node
-    attr_reader :location
-
     def initialize(parts:, location:)
       @parts = parts
       @location = location
@@ -9551,9 +9197,6 @@ module SyntaxTree
 
     # [StringLiteral] the right side of the concatenation
     attr_reader :right
-
-    # [Location] the location of this node
-    attr_reader :location
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
@@ -9621,9 +9264,6 @@ module SyntaxTree
     # [Backref | VarRef] the variable being interpolated
     attr_reader :variable
 
-    # [Location] the location of this node
-    attr_reader :location
-
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
@@ -9679,9 +9319,6 @@ module SyntaxTree
   class StringEmbExpr < Node
     # [Statements] the expressions to be interpolated
     attr_reader :statements
-
-    # [Location] the location of this node
-    attr_reader :location
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
@@ -9755,9 +9392,6 @@ module SyntaxTree
 
     # [String] which quote was used by the string literal
     attr_reader :quote
-
-    # [Location] the location of this node
-    attr_reader :location
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
@@ -9840,9 +9474,6 @@ module SyntaxTree
     # [ArgParen | Args] the arguments to the keyword
     attr_reader :arguments
 
-    # [Location] the location of this node
-    attr_reader :location
-
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
@@ -9913,9 +9544,6 @@ module SyntaxTree
     # [String] the beginning of the symbol
     attr_reader :value
 
-    # [Location] the location of this node
-    attr_reader :location
-
     def initialize(value:, location:)
       @value = value
       @location = location
@@ -9932,9 +9560,6 @@ module SyntaxTree
     # symbol
     attr_reader :value
 
-    # [Location] the location of this node
-    attr_reader :location
-
     def initialize(value:, location:)
       @value = value
       @location = location
@@ -9950,9 +9575,6 @@ module SyntaxTree
     # [Backtick | Const | CVar | GVar | Ident | IVar | Kw | Op] the value of the
     # symbol
     attr_reader :value
-
-    # [Location] the location of this node
-    attr_reader :location
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
@@ -10009,9 +9631,6 @@ module SyntaxTree
 
     # [Array[ Word ]] the words in the symbol array literal
     attr_reader :elements
-
-    # [Location] the location of this node
-    attr_reader :location
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
@@ -10090,9 +9709,6 @@ module SyntaxTree
     # [String] the beginning of the symbol literal array
     attr_reader :value
 
-    # [Location] the location of this node
-    attr_reader :location
-
     def initialize(value:, location:)
       @value = value
       @location = location
@@ -10107,9 +9723,6 @@ module SyntaxTree
   class TLambda < Node
     # [String] the beginning of the lambda literal
     attr_reader :value
-
-    # [Location] the location of this node
-    attr_reader :location
 
     def initialize(value:, location:)
       @value = value
@@ -10127,9 +9740,6 @@ module SyntaxTree
     # [String] the beginning of the body of the lambda literal
     attr_reader :value
 
-    # [Location] the location of this node
-    attr_reader :location
-
     def initialize(value:, location:)
       @value = value
       @location = location
@@ -10145,9 +9755,6 @@ module SyntaxTree
   class TopConstField < Node
     # [Const] the constant being assigned
     attr_reader :constant
-
-    # [Location] the location of this node
-    attr_reader :location
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
@@ -10202,9 +9809,6 @@ module SyntaxTree
   class TopConstRef < Node
     # [Const] the constant being referenced
     attr_reader :constant
-
-    # [Location] the location of this node
-    attr_reader :location
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
@@ -10265,9 +9869,6 @@ module SyntaxTree
     # [String] the beginning of the string
     attr_reader :value
 
-    # [Location] the location of this node
-    attr_reader :location
-
     def initialize(value:, location:)
       @value = value
       @location = location
@@ -10285,9 +9886,6 @@ module SyntaxTree
   class TStringContent < Node
     # [String] the content of the string
     attr_reader :value
-
-    # [Location] the location of this node
-    attr_reader :location
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
@@ -10351,9 +9949,6 @@ module SyntaxTree
     # [String] the end of the string
     attr_reader :value
 
-    # [Location] the location of this node
-    attr_reader :location
-
     def initialize(value:, location:)
       @value = value
       @location = location
@@ -10370,9 +9965,6 @@ module SyntaxTree
 
     # [boolean] whether or not parentheses were used
     attr_reader :parentheses
-
-    # [Location] the location of this node
-    attr_reader :location
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
@@ -10438,9 +10030,6 @@ module SyntaxTree
 
     # [untyped] the statement on which to operate
     attr_reader :statement
-
-    # [Location] the location of this node
-    attr_reader :location
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
@@ -10526,9 +10115,6 @@ module SyntaxTree
     # [Array[ DynaSymbol | SymbolLiteral ]] the symbols to undefine
     attr_reader :symbols
 
-    # [Location] the location of this node
-    attr_reader :location
-
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
@@ -10592,9 +10178,6 @@ module SyntaxTree
 
     # [nil, Elsif, Else] the next clause in the chain
     attr_reader :consequent
-
-    # [Location] the location of this node
-    attr_reader :location
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
@@ -10674,9 +10257,6 @@ module SyntaxTree
 
     # [untyped] the expression to be checked
     attr_reader :predicate
-
-    # [Location] the location of this node
-    attr_reader :location
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
@@ -10793,9 +10373,6 @@ module SyntaxTree
     # [Statements] the expressions to be executed
     attr_reader :statements
 
-    # [Location] the location of this node
-    attr_reader :location
-
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
@@ -10871,9 +10448,6 @@ module SyntaxTree
 
     # [untyped] the expression to be checked
     attr_reader :predicate
-
-    # [Location] the location of this node
-    attr_reader :location
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
@@ -10961,9 +10535,6 @@ module SyntaxTree
     # [Backref | GVar] the current name of the variable to be aliased
     attr_reader :right
 
-    # [Location] the location of this node
-    attr_reader :location
-
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
@@ -11028,9 +10599,6 @@ module SyntaxTree
     # [nil | Const | CVar | GVar | Ident | IVar] the target of this node
     attr_reader :value
 
-    # [Location] the location of this node
-    attr_reader :location
-
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
@@ -11083,9 +10651,6 @@ module SyntaxTree
   class VarRef < Node
     # [Const | CVar | GVar | Ident | IVar | Kw] the value of this node
     attr_reader :value
-
-    # [Location] the location of this node
-    attr_reader :location
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
@@ -11140,9 +10705,6 @@ module SyntaxTree
   class PinnedVarRef < Node
     # [VarRef] the value of this node
     attr_reader :value
-
-    # [Location] the location of this node
-    attr_reader :location
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
@@ -11199,9 +10761,6 @@ module SyntaxTree
   class VCall < Node
     # [Ident] the value of this expression
     attr_reader :value
-
-    # [Location] the location of this node
-    attr_reader :location
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
@@ -11300,9 +10859,6 @@ module SyntaxTree
 
     # [nil | Else | When] the next clause in the chain
     attr_reader :consequent
-
-    # [Location] the location of this node
-    attr_reader :location
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
@@ -11418,9 +10974,6 @@ module SyntaxTree
     # [Statements] the expressions to be executed
     attr_reader :statements
 
-    # [Location] the location of this node
-    attr_reader :location
-
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
@@ -11496,9 +11049,6 @@ module SyntaxTree
 
     # [untyped] the expression to be checked
     attr_reader :predicate
-
-    # [Location] the location of this node
-    attr_reader :location
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
@@ -11586,9 +11136,6 @@ module SyntaxTree
     # word
     attr_reader :parts
 
-    # [Location] the location of this node
-    attr_reader :location
-
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
@@ -11644,9 +11191,6 @@ module SyntaxTree
 
     # [Array[ Word ]] the elements of this array
     attr_reader :elements
-
-    # [Location] the location of this node
-    attr_reader :location
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
@@ -11722,9 +11266,6 @@ module SyntaxTree
     # [String] the start of the word literal array
     attr_reader :value
 
-    # [Location] the location of this node
-    attr_reader :location
-
     def initialize(value:, location:)
       @value = value
       @location = location
@@ -11740,9 +11281,6 @@ module SyntaxTree
     # xstring
     attr_reader :parts
 
-    # [Location] the location of this node
-    attr_reader :location
-
     def initialize(parts:, location:)
       @parts = parts
       @location = location
@@ -11757,9 +11295,6 @@ module SyntaxTree
     # [Array[ StringEmbExpr | StringDVar | TStringContent ]] the parts of the
     # xstring
     attr_reader :parts
-
-    # [Location] the location of this node
-    attr_reader :location
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
@@ -11814,9 +11349,6 @@ module SyntaxTree
   class Yield < Node
     # [Args | Paren] the arguments passed to the yield
     attr_reader :arguments
-
-    # [Location] the location of this node
-    attr_reader :location
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
@@ -11881,9 +11413,6 @@ module SyntaxTree
     # [String] the value of the keyword
     attr_reader :value
 
-    # [Location] the location of this node
-    attr_reader :location
-
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
@@ -11932,9 +11461,6 @@ module SyntaxTree
   class ZSuper < Node
     # [String] the value of the keyword
     attr_reader :value
-
-    # [Location] the location of this node
-    attr_reader :location
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
