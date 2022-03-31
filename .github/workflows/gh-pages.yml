@@ -16,7 +16,7 @@ jobs:
       - name: Install rdoc and generate docs 🔧
         run: |
           gem install rdoc
-          rdoc --op rdocs
+          rdoc --op rdocs --exclude={Gemfile,Rakefile,"vendor/*","bin/*","test/*"}
 
       - name: Deploy 🚀
         uses: peaceiris/actions-gh-pages@v3
