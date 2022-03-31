@@ -7,7 +7,7 @@ require "uri"
 require_relative "code_actions"
 require_relative "implicits"
 
-class SyntaxTree
+module SyntaxTree
   class LanguageServer
     attr_reader :input, :output
 

@@ -3,7 +3,7 @@
 return if ENV["FAST"]
 require_relative "test_helper"
 
-class SyntaxTree
+module SyntaxTree
   class IdempotencyTest < Minitest::Test
     Dir[File.join(RbConfig::CONFIG["libdir"], "**/*.rb")].each do |filepath|
       define_method(:"test_#{filepath}") do

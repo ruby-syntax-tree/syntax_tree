@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-class SyntaxTree
+module SyntaxTree
   class Implicits
     attr_reader :before, :after
 

@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-class SyntaxTree
+module SyntaxTree
   class CodeActions
     class DisasmAction
       attr_reader :line, :node

@@ -2,7 +2,7 @@
 
 require_relative "test_helper"
 
-class SyntaxTree
+module SyntaxTree
   class BehaviorTest < Minitest::Test
     def test_empty
       void_stmt = SyntaxTree.parse("").statements.body.first
@@ -15,7 +15,7 @@ class SyntaxTree
     end
 
     def test_parse_error
-      assert_raises(ParseError) { SyntaxTree.parse("<>") }
+      assert_raises(Parser::ParseError) { SyntaxTree.parse("<>") }
     end
 
     def test_next_statement_start

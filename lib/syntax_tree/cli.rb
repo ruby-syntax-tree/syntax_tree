@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-class SyntaxTree
+module SyntaxTree
   module CLI
     # A utility wrapper around colored strings in the output.
     class Color

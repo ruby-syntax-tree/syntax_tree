@@ -1,6 +1,54 @@
 # frozen_string_literal: true
 
-class SyntaxTree < Ripper
+module SyntaxTree
+  # Represents the location of a node in the tree from the source code.
+  class Location
+    attr_reader :start_line, :start_char, :end_line, :end_char
+
+    def initialize(start_line:, start_char:, end_line:, end_char:)
+      @start_line = start_line
+      @start_char = start_char
+      @end_line = end_line
+      @end_char = end_char
+    end
+
+    def lines
+      start_line..end_line
+    end
+
+    def ==(other)
+      other.is_a?(Location) && start_line == other.start_line &&
+        start_char == other.start_char && end_line == other.end_line &&
+        end_char == other.end_char
+    end
+
+    def to(other)
+      Location.new(
+        start_line: start_line,
+        start_char: start_char,
+        end_line: [end_line, other.end_line].max,
+        end_char: other.end_char
+      )
+    end
+
+    def to_json(*opts)
+      [start_line, start_char, end_line, end_char].to_json(*opts)
+    end
+
+    def self.token(line:, char:, size:)
+      new(
+        start_line: line,
+        start_char: char,
+        end_line: line,
+        end_char: char + size
+      )
+    end
+
+    def self.fixed(line:, char:)
+      new(start_line: line, start_char: char, end_line: line, end_char: char)
+    end
+  end
+
   # This is the parent node of all of the syntax tree nodes. It's pretty much
   # exclusively here to make it easier to operate with the tree in cases where
   # you're trying to monkey-patch or strictly type.

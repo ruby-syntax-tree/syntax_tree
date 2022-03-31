@@ -2,7 +2,7 @@
 
 require_relative "test_helper"
 
-class SyntaxTree
+module SyntaxTree
   class NodeTest < Minitest::Test
     def self.guard_version(version)
       yield if Gem::Version.new(RUBY_VERSION) >= Gem::Version.new(version)
@@ -729,7 +729,7 @@ class SyntaxTree
     end
 
     def test_program
-      parser = SyntaxTree.new("variable")
+      parser = SyntaxTree::Parser.new("variable")
       program = parser.parse
       refute(parser.error?)
 
@@ -1013,7 +1013,7 @@ class SyntaxTree
 
       # Parse the example, get the outputted parse tree, and assert that it was
       # able to successfully parse.
-      parser = SyntaxTree.new(source)
+      parser = SyntaxTree::Parser.new(source)
       program = parser.parse
       refute(parser.error?)
 

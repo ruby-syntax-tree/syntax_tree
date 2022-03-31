@@ -2,7 +2,7 @@
 
 require_relative "test_helper"
 
-class SyntaxTree
+module SyntaxTree
   class FormattingTest < Minitest::Test
     delimiter = /%(?: # (.+?))?\n/
 
