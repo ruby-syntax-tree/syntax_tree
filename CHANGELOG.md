@@ -8,6 +8,10 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 
 ## [2.0.0] - 2022-03-30
 
+### Added
+
+- The new `SyntaxTree.register_handler` hook for plugins.
+
 ### Changed
 
 - Changed `SyntaxTree` from being a class to being a module. The parser functionality is moved into `SyntaxTree::Parser`.

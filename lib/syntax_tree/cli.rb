@@ -2,6 +2,17 @@
 
 module SyntaxTree
   module CLI
+    # This holds references to objects that respond to both #parse and #format
+    # so that we can use them in the CLI.
+    HANDLERS = {}
+    HANDLERS.default = SyntaxTree
+
+    # This is a hook provided so that plugins can register themselves as the
+    # handler for a particular file type.
+    def self.register_handler(extension, handler)
+      HANDLERS[extension] = handler
+    end
+
     # A utility wrapper around colored strings in the output.
     class Color
       attr_reader :value, :code
@@ -34,7 +45,7 @@ module SyntaxTree
 
     # The parent action class for the CLI that implements the basics.
     class Action
-      def run(filepath, source)
+      def run(handler, filepath, source)
       end
 
       def success
@@ -46,8 +57,8 @@ module SyntaxTree
 
     # An action of the CLI that prints out the AST for the given source.
     class AST < Action
-      def run(filepath, source)
-        pp SyntaxTree.parse(source)
+      def run(handler, filepath, source)
+        pp handler.parse(source)
       end
     end
 
@@ -57,8 +68,8 @@ module SyntaxTree
       class UnformattedError < StandardError
       end
 
-      def run(filepath, source)
-        raise UnformattedError if source != SyntaxTree.format(source)
+      def run(handler, filepath, source)
+        raise UnformattedError if source != handler.format(source)
       rescue StandardError
         warn("[#{Color.yellow("warn")}] #{filepath}")
         raise
@@ -79,11 +90,11 @@ module SyntaxTree
       class NonIdempotentFormatError < StandardError
       end
 
-      def run(filepath, source)
+      def run(handler, filepath, source)
         warning = "[#{Color.yellow("warn")}] #{filepath}"
-        formatted = SyntaxTree.format(source)
+        formatted = handler.format(source)
 
-        if formatted != SyntaxTree.format(formatted)
+        if formatted != handler.format(formatted)
           raise NonIdempotentFormatError
         end
       rescue StandardError
@@ -102,28 +113,28 @@ module SyntaxTree
 
     # An action of the CLI that prints out the doc tree IR for the given source.
     class Doc < Action
-      def run(filepath, source)
+      def run(handler, filepath, source)
         formatter = Formatter.new([])
-        SyntaxTree.parse(source).format(formatter)
+        handler.parse(source).format(formatter)
         pp formatter.groups.first
       end
     end
 
     # An action of the CLI that formats the input source and prints it out.
     class Format < Action
-      def run(filepath, source)
-        puts SyntaxTree.format(source)
+      def run(handler, filepath, source)
+        puts handler.format(source)
       end
     end
 
     # An action of the CLI that formats the input source and writes the
     # formatted output back to the file.
     class Write < Action
-      def run(filepath, source)
+      def run(handler, filepath, source)
         print filepath
         start = Time.now
 
-        formatted = SyntaxTree.format(source)
+        formatted = handler.format(source)
         File.write(filepath, formatted)
 
         color = source == formatted ? Color.gray(filepath) : filepath
@@ -214,10 +225,12 @@ module SyntaxTree
         patterns.each do |pattern|
           Dir.glob(pattern).each do |filepath|
             next unless File.file?(filepath)
+
+            handler = HANDLERS[File.extname(filepath)]
             source = SyntaxTree.read(filepath)
 
             begin
-              action.run(filepath, source)
+              action.run(handler, filepath, source)
             rescue ParseError => error
               warn("Error: #{error.message}")
 
