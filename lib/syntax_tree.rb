@@ -3102,14 +3102,12 @@ class SyntaxTree < Ripper
   #     (nil | Ensure) ensure_clause
   #   ) -> BodyStmt
   def on_bodystmt(statements, rescue_clause, else_clause, ensure_clause)
-    ending = [ensure_clause, else_clause, rescue_clause, statements].detect(&:itself)
-
     BodyStmt.new(
       statements: statements,
       rescue_clause: rescue_clause,
       else_clause: else_clause,
       ensure_clause: ensure_clause,
-      location: statements.location.to(ending.location)
+      location: Location.fixed(line: lineno, char: char_pos)
     )
   end
 
