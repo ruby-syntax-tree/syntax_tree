@@ -1871,7 +1871,6 @@ module SyntaxTree
     end
   end
 
-
   # Binary represents any expression that involves two sub-expressions with an
   # operator in between. This can be something that looks like a mathematical
   # operation:
