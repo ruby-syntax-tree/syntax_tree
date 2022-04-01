@@ -1,19 +1,22 @@
 # frozen_string_literal: true
 
 require_relative "test_helper"
-require "objspace"
 
 class VisitorTest < Minitest::Test
-  def test_can_visit_all_nodes
+  def test_visit_all_nodes
     visitor = SyntaxTree::Visitor.new
 
-    ObjectSpace.each_object(SyntaxTree::Node.singleton_class)
-      .reject { |node| node.singleton_class? || node == SyntaxTree::Node }
-      .each { |node| assert_respond_to(visitor, node.visit_method_name) }
-  end
+    filepath = File.expand_path("../lib/syntax_tree/node.rb", __dir__)
+    program = SyntaxTree.parse(SyntaxTree.read(filepath))
 
-  def test_node_visit_method_name
-    assert_equal("visit_t_string_end", SyntaxTree::TStringEnd.visit_method_name)
+    program.statements.body.last.bodystmt.statements.body.each do |node|
+      next unless node in SyntaxTree::ClassDeclaration[superclass: { value: { value: "Node" } }]
+
+      accept = node.bodystmt.statements.body.detect { |defm| defm in SyntaxTree::Def[name: { value: "accept" }] }
+      accept => { bodystmt: { statements: { body: [SyntaxTree::Call[message: { value: visit_method }]] } } }
+
+      assert_respond_to(visitor, visit_method)
+    end
   end
 
   def test_visit_tree
@@ -42,12 +45,12 @@ class VisitorTest < Minitest::Test
       @visited_nodes = []
     end
 
-    def visit_class_declaration(node)
+    visit_method def visit_class(node)
       @visited_nodes << node.constant.constant.value
       super
     end
 
-    def visit_def(node)
+    visit_method def visit_def(node)
       @visited_nodes << node.name.value
     end
   end
