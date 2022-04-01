@@ -57,8 +57,12 @@ module SyntaxTree
       node&.accept(self)
     end
 
+    def visit_all(nodes)
+      nodes.each { |node| visit(node) }
+    end
+
     def visit_child_nodes(node)
-      node.child_nodes.each { |child_node| visit(child_node) }
+      visit_all(node.child_nodes)
     end
 
     # Visit an ARef node.
