@@ -58,27 +58,8 @@ module SyntaxTree
     # [Location] the location of this node
     attr_reader :location
 
-    def self.inherited(child)
-      child.class_eval(<<~EOS, __FILE__, __LINE__ + 1)
-        def accept(visitor)
-          visitor.#{child.visit_method_name}(self)
-        end
-      EOS
-
-      Visitor.class_eval(<<~EOS, __FILE__, __LINE__ + 1)
-        def #{child.visit_method_name}(node)
-          visit_all(node.child_nodes)
-        end
-      EOS
-    end
-
-    def self.visit_method_name
-      method_suffix = name.split("::").last
-      method_suffix.gsub!(/([A-Z\d]+)([A-Z][a-z])/, '\1_\2')
-      method_suffix.gsub!(/([a-z\d])([A-Z])/, '\1_\2')
-      method_suffix.tr!("-", "_")
-      method_suffix.downcase!
-      "visit_#{method_suffix}"
+    def accept(visitor)
+      raise NotImplementedError
     end
 
     def child_nodes
@@ -130,6 +111,10 @@ module SyntaxTree
       @statements = statements
       @location = location
       @comments = comments
+    end
+
+    def accept(visitor)
+      visitor.visit_BEGIN(self)
     end
 
     def child_nodes
@@ -201,6 +186,10 @@ module SyntaxTree
       @comments = comments
     end
 
+    def accept(visitor)
+      visitor.visit_CHAR(self)
+    end
+
     def child_nodes
       []
     end
@@ -263,6 +252,10 @@ module SyntaxTree
       @statements = statements
       @location = location
       @comments = comments
+    end
+
+    def accept(visitor)
+      visitor.visit_END(self)
     end
 
     def child_nodes
@@ -335,6 +328,10 @@ module SyntaxTree
       @value = value
       @location = location
       @comments = comments
+    end
+
+    def accept(visitor)
+      visitor.visit___end__(self)
     end
 
     def child_nodes
@@ -426,6 +423,10 @@ module SyntaxTree
       @comments = comments
     end
 
+    def accept(visitor)
+      visitor.visit_alias(self)
+    end
+
     def child_nodes
       [left, right]
     end
@@ -507,6 +508,10 @@ module SyntaxTree
       @comments = comments
     end
 
+    def accept(visitor)
+      visitor.visit_aref(self)
+    end
+
     def child_nodes
       [collection, index]
     end
@@ -586,6 +591,10 @@ module SyntaxTree
       @index = index
       @location = location
       @comments = comments
+    end
+
+    def accept(visitor)
+      visitor.visit_aref_field(self)
     end
 
     def child_nodes
@@ -670,6 +679,10 @@ module SyntaxTree
       @comments = comments
     end
 
+    def accept(visitor)
+      visitor.visit_arg_paren(self)
+    end
+
     def child_nodes
       [arguments]
     end
@@ -734,6 +747,10 @@ module SyntaxTree
       @comments = comments
     end
 
+    def accept(visitor)
+      visitor.visit_args(self)
+    end
+
     def child_nodes
       parts
     end
@@ -781,6 +798,10 @@ module SyntaxTree
       @value = value
       @location = location
       @comments = comments
+    end
+
+    def accept(visitor)
+      visitor.visit_arg_block(self)
     end
 
     def child_nodes
@@ -833,6 +854,10 @@ module SyntaxTree
       @value = value
       @location = location
       @comments = comments
+    end
+
+    def accept(visitor)
+      visitor.visit_arg_star(self)
     end
 
     def child_nodes
@@ -896,6 +921,10 @@ module SyntaxTree
       @value = value
       @location = location
       @comments = comments
+    end
+
+    def accept(visitor)
+      visitor.visit_args_forward(self)
     end
 
     def child_nodes
@@ -1025,6 +1054,10 @@ module SyntaxTree
       @contents = contents
       @location = location
       @comments = comments
+    end
+
+    def accept(visitor)
+      visitor.visit_array(self)
     end
 
     def child_nodes
@@ -1199,6 +1232,10 @@ module SyntaxTree
       @comments = comments
     end
 
+    def accept(visitor)
+      visitor.visit_aryptn(self)
+    end
+
     def child_nodes
       [constant, *requireds, rest, *posts]
     end
@@ -1326,6 +1363,10 @@ module SyntaxTree
       @comments = comments
     end
 
+    def accept(visitor)
+      visitor.visit_assign(self)
+    end
+
     def child_nodes
       [target, value]
     end
@@ -1408,6 +1449,10 @@ module SyntaxTree
       @comments = comments
     end
 
+    def accept(visitor)
+      visitor.visit_assoc(self)
+    end
+
     def child_nodes
       [key, value]
     end
@@ -1488,6 +1533,10 @@ module SyntaxTree
       @comments = comments
     end
 
+    def accept(visitor)
+      visitor.visit_assoc_splat(self)
+    end
+
     def child_nodes
       [value]
     end
@@ -1542,6 +1591,10 @@ module SyntaxTree
       @comments = comments
     end
 
+    def accept(visitor)
+      visitor.visit_backref(self)
+    end
+
     def child_nodes
       []
     end
@@ -1588,6 +1641,10 @@ module SyntaxTree
       @value = value
       @location = location
       @comments = comments
+    end
+
+    def accept(visitor)
+      visitor.visit_backtick(self)
     end
 
     def child_nodes
@@ -1704,6 +1761,10 @@ module SyntaxTree
       @comments = comments
     end
 
+    def accept(visitor)
+      visitor.visit_bare_assoc_hash(self)
+    end
+
     def child_nodes
       assocs
     end
@@ -1760,6 +1821,10 @@ module SyntaxTree
       @bodystmt = bodystmt
       @location = location
       @comments = comments
+    end
+
+    def accept(visitor)
+      visitor.visit_begin(self)
     end
 
     def child_nodes
@@ -1826,6 +1891,10 @@ module SyntaxTree
       @comments = comments
     end
 
+    def accept(visitor)
+      visitor.visit_pinned_begin(self)
+    end
+
     def child_nodes
       [statement]
     end
@@ -1871,7 +1940,6 @@ module SyntaxTree
     end
   end
 
-
   # Binary represents any expression that involves two sub-expressions with an
   # operator in between. This can be something that looks like a mathematical
   # operation:
@@ -1901,6 +1969,10 @@ module SyntaxTree
       @right = right
       @location = location
       @comments = comments
+    end
+
+    def accept(visitor)
+      visitor.visit_binary(self)
     end
 
     def child_nodes
@@ -2036,6 +2108,10 @@ module SyntaxTree
       @comments = comments
     end
 
+    def accept(visitor)
+      visitor.visit_block_var(self)
+    end
+
     def child_nodes
       [params, *locals]
     end
@@ -2100,6 +2176,10 @@ module SyntaxTree
       @name = name
       @location = location
       @comments = comments
+    end
+
+    def accept(visitor)
+      visitor.visit_block_arg(self)
     end
 
     def child_nodes
@@ -2201,6 +2281,10 @@ module SyntaxTree
 
     def empty?
       statements.empty? && !rescue_clause && !else_clause && !ensure_clause
+    end
+
+    def accept(visitor)
+      visitor.visit_bodystmt(self)
     end
 
     def child_nodes
@@ -2472,6 +2556,10 @@ module SyntaxTree
       @comments = comments
     end
 
+    def accept(visitor)
+      visitor.visit_brace_block(self)
+    end
+
     def child_nodes
       [lbrace, block_var, statements]
     end
@@ -2592,6 +2680,10 @@ module SyntaxTree
       @comments = comments
     end
 
+    def accept(visitor)
+      visitor.visit_break(self)
+    end
+
     def child_nodes
       [arguments]
     end
@@ -2681,6 +2773,10 @@ module SyntaxTree
       @arguments = arguments
       @location = location
       @comments = comments
+    end
+
+    def accept(visitor)
+      visitor.visit_call(self)
     end
 
     def child_nodes
@@ -2800,6 +2896,10 @@ module SyntaxTree
       @comments = comments
     end
 
+    def accept(visitor)
+      visitor.visit_case(self)
+    end
+
     def child_nodes
       [keyword, value, consequent]
     end
@@ -2888,6 +2988,10 @@ module SyntaxTree
       @pattern = pattern
       @location = location
       @comments = comments
+    end
+
+    def accept(visitor)
+      visitor.visit_rassign(self)
     end
 
     def child_nodes
@@ -3003,6 +3107,10 @@ module SyntaxTree
       @comments = comments
     end
 
+    def accept(visitor)
+      visitor.visit_class(self)
+    end
+
     def child_nodes
       [constant, superclass, bodystmt]
     end
@@ -3089,6 +3197,10 @@ module SyntaxTree
     # [String] the comma in the string
     attr_reader :value
 
+    def accept(visitor)
+      visitor.visit_comma(self)
+    end
+
     def initialize(value:, location:)
       @value = value
       @location = location
@@ -3116,6 +3228,10 @@ module SyntaxTree
       @arguments = arguments
       @location = location
       @comments = comments
+    end
+
+    def accept(visitor)
+      visitor.visit_command(self)
     end
 
     def child_nodes
@@ -3201,6 +3317,10 @@ module SyntaxTree
       @arguments = arguments
       @location = location
       @comments = comments
+    end
+
+    def accept(visitor)
+      visitor.visit_command_call(self)
     end
 
     def child_nodes
@@ -3382,6 +3502,10 @@ module SyntaxTree
       []
     end
 
+    def accept(visitor)
+      visitor.visit_comment(self)
+    end
+
     def child_nodes
       []
     end
@@ -3442,6 +3566,10 @@ module SyntaxTree
       @comments = comments
     end
 
+    def accept(visitor)
+      visitor.visit_const(self)
+    end
+
     def child_nodes
       []
     end
@@ -3495,6 +3623,10 @@ module SyntaxTree
       @constant = constant
       @location = location
       @comments = comments
+    end
+
+    def accept(visitor)
+      visitor.visit_const_path_field(self)
     end
 
     def child_nodes
@@ -3564,6 +3696,10 @@ module SyntaxTree
       @comments = comments
     end
 
+    def accept(visitor)
+      visitor.visit_const_path_ref(self)
+    end
+
     def child_nodes
       [parent, constant]
     end
@@ -3629,6 +3765,10 @@ module SyntaxTree
       @comments = comments
     end
 
+    def accept(visitor)
+      visitor.visit_const_ref(self)
+    end
+
     def child_nodes
       [constant]
     end
@@ -3679,6 +3819,10 @@ module SyntaxTree
       @value = value
       @location = location
       @comments = comments
+    end
+
+    def accept(visitor)
+      visitor.visit_cvar(self)
     end
 
     def child_nodes
@@ -3736,6 +3880,10 @@ module SyntaxTree
       @bodystmt = bodystmt
       @location = location
       @comments = comments
+    end
+
+    def accept(visitor)
+      visitor.visit_def(self)
     end
 
     def child_nodes
@@ -3844,6 +3992,10 @@ module SyntaxTree
       @comments = comments
     end
 
+    def accept(visitor)
+      visitor.visit_def_endless(self)
+    end
+
     def child_nodes
       [target, operator, name, paren, statement]
     end
@@ -3946,6 +4098,10 @@ module SyntaxTree
       @comments = comments
     end
 
+    def accept(visitor)
+      visitor.visit_defined(self)
+    end
+
     def child_nodes
       [value]
     end
@@ -4023,6 +4179,10 @@ module SyntaxTree
       @bodystmt = bodystmt
       @location = location
       @comments = comments
+    end
+
+    def accept(visitor)
+      visitor.visit_defs(self)
     end
 
     def child_nodes
@@ -4129,6 +4289,10 @@ module SyntaxTree
       @comments = comments
     end
 
+    def accept(visitor)
+      visitor.visit_do_block(self)
+    end
+
     def child_nodes
       [keyword, block_var, bodystmt]
     end
@@ -4232,6 +4396,10 @@ module SyntaxTree
       @comments = comments
     end
 
+    def accept(visitor)
+      visitor.visit_dot2(self)
+    end
+
     def child_nodes
       [left, right]
     end
@@ -4302,6 +4470,10 @@ module SyntaxTree
       @right = right
       @location = location
       @comments = comments
+    end
+
+    def accept(visitor)
+      visitor.visit_dot3(self)
     end
 
     def child_nodes
@@ -4415,6 +4587,10 @@ module SyntaxTree
       @comments = comments
     end
 
+    def accept(visitor)
+      visitor.visit_dyna_symbol(self)
+    end
+
     def child_nodes
       parts
     end
@@ -4523,6 +4699,10 @@ module SyntaxTree
       @comments = comments
     end
 
+    def accept(visitor)
+      visitor.visit_else(self)
+    end
+
     def child_nodes
       [statements]
     end
@@ -4595,6 +4775,10 @@ module SyntaxTree
       @consequent = consequent
       @location = location
       @comments = comments
+    end
+
+    def accept(visitor)
+      visitor.visit_elsif(self)
     end
 
     def child_nodes
@@ -4695,6 +4879,10 @@ module SyntaxTree
       []
     end
 
+    def accept(visitor)
+      visitor.visit_embdoc(self)
+    end
+
     def child_nodes
       []
     end
@@ -4734,6 +4922,10 @@ module SyntaxTree
     # [String] the #{ used in the string
     attr_reader :value
 
+    def accept(visitor)
+      visitor.visit_embexpr_beg(self)
+    end
+
     def initialize(value:, location:)
       @value = value
       @location = location
@@ -4749,6 +4941,10 @@ module SyntaxTree
   class EmbExprEnd < Node
     # [String] the } used in the string
     attr_reader :value
+
+    def accept(visitor)
+      visitor.visit_embexpr_end(self)
+    end
 
     def initialize(value:, location:)
       @value = value
@@ -4767,6 +4963,10 @@ module SyntaxTree
   class EmbVar < Node
     # [String] the # used in the string
     attr_reader :value
+
+    def accept(visitor)
+      visitor.visit_embvar(self)
+    end
 
     def initialize(value:, location:)
       @value = value
@@ -4796,6 +4996,10 @@ module SyntaxTree
       @statements = statements
       @location = location
       @comments = comments
+    end
+
+    def accept(visitor)
+      visitor.visit_ensure(self)
     end
 
     def child_nodes
@@ -4869,6 +5073,10 @@ module SyntaxTree
       @comments = comments
     end
 
+    def accept(visitor)
+      visitor.visit_excessed_comma(self)
+    end
+
     def child_nodes
       []
     end
@@ -4926,6 +5134,10 @@ module SyntaxTree
       @arguments = arguments
       @location = location
       @comments = comments
+    end
+
+    def accept(visitor)
+      visitor.visit_fcall(self)
     end
 
     def child_nodes
@@ -5001,6 +5213,10 @@ module SyntaxTree
       @comments = comments
     end
 
+    def accept(visitor)
+      visitor.visit_field(self)
+    end
+
     def child_nodes
       [parent, (operator if operator != :"::"), name]
     end
@@ -5071,6 +5287,10 @@ module SyntaxTree
       @comments = comments
     end
 
+    def accept(visitor)
+      visitor.visit_float(self)
+    end
+
     def child_nodes
       []
     end
@@ -5134,6 +5354,10 @@ module SyntaxTree
       @right = right
       @location = location
       @comments = comments
+    end
+
+    def accept(visitor)
+      visitor.visit_fndptn(self)
     end
 
     def child_nodes
@@ -5230,6 +5454,10 @@ module SyntaxTree
       @comments = comments
     end
 
+    def accept(visitor)
+      visitor.visit_for(self)
+    end
+
     def child_nodes
       [index, collection, statements]
     end
@@ -5311,6 +5539,10 @@ module SyntaxTree
       @comments = comments
     end
 
+    def accept(visitor)
+      visitor.visit_gvar(self)
+    end
+
     def child_nodes
       []
     end
@@ -5362,6 +5594,10 @@ module SyntaxTree
       @assocs = assocs
       @location = location
       @comments = comments
+    end
+
+    def accept(visitor)
+      visitor.visit_hash(self)
     end
 
     def child_nodes
@@ -5452,6 +5688,10 @@ module SyntaxTree
       @comments = comments
     end
 
+    def accept(visitor)
+      visitor.visit_heredoc(self)
+    end
+
     def child_nodes
       [beginning, *parts]
     end
@@ -5540,6 +5780,10 @@ module SyntaxTree
       @value = value
       @location = location
       @comments = comments
+    end
+
+    def accept(visitor)
+      visitor.visit_heredoc_beg(self)
     end
 
     def child_nodes
@@ -5650,6 +5894,10 @@ module SyntaxTree
       @comments = comments
     end
 
+    def accept(visitor)
+      visitor.visit_hshptn(self)
+    end
+
     def child_nodes
       [constant, *keywords.flatten(1), keyword_rest]
     end
@@ -5755,6 +6003,10 @@ module SyntaxTree
       @value = value
       @location = location
       @comments = comments
+    end
+
+    def accept(visitor)
+      visitor.visit_ident(self)
     end
 
     def child_nodes
@@ -5902,6 +6154,10 @@ module SyntaxTree
       @comments = comments
     end
 
+    def accept(visitor)
+      visitor.visit_if(self)
+    end
+
     def child_nodes
       [predicate, statements, consequent]
     end
@@ -5976,6 +6232,10 @@ module SyntaxTree
       @falsy = falsy
       @location = location
       @comments = comments
+    end
+
+    def accept(visitor)
+      visitor.visit_if_op(self)
     end
 
     def child_nodes
@@ -6140,6 +6400,10 @@ module SyntaxTree
       @comments = comments
     end
 
+    def accept(visitor)
+      visitor.visit_if_mod(self)
+    end
+
     def child_nodes
       [statement, predicate]
     end
@@ -6201,6 +6465,10 @@ module SyntaxTree
       @comments = comments
     end
 
+    def accept(visitor)
+      visitor.visit_imaginary(self)
+    end
+
     def child_nodes
       []
     end
@@ -6259,6 +6527,10 @@ module SyntaxTree
       @consequent = consequent
       @location = location
       @comments = comments
+    end
+
+    def accept(visitor)
+      visitor.visit_in(self)
     end
 
     def child_nodes
@@ -6346,6 +6618,10 @@ module SyntaxTree
       @comments = comments
     end
 
+    def accept(visitor)
+      visitor.visit_int(self)
+    end
+
     def child_nodes
       []
     end
@@ -6399,6 +6675,10 @@ module SyntaxTree
       @value = value
       @location = location
       @comments = comments
+    end
+
+    def accept(visitor)
+      visitor.visit_ivar(self)
     end
 
     def child_nodes
@@ -6459,6 +6739,10 @@ module SyntaxTree
       @comments = comments
     end
 
+    def accept(visitor)
+      visitor.visit_kw(self)
+    end
+
     def child_nodes
       []
     end
@@ -6505,6 +6789,10 @@ module SyntaxTree
       @name = name
       @location = location
       @comments = comments
+    end
+
+    def accept(visitor)
+      visitor.visit_kwrest_param(self)
     end
 
     def child_nodes
@@ -6569,6 +6857,10 @@ module SyntaxTree
       @comments = comments
     end
 
+    def accept(visitor)
+      visitor.visit_label(self)
+    end
+
     def child_nodes
       []
     end
@@ -6613,6 +6905,10 @@ module SyntaxTree
     # [String] the end of the label
     attr_reader :value
 
+    def accept(visitor)
+      visitor.visit_label_end(self)
+    end
+
     def initialize(value:, location:)
       @value = value
       @location = location
@@ -6638,6 +6934,10 @@ module SyntaxTree
       @statements = statements
       @location = location
       @comments = comments
+    end
+
+    def accept(visitor)
+      visitor.visit_lambda(self)
     end
 
     def child_nodes
@@ -6729,6 +7029,10 @@ module SyntaxTree
       @comments = comments
     end
 
+    def accept(visitor)
+      visitor.visit_lbrace(self)
+    end
+
     def child_nodes
       []
     end
@@ -6775,6 +7079,10 @@ module SyntaxTree
       @comments = comments
     end
 
+    def accept(visitor)
+      visitor.visit_lbracket(self)
+    end
+
     def child_nodes
       []
     end
@@ -6819,6 +7127,10 @@ module SyntaxTree
       @value = value
       @location = location
       @comments = comments
+    end
+
+    def accept(visitor)
+      visitor.visit_lparen(self)
     end
 
     def child_nodes
@@ -6882,6 +7194,10 @@ module SyntaxTree
       @value = value
       @location = location
       @comments = comments
+    end
+
+    def accept(visitor)
+      visitor.visit_massign(self)
     end
 
     def child_nodes
@@ -6951,6 +7267,10 @@ module SyntaxTree
       @comments = comments
     end
 
+    def accept(visitor)
+      visitor.visit_method_add_block(self)
+    end
+
     def child_nodes
       [call, block]
     end
@@ -7016,6 +7336,10 @@ module SyntaxTree
       @comments = comments
     end
 
+    def accept(visitor)
+      visitor.visit_mlhs(self)
+    end
+
     def child_nodes
       parts
     end
@@ -7069,6 +7393,10 @@ module SyntaxTree
       @contents = contents
       @location = location
       @comments = comments
+    end
+
+    def accept(visitor)
+      visitor.visit_mlhs_paren(self)
     end
 
     def child_nodes
@@ -7139,6 +7467,10 @@ module SyntaxTree
       @bodystmt = bodystmt
       @location = location
       @comments = comments
+    end
+
+    def accept(visitor)
+      visitor.visit_module(self)
     end
 
     def child_nodes
@@ -7228,6 +7560,10 @@ module SyntaxTree
       @comments = comments
     end
 
+    def accept(visitor)
+      visitor.visit_mrhs(self)
+    end
+
     def child_nodes
       parts
     end
@@ -7290,6 +7626,10 @@ module SyntaxTree
       @comments = comments
     end
 
+    def accept(visitor)
+      visitor.visit_next(self)
+    end
+
     def child_nodes
       [arguments]
     end
@@ -7338,6 +7678,10 @@ module SyntaxTree
       @value = value
       @location = location
       @comments = comments
+    end
+
+    def accept(visitor)
+      visitor.visit_op(self)
     end
 
     def child_nodes
@@ -7395,6 +7739,10 @@ module SyntaxTree
       @value = value
       @location = location
       @comments = comments
+    end
+
+    def accept(visitor)
+      visitor.visit_op_assign(self)
     end
 
     def child_nodes
@@ -7647,6 +7995,10 @@ module SyntaxTree
         keywords.empty? && !keyword_rest && !block
     end
 
+    def accept(visitor)
+      visitor.visit_params(self)
+    end
+
     def child_nodes
       [
         *requireds,
@@ -7812,6 +8164,10 @@ module SyntaxTree
       @comments = comments
     end
 
+    def accept(visitor)
+      visitor.visit_paren(self)
+    end
+
     def child_nodes
       [lparen, contents]
     end
@@ -7880,6 +8236,10 @@ module SyntaxTree
       @comments = comments
     end
 
+    def accept(visitor)
+      visitor.visit_period(self)
+    end
+
     def child_nodes
       []
     end
@@ -7924,6 +8284,10 @@ module SyntaxTree
       @statements = statements
       @location = location
       @comments = comments
+    end
+
+    def accept(visitor)
+      visitor.visit_program(self)
     end
 
     def child_nodes
@@ -7986,6 +8350,10 @@ module SyntaxTree
       @elements = elements
       @location = location
       @comments = comments
+    end
+
+    def accept(visitor)
+      visitor.visit_qsymbols(self)
     end
 
     def child_nodes
@@ -8054,6 +8422,10 @@ module SyntaxTree
     # [String] the beginning of the array literal
     attr_reader :value
 
+    def accept(visitor)
+      visitor.visit_qsymbols_beg(self)
+    end
+
     def initialize(value:, location:)
       @value = value
       @location = location
@@ -8079,6 +8451,10 @@ module SyntaxTree
       @elements = elements
       @location = location
       @comments = comments
+    end
+
+    def accept(visitor)
+      visitor.visit_qwords(self)
     end
 
     def child_nodes
@@ -8144,6 +8520,10 @@ module SyntaxTree
     # [String] the beginning of the array literal
     attr_reader :value
 
+    def accept(visitor)
+      visitor.visit_qwords_beg(self)
+    end
+
     def initialize(value:, location:)
       @value = value
       @location = location
@@ -8165,6 +8545,10 @@ module SyntaxTree
       @value = value
       @location = location
       @comments = comments
+    end
+
+    def accept(visitor)
+      visitor.visit_rational(self)
     end
 
     def child_nodes
@@ -8204,6 +8588,10 @@ module SyntaxTree
     # [String] the right brace
     attr_reader :value
 
+    def accept(visitor)
+      visitor.visit_rbrace(self)
+    end
+
     def initialize(value:, location:)
       @value = value
       @location = location
@@ -8214,6 +8602,10 @@ module SyntaxTree
   class RBracket < Node
     # [String] the right bracket
     attr_reader :value
+
+    def accept(visitor)
+      visitor.visit_rbracket(self)
+    end
 
     def initialize(value:, location:)
       @value = value
@@ -8236,6 +8628,10 @@ module SyntaxTree
       @value = value
       @location = location
       @comments = comments
+    end
+
+    def accept(visitor)
+      visitor.visit_redo(self)
     end
 
     def child_nodes
@@ -8284,6 +8680,10 @@ module SyntaxTree
     # regular expression
     attr_reader :parts
 
+    def accept(visitor)
+      visitor.visit_regexp_content(self)
+    end
+
     def initialize(beginning:, parts:, location:)
       @beginning = beginning
       @parts = parts
@@ -8304,6 +8704,10 @@ module SyntaxTree
     # [String] the beginning of the regular expression
     attr_reader :value
 
+    def accept(visitor)
+      visitor.visit_regexp_beg(self)
+    end
+
     def initialize(value:, location:)
       @value = value
       @location = location
@@ -8323,6 +8727,10 @@ module SyntaxTree
   class RegexpEnd < Node
     # [String] the end of the regular expression
     attr_reader :value
+
+    def accept(visitor)
+      visitor.visit_regexp_end(self)
+    end
 
     def initialize(value:, location:)
       @value = value
@@ -8354,6 +8762,10 @@ module SyntaxTree
       @parts = parts
       @location = location
       @comments = comments
+    end
+
+    def accept(visitor)
+      visitor.visit_regexp_literal(self)
     end
 
     def child_nodes
@@ -8479,6 +8891,10 @@ module SyntaxTree
       @comments = comments
     end
 
+    def accept(visitor)
+      visitor.visit_rescue_ex(self)
+    end
+
     def child_nodes
       [*exceptions, variable]
     end
@@ -8583,6 +8999,10 @@ module SyntaxTree
       end
     end
 
+    def accept(visitor)
+      visitor.visit_rescue(self)
+    end
+
     def child_nodes
       [exception, statements, consequent]
     end
@@ -8677,6 +9097,10 @@ module SyntaxTree
       @comments = comments
     end
 
+    def accept(visitor)
+      visitor.visit_rescue_mod(self)
+    end
+
     def child_nodes
       [statement, value]
     end
@@ -8751,6 +9175,10 @@ module SyntaxTree
       @comments = comments
     end
 
+    def accept(visitor)
+      visitor.visit_rest_param(self)
+    end
+
     def child_nodes
       [name]
     end
@@ -8799,6 +9227,10 @@ module SyntaxTree
       @value = value
       @location = location
       @comments = comments
+    end
+
+    def accept(visitor)
+      visitor.visit_retry(self)
     end
 
     def child_nodes
@@ -8850,6 +9282,10 @@ module SyntaxTree
       @comments = comments
     end
 
+    def accept(visitor)
+      visitor.visit_return(self)
+    end
+
     def child_nodes
       [arguments]
     end
@@ -8899,6 +9335,10 @@ module SyntaxTree
       @comments = comments
     end
 
+    def accept(visitor)
+      visitor.visit_return0(self)
+    end
+
     def child_nodes
       []
     end
@@ -8936,6 +9376,10 @@ module SyntaxTree
     # [String] the parenthesis
     attr_reader :value
 
+    def accept(visitor)
+      visitor.visit_rparen(self)
+    end
+
     def initialize(value:, location:)
       @value = value
       @location = location
@@ -8964,6 +9408,10 @@ module SyntaxTree
       @bodystmt = bodystmt
       @location = location
       @comments = comments
+    end
+
+    def accept(visitor)
+      visitor.visit_sclass(self)
     end
 
     def child_nodes
@@ -9080,6 +9528,10 @@ module SyntaxTree
       body.all? do |statement|
         statement.is_a?(VoidStmt) && statement.comments.empty?
       end
+    end
+
+    def accept(visitor)
+      visitor.visit_statements(self)
     end
 
     def child_nodes
@@ -9204,6 +9656,10 @@ module SyntaxTree
     # string
     attr_reader :parts
 
+    def accept(visitor)
+      visitor.visit_string_content(self)
+    end
+
     def initialize(parts:, location:)
       @parts = parts
       @location = location
@@ -9231,6 +9687,10 @@ module SyntaxTree
       @right = right
       @location = location
       @comments = comments
+    end
+
+    def accept(visitor)
+      visitor.visit_string_concat(self)
     end
 
     def child_nodes
@@ -9298,6 +9758,10 @@ module SyntaxTree
       @comments = comments
     end
 
+    def accept(visitor)
+      visitor.visit_string_dvar(self)
+    end
+
     def child_nodes
       [variable]
     end
@@ -9352,6 +9816,10 @@ module SyntaxTree
       @statements = statements
       @location = location
       @comments = comments
+    end
+
+    def accept(visitor)
+      visitor.visit_string_embexpr(self)
     end
 
     def child_nodes
@@ -9426,6 +9894,10 @@ module SyntaxTree
       @quote = quote
       @location = location
       @comments = comments
+    end
+
+    def accept(visitor)
+      visitor.visit_string_literal(self)
     end
 
     def child_nodes
@@ -9508,6 +9980,10 @@ module SyntaxTree
       @comments = comments
     end
 
+    def accept(visitor)
+      visitor.visit_super(self)
+    end
+
     def child_nodes
       [arguments]
     end
@@ -9569,6 +10045,10 @@ module SyntaxTree
     # [String] the beginning of the symbol
     attr_reader :value
 
+    def accept(visitor)
+      visitor.visit_sym_beg(self)
+    end
+
     def initialize(value:, location:)
       @value = value
       @location = location
@@ -9584,6 +10064,10 @@ module SyntaxTree
     # [Backtick | Const | CVar | GVar | Ident | IVar | Kw | Op] the value of the
     # symbol
     attr_reader :value
+
+    def accept(visitor)
+      visitor.visit_symbol_content(self)
+    end
 
     def initialize(value:, location:)
       @value = value
@@ -9608,6 +10092,10 @@ module SyntaxTree
       @value = value
       @location = location
       @comments = comments
+    end
+
+    def accept(visitor)
+      visitor.visit_symbol_literal(self)
     end
 
     def child_nodes
@@ -9665,6 +10153,10 @@ module SyntaxTree
       @elements = elements
       @location = location
       @comments = comments
+    end
+
+    def accept(visitor)
+      visitor.visit_symbols(self)
     end
 
     def child_nodes
@@ -9734,6 +10226,10 @@ module SyntaxTree
     # [String] the beginning of the symbol literal array
     attr_reader :value
 
+    def accept(visitor)
+      visitor.visit_symbols_beg(self)
+    end
+
     def initialize(value:, location:)
       @value = value
       @location = location
@@ -9748,6 +10244,10 @@ module SyntaxTree
   class TLambda < Node
     # [String] the beginning of the lambda literal
     attr_reader :value
+
+    def accept(visitor)
+      visitor.visit_tlambda(self)
+    end
 
     def initialize(value:, location:)
       @value = value
@@ -9764,6 +10264,10 @@ module SyntaxTree
   class TLamBeg < Node
     # [String] the beginning of the body of the lambda literal
     attr_reader :value
+
+    def accept(visitor)
+      visitor.visit_tlambeg(self)
+    end
 
     def initialize(value:, location:)
       @value = value
@@ -9788,6 +10292,10 @@ module SyntaxTree
       @constant = constant
       @location = location
       @comments = comments
+    end
+
+    def accept(visitor)
+      visitor.visit_top_const_field(self)
     end
 
     def child_nodes
@@ -9844,6 +10352,10 @@ module SyntaxTree
       @comments = comments
     end
 
+    def accept(visitor)
+      visitor.visit_top_const_ref(self)
+    end
+
     def child_nodes
       [constant]
     end
@@ -9894,6 +10406,10 @@ module SyntaxTree
     # [String] the beginning of the string
     attr_reader :value
 
+    def accept(visitor)
+      visitor.visit_tstring_beg(self)
+    end
+
     def initialize(value:, location:)
       @value = value
       @location = location
@@ -9923,6 +10439,10 @@ module SyntaxTree
 
     def match?(pattern)
       value.match?(pattern)
+    end
+
+    def accept(visitor)
+      visitor.visit_tstring_content(self)
     end
 
     def child_nodes
@@ -9974,6 +10494,10 @@ module SyntaxTree
     # [String] the end of the string
     attr_reader :value
 
+    def accept(visitor)
+      visitor.visit_tstring_end(self)
+    end
+
     def initialize(value:, location:)
       @value = value
       @location = location
@@ -9999,6 +10523,10 @@ module SyntaxTree
       @parentheses = parentheses
       @location = location
       @comments = comments
+    end
+
+    def accept(visitor)
+      visitor.visit_not(self)
     end
 
     def child_nodes
@@ -10064,6 +10592,10 @@ module SyntaxTree
       @statement = statement
       @location = location
       @comments = comments
+    end
+
+    def accept(visitor)
+      visitor.visit_unary(self)
     end
 
     def child_nodes
@@ -10149,6 +10681,10 @@ module SyntaxTree
       @comments = comments
     end
 
+    def accept(visitor)
+      visitor.visit_undef(self)
+    end
+
     def child_nodes
       symbols
     end
@@ -10221,6 +10757,10 @@ module SyntaxTree
       @comments = comments
     end
 
+    def accept(visitor)
+      visitor.visit_unless(self)
+    end
+
     def child_nodes
       [predicate, statements, consequent]
     end
@@ -10291,6 +10831,10 @@ module SyntaxTree
       @predicate = predicate
       @location = location
       @comments = comments
+    end
+
+    def accept(visitor)
+      visitor.visit_unless_mod(self)
     end
 
     def child_nodes
@@ -10408,6 +10952,10 @@ module SyntaxTree
       @comments = comments
     end
 
+    def accept(visitor)
+      visitor.visit_until(self)
+    end
+
     def child_nodes
       [predicate, statements]
     end
@@ -10482,6 +11030,10 @@ module SyntaxTree
       @predicate = predicate
       @location = location
       @comments = comments
+    end
+
+    def accept(visitor)
+      visitor.visit_until_mod(self)
     end
 
     def child_nodes
@@ -10570,6 +11122,10 @@ module SyntaxTree
       @comments = comments
     end
 
+    def accept(visitor)
+      visitor.visit_var_alias(self)
+    end
+
     def child_nodes
       [left, right]
     end
@@ -10633,6 +11189,10 @@ module SyntaxTree
       @comments = comments
     end
 
+    def accept(visitor)
+      visitor.visit_var_field(self)
+    end
+
     def child_nodes
       [value]
     end
@@ -10684,6 +11244,10 @@ module SyntaxTree
       @value = value
       @location = location
       @comments = comments
+    end
+
+    def accept(visitor)
+      visitor.visit_var_ref(self)
     end
 
     def child_nodes
@@ -10738,6 +11302,10 @@ module SyntaxTree
       @value = value
       @location = location
       @comments = comments
+    end
+
+    def accept(visitor)
+      visitor.visit_pinned_var_ref(self)
     end
 
     def child_nodes
@@ -10796,6 +11364,10 @@ module SyntaxTree
       @comments = comments
     end
 
+    def accept(visitor)
+      visitor.visit_vcall(self)
+    end
+
     def child_nodes
       [value]
     end
@@ -10842,6 +11414,10 @@ module SyntaxTree
     def initialize(location:, comments: [])
       @location = location
       @comments = comments
+    end
+
+    def accept(visitor)
+      visitor.visit_void_stmt(self)
     end
 
     def child_nodes
@@ -10900,6 +11476,10 @@ module SyntaxTree
       @consequent = consequent
       @location = location
       @comments = comments
+    end
+
+    def accept(visitor)
+      visitor.visit_when(self)
     end
 
     def child_nodes
@@ -11009,6 +11589,10 @@ module SyntaxTree
       @comments = comments
     end
 
+    def accept(visitor)
+      visitor.visit_while(self)
+    end
+
     def child_nodes
       [predicate, statements]
     end
@@ -11083,6 +11667,10 @@ module SyntaxTree
       @predicate = predicate
       @location = location
       @comments = comments
+    end
+
+    def accept(visitor)
+      visitor.visit_while_mod(self)
     end
 
     def child_nodes
@@ -11174,6 +11762,10 @@ module SyntaxTree
       parts.any? { |part| part.is_a?(TStringContent) && part.match?(pattern) }
     end
 
+    def accept(visitor)
+      visitor.visit_word(self)
+    end
+
     def child_nodes
       parts
     end
@@ -11225,6 +11817,10 @@ module SyntaxTree
       @elements = elements
       @location = location
       @comments = comments
+    end
+
+    def accept(visitor)
+      visitor.visit_words(self)
     end
 
     def child_nodes
@@ -11291,6 +11887,10 @@ module SyntaxTree
     # [String] the start of the word literal array
     attr_reader :value
 
+    def accept(visitor)
+      visitor.visit_words_beg(self)
+    end
+
     def initialize(value:, location:)
       @value = value
       @location = location
@@ -11305,6 +11905,10 @@ module SyntaxTree
     # [Array[ StringEmbExpr | StringDVar | TStringContent ]] the parts of the
     # xstring
     attr_reader :parts
+
+    def accept(visitor)
+      visitor.visit_xstring(self)
+    end
 
     def initialize(parts:, location:)
       @parts = parts
@@ -11328,6 +11932,10 @@ module SyntaxTree
       @parts = parts
       @location = location
       @comments = comments
+    end
+
+    def accept(visitor)
+      visitor.visit_xstring_literal(self)
     end
 
     def child_nodes
@@ -11382,6 +11990,10 @@ module SyntaxTree
       @arguments = arguments
       @location = location
       @comments = comments
+    end
+
+    def accept(visitor)
+      visitor.visit_yield(self)
     end
 
     def child_nodes
@@ -11447,6 +12059,10 @@ module SyntaxTree
       @comments = comments
     end
 
+    def accept(visitor)
+      visitor.visit_yield0(self)
+    end
+
     def child_nodes
       []
     end
@@ -11494,6 +12110,10 @@ module SyntaxTree
       @value = value
       @location = location
       @comments = comments
+    end
+
+    def accept(visitor)
+      visitor.visit_zsuper(self)
     end
 
     def child_nodes
