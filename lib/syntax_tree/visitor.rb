@@ -48,7 +48,8 @@ module SyntaxTree
 
       # This is the list of all of the valid visit methods.
       def visit_methods
-        Visitor.instance_methods.grep(/^visit_(?!child_nodes)/)
+        @visit_methods ||=
+          Visitor.instance_methods.grep(/^visit_(?!child_nodes)/)
       end
     end
 

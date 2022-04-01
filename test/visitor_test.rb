@@ -3,19 +3,21 @@
 require_relative "test_helper"
 
 class VisitorTest < Minitest::Test
-  def test_visit_all_nodes
-    visitor = SyntaxTree::Visitor.new
+  unless ENV["FAST"]
+    def test_visit_all_nodes
+      visitor = SyntaxTree::Visitor.new
 
-    filepath = File.expand_path("../lib/syntax_tree/node.rb", __dir__)
-    program = SyntaxTree.parse(SyntaxTree.read(filepath))
+      filepath = File.expand_path("../lib/syntax_tree/node.rb", __dir__)
+      program = SyntaxTree.parse(SyntaxTree.read(filepath))
 
-    program.statements.body.last.bodystmt.statements.body.each do |node|
-      next unless node in SyntaxTree::ClassDeclaration[superclass: { value: { value: "Node" } }]
+      program.statements.body.last.bodystmt.statements.body.each do |node|
+        next unless node in SyntaxTree::ClassDeclaration[superclass: { value: { value: "Node" } }]
 
-      accept = node.bodystmt.statements.body.detect { |defm| defm in SyntaxTree::Def[name: { value: "accept" }] }
-      accept => { bodystmt: { statements: { body: [SyntaxTree::Call[message: { value: visit_method }]] } } }
+        accept = node.bodystmt.statements.body.detect { |defm| defm in SyntaxTree::Def[name: { value: "accept" }] }
+        accept => { bodystmt: { statements: { body: [SyntaxTree::Call[message: { value: visit_method }]] } } }
 
-      assert_respond_to(visitor, visit_method)
+        assert_respond_to(visitor, visit_method)
+      end
     end
   end
 
