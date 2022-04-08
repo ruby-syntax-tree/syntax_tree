@@ -1749,7 +1749,7 @@ module SyntaxTree
   #     method(key1: value1, key2: value2)
   #
   class BareAssocHash < Node
-    # [Array[ AssocNew | AssocSplat ]]
+    # [Array[ Assoc | AssocSplat ]]
     attr_reader :assocs
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
