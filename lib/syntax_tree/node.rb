@@ -1998,12 +1998,18 @@ module SyntaxTree
         q.group { q.format(left) }
         q.text(" ") unless power
 
-        q.group do
+        if operator == :<<
           q.text(operator)
+          q.text(" ")
+          q.format(right)
+        else
+          q.group do
+            q.text(operator)
 
-          q.indent do
-            q.breakable(power ? "" : " ")
-            q.format(right)
+            q.indent do
+              q.breakable(power ? "" : " ")
+              q.format(right)
+            end
           end
         end
       end
@@ -3253,7 +3259,12 @@ module SyntaxTree
       q.group do
         q.format(message)
         q.text(" ")
-        q.nest(message.value.length + 1) { q.format(arguments) }
+
+        if align?(self)
+          q.nest(message.value.length + 1) { q.format(arguments) }
+        else
+          q.format(arguments)
+        end
       end
     end
 
@@ -3279,6 +3290,18 @@ module SyntaxTree
         loc: location,
         cmts: comments
       }.to_json(*opts)
+    end
+
+    private
+
+    def align?(node)
+      if node.arguments in Args[parts: [Def | Defs | DefEndless]]
+        false
+      elsif node.arguments in Args[parts: [Command => command]]
+        align?(command)
+      else
+        true
+      end
     end
   end
 
@@ -7766,9 +7789,15 @@ module SyntaxTree
         q.format(target)
         q.text(" ")
         q.format(operator)
-        q.indent do
-          q.breakable
+
+        if skip_indent?
+          q.text(" ")
           q.format(value)
+        else
+          q.indent do
+            q.breakable
+            q.format(value)
+          end
         end
       end
     end
@@ -7799,6 +7828,13 @@ module SyntaxTree
         loc: location,
         cmts: comments
       }.to_json(*opts)
+    end
+
+    private
+
+    def skip_indent?
+      target.comments.empty? &&
+        (target.is_a?(ARefField) || AssignFormatting.skip_indent?(value))
     end
   end
 
