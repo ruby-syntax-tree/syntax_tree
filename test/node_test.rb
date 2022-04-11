@@ -289,12 +289,14 @@ module SyntaxTree
       assert_node(Case, "case", source)
     end
 
-    def test_rassign_in
-      assert_node(RAssign, "rassign", "value in pattern")
-    end
+    guard_version("3.0.0") do
+      def test_rassign_in
+        assert_node(RAssign, "rassign", "value in pattern")
+      end
 
-    def test_rassign_rocket
-      assert_node(RAssign, "rassign", "value => pattern")
+      def test_rassign_rocket
+        assert_node(RAssign, "rassign", "value => pattern")
+      end
     end
 
     def test_class
@@ -352,8 +354,10 @@ module SyntaxTree
       assert_node(Def, "def", source)
     end
 
-    def test_def_endless
-      assert_node(DefEndless, "def_endless", "def method = result")
+    guard_version("3.0.0") do
+      def test_def_endless
+        assert_node(DefEndless, "def_endless", "def method = result")
+      end
     end
 
     guard_version("3.1.0") do
@@ -478,16 +482,18 @@ module SyntaxTree
       assert_node(FloatLiteral, "float", "1.0")
     end
 
-    def test_fndptn
-      source = <<~SOURCE
-        case value
-        in Container[*, 7, *]
-        end
-      SOURCE
+    guard_version("3.0.0") do
+      def test_fndptn
+        source = <<~SOURCE
+          case value
+          in Container[*, 7, *]
+          end
+        SOURCE
 
-      at = location(lines: 2..2, chars: 14..32)
-      assert_node(FndPtn, "fndptn", source, at: at) do |node|
-        node.consequent.pattern
+        at = location(lines: 2..2, chars: 14..32)
+        assert_node(FndPtn, "fndptn", source, at: at) do |node|
+          node.consequent.pattern
+        end
       end
     end
 

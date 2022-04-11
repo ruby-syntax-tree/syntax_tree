@@ -34,3 +34,23 @@ begin
 ensure
   foo
 end
+%
+begin
+else # else
+end
+%
+begin
+ensure # ensure
+end
+%
+begin
+rescue # rescue
+else # else
+ensure # ensure
+end
+-
+begin
+rescue StandardError # rescue
+else # else
+ensure # ensure
+end

@@ -11,12 +11,27 @@ class VisitorTest < Minitest::Test
       program = SyntaxTree.parse(SyntaxTree.read(filepath))
 
       program.statements.body.last.bodystmt.statements.body.each do |node|
-        next unless node in SyntaxTree::ClassDeclaration[superclass: { value: { value: "Node" } }]
+        case node
+        in SyntaxTree::ClassDeclaration[superclass: { value: { value: "Node" } }]
+          # this is a class we want to look at
+        else
+          next
+        end
 
-        accept = node.bodystmt.statements.body.detect { |defm| defm in SyntaxTree::Def[name: { value: "accept" }] }
-        accept => { bodystmt: { statements: { body: [SyntaxTree::Call[message: { value: visit_method }]] } } }
+        accept =
+          node.bodystmt.statements.body.detect do |defm|
+            case defm
+            in SyntaxTree::Def[name: { value: "accept" }]
+              true
+            else
+              false
+            end
+          end
 
-        assert_respond_to(visitor, visit_method)
+        case accept
+        in { bodystmt: { statements: { body: [SyntaxTree::Call[message: { value: visit_method }]] } } }
+          assert_respond_to(visitor, visit_method)
+        end
       end
     end
   end

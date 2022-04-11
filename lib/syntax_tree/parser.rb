@@ -682,6 +682,7 @@ module SyntaxTree
       BodyStmt.new(
         statements: statements,
         rescue_clause: rescue_clause,
+        else_keyword: else_clause && find_token(Kw, "else"),
         else_clause: else_clause,
         ensure_clause: ensure_clause,
         location: Location.fixed(line: lineno, char: char_pos)
@@ -1115,7 +1116,7 @@ module SyntaxTree
     # :call-seq:
     #   on_else: (Statements statements) -> Else
     def on_else(statements)
-      beginning = find_token(Kw, "else")
+      keyword = find_token(Kw, "else")
 
       # else can either end with an end keyword (in which case we'll want to
       # consume that event) or it can end with an ensure keyword (in which case
@@ -1127,13 +1128,16 @@ module SyntaxTree
 
       node = tokens[index]
       ending = node.value == "end" ? tokens.delete_at(index) : node
-      # ending = node
 
-      statements.bind(beginning.location.end_char, ending.location.start_char)
+      statements.bind(
+        find_next_statement_start(keyword.location.end_char),
+        ending.location.start_char
+      )
 
       Else.new(
+        keyword: keyword,
         statements: statements,
-        location: beginning.location.to(ending.location)
+        location: keyword.location.to(ending.location)
       )
     end
 
@@ -2316,6 +2320,7 @@ module SyntaxTree
         end
 
       Rescue.new(
+        keyword: keyword,
         exception: rescue_ex,
         statements: statements,
         consequent: consequent,
