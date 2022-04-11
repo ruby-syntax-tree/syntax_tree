@@ -58,7 +58,7 @@ module SyntaxTree
     end
 
     def visit_all(nodes)
-      nodes.each { |node| visit(node) }
+      nodes.map { |node| visit(node) }
     end
 
     def visit_child_nodes(node)
@@ -444,7 +444,7 @@ module SyntaxTree
     alias visit_super visit_child_nodes
 
     # Visit a SymBeg node.
-    alias visit_sym_beg visit_child_nodes
+    alias visit_symbeg visit_child_nodes
 
     # Visit a SymbolContent node.
     alias visit_symbol_content visit_child_nodes

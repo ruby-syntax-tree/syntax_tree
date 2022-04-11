@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require "syntax_tree/visitor"
-
 module SyntaxTree
   # Represents the location of a node in the tree from the source code.
   class Location
@@ -31,10 +29,6 @@ module SyntaxTree
         end_line: [end_line, other.end_line].max,
         end_char: other.end_char
       )
-    end
-
-    def to_json(*opts)
-      [start_line, start_char, end_line, end_char].to_json(*opts)
     end
 
     def self.token(line:, char:, size:)
@@ -83,7 +77,8 @@ module SyntaxTree
     end
 
     def to_json(*opts)
-      raise NotImplementedError
+      visitor = JSONVisitor.new
+      visitor.visit(self).to_json(*opts)
     end
   end
 
@@ -155,16 +150,6 @@ module SyntaxTree
         q.pp(Comment::List.new(comments))
       end
     end
-
-    def to_json(*opts)
-      {
-        type: :BEGIN,
-        lbrace: lbrace,
-        stmts: statements,
-        loc: location,
-        cmts: comments
-      }.to_json(*opts)
-    end
   end
 
   # CHAR irepresents a single codepoint in the script encoding.
@@ -219,12 +204,6 @@ module SyntaxTree
 
         q.pp(Comment::List.new(comments))
       end
-    end
-
-    def to_json(*opts)
-      { type: :CHAR, value: value, loc: location, cmts: comments }.to_json(
-        *opts
-      )
     end
   end
 
@@ -296,16 +275,6 @@ module SyntaxTree
         q.pp(Comment::List.new(comments))
       end
     end
-
-    def to_json(*opts)
-      {
-        type: :END,
-        lbrace: lbrace,
-        stmts: statements,
-        loc: location,
-        cmts: comments
-      }.to_json(*opts)
-    end
   end
 
   # EndContent represents the use of __END__ syntax, which allows individual
@@ -361,12 +330,6 @@ module SyntaxTree
 
         q.pp(Comment::List.new(comments))
       end
-    end
-
-    def to_json(*opts)
-      { type: :__end__, value: value, loc: location, cmts: comments }.to_json(
-        *opts
-      )
     end
   end
 
@@ -466,16 +429,6 @@ module SyntaxTree
         q.pp(Comment::List.new(comments))
       end
     end
-
-    def to_json(*opts)
-      {
-        type: :alias,
-        left: left,
-        right: right,
-        loc: location,
-        cmts: comments
-      }.to_json(*opts)
-    end
   end
 
   # ARef represents when you're pulling a value out of a collection at a
@@ -557,16 +510,6 @@ module SyntaxTree
         q.pp(Comment::List.new(comments))
       end
     end
-
-    def to_json(*opts)
-      {
-        type: :aref,
-        collection: collection,
-        index: index,
-        loc: location,
-        cmts: comments
-      }.to_json(*opts)
-    end
   end
 
   # ARefField represents assigning values into collections at specific indices.
@@ -642,16 +585,6 @@ module SyntaxTree
         q.pp(Comment::List.new(comments))
       end
     end
-
-    def to_json(*opts)
-      {
-        type: :aref_field,
-        collection: collection,
-        index: index,
-        loc: location,
-        cmts: comments
-      }.to_json(*opts)
-    end
   end
 
   # ArgParen represents wrapping arguments to a method inside a set of
@@ -718,15 +651,6 @@ module SyntaxTree
         q.pp(Comment::List.new(comments))
       end
     end
-
-    def to_json(*opts)
-      {
-        type: :arg_paren,
-        args: arguments,
-        loc: location,
-        cmts: comments
-      }.to_json(*opts)
-    end
   end
 
   # Args represents a list of arguments being passed to a method call or array
@@ -774,12 +698,6 @@ module SyntaxTree
 
         q.pp(Comment::List.new(comments))
       end
-    end
-
-    def to_json(*opts)
-      { type: :args, parts: parts, loc: location, cmts: comments }.to_json(
-        *opts
-      )
     end
   end
 
@@ -831,12 +749,6 @@ module SyntaxTree
         q.pp(Comment::List.new(comments))
       end
     end
-
-    def to_json(*opts)
-      { type: :arg_block, value: value, loc: location, cmts: comments }.to_json(
-        *opts
-      )
-    end
   end
 
   # Star represents using a splat operator on an expression.
@@ -884,12 +796,6 @@ module SyntaxTree
 
         q.pp(Comment::List.new(comments))
       end
-    end
-
-    def to_json(*opts)
-      { type: :arg_star, value: value, loc: location, cmts: comments }.to_json(
-        *opts
-      )
     end
   end
 
@@ -950,15 +856,6 @@ module SyntaxTree
 
         q.pp(Comment::List.new(comments))
       end
-    end
-
-    def to_json(*opts)
-      {
-        type: :args_forward,
-        value: value,
-        loc: location,
-        cmts: comments
-      }.to_json(*opts)
     end
   end
 
@@ -1115,12 +1012,6 @@ module SyntaxTree
 
         q.pp(Comment::List.new(comments))
       end
-    end
-
-    def to_json(*opts)
-      { type: :array, cnts: contents, loc: location, cmts: comments }.to_json(
-        *opts
-      )
     end
 
     private
@@ -1308,18 +1199,6 @@ module SyntaxTree
         q.pp(Comment::List.new(comments))
       end
     end
-
-    def to_json(*opts)
-      {
-        type: :aryptn,
-        constant: constant,
-        reqs: requireds,
-        rest: rest,
-        posts: posts,
-        loc: location,
-        cmts: comments
-      }.to_json(*opts)
-    end
   end
 
   # Determins if the following value should be indented or not.
@@ -1408,16 +1287,6 @@ module SyntaxTree
       end
     end
 
-    def to_json(*opts)
-      {
-        type: :assign,
-        target: target,
-        value: value,
-        loc: location,
-        cmts: comments
-      }.to_json(*opts)
-    end
-
     private
 
     def skip_indent?
@@ -1487,16 +1356,6 @@ module SyntaxTree
       end
     end
 
-    def to_json(*opts)
-      {
-        type: :assoc,
-        key: key,
-        value: value,
-        loc: location,
-        cmts: comments
-      }.to_json(*opts)
-    end
-
     private
 
     def format_contents(q)
@@ -1562,15 +1421,6 @@ module SyntaxTree
         q.pp(Comment::List.new(comments))
       end
     end
-
-    def to_json(*opts)
-      {
-        type: :assoc_splat,
-        value: value,
-        loc: location,
-        cmts: comments
-      }.to_json(*opts)
-    end
   end
 
   # Backref represents a global variable referencing a matched value. It comes
@@ -1619,12 +1469,6 @@ module SyntaxTree
         q.pp(Comment::List.new(comments))
       end
     end
-
-    def to_json(*opts)
-      { type: :backref, value: value, loc: location, cmts: comments }.to_json(
-        *opts
-      )
-    end
   end
 
   # Backtick represents the use of the ` operator. It's usually found being used
@@ -1670,12 +1514,6 @@ module SyntaxTree
 
         q.pp(Comment::List.new(comments))
       end
-    end
-
-    def to_json(*opts)
-      { type: :backtick, value: value, loc: location, cmts: comments }.to_json(
-        *opts
-      )
     end
   end
 
@@ -1793,15 +1631,6 @@ module SyntaxTree
         q.pp(Comment::List.new(comments))
       end
     end
-
-    def to_json(*opts)
-      {
-        type: :bare_assoc_hash,
-        assocs: assocs,
-        loc: location,
-        cmts: comments
-      }.to_json(*opts)
-    end
   end
 
   # Begin represents a begin..end chain.
@@ -1861,15 +1690,6 @@ module SyntaxTree
         q.pp(Comment::List.new(comments))
       end
     end
-
-    def to_json(*opts)
-      {
-        type: :begin,
-        bodystmt: bodystmt,
-        loc: location,
-        cmts: comments
-      }.to_json(*opts)
-    end
   end
 
   # PinnedBegin represents a pinning a nested statement within pattern matching.
@@ -1928,15 +1748,6 @@ module SyntaxTree
 
         q.pp(Comment::List.new(comments))
       end
-    end
-
-    def to_json(*opts)
-      {
-        type: :pinned_begin,
-        stmt: statement,
-        loc: location,
-        cmts: comments
-      }.to_json(*opts)
     end
   end
 
@@ -2030,17 +1841,6 @@ module SyntaxTree
 
         q.pp(Comment::List.new(comments))
       end
-    end
-
-    def to_json(*opts)
-      {
-        type: :binary,
-        left: left,
-        op: operator,
-        right: right,
-        loc: location,
-        cmts: comments
-      }.to_json(*opts)
     end
   end
 
@@ -2155,16 +1955,6 @@ module SyntaxTree
         q.pp(Comment::List.new(comments))
       end
     end
-
-    def to_json(*opts)
-      {
-        type: :block_var,
-        params: params,
-        locals: locals,
-        loc: location,
-        cmts: comments
-      }.to_json(*opts)
-    end
   end
 
   # BlockArg represents declaring a block parameter on a method definition.
@@ -2214,12 +2004,6 @@ module SyntaxTree
 
         q.pp(Comment::List.new(comments))
       end
-    end
-
-    def to_json(*opts)
-      { type: :blockarg, name: name, loc: location, cmts: comments }.to_json(
-        *opts
-      )
     end
   end
 
@@ -2371,18 +2155,6 @@ module SyntaxTree
 
         q.pp(Comment::List.new(comments))
       end
-    end
-
-    def to_json(*opts)
-      {
-        type: :bodystmt,
-        stmts: statements,
-        rsc: rescue_clause,
-        els: else_clause,
-        ens: ensure_clause,
-        loc: location,
-        cmts: comments
-      }.to_json(*opts)
     end
   end
 
@@ -2609,17 +2381,6 @@ module SyntaxTree
         q.pp(Comment::List.new(comments))
       end
     end
-
-    def to_json(*opts)
-      {
-        type: :brace_block,
-        lbrace: lbrace,
-        block_var: block_var,
-        stmts: statements,
-        loc: location,
-        cmts: comments
-      }.to_json(*opts)
-    end
   end
 
   # Formats either a Break or Next node.
@@ -2721,12 +2482,6 @@ module SyntaxTree
 
         q.pp(Comment::List.new(comments))
       end
-    end
-
-    def to_json(*opts)
-      { type: :break, args: arguments, loc: location, cmts: comments }.to_json(
-        *opts
-      )
     end
   end
 
@@ -2864,18 +2619,6 @@ module SyntaxTree
         q.pp(Comment::List.new(comments))
       end
     end
-
-    def to_json(*opts)
-      {
-        type: :call,
-        receiver: receiver,
-        op: operator,
-        message: message,
-        args: arguments,
-        loc: location,
-        cmts: comments
-      }.to_json(*opts)
-    end
   end
 
   # Case represents the beginning of a case chain.
@@ -2965,16 +2708,6 @@ module SyntaxTree
         q.pp(Comment::List.new(comments))
       end
     end
-
-    def to_json(*opts)
-      {
-        type: :case,
-        value: value,
-        cons: consequent,
-        loc: location,
-        cmts: comments
-      }.to_json(*opts)
-    end
   end
 
   # RAssign represents a single-line pattern match.
@@ -3053,17 +2786,6 @@ module SyntaxTree
 
         q.pp(Comment::List.new(comments))
       end
-    end
-
-    def to_json(*opts)
-      {
-        type: :rassign,
-        value: value,
-        op: operator,
-        pattern: pattern,
-        loc: location,
-        cmts: comments
-      }.to_json(*opts)
     end
   end
 
@@ -3193,17 +2915,6 @@ module SyntaxTree
         q.pp(Comment::List.new(comments))
       end
     end
-
-    def to_json(*opts)
-      {
-        type: :class,
-        constant: constant,
-        superclass: superclass,
-        bodystmt: bodystmt,
-        loc: location,
-        cmts: comments
-      }.to_json(*opts)
-    end
   end
 
   # Comma represents the use of the , operator.
@@ -3211,13 +2922,32 @@ module SyntaxTree
     # [String] the comma in the string
     attr_reader :value
 
+    def initialize(value:, location:)
+      @value = value
+      @location = location
+    end
+
     def accept(visitor)
       visitor.visit_comma(self)
     end
 
-    def initialize(value:, location:)
-      @value = value
-      @location = location
+    def child_nodes
+      []
+    end
+
+    alias deconstruct child_nodes
+    
+    def deconstruct_keys(keys)
+      { value: value, location: location }
+    end
+
+    def pretty_print(q)
+      q.group(2, "(", ")") do
+        q.text("comma")
+
+        q.breakable
+        q.pp(value)
+      end
     end
   end
 
@@ -3288,16 +3018,6 @@ module SyntaxTree
 
         q.pp(Comment::List.new(comments))
       end
-    end
-
-    def to_json(*opts)
-      {
-        type: :command,
-        message: message,
-        args: arguments,
-        loc: location,
-        cmts: comments
-      }.to_json(*opts)
     end
 
     private
@@ -3408,18 +3128,6 @@ module SyntaxTree
 
         q.pp(Comment::List.new(comments))
       end
-    end
-
-    def to_json(*opts)
-      {
-        type: :command_call,
-        receiver: receiver,
-        op: operator,
-        message: message,
-        args: arguments,
-        loc: location,
-        cmts: comments
-      }.to_json(*opts)
     end
 
     private
@@ -3560,15 +3268,6 @@ module SyntaxTree
         q.pp(value)
       end
     end
-
-    def to_json(*opts)
-      {
-        type: :comment,
-        value: value.force_encoding("UTF-8"),
-        inline: inline,
-        loc: location
-      }.to_json(*opts)
-    end
   end
 
   # Const represents a literal value that _looks_ like a constant. This could
@@ -3625,12 +3324,6 @@ module SyntaxTree
 
         q.pp(Comment::List.new(comments))
       end
-    end
-
-    def to_json(*opts)
-      { type: :const, value: value, loc: location, cmts: comments }.to_json(
-        *opts
-      )
     end
   end
 
@@ -3695,16 +3388,6 @@ module SyntaxTree
         q.pp(Comment::List.new(comments))
       end
     end
-
-    def to_json(*opts)
-      {
-        type: :const_path_field,
-        parent: parent,
-        constant: constant,
-        loc: location,
-        cmts: comments
-      }.to_json(*opts)
-    end
   end
 
   # ConstPathRef represents referencing a constant by a path.
@@ -3766,16 +3449,6 @@ module SyntaxTree
         q.pp(Comment::List.new(comments))
       end
     end
-
-    def to_json(*opts)
-      {
-        type: :const_path_ref,
-        parent: parent,
-        constant: constant,
-        loc: location,
-        cmts: comments
-      }.to_json(*opts)
-    end
   end
 
   # ConstRef represents the name of the constant being used in a class or module
@@ -3825,15 +3498,6 @@ module SyntaxTree
         q.pp(Comment::List.new(comments))
       end
     end
-
-    def to_json(*opts)
-      {
-        type: :const_ref,
-        constant: constant,
-        loc: location,
-        cmts: comments
-      }.to_json(*opts)
-    end
   end
 
   # CVar represents the use of a class variable.
@@ -3880,12 +3544,6 @@ module SyntaxTree
 
         q.pp(Comment::List.new(comments))
       end
-    end
-
-    def to_json(*opts)
-      { type: :cvar, value: value, loc: location, cmts: comments }.to_json(
-        *opts
-      )
     end
   end
 
@@ -3969,17 +3627,6 @@ module SyntaxTree
 
         q.pp(Comment::List.new(comments))
       end
-    end
-
-    def to_json(*opts)
-      {
-        type: :def,
-        name: name,
-        params: params,
-        bodystmt: bodystmt,
-        loc: location,
-        cmts: comments
-      }.to_json(*opts)
     end
   end
 
@@ -4099,17 +3746,6 @@ module SyntaxTree
         q.pp(Comment::List.new(comments))
       end
     end
-
-    def to_json(*opts)
-      {
-        type: :def_endless,
-        name: name,
-        paren: paren,
-        stmt: statement,
-        loc: location,
-        cmts: comments
-      }.to_json(*opts)
-    end
   end
 
   # Defined represents the use of the +defined?+ operator. It can be used with
@@ -4163,12 +3799,6 @@ module SyntaxTree
 
         q.pp(Comment::List.new(comments))
       end
-    end
-
-    def to_json(*opts)
-      { type: :defined, value: value, loc: location, cmts: comments }.to_json(
-        *opts
-      )
     end
   end
 
@@ -4279,19 +3909,6 @@ module SyntaxTree
         q.pp(Comment::List.new(comments))
       end
     end
-
-    def to_json(*opts)
-      {
-        type: :defs,
-        target: target,
-        op: operator,
-        name: name,
-        params: params,
-        bodystmt: bodystmt,
-        loc: location,
-        cmts: comments
-      }.to_json(*opts)
-    end
   end
 
   # DoBlock represents passing a block to a method call using the +do+ and +end+
@@ -4359,17 +3976,6 @@ module SyntaxTree
 
         q.pp(Comment::List.new(comments))
       end
-    end
-
-    def to_json(*opts)
-      {
-        type: :do_block,
-        keyword: keyword,
-        block_var: block_var,
-        bodystmt: bodystmt,
-        loc: location,
-        cmts: comments
-      }.to_json(*opts)
     end
   end
 
@@ -4463,16 +4069,6 @@ module SyntaxTree
         q.pp(Comment::List.new(comments))
       end
     end
-
-    def to_json(*opts)
-      {
-        type: :dot2,
-        left: left,
-        right: right,
-        loc: location,
-        cmts: comments
-      }.to_json(*opts)
-    end
   end
 
   # Dot3 represents using the ... operator between two expressions. Usually this
@@ -4538,16 +4134,6 @@ module SyntaxTree
 
         q.pp(Comment::List.new(comments))
       end
-    end
-
-    def to_json(*opts)
-      {
-        type: :dot3,
-        left: left,
-        right: right,
-        loc: location,
-        cmts: comments
-      }.to_json(*opts)
     end
   end
 
@@ -4662,16 +4248,6 @@ module SyntaxTree
       end
     end
 
-    def to_json(*opts)
-      {
-        type: :dyna_symbol,
-        parts: parts,
-        quote: quote,
-        loc: location,
-        cmts: comments
-      }.to_json(*opts)
-    end
-
     private
 
     # Here we determine the quotes to use for a dynamic symbol. It's bound by a
@@ -4777,12 +4353,6 @@ module SyntaxTree
         q.pp(Comment::List.new(comments))
       end
     end
-
-    def to_json(*opts)
-      { type: :else, stmts: statements, loc: location, cmts: comments }.to_json(
-        *opts
-      )
-    end
   end
 
   # Elsif represents another clause in an +if+ or +unless+ chain.
@@ -4879,17 +4449,6 @@ module SyntaxTree
         q.pp(Comment::List.new(comments))
       end
     end
-
-    def to_json(*opts)
-      {
-        type: :elsif,
-        pred: predicate,
-        stmts: statements,
-        cons: consequent,
-        loc: location,
-        cmts: comments
-      }.to_json(*opts)
-    end
   end
 
   # EmbDoc represents a multi-line comment.
@@ -4947,10 +4506,6 @@ module SyntaxTree
         q.pp(value)
       end
     end
-
-    def to_json(*opts)
-      { type: :embdoc, value: value, loc: location }.to_json(*opts)
-    end
   end
 
   # EmbExprBeg represents the beginning token for using interpolation inside of
@@ -4963,13 +4518,32 @@ module SyntaxTree
     # [String] the #{ used in the string
     attr_reader :value
 
+    def initialize(value:, location:)
+      @value = value
+      @location = location
+    end
+
     def accept(visitor)
       visitor.visit_embexpr_beg(self)
     end
 
-    def initialize(value:, location:)
-      @value = value
-      @location = location
+    def child_nodes
+      []
+    end
+
+    alias deconstruct child_nodes
+    
+    def deconstruct_keys(keys)
+      { value: value, location: location }
+    end
+
+    def pretty_print(q)
+      q.group(2, "(", ")") do
+        q.text("embexpr_beg")
+
+        q.breakable
+        q.pp(value)
+      end
     end
   end
 
@@ -4983,13 +4557,32 @@ module SyntaxTree
     # [String] the } used in the string
     attr_reader :value
 
+    def initialize(value:, location:)
+      @value = value
+      @location = location
+    end
+
     def accept(visitor)
       visitor.visit_embexpr_end(self)
     end
 
-    def initialize(value:, location:)
-      @value = value
-      @location = location
+    def child_nodes
+      []
+    end
+
+    alias deconstruct child_nodes
+    
+    def deconstruct_keys(keys)
+      { value: value, location: location }
+    end
+
+    def pretty_print(q)
+      q.group(2, "(", ")") do
+        q.text("embexpr_end")
+
+        q.breakable
+        q.pp(value)
+      end
     end
   end
 
@@ -5005,13 +4598,32 @@ module SyntaxTree
     # [String] the # used in the string
     attr_reader :value
 
+    def initialize(value:, location:)
+      @value = value
+      @location = location
+    end
+
     def accept(visitor)
       visitor.visit_embvar(self)
     end
 
-    def initialize(value:, location:)
-      @value = value
-      @location = location
+    def child_nodes
+      []
+    end
+
+    alias deconstruct child_nodes
+    
+    def deconstruct_keys(keys)
+      { value: value, location: location }
+    end
+
+    def pretty_print(q)
+      q.group(2, "(", ")") do
+        q.text("embvar")
+
+        q.breakable
+        q.pp(value)
+      end
     end
   end
 
@@ -5079,16 +4691,6 @@ module SyntaxTree
         q.pp(Comment::List.new(comments))
       end
     end
-
-    def to_json(*opts)
-      {
-        type: :ensure,
-        keyword: keyword,
-        stmts: statements,
-        loc: location,
-        cmts: comments
-      }.to_json(*opts)
-    end
   end
 
   # ExcessedComma represents a trailing comma in a list of block parameters. It
@@ -5141,15 +4743,6 @@ module SyntaxTree
 
         q.pp(Comment::List.new(comments))
       end
-    end
-
-    def to_json(*opts)
-      {
-        type: :excessed_comma,
-        value: value,
-        loc: location,
-        cmts: comments
-      }.to_json(*opts)
     end
   end
 
@@ -5215,16 +4808,6 @@ module SyntaxTree
 
         q.pp(Comment::List.new(comments))
       end
-    end
-
-    def to_json(*opts)
-      {
-        type: :fcall,
-        value: value,
-        args: arguments,
-        loc: location,
-        cmts: comments
-      }.to_json(*opts)
     end
   end
 
@@ -5298,17 +4881,6 @@ module SyntaxTree
         q.pp(Comment::List.new(comments))
       end
     end
-
-    def to_json(*opts)
-      {
-        type: :field,
-        parent: parent,
-        op: operator,
-        name: name,
-        loc: location,
-        cmts: comments
-      }.to_json(*opts)
-    end
   end
 
   # FloatLiteral represents a floating point number literal.
@@ -5355,12 +4927,6 @@ module SyntaxTree
 
         q.pp(Comment::List.new(comments))
       end
-    end
-
-    def to_json(*opts)
-      { type: :float, value: value, loc: location, cmts: comments }.to_json(
-        *opts
-      )
     end
   end
 
@@ -5454,18 +5020,6 @@ module SyntaxTree
         q.pp(Comment::List.new(comments))
       end
     end
-
-    def to_json(*opts)
-      {
-        type: :fndptn,
-        constant: constant,
-        left: left,
-        values: values,
-        right: right,
-        loc: location,
-        cmts: comments
-      }.to_json(*opts)
-    end
   end
 
   # For represents using a +for+ loop.
@@ -5550,17 +5104,6 @@ module SyntaxTree
         q.pp(Comment::List.new(comments))
       end
     end
-
-    def to_json(*opts)
-      {
-        type: :for,
-        index: index,
-        collection: collection,
-        stmts: statements,
-        loc: location,
-        cmts: comments
-      }.to_json(*opts)
-    end
   end
 
   # GVar represents a global variable literal.
@@ -5607,12 +5150,6 @@ module SyntaxTree
 
         q.pp(Comment::List.new(comments))
       end
-    end
-
-    def to_json(*opts)
-      { type: :gvar, value: value, loc: location, cmts: comments }.to_json(
-        *opts
-      )
     end
   end
 
@@ -5674,12 +5211,6 @@ module SyntaxTree
 
         q.pp(Comment::List.new(comments))
       end
-    end
-
-    def to_json(*opts)
-      { type: :hash, assocs: assocs, loc: location, cmts: comments }.to_json(
-        *opts
-      )
     end
 
     private
@@ -5790,17 +5321,6 @@ module SyntaxTree
         q.pp(Comment::List.new(comments))
       end
     end
-
-    def to_json(*opts)
-      {
-        type: :heredoc,
-        beging: beginning,
-        ending: ending,
-        parts: parts,
-        loc: location,
-        cmts: comments
-      }.to_json(*opts)
-    end
   end
 
   # HeredocBeg represents the beginning declaration of a heredoc.
@@ -5850,15 +5370,6 @@ module SyntaxTree
 
         q.pp(Comment::List.new(comments))
       end
-    end
-
-    def to_json(*opts)
-      {
-        type: :heredoc_beg,
-        value: value,
-        loc: location,
-        cmts: comments
-      }.to_json(*opts)
     end
   end
 
@@ -6011,17 +5522,6 @@ module SyntaxTree
         q.pp(Comment::List.new(comments))
       end
     end
-
-    def to_json(*opts)
-      {
-        type: :hshptn,
-        constant: constant,
-        keywords: keywords,
-        kwrest: keyword_rest,
-        loc: location,
-        cmts: comments
-      }.to_json(*opts)
-    end
   end
 
   # The list of nodes that represent patterns inside of pattern matching so that
@@ -6073,15 +5573,6 @@ module SyntaxTree
 
         q.pp(Comment::List.new(comments))
       end
-    end
-
-    def to_json(*opts)
-      {
-        type: :ident,
-        value: value.force_encoding("UTF-8"),
-        loc: location,
-        cmts: comments
-      }.to_json(*opts)
     end
   end
 
@@ -6237,17 +5728,6 @@ module SyntaxTree
         q.pp(Comment::List.new(comments))
       end
     end
-
-    def to_json(*opts)
-      {
-        type: :if,
-        pred: predicate,
-        stmts: statements,
-        cons: consequent,
-        loc: location,
-        cmts: comments
-      }.to_json(*opts)
-    end
   end
 
   # IfOp represents a ternary clause.
@@ -6326,17 +5806,6 @@ module SyntaxTree
 
         q.pp(Comment::List.new(comments))
       end
-    end
-
-    def to_json(*opts)
-      {
-        type: :ifop,
-        pred: predicate,
-        tthy: truthy,
-        flsy: falsy,
-        loc: location,
-        cmts: comments
-      }.to_json(*opts)
     end
 
     private
@@ -6477,16 +5946,6 @@ module SyntaxTree
         q.pp(Comment::List.new(comments))
       end
     end
-
-    def to_json(*opts)
-      {
-        type: :if_mod,
-        stmt: statement,
-        pred: predicate,
-        loc: location,
-        cmts: comments
-      }.to_json(*opts)
-    end
   end
 
   # Imaginary represents an imaginary number literal.
@@ -6533,12 +5992,6 @@ module SyntaxTree
 
         q.pp(Comment::List.new(comments))
       end
-    end
-
-    def to_json(*opts)
-      { type: :imaginary, value: value, loc: location, cmts: comments }.to_json(
-        *opts
-      )
     end
   end
 
@@ -6629,17 +6082,6 @@ module SyntaxTree
         q.pp(Comment::List.new(comments))
       end
     end
-
-    def to_json(*opts)
-      {
-        type: :in,
-        pattern: pattern,
-        stmts: statements,
-        cons: consequent,
-        loc: location,
-        cmts: comments
-      }.to_json(*opts)
-    end
   end
 
   # Int represents an integer number literal.
@@ -6695,10 +6137,6 @@ module SyntaxTree
         q.pp(Comment::List.new(comments))
       end
     end
-
-    def to_json(*opts)
-      { type: :int, value: value, loc: location, cmts: comments }.to_json(*opts)
-    end
   end
 
   # IVar represents an instance variable literal.
@@ -6745,12 +6183,6 @@ module SyntaxTree
 
         q.pp(Comment::List.new(comments))
       end
-    end
-
-    def to_json(*opts)
-      { type: :ivar, value: value, loc: location, cmts: comments }.to_json(
-        *opts
-      )
     end
   end
 
@@ -6808,10 +6240,6 @@ module SyntaxTree
         q.pp(Comment::List.new(comments))
       end
     end
-
-    def to_json(*opts)
-      { type: :kw, value: value, loc: location, cmts: comments }.to_json(*opts)
-    end
   end
 
   # KwRestParam represents defining a parameter in a method definition that
@@ -6860,15 +6288,6 @@ module SyntaxTree
 
         q.pp(Comment::List.new(comments))
       end
-    end
-
-    def to_json(*opts)
-      {
-        type: :kwrest_param,
-        name: name,
-        loc: location,
-        cmts: comments
-      }.to_json(*opts)
     end
   end
 
@@ -6927,12 +6346,6 @@ module SyntaxTree
         q.pp(Comment::List.new(comments))
       end
     end
-
-    def to_json(*opts)
-      { type: :label, value: value, loc: location, cmts: comments }.to_json(
-        *opts
-      )
-    end
   end
 
   # LabelEnd represents the end of a dynamic symbol.
@@ -6946,13 +6359,32 @@ module SyntaxTree
     # [String] the end of the label
     attr_reader :value
 
+    def initialize(value:, location:)
+      @value = value
+      @location = location
+    end
+
     def accept(visitor)
       visitor.visit_label_end(self)
     end
 
-    def initialize(value:, location:)
-      @value = value
-      @location = location
+    def child_nodes
+      []
+    end
+
+    alias deconstruct child_nodes
+    
+    def deconstruct_keys(keys)
+      { value: value, location: location }
+    end
+
+    def pretty_print(q)
+      q.group(2, "(", ")") do
+        q.text("label_end")
+
+        q.breakable
+        q.pp(value)
+      end
     end
   end
 
@@ -7044,16 +6476,6 @@ module SyntaxTree
         q.pp(Comment::List.new(comments))
       end
     end
-
-    def to_json(*opts)
-      {
-        type: :lambda,
-        params: params,
-        stmts: statements,
-        loc: location,
-        cmts: comments
-      }.to_json(*opts)
-    end
   end
 
   # LBrace represents the use of a left brace, i.e., {.
@@ -7097,12 +6519,6 @@ module SyntaxTree
 
         q.pp(Comment::List.new(comments))
       end
-    end
-
-    def to_json(*opts)
-      { type: :lbrace, value: value, loc: location, cmts: comments }.to_json(
-        *opts
-      )
     end
   end
 
@@ -7148,12 +6564,6 @@ module SyntaxTree
         q.pp(Comment::List.new(comments))
       end
     end
-
-    def to_json(*opts)
-      { type: :lbracket, value: value, loc: location, cmts: comments }.to_json(
-        *opts
-      )
-    end
   end
 
   # LParen represents the use of a left parenthesis, i.e., (.
@@ -7197,12 +6607,6 @@ module SyntaxTree
 
         q.pp(Comment::List.new(comments))
       end
-    end
-
-    def to_json(*opts)
-      { type: :lparen, value: value, loc: location, cmts: comments }.to_json(
-        *opts
-      )
     end
   end
 
@@ -7275,16 +6679,6 @@ module SyntaxTree
         q.pp(Comment::List.new(comments))
       end
     end
-
-    def to_json(*opts)
-      {
-        type: :massign,
-        target: target,
-        value: value,
-        loc: location,
-        cmts: comments
-      }.to_json(*opts)
-    end
   end
 
   # MethodAddBlock represents a method call with a block argument.
@@ -7339,16 +6733,6 @@ module SyntaxTree
 
         q.pp(Comment::List.new(comments))
       end
-    end
-
-    def to_json(*opts)
-      {
-        type: :method_add_block,
-        call: call,
-        block: block,
-        loc: location,
-        cmts: comments
-      }.to_json(*opts)
     end
   end
 
@@ -7405,16 +6789,6 @@ module SyntaxTree
 
         q.pp(Comment::List.new(comments))
       end
-    end
-
-    def to_json(*opts)
-      {
-        type: :mlhs,
-        parts: parts,
-        comma: comma,
-        loc: location,
-        cmts: comments
-      }.to_json(*opts)
     end
   end
 
@@ -7476,15 +6850,6 @@ module SyntaxTree
 
         q.pp(Comment::List.new(comments))
       end
-    end
-
-    def to_json(*opts)
-      {
-        type: :mlhs_paren,
-        cnts: contents,
-        loc: location,
-        cmts: comments
-      }.to_json(*opts)
     end
   end
 
@@ -7571,16 +6936,6 @@ module SyntaxTree
         q.pp(Comment::List.new(comments))
       end
     end
-
-    def to_json(*opts)
-      {
-        type: :module,
-        constant: constant,
-        bodystmt: bodystmt,
-        loc: location,
-        cmts: comments
-      }.to_json(*opts)
-    end
   end
 
   # MRHS represents the values that are being assigned on the right-hand side of
@@ -7628,12 +6983,6 @@ module SyntaxTree
 
         q.pp(Comment::List.new(comments))
       end
-    end
-
-    def to_json(*opts)
-      { type: :mrhs, parts: parts, loc: location, cmts: comments }.to_json(
-        *opts
-      )
     end
   end
 
@@ -7695,12 +7044,6 @@ module SyntaxTree
         q.pp(Comment::List.new(comments))
       end
     end
-
-    def to_json(*opts)
-      { type: :next, args: arguments, loc: location, cmts: comments }.to_json(
-        *opts
-      )
-    end
   end
 
   # Op represents an operator literal in the source.
@@ -7748,10 +7091,6 @@ module SyntaxTree
 
         q.pp(Comment::List.new(comments))
       end
-    end
-
-    def to_json(*opts)
-      { type: :op, value: value, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
@@ -7835,17 +7174,6 @@ module SyntaxTree
 
         q.pp(Comment::List.new(comments))
       end
-    end
-
-    def to_json(*opts)
-      {
-        type: :opassign,
-        target: target,
-        op: operator,
-        value: value,
-        loc: location,
-        cmts: comments
-      }.to_json(*opts)
     end
 
     private
@@ -8178,21 +7506,6 @@ module SyntaxTree
         q.pp(Comment::List.new(comments))
       end
     end
-
-    def to_json(*opts)
-      {
-        type: :params,
-        reqs: requireds,
-        opts: optionals,
-        rest: rest,
-        posts: posts,
-        keywords: keywords,
-        kwrest: keyword_rest,
-        block: block,
-        loc: location,
-        cmts: comments
-      }.to_json(*opts)
-    end
   end
 
   # Paren represents using balanced parentheses in a couple places in a Ruby
@@ -8263,16 +7576,6 @@ module SyntaxTree
         q.pp(Comment::List.new(comments))
       end
     end
-
-    def to_json(*opts)
-      {
-        type: :paren,
-        lparen: lparen,
-        cnts: contents,
-        loc: location,
-        cmts: comments
-      }.to_json(*opts)
-    end
   end
 
   # Period represents the use of the +.+ operator. It is usually found in method
@@ -8317,12 +7620,6 @@ module SyntaxTree
 
         q.pp(Comment::List.new(comments))
       end
-    end
-
-    def to_json(*opts)
-      { type: :period, value: value, loc: location, cmts: comments }.to_json(
-        *opts
-      )
     end
   end
 
@@ -8372,16 +7669,6 @@ module SyntaxTree
 
         q.pp(Comment::List.new(comments))
       end
-    end
-
-    def to_json(*opts)
-      {
-        type: :program,
-        stmts: statements,
-        comments: comments,
-        loc: location,
-        cmts: comments
-      }.to_json(*opts)
     end
   end
 
@@ -8454,15 +7741,6 @@ module SyntaxTree
         q.pp(Comment::List.new(comments))
       end
     end
-
-    def to_json(*opts)
-      {
-        type: :qsymbols,
-        elems: elements,
-        loc: location,
-        cmts: comments
-      }.to_json(*opts)
-    end
   end
 
   # QSymbolsBeg represents the beginning of a symbol literal array.
@@ -8476,13 +7754,32 @@ module SyntaxTree
     # [String] the beginning of the array literal
     attr_reader :value
 
+    def initialize(value:, location:)
+      @value = value
+      @location = location
+    end
+
     def accept(visitor)
       visitor.visit_qsymbols_beg(self)
     end
 
-    def initialize(value:, location:)
-      @value = value
-      @location = location
+    def child_nodes
+      []
+    end
+
+    alias deconstruct child_nodes
+    
+    def deconstruct_keys(keys)
+      { value: value, location: location }
+    end
+
+    def pretty_print(q)
+      q.group(2, "(", ")") do
+        q.text("qsymbols_beg")
+
+        q.breakable
+        q.pp(value)
+      end
     end
   end
 
@@ -8555,12 +7852,6 @@ module SyntaxTree
         q.pp(Comment::List.new(comments))
       end
     end
-
-    def to_json(*opts)
-      { type: :qwords, elems: elements, loc: location, cmts: comments }.to_json(
-        *opts
-      )
-    end
   end
 
   # QWordsBeg represents the beginning of a string literal array.
@@ -8574,13 +7865,32 @@ module SyntaxTree
     # [String] the beginning of the array literal
     attr_reader :value
 
+    def initialize(value:, location:)
+      @value = value
+      @location = location
+    end
+
     def accept(visitor)
       visitor.visit_qwords_beg(self)
     end
 
-    def initialize(value:, location:)
-      @value = value
-      @location = location
+    def child_nodes
+      []
+    end
+
+    alias deconstruct child_nodes
+    
+    def deconstruct_keys(keys)
+      { value: value, location: location }
+    end
+
+    def pretty_print(q)
+      q.group(2, "(", ")") do
+        q.text("qwords_beg")
+
+        q.breakable
+        q.pp(value)
+      end
     end
   end
 
@@ -8629,12 +7939,6 @@ module SyntaxTree
         q.pp(Comment::List.new(comments))
       end
     end
-
-    def to_json(*opts)
-      { type: :rational, value: value, loc: location, cmts: comments }.to_json(
-        *opts
-      )
-    end
   end
 
   # RBrace represents the use of a right brace, i.e., +++.
@@ -8642,13 +7946,32 @@ module SyntaxTree
     # [String] the right brace
     attr_reader :value
 
+    def initialize(value:, location:)
+      @value = value
+      @location = location
+    end
+
     def accept(visitor)
       visitor.visit_rbrace(self)
     end
 
-    def initialize(value:, location:)
-      @value = value
-      @location = location
+    def child_nodes
+      []
+    end
+
+    alias deconstruct child_nodes
+    
+    def deconstruct_keys(keys)
+      { value: value, location: location }
+    end
+
+    def pretty_print(q)
+      q.group(2, "(", ")") do
+        q.text("rbrace")
+
+        q.breakable
+        q.pp(value)
+      end
     end
   end
 
@@ -8657,13 +7980,32 @@ module SyntaxTree
     # [String] the right bracket
     attr_reader :value
 
+    def initialize(value:, location:)
+      @value = value
+      @location = location
+    end
+
     def accept(visitor)
       visitor.visit_rbracket(self)
     end
 
-    def initialize(value:, location:)
-      @value = value
-      @location = location
+    def child_nodes
+      []
+    end
+
+    alias deconstruct child_nodes
+    
+    def deconstruct_keys(keys)
+      { value: value, location: location }
+    end
+
+    def pretty_print(q)
+      q.group(2, "(", ")") do
+        q.text("rbracket")
+
+        q.breakable
+        q.pp(value)
+      end
     end
   end
 
@@ -8712,12 +8054,6 @@ module SyntaxTree
         q.pp(Comment::List.new(comments))
       end
     end
-
-    def to_json(*opts)
-      { type: :redo, value: value, loc: location, cmts: comments }.to_json(
-        *opts
-      )
-    end
   end
 
   # RegexpContent represents the body of a regular expression.
@@ -8734,14 +8070,33 @@ module SyntaxTree
     # regular expression
     attr_reader :parts
 
-    def accept(visitor)
-      visitor.visit_regexp_content(self)
-    end
-
     def initialize(beginning:, parts:, location:)
       @beginning = beginning
       @parts = parts
       @location = location
+    end
+
+    def accept(visitor)
+      visitor.visit_regexp_content(self)
+    end
+
+    def child_nodes
+      parts
+    end
+
+    alias deconstruct child_nodes
+    
+    def deconstruct_keys(keys)
+      { beginning: beginning, parts: parts, location: location }
+    end
+
+    def pretty_print(q)
+      q.group(2, "(", ")") do
+        q.text("regexp_content")
+
+        q.breakable
+        q.group(2, "(", ")") { q.seplist(parts) { |part| q.pp(part) } }
+      end
     end
   end
 
@@ -8758,13 +8113,32 @@ module SyntaxTree
     # [String] the beginning of the regular expression
     attr_reader :value
 
+    def initialize(value:, location:)
+      @value = value
+      @location = location
+    end
+
     def accept(visitor)
       visitor.visit_regexp_beg(self)
     end
 
-    def initialize(value:, location:)
-      @value = value
-      @location = location
+    def child_nodes
+      []
+    end
+
+    alias deconstruct child_nodes
+    
+    def deconstruct_keys(keys)
+      { value: value, location: location }
+    end
+
+    def pretty_print(q)
+      q.group(2, "(", ")") do
+        q.text("regexp_beg")
+
+        q.breakable
+        q.pp(value)
+      end
     end
   end
 
@@ -8782,13 +8156,32 @@ module SyntaxTree
     # [String] the end of the regular expression
     attr_reader :value
 
+    def initialize(value:, location:)
+      @value = value
+      @location = location
+    end
+
     def accept(visitor)
       visitor.visit_regexp_end(self)
     end
 
-    def initialize(value:, location:)
-      @value = value
-      @location = location
+    def child_nodes
+      []
+    end
+
+    alias deconstruct child_nodes
+    
+    def deconstruct_keys(keys)
+      { value: value, location: location }
+    end
+
+    def pretty_print(q)
+      q.group(2, "(", ")") do
+        q.text("regexp_end")
+
+        q.breakable
+        q.pp(value)
+      end
     end
   end
 
@@ -8889,17 +8282,6 @@ module SyntaxTree
       end
     end
 
-    def to_json(*opts)
-      {
-        type: :regexp_literal,
-        beging: beginning,
-        ending: ending,
-        parts: parts,
-        loc: location,
-        cmts: comments
-      }.to_json(*opts)
-    end
-
     private
 
     def include?(pattern)
@@ -8990,16 +8372,6 @@ module SyntaxTree
 
         q.pp(Comment::List.new(comments))
       end
-    end
-
-    def to_json(*opts)
-      {
-        type: :rescue_ex,
-        extns: exceptions,
-        var: variable,
-        loc: location,
-        cmts: comments
-      }.to_json(*opts)
     end
   end
 
@@ -9123,17 +8495,6 @@ module SyntaxTree
         q.pp(Comment::List.new(comments))
       end
     end
-
-    def to_json(*opts)
-      {
-        type: :rescue,
-        extn: exception,
-        stmts: statements,
-        cons: consequent,
-        loc: location,
-        cmts: comments
-      }.to_json(*opts)
-    end
   end
 
   # RescueMod represents the use of the modifier form of a +rescue+ clause.
@@ -9205,16 +8566,6 @@ module SyntaxTree
         q.pp(Comment::List.new(comments))
       end
     end
-
-    def to_json(*opts)
-      {
-        type: :rescue_mod,
-        stmt: statement,
-        value: value,
-        loc: location,
-        cmts: comments
-      }.to_json(*opts)
-    end
   end
 
   # RestParam represents defining a parameter in a method definition that
@@ -9264,12 +8615,6 @@ module SyntaxTree
         q.pp(Comment::List.new(comments))
       end
     end
-
-    def to_json(*opts)
-      { type: :rest_param, name: name, loc: location, cmts: comments }.to_json(
-        *opts
-      )
-    end
   end
 
   # Retry represents the use of the +retry+ keyword.
@@ -9316,12 +8661,6 @@ module SyntaxTree
 
         q.pp(Comment::List.new(comments))
       end
-    end
-
-    def to_json(*opts)
-      { type: :retry, value: value, loc: location, cmts: comments }.to_json(
-        *opts
-      )
     end
   end
 
@@ -9370,12 +8709,6 @@ module SyntaxTree
         q.pp(Comment::List.new(comments))
       end
     end
-
-    def to_json(*opts)
-      { type: :return, args: arguments, loc: location, cmts: comments }.to_json(
-        *opts
-      )
-    end
   end
 
   # Return0 represents the bare +return+ keyword with no arguments.
@@ -9423,12 +8756,6 @@ module SyntaxTree
         q.pp(Comment::List.new(comments))
       end
     end
-
-    def to_json(*opts)
-      { type: :return0, value: value, loc: location, cmts: comments }.to_json(
-        *opts
-      )
-    end
   end
 
   # RParen represents the use of a right parenthesis, i.e., +)+.
@@ -9436,13 +8763,32 @@ module SyntaxTree
     # [String] the parenthesis
     attr_reader :value
 
+    def initialize(value:, location:)
+      @value = value
+      @location = location
+    end
+  
     def accept(visitor)
       visitor.visit_rparen(self)
     end
 
-    def initialize(value:, location:)
-      @value = value
-      @location = location
+    def child_nodes
+      []
+    end
+
+    alias deconstruct child_nodes
+    
+    def deconstruct_keys(keys)
+      { value: value, location: location }
+    end
+
+    def pretty_print(q)
+      q.group(2, "(", ")") do
+        q.text("rparen")
+
+        q.breakable
+        q.pp(value)
+      end
     end
   end
 
@@ -9512,16 +8858,6 @@ module SyntaxTree
 
         q.pp(Comment::List.new(comments))
       end
-    end
-
-    def to_json(*opts)
-      {
-        type: :sclass,
-        target: target,
-        bodystmt: bodystmt,
-        loc: location,
-        cmts: comments
-      }.to_json(*opts)
     end
   end
 
@@ -9666,12 +9002,6 @@ module SyntaxTree
       end
     end
 
-    def to_json(*opts)
-      { type: :statements, body: body, loc: location, cmts: comments }.to_json(
-        *opts
-      )
-    end
-
     private
 
     # As efficiently as possible, gather up all of the comments that have been
@@ -9716,13 +9046,32 @@ module SyntaxTree
     # string
     attr_reader :parts
 
+    def initialize(parts:, location:)
+      @parts = parts
+      @location = location
+    end
+
     def accept(visitor)
       visitor.visit_string_content(self)
     end
 
-    def initialize(parts:, location:)
-      @parts = parts
-      @location = location
+    def child_nodes
+      parts
+    end
+
+    alias deconstruct child_nodes
+    
+    def deconstruct_keys(keys)
+      { parts: parts, location: location }
+    end
+
+    def pretty_print(q)
+      q.group(2, "(", ")") do
+        q.text("string_content")
+
+        q.breakable
+        q.group(2, "(", ")") { q.seplist(parts) { |part| q.pp(part) } }
+      end
     end
   end
 
@@ -9787,16 +9136,6 @@ module SyntaxTree
         q.pp(Comment::List.new(comments))
       end
     end
-
-    def to_json(*opts)
-      {
-        type: :string_concat,
-        left: left,
-        right: right,
-        loc: location,
-        cmts: comments
-      }.to_json(*opts)
-    end
   end
 
   # StringDVar represents shorthand interpolation of a variable into a string.
@@ -9847,15 +9186,6 @@ module SyntaxTree
 
         q.pp(Comment::List.new(comments))
       end
-    end
-
-    def to_json(*opts)
-      {
-        type: :string_dvar,
-        var: variable,
-        loc: location,
-        cmts: comments
-      }.to_json(*opts)
     end
   end
 
@@ -9922,15 +9252,6 @@ module SyntaxTree
 
         q.pp(Comment::List.new(comments))
       end
-    end
-
-    def to_json(*opts)
-      {
-        type: :string_embexpr,
-        stmts: statements,
-        loc: location,
-        cmts: comments
-      }.to_json(*opts)
     end
   end
 
@@ -10010,16 +9331,6 @@ module SyntaxTree
         q.pp(Comment::List.new(comments))
       end
     end
-
-    def to_json(*opts)
-      {
-        type: :string_literal,
-        parts: parts,
-        quote: quote,
-        loc: location,
-        cmts: comments
-      }.to_json(*opts)
-    end
   end
 
   # Super represents using the +super+ keyword with arguments. It can optionally
@@ -10077,12 +9388,6 @@ module SyntaxTree
         q.pp(Comment::List.new(comments))
       end
     end
-
-    def to_json(*opts)
-      { type: :super, args: arguments, loc: location, cmts: comments }.to_json(
-        *opts
-      )
-    end
   end
 
   # SymBeg represents the beginning of a symbol literal.
@@ -10105,13 +9410,32 @@ module SyntaxTree
     # [String] the beginning of the symbol
     attr_reader :value
 
-    def accept(visitor)
-      visitor.visit_sym_beg(self)
-    end
-
     def initialize(value:, location:)
       @value = value
       @location = location
+    end
+
+    def accept(visitor)
+      visitor.visit_symbeg(self)
+    end
+
+    def child_nodes
+      []
+    end
+
+    alias deconstruct child_nodes
+    
+    def deconstruct_keys(keys)
+      { value: value, location: location }
+    end
+
+    def pretty_print(q)
+      q.group(2, "(", ")") do
+        q.text("symbeg")
+
+        q.breakable
+        q.pp(value)
+      end
     end
   end
 
@@ -10125,13 +9449,32 @@ module SyntaxTree
     # symbol
     attr_reader :value
 
+    def initialize(value:, location:)
+      @value = value
+      @location = location
+    end
+
     def accept(visitor)
       visitor.visit_symbol_content(self)
     end
 
-    def initialize(value:, location:)
-      @value = value
-      @location = location
+    def child_nodes
+      []
+    end
+
+    alias deconstruct child_nodes
+    
+    def deconstruct_keys(keys)
+      { value: value, location: location }
+    end
+
+    def pretty_print(q)
+      q.group(2, "(", ")") do
+        q.text("symbol_content")
+
+        q.breakable
+        q.pp(value)
+      end
     end
   end
 
@@ -10182,15 +9525,6 @@ module SyntaxTree
 
         q.pp(Comment::List.new(comments))
       end
-    end
-
-    def to_json(*opts)
-      {
-        type: :symbol_literal,
-        value: value,
-        loc: location,
-        cmts: comments
-      }.to_json(*opts)
     end
   end
 
@@ -10263,15 +9597,6 @@ module SyntaxTree
         q.pp(Comment::List.new(comments))
       end
     end
-
-    def to_json(*opts)
-      {
-        type: :symbols,
-        elems: elements,
-        loc: location,
-        cmts: comments
-      }.to_json(*opts)
-    end
   end
 
   # SymbolsBeg represents the start of a symbol array literal with
@@ -10286,13 +9611,32 @@ module SyntaxTree
     # [String] the beginning of the symbol literal array
     attr_reader :value
 
+    def initialize(value:, location:)
+      @value = value
+      @location = location
+    end
+
     def accept(visitor)
       visitor.visit_symbols_beg(self)
     end
 
-    def initialize(value:, location:)
-      @value = value
-      @location = location
+    def child_nodes
+      []
+    end
+
+    alias deconstruct child_nodes
+    
+    def deconstruct_keys(keys)
+      { value: value, location: location }
+    end
+
+    def pretty_print(q)
+      q.group(2, "(", ")") do
+        q.text("symbols_beg")
+
+        q.breakable
+        q.pp(value)
+      end
     end
   end
 
@@ -10305,13 +9649,32 @@ module SyntaxTree
     # [String] the beginning of the lambda literal
     attr_reader :value
 
+    def initialize(value:, location:)
+      @value = value
+      @location = location
+    end
+
     def accept(visitor)
       visitor.visit_tlambda(self)
     end
 
-    def initialize(value:, location:)
-      @value = value
-      @location = location
+    def child_nodes
+      []
+    end
+
+    alias deconstruct child_nodes
+    
+    def deconstruct_keys(keys)
+      { value: value, location: location }
+    end
+
+    def pretty_print(q)
+      q.group(2, "(", ")") do
+        q.text("tlambda")
+
+        q.breakable
+        q.pp(value)
+      end
     end
   end
 
@@ -10325,13 +9688,32 @@ module SyntaxTree
     # [String] the beginning of the body of the lambda literal
     attr_reader :value
 
+    def initialize(value:, location:)
+      @value = value
+      @location = location
+    end
+
     def accept(visitor)
       visitor.visit_tlambeg(self)
     end
 
-    def initialize(value:, location:)
-      @value = value
-      @location = location
+    def child_nodes
+      []
+    end
+
+    alias deconstruct child_nodes
+    
+    def deconstruct_keys(keys)
+      { value: value, location: location }
+    end
+
+    def pretty_print(q)
+      q.group(2, "(", ")") do
+        q.text("tlambeg")
+
+        q.breakable
+        q.pp(value)
+      end
     end
   end
 
@@ -10383,15 +9765,6 @@ module SyntaxTree
         q.pp(Comment::List.new(comments))
       end
     end
-
-    def to_json(*opts)
-      {
-        type: :top_const_field,
-        constant: constant,
-        loc: location,
-        cmts: comments
-      }.to_json(*opts)
-    end
   end
 
   # TopConstRef is very similar to TopConstField except that it is not involved
@@ -10441,15 +9814,6 @@ module SyntaxTree
         q.pp(Comment::List.new(comments))
       end
     end
-
-    def to_json(*opts)
-      {
-        type: :top_const_ref,
-        constant: constant,
-        loc: location,
-        cmts: comments
-      }.to_json(*opts)
-    end
   end
 
   # TStringBeg represents the beginning of a string literal.
@@ -10466,13 +9830,32 @@ module SyntaxTree
     # [String] the beginning of the string
     attr_reader :value
 
+    def initialize(value:, location:)
+      @value = value
+      @location = location
+    end
+
     def accept(visitor)
       visitor.visit_tstring_beg(self)
     end
 
-    def initialize(value:, location:)
-      @value = value
-      @location = location
+    def child_nodes
+      []
+    end
+
+    alias deconstruct child_nodes
+    
+    def deconstruct_keys(keys)
+      { value: value, location: location }
+    end
+
+    def pretty_print(q)
+      q.group(2, "(", ")") do
+        q.text("tstring_beg")
+
+        q.breakable
+        q.pp(value)
+      end
     end
   end
 
@@ -10529,15 +9912,6 @@ module SyntaxTree
         q.pp(Comment::List.new(comments))
       end
     end
-
-    def to_json(*opts)
-      {
-        type: :tstring_content,
-        value: value.force_encoding("UTF-8"),
-        loc: location,
-        cmts: comments
-      }.to_json(*opts)
-    end
   end
 
   # TStringEnd represents the end of a string literal.
@@ -10554,13 +9928,32 @@ module SyntaxTree
     # [String] the end of the string
     attr_reader :value
 
+    def initialize(value:, location:)
+      @value = value
+      @location = location
+    end
+
     def accept(visitor)
       visitor.visit_tstring_end(self)
     end
 
-    def initialize(value:, location:)
-      @value = value
-      @location = location
+    def child_nodes
+      []
+    end
+
+    alias deconstruct child_nodes
+    
+    def deconstruct_keys(keys)
+      { value: value, location: location }
+    end
+
+    def pretty_print(q)
+      q.group(2, "(", ")") do
+        q.text("tstring_end")
+
+        q.breakable
+        q.pp(value)
+      end
     end
   end
 
@@ -10619,16 +10012,6 @@ module SyntaxTree
 
         q.pp(Comment::List.new(comments))
       end
-    end
-
-    def to_json(*opts)
-      {
-        type: :not,
-        value: statement,
-        paren: parentheses,
-        loc: location,
-        cmts: comments
-      }.to_json(*opts)
     end
   end
 
@@ -10690,16 +10073,6 @@ module SyntaxTree
 
         q.pp(Comment::List.new(comments))
       end
-    end
-
-    def to_json(*opts)
-      {
-        type: :unary,
-        op: operator,
-        value: statement,
-        loc: location,
-        cmts: comments
-      }.to_json(*opts)
     end
   end
 
@@ -10777,12 +10150,6 @@ module SyntaxTree
         q.pp(Comment::List.new(comments))
       end
     end
-
-    def to_json(*opts)
-      { type: :undef, syms: symbols, loc: location, cmts: comments }.to_json(
-        *opts
-      )
-    end
   end
 
   # Unless represents the first clause in an +unless+ chain.
@@ -10859,17 +10226,6 @@ module SyntaxTree
         q.pp(Comment::List.new(comments))
       end
     end
-
-    def to_json(*opts)
-      {
-        type: :unless,
-        pred: predicate,
-        stmts: statements,
-        cons: consequent,
-        loc: location,
-        cmts: comments
-      }.to_json(*opts)
-    end
   end
 
   # UnlessMod represents the modifier form of an +unless+ statement.
@@ -10928,16 +10284,6 @@ module SyntaxTree
 
         q.pp(Comment::List.new(comments))
       end
-    end
-
-    def to_json(*opts)
-      {
-        type: :unless_mod,
-        stmt: statement,
-        pred: predicate,
-        loc: location,
-        cmts: comments
-      }.to_json(*opts)
     end
   end
 
@@ -11059,16 +10405,6 @@ module SyntaxTree
         q.pp(Comment::List.new(comments))
       end
     end
-
-    def to_json(*opts)
-      {
-        type: :until,
-        pred: predicate,
-        stmts: statements,
-        loc: location,
-        cmts: comments
-      }.to_json(*opts)
-    end
   end
 
   # UntilMod represents the modifier form of a +until+ loop.
@@ -11148,16 +10484,6 @@ module SyntaxTree
         q.pp(Comment::List.new(comments))
       end
     end
-
-    def to_json(*opts)
-      {
-        type: :until_mod,
-        stmt: statement,
-        pred: predicate,
-        loc: location,
-        cmts: comments
-      }.to_json(*opts)
-    end
   end
 
   # VarAlias represents when you're using the +alias+ keyword with global
@@ -11218,16 +10544,6 @@ module SyntaxTree
         q.pp(Comment::List.new(comments))
       end
     end
-
-    def to_json(*opts)
-      {
-        type: :var_alias,
-        left: left,
-        right: right,
-        loc: location,
-        cmts: comments
-      }.to_json(*opts)
-    end
   end
 
   # VarField represents a variable that is being assigned a value. As such, it
@@ -11276,12 +10592,6 @@ module SyntaxTree
 
         q.pp(Comment::List.new(comments))
       end
-    end
-
-    def to_json(*opts)
-      { type: :var_field, value: value, loc: location, cmts: comments }.to_json(
-        *opts
-      )
     end
   end
 
@@ -11333,12 +10643,6 @@ module SyntaxTree
 
         q.pp(Comment::List.new(comments))
       end
-    end
-
-    def to_json(*opts)
-      { type: :var_ref, value: value, loc: location, cmts: comments }.to_json(
-        *opts
-      )
     end
   end
 
@@ -11395,15 +10699,6 @@ module SyntaxTree
         q.pp(Comment::List.new(comments))
       end
     end
-
-    def to_json(*opts)
-      {
-        type: :pinned_var_ref,
-        value: value,
-        loc: location,
-        cmts: comments
-      }.to_json(*opts)
-    end
   end
 
   # VCall represent any plain named object with Ruby that could be either a
@@ -11452,12 +10747,6 @@ module SyntaxTree
         q.pp(Comment::List.new(comments))
       end
     end
-
-    def to_json(*opts)
-      { type: :vcall, value: value, loc: location, cmts: comments }.to_json(
-        *opts
-      )
-    end
   end
 
   # VoidStmt represents an empty lexical block of code.
@@ -11498,10 +10787,6 @@ module SyntaxTree
         q.text("void_stmt")
         q.pp(Comment::List.new(comments))
       end
-    end
-
-    def to_json(*opts)
-      { type: :void_stmt, loc: location, cmts: comments }.to_json(*opts)
     end
   end
 
@@ -11614,17 +10899,6 @@ module SyntaxTree
         q.pp(Comment::List.new(comments))
       end
     end
-
-    def to_json(*opts)
-      {
-        type: :when,
-        args: arguments,
-        stmts: statements,
-        cons: consequent,
-        loc: location,
-        cmts: comments
-      }.to_json(*opts)
-    end
   end
 
   # While represents a +while+ loop.
@@ -11695,16 +10969,6 @@ module SyntaxTree
 
         q.pp(Comment::List.new(comments))
       end
-    end
-
-    def to_json(*opts)
-      {
-        type: :while,
-        pred: predicate,
-        stmts: statements,
-        loc: location,
-        cmts: comments
-      }.to_json(*opts)
     end
   end
 
@@ -11785,16 +11049,6 @@ module SyntaxTree
         q.pp(Comment::List.new(comments))
       end
     end
-
-    def to_json(*opts)
-      {
-        type: :while_mod,
-        stmt: statement,
-        pred: predicate,
-        loc: location,
-        cmts: comments
-      }.to_json(*opts)
-    end
   end
 
   # Word represents an element within a special array literal that accepts
@@ -11849,12 +11103,6 @@ module SyntaxTree
 
         q.pp(Comment::List.new(comments))
       end
-    end
-
-    def to_json(*opts)
-      { type: :word, parts: parts, loc: location, cmts: comments }.to_json(
-        *opts
-      )
     end
   end
 
@@ -11927,12 +11175,6 @@ module SyntaxTree
         q.pp(Comment::List.new(comments))
       end
     end
-
-    def to_json(*opts)
-      { type: :words, elems: elements, loc: location, cmts: comments }.to_json(
-        *opts
-      )
-    end
   end
 
   # WordsBeg represents the beginning of a string literal array with
@@ -11947,13 +11189,32 @@ module SyntaxTree
     # [String] the start of the word literal array
     attr_reader :value
 
+    def initialize(value:, location:)
+      @value = value
+      @location = location
+    end
+
     def accept(visitor)
       visitor.visit_words_beg(self)
     end
 
-    def initialize(value:, location:)
-      @value = value
-      @location = location
+    def child_nodes
+      []
+    end
+
+    alias deconstruct child_nodes
+    
+    def deconstruct_keys(keys)
+      { value: value, location: location }
+    end
+
+    def pretty_print(q)
+      q.group(2, "(", ")") do
+        q.text("words_beg")
+
+        q.breakable
+        q.pp(value)
+      end
     end
   end
 
@@ -11966,13 +11227,32 @@ module SyntaxTree
     # xstring
     attr_reader :parts
 
+    def initialize(parts:, location:)
+      @parts = parts
+      @location = location
+    end
+
     def accept(visitor)
       visitor.visit_xstring(self)
     end
 
-    def initialize(parts:, location:)
-      @parts = parts
-      @location = location
+    def child_nodes
+      parts
+    end
+
+    alias deconstruct child_nodes
+    
+    def deconstruct_keys(keys)
+      { parts: parts, location: location }
+    end
+
+    def pretty_print(q)
+      q.group(2, "(", ")") do
+        q.text("xstring")
+
+        q.breakable
+        q.group(2, "(", ")") { q.seplist(parts) { |part| q.pp(part) } }
+      end
     end
   end
 
@@ -12023,15 +11303,6 @@ module SyntaxTree
 
         q.pp(Comment::List.new(comments))
       end
-    end
-
-    def to_json(*opts)
-      {
-        type: :xstring_literal,
-        parts: parts,
-        loc: location,
-        cmts: comments
-      }.to_json(*opts)
     end
   end
 
@@ -12094,12 +11365,6 @@ module SyntaxTree
         q.pp(Comment::List.new(comments))
       end
     end
-
-    def to_json(*opts)
-      { type: :yield, args: arguments, loc: location, cmts: comments }.to_json(
-        *opts
-      )
-    end
   end
 
   # Yield0 represents the bare +yield+ keyword with no arguments.
@@ -12147,12 +11412,6 @@ module SyntaxTree
         q.pp(Comment::List.new(comments))
       end
     end
-
-    def to_json(*opts)
-      { type: :yield0, value: value, loc: location, cmts: comments }.to_json(
-        *opts
-      )
-    end
   end
 
   # ZSuper represents the bare +super+ keyword with no arguments.
@@ -12199,12 +11458,6 @@ module SyntaxTree
 
         q.pp(Comment::List.new(comments))
       end
-    end
-
-    def to_json(*opts)
-      { type: :zsuper, value: value, loc: location, cmts: comments }.to_json(
-        *opts
-      )
     end
   end
 end

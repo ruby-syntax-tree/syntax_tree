@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require "json"
 require "pp"
 require "prettyprint"
 require "ripper"
@@ -9,6 +10,9 @@ require_relative "syntax_tree/formatter"
 require_relative "syntax_tree/node"
 require_relative "syntax_tree/parser"
 require_relative "syntax_tree/version"
+require_relative "syntax_tree/visitor"
+
+require_relative "syntax_tree/json_visitor"
 
 # If PrettyPrint::Align isn't defined, then we haven't gotten the updated
 # version of prettyprint. In that case we'll define our own. This is going to
