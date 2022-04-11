@@ -2233,6 +2233,9 @@ module SyntaxTree
     # [nil | Rescue] the optional rescue chain attached to the begin clause
     attr_reader :rescue_clause
 
+    # [nil | Kw] the optional else keyword
+    attr_reader :else_keyword
+
     # [nil | Statements] the optional set of statements inside the else clause
     attr_reader :else_clause
 
@@ -2245,6 +2248,7 @@ module SyntaxTree
     def initialize(
       statements:,
       rescue_clause:,
+      else_keyword:,
       else_clause:,
       ensure_clause:,
       location:,
@@ -2252,6 +2256,7 @@ module SyntaxTree
     )
       @statements = statements
       @rescue_clause = rescue_clause
+      @else_keyword = else_keyword
       @else_clause = else_clause
       @ensure_clause = ensure_clause
       @location = location
@@ -2294,7 +2299,7 @@ module SyntaxTree
     end
 
     def child_nodes
-      [statements, rescue_clause, else_clause, ensure_clause]
+      [statements, rescue_clause, else_keyword, else_clause, ensure_clause]
     end
 
     alias deconstruct child_nodes
@@ -2324,10 +2329,13 @@ module SyntaxTree
         if else_clause
           q.nest(-2) do
             q.breakable(force: true)
-            q.text("else")
+            q.format(else_keyword)
           end
-          q.breakable(force: true)
-          q.format(else_clause)
+
+          unless else_clause.empty?
+            q.breakable(force: true)
+            q.format(else_clause)
+          end
         end
 
         if ensure_clause
@@ -4711,13 +4719,17 @@ module SyntaxTree
   #     end
   #
   class Else < Node
+    # [Kw] the else keyword
+    attr_reader :keyword
+
     # [Statements] the expressions to be executed
     attr_reader :statements
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(statements:, location:, comments: [])
+    def initialize(keyword:, statements:, location:, comments: [])
+      @keyword = keyword
       @statements = statements
       @location = location
       @comments = comments
@@ -4728,18 +4740,23 @@ module SyntaxTree
     end
 
     def child_nodes
-      [statements]
+      [keyword, statements]
     end
 
     alias deconstruct child_nodes
 
     def deconstruct_keys(keys)
-      { statements: statements, location: location, comments: comments }
+      {
+        keyword: keyword,
+        statements: statements,
+        location: location,
+        comments: comments
+      }
     end
 
     def format(q)
       q.group do
-        q.text("else")
+        q.format(keyword)
 
         unless statements.empty?
           q.indent do
@@ -8993,6 +9010,9 @@ module SyntaxTree
   #     end
   #
   class Rescue < Node
+    # [Kw] the rescue keyword
+    attr_reader :keyword
+
     # [RescueEx] the exceptions being rescued
     attr_reader :exception
 
@@ -9006,12 +9026,14 @@ module SyntaxTree
     attr_reader :comments
 
     def initialize(
+      keyword:,
       exception:,
       statements:,
       consequent:,
       location:,
       comments: []
     )
+      @keyword = keyword
       @exception = exception
       @statements = statements
       @consequent = consequent
@@ -9041,13 +9063,14 @@ module SyntaxTree
     end
 
     def child_nodes
-      [exception, statements, consequent]
+      [keyword, exception, statements, consequent]
     end
 
     alias deconstruct child_nodes
 
     def deconstruct_keys(keys)
       {
+        keyword: keyword,
         exception: exception,
         statements: statements,
         consequent: consequent,
@@ -9058,10 +9081,10 @@ module SyntaxTree
 
     def format(q)
       q.group do
-        q.text("rescue")
+        q.format(keyword)
 
         if exception
-          q.nest("rescue ".length) { q.format(exception) }
+          q.nest(keyword.value.length + 1) { q.format(exception) }
         else
           q.text(" StandardError")
         end

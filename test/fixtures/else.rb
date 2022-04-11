@@ -18,3 +18,7 @@ if foo
 else
   bar
 end
+%
+if foo
+else # bar
+end
