@@ -4,6 +4,14 @@ on:
 - pull_request_target
 jobs:
   ci:
+    strategy:
+      fail-fast: false
+      matrix:
+        ruby:
+        - '2.7'
+        - '3.0'
+        - '3.1'
+        - head
     name: CI
     runs-on: ubuntu-latest
     env:
@@ -13,7 +21,7 @@ jobs:
     - uses: ruby/setup-ruby@v1
       with:
         bundler-cache: true
-        ruby-version: '3.1'
+        ruby-version: ${{ matrix.ruby }}
     - name: Test
       run: bundle exec rake test
   automerge:

@@ -3295,9 +3295,10 @@ module SyntaxTree
     private
 
     def align?(node)
-      if node.arguments in Args[parts: [Def | Defs | DefEndless]]
+      case node.arguments
+      in Args[parts: [Def | Defs | DefEndless]]
         false
-      elsif node.arguments in Args[parts: [Command => command]]
+      in Args[parts: [Command => command]]
         align?(command)
       else
         true
