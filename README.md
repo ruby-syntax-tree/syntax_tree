@@ -249,6 +249,8 @@ With visitors, you only define handlers for the nodes that you need. You can fin
 * call `visit(child)` with each child that you want to visit
 * call nothing if you're sure you don't want to descend further
 
+There are a couple of visitors that ship with Syntax Tree that can be used as examples. They live in the [lib/syntax_tree/visitor](lib/syntax_tree/visitor) directory.
+
 ### visit_method
 
 When you're creating a visitor, it's very easy to accidentally mistype a visit method. Unfortunately, there's no way to tell Ruby to explicitly override a parent method, so it would then be easy to define a method that never gets called. To mitigate this risk, there's `Visitor.visit_method(name)`. This method accepts a symbol that is checked against the list of known visit methods. If it's not in the list, then an error will be raised. It's meant to be used like:
