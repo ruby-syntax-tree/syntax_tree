@@ -11,8 +11,8 @@ require_relative "syntax_tree/node"
 require_relative "syntax_tree/parser"
 require_relative "syntax_tree/version"
 require_relative "syntax_tree/visitor"
-
-require_relative "syntax_tree/json_visitor"
+require_relative "syntax_tree/visitor/json_visitor"
+require_relative "syntax_tree/visitor/pretty_print_visitor"
 
 # If PrettyPrint::Align isn't defined, then we haven't gotten the updated
 # version of prettyprint. In that case we'll define our own. This is going to

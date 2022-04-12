@@ -123,7 +123,7 @@ module SyntaxTree
     alias visit_binary visit_child_nodes
 
     # Visit a BlockArg node.
-    alias visit_block_arg visit_child_nodes
+    alias visit_blockarg visit_child_nodes
 
     # Visit a BlockVar node.
     alias visit_block_var visit_child_nodes
@@ -333,7 +333,7 @@ module SyntaxTree
     alias visit_op visit_child_nodes
 
     # Visit an OpAssign node.
-    alias visit_op_assign visit_child_nodes
+    alias visit_opassign visit_child_nodes
 
     # Visit a Params node.
     alias visit_params visit_child_nodes
@@ -461,6 +461,12 @@ module SyntaxTree
     # Visit a TLamBeg node.
     alias visit_tlambeg visit_child_nodes
 
+    # Visit a TopConstField node.
+    alias visit_top_const_field visit_child_nodes
+
+    # Visit a TopConstRef node.
+    alias visit_top_const_ref visit_child_nodes
+
     # Visit a TStringBeg node.
     alias visit_tstring_beg visit_child_nodes
 
@@ -469,12 +475,6 @@ module SyntaxTree
 
     # Visit a TStringEnd node.
     alias visit_tstring_end visit_child_nodes
-
-    # Visit a TopConstField node.
-    alias visit_top_const_field visit_child_nodes
-
-    # Visit a TopConstRef node.
-    alias visit_top_const_ref visit_child_nodes
 
     # Visit an Unary node.
     alias visit_unary visit_child_nodes

@@ -73,11 +73,12 @@ module SyntaxTree
     end
 
     def pretty_print(q)
-      raise NotImplementedError
+      visitor = Visitor::PrettyPrintVisitor.new(q)
+      visitor.visit(self)
     end
 
     def to_json(*opts)
-      visitor = JSONVisitor.new
+      visitor = Visitor::JSONVisitor.new
       visitor.visit(self).to_json(*opts)
     end
   end
@@ -139,17 +140,6 @@ module SyntaxTree
         q.text("}")
       end
     end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("BEGIN")
-
-        q.breakable
-        q.pp(statements)
-
-        q.pp(Comment::List.new(comments))
-      end
-    end
   end
 
   # CHAR irepresents a single codepoint in the script encoding.
@@ -192,17 +182,6 @@ module SyntaxTree
         q.text(q.quote)
         q.text(value[1] == "\"" ? "\\\"" : value[1])
         q.text(q.quote)
-      end
-    end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("CHAR")
-
-        q.breakable
-        q.pp(value)
-
-        q.pp(Comment::List.new(comments))
       end
     end
   end
@@ -264,17 +243,6 @@ module SyntaxTree
         q.text("}")
       end
     end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("END")
-
-        q.breakable
-        q.pp(statements)
-
-        q.pp(Comment::List.new(comments))
-      end
-    end
   end
 
   # EndContent represents the use of __END__ syntax, which allows individual
@@ -319,17 +287,6 @@ module SyntaxTree
 
       separator = -> { q.breakable(indent: false, force: true) }
       q.seplist(value.split(/\r?\n/, -1), separator) { |line| q.text(line) }
-    end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("__end__")
-
-        q.breakable
-        q.pp(value)
-
-        q.pp(Comment::List.new(comments))
-      end
     end
   end
 
@@ -415,20 +372,6 @@ module SyntaxTree
         end
       end
     end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("alias")
-
-        q.breakable
-        q.pp(left)
-
-        q.breakable
-        q.pp(right)
-
-        q.pp(Comment::List.new(comments))
-      end
-    end
   end
 
   # ARef represents when you're pulling a value out of a collection at a
@@ -496,20 +439,6 @@ module SyntaxTree
         q.text("]")
       end
     end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("aref")
-
-        q.breakable
-        q.pp(collection)
-
-        q.breakable
-        q.pp(index)
-
-        q.pp(Comment::List.new(comments))
-      end
-    end
   end
 
   # ARefField represents assigning values into collections at specific indices.
@@ -571,20 +500,6 @@ module SyntaxTree
         q.text("]")
       end
     end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("aref_field")
-
-        q.breakable
-        q.pp(collection)
-
-        q.breakable
-        q.pp(index)
-
-        q.pp(Comment::List.new(comments))
-      end
-    end
   end
 
   # ArgParen represents wrapping arguments to a method inside a set of
@@ -640,17 +555,6 @@ module SyntaxTree
         q.breakable("")
       end
     end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("arg_paren")
-
-        q.breakable
-        q.pp(arguments)
-
-        q.pp(Comment::List.new(comments))
-      end
-    end
   end
 
   # Args represents a list of arguments being passed to a method call or array
@@ -687,17 +591,6 @@ module SyntaxTree
 
     def format(q)
       q.seplist(parts) { |part| q.format(part) }
-    end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("args")
-
-        q.breakable
-        q.group(2, "(", ")") { q.seplist(parts) { |part| q.pp(part) } }
-
-        q.pp(Comment::List.new(comments))
-      end
     end
   end
 
@@ -736,19 +629,6 @@ module SyntaxTree
       q.text("&")
       q.format(value) if value
     end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("arg_block")
-
-        if value
-          q.breakable
-          q.pp(value)
-        end
-
-        q.pp(Comment::List.new(comments))
-      end
-    end
   end
 
   # Star represents using a splat operator on an expression.
@@ -785,17 +665,6 @@ module SyntaxTree
     def format(q)
       q.text("*")
       q.format(value) if value
-    end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("arg_star")
-
-        q.breakable
-        q.pp(value)
-
-        q.pp(Comment::List.new(comments))
-      end
     end
   end
 
@@ -845,17 +714,6 @@ module SyntaxTree
 
     def format(q)
       q.text(value)
-    end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("args_forward")
-
-        q.breakable
-        q.pp(value)
-
-        q.pp(Comment::List.new(comments))
-      end
     end
   end
 
@@ -1000,17 +858,6 @@ module SyntaxTree
 
         q.breakable("")
         q.text("]")
-      end
-    end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("array")
-
-        q.breakable
-        q.pp(contents)
-
-        q.pp(Comment::List.new(comments))
       end
     end
 
@@ -1169,36 +1016,6 @@ module SyntaxTree
         q.group { q.seplist(parts) { |part| q.format(part) } }
       end
     end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("aryptn")
-
-        if constant
-          q.breakable
-          q.pp(constant)
-        end
-
-        if requireds.any?
-          q.breakable
-          q.group(2, "(", ")") do
-            q.seplist(requireds) { |required| q.pp(required) }
-          end
-        end
-
-        if rest
-          q.breakable
-          q.pp(rest)
-        end
-
-        if posts.any?
-          q.breakable
-          q.group(2, "(", ")") { q.seplist(posts) { |post| q.pp(post) } }
-        end
-
-        q.pp(Comment::List.new(comments))
-      end
-    end
   end
 
   # Determins if the following value should be indented or not.
@@ -1273,20 +1090,6 @@ module SyntaxTree
       end
     end
 
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("assign")
-
-        q.breakable
-        q.pp(target)
-
-        q.breakable
-        q.pp(value)
-
-        q.pp(Comment::List.new(comments))
-      end
-    end
-
     private
 
     def skip_indent?
@@ -1337,22 +1140,6 @@ module SyntaxTree
         format_contents(q)
       else
         q.group { format_contents(q) }
-      end
-    end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("assoc")
-
-        q.breakable
-        q.pp(key)
-
-        if value
-          q.breakable
-          q.pp(value)
-        end
-
-        q.pp(Comment::List.new(comments))
       end
     end
 
@@ -1410,17 +1197,6 @@ module SyntaxTree
       q.text("**")
       q.format(value)
     end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("assoc_splat")
-
-        q.breakable
-        q.pp(value)
-
-        q.pp(Comment::List.new(comments))
-      end
-    end
   end
 
   # Backref represents a global variable referencing a matched value. It comes
@@ -1458,17 +1234,6 @@ module SyntaxTree
     def format(q)
       q.text(value)
     end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("backref")
-
-        q.breakable
-        q.pp(value)
-
-        q.pp(Comment::List.new(comments))
-      end
-    end
   end
 
   # Backtick represents the use of the ` operator. It's usually found being used
@@ -1503,17 +1268,6 @@ module SyntaxTree
 
     def format(q)
       q.text(value)
-    end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("backtick")
-
-        q.breakable
-        q.pp(value)
-
-        q.pp(Comment::List.new(comments))
-      end
     end
   end
 
@@ -1620,17 +1374,6 @@ module SyntaxTree
     def format_key(q, key)
       (@key_formatter ||= HashKeyFormatter.for(self)).format_key(q, key)
     end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("bare_assoc_hash")
-
-        q.breakable
-        q.group(2, "(", ")") { q.seplist(assocs) { |assoc| q.pp(assoc) } }
-
-        q.pp(Comment::List.new(comments))
-      end
-    end
   end
 
   # Begin represents a begin..end chain.
@@ -1679,17 +1422,6 @@ module SyntaxTree
       q.breakable(force: true)
       q.text("end")
     end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("begin")
-
-        q.breakable
-        q.pp(bodystmt)
-
-        q.pp(Comment::List.new(comments))
-      end
-    end
   end
 
   # PinnedBegin represents a pinning a nested statement within pattern matching.
@@ -1736,17 +1468,6 @@ module SyntaxTree
           q.breakable("")
           q.text(")")
         end
-      end
-    end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("pinned_begin")
-
-        q.breakable
-        q.pp(statement)
-
-        q.pp(Comment::List.new(comments))
       end
     end
   end
@@ -1823,23 +1544,6 @@ module SyntaxTree
             end
           end
         end
-      end
-    end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("binary")
-
-        q.breakable
-        q.pp(left)
-
-        q.breakable
-        q.text(operator)
-
-        q.breakable
-        q.pp(right)
-
-        q.pp(Comment::List.new(comments))
       end
     end
   end
@@ -1939,22 +1643,6 @@ module SyntaxTree
         end
       end
     end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("block_var")
-
-        q.breakable
-        q.pp(params)
-
-        if locals.any?
-          q.breakable
-          q.group(2, "(", ")") { q.seplist(locals) { |local| q.pp(local) } }
-        end
-
-        q.pp(Comment::List.new(comments))
-      end
-    end
   end
 
   # BlockArg represents declaring a block parameter on a method definition.
@@ -1975,7 +1663,7 @@ module SyntaxTree
     end
 
     def accept(visitor)
-      visitor.visit_block_arg(self)
+      visitor.visit_blockarg(self)
     end
 
     def child_nodes
@@ -1991,19 +1679,6 @@ module SyntaxTree
     def format(q)
       q.text("&")
       q.format(name) if name
-    end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("blockarg")
-
-        if name
-          q.breakable
-          q.pp(name)
-        end
-
-        q.pp(Comment::List.new(comments))
-      end
     end
   end
 
@@ -2128,32 +1803,6 @@ module SyntaxTree
             q.format(ensure_clause)
           end
         end
-      end
-    end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("bodystmt")
-
-        q.breakable
-        q.pp(statements)
-
-        if rescue_clause
-          q.breakable
-          q.pp(rescue_clause)
-        end
-
-        if else_clause
-          q.breakable
-          q.pp(else_clause)
-        end
-
-        if ensure_clause
-          q.breakable
-          q.pp(ensure_clause)
-        end
-
-        q.pp(Comment::List.new(comments))
       end
     end
   end
@@ -2365,22 +2014,6 @@ module SyntaxTree
     def format(q)
       BlockFormatter.new(self, lbrace, "}", statements).format(q)
     end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("brace_block")
-
-        if block_var
-          q.breakable
-          q.pp(block_var)
-        end
-
-        q.breakable
-        q.pp(statements)
-
-        q.pp(Comment::List.new(comments))
-      end
-    end
   end
 
   # Formats either a Break or Next node.
@@ -2471,17 +2104,6 @@ module SyntaxTree
 
     def format(q)
       FlowControlFormatter.new("break", self).format(q)
-    end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("break")
-
-        q.breakable
-        q.pp(arguments)
-
-        q.pp(Comment::List.new(comments))
-      end
     end
   end
 
@@ -2597,28 +2219,6 @@ module SyntaxTree
         end
       end
     end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("call")
-
-        q.breakable
-        q.pp(receiver)
-
-        q.breakable
-        q.pp(operator)
-
-        q.breakable
-        q.pp(message)
-
-        if arguments
-          q.breakable
-          q.pp(arguments)
-        end
-
-        q.pp(Comment::List.new(comments))
-      end
-    end
   end
 
   # Case represents the beginning of a case chain.
@@ -2689,25 +2289,6 @@ module SyntaxTree
         q.text("end")
       end
     end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("case")
-
-        q.breakable
-        q.pp(keyword)
-
-        if value
-          q.breakable
-          q.pp(value)
-        end
-
-        q.breakable
-        q.pp(consequent)
-
-        q.pp(Comment::List.new(comments))
-      end
-    end
   end
 
   # RAssign represents a single-line pattern match.
@@ -2768,23 +2349,6 @@ module SyntaxTree
             q.format(pattern)
           end
         end
-      end
-    end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("rassign")
-
-        q.breakable
-        q.pp(value)
-
-        q.breakable
-        q.pp(operator)
-
-        q.breakable
-        q.pp(pattern)
-
-        q.pp(Comment::List.new(comments))
       end
     end
   end
@@ -2896,25 +2460,6 @@ module SyntaxTree
         end
       end
     end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("class")
-
-        q.breakable
-        q.pp(constant)
-
-        if superclass
-          q.breakable
-          q.pp(superclass)
-        end
-
-        q.breakable
-        q.pp(bodystmt)
-
-        q.pp(Comment::List.new(comments))
-      end
-    end
   end
 
   # Comma represents the use of the , operator.
@@ -2939,15 +2484,6 @@ module SyntaxTree
     
     def deconstruct_keys(keys)
       { value: value, location: location }
-    end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("comma")
-
-        q.breakable
-        q.pp(value)
-      end
     end
   end
 
@@ -3003,20 +2539,6 @@ module SyntaxTree
         else
           q.format(arguments)
         end
-      end
-    end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("command")
-
-        q.breakable
-        q.pp(message)
-
-        q.breakable
-        q.pp(arguments)
-
-        q.pp(Comment::List.new(comments))
       end
     end
 
@@ -3108,28 +2630,6 @@ module SyntaxTree
       end
     end
 
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("command_call")
-
-        q.breakable
-        q.pp(receiver)
-
-        q.breakable
-        q.pp(operator)
-
-        q.breakable
-        q.pp(message)
-
-        if arguments
-          q.breakable
-          q.pp(arguments)
-        end
-
-        q.pp(Comment::List.new(comments))
-      end
-    end
-
     private
 
     # This is a somewhat naive method that is attempting to sum up the width of
@@ -3185,22 +2685,6 @@ module SyntaxTree
   #     # comment
   #
   class Comment < Node
-    class List
-      # [Array[ Comment ]] the list of comments this list represents
-      attr_reader :comments
-
-      def initialize(comments)
-        @comments = comments
-      end
-
-      def pretty_print(q)
-        return if comments.empty?
-
-        q.breakable
-        q.group(2, "(", ")") { q.seplist(comments) { |comment| q.pp(comment) } }
-      end
-    end
-
     # [String] the contents of the comment
     attr_reader :value
 
@@ -3259,15 +2743,6 @@ module SyntaxTree
     def format(q)
       q.text(value)
     end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("comment")
-
-        q.breakable
-        q.pp(value)
-      end
-    end
   end
 
   # Const represents a literal value that _looks_ like a constant. This could
@@ -3313,17 +2788,6 @@ module SyntaxTree
 
     def format(q)
       q.text(value)
-    end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("const")
-
-        q.breakable
-        q.pp(value)
-
-        q.pp(Comment::List.new(comments))
-      end
     end
   end
 
@@ -3374,20 +2838,6 @@ module SyntaxTree
       q.text("::")
       q.format(constant)
     end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("const_path_field")
-
-        q.breakable
-        q.pp(parent)
-
-        q.breakable
-        q.pp(constant)
-
-        q.pp(Comment::List.new(comments))
-      end
-    end
   end
 
   # ConstPathRef represents referencing a constant by a path.
@@ -3435,20 +2885,6 @@ module SyntaxTree
       q.text("::")
       q.format(constant)
     end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("const_path_ref")
-
-        q.breakable
-        q.pp(parent)
-
-        q.breakable
-        q.pp(constant)
-
-        q.pp(Comment::List.new(comments))
-      end
-    end
   end
 
   # ConstRef represents the name of the constant being used in a class or module
@@ -3487,17 +2923,6 @@ module SyntaxTree
     def format(q)
       q.format(constant)
     end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("const_ref")
-
-        q.breakable
-        q.pp(constant)
-
-        q.pp(Comment::List.new(comments))
-      end
-    end
   end
 
   # CVar represents the use of a class variable.
@@ -3533,17 +2958,6 @@ module SyntaxTree
 
     def format(q)
       q.text(value)
-    end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("cvar")
-
-        q.breakable
-        q.pp(value)
-
-        q.pp(Comment::List.new(comments))
-      end
     end
   end
 
@@ -3609,23 +3023,6 @@ module SyntaxTree
 
         q.breakable(force: true)
         q.text("end")
-      end
-    end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("def")
-
-        q.breakable
-        q.pp(name)
-
-        q.breakable
-        q.pp(params)
-
-        q.breakable
-        q.pp(bodystmt)
-
-        q.pp(Comment::List.new(comments))
       end
     end
   end
@@ -3719,33 +3116,6 @@ module SyntaxTree
         end
       end
     end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("def_endless")
-
-        if target
-          q.breakable
-          q.pp(target)
-
-          q.breakable
-          q.pp(operator)
-        end
-
-        q.breakable
-        q.pp(name)
-
-        if paren
-          q.breakable
-          q.pp(paren)
-        end
-
-        q.breakable
-        q.pp(statement)
-
-        q.pp(Comment::List.new(comments))
-      end
-    end
   end
 
   # Defined represents the use of the +defined?+ operator. It can be used with
@@ -3787,17 +3157,6 @@ module SyntaxTree
           q.format(value)
         end
         q.breakable("")
-      end
-    end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("defined")
-
-        q.breakable
-        q.pp(value)
-
-        q.pp(Comment::List.new(comments))
       end
     end
   end
@@ -3886,29 +3245,6 @@ module SyntaxTree
         q.text("end")
       end
     end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("defs")
-
-        q.breakable
-        q.pp(target)
-
-        q.breakable
-        q.pp(operator)
-
-        q.breakable
-        q.pp(name)
-
-        q.breakable
-        q.pp(params)
-
-        q.breakable
-        q.pp(bodystmt)
-
-        q.pp(Comment::List.new(comments))
-      end
-    end
   end
 
   # DoBlock represents passing a block to a method call using the +do+ and +end+
@@ -3960,22 +3296,6 @@ module SyntaxTree
 
     def format(q)
       BlockFormatter.new(self, keyword, "end", bodystmt).format(q)
-    end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("do_block")
-
-        if block_var
-          q.breakable
-          q.pp(block_var)
-        end
-
-        q.breakable
-        q.pp(bodystmt)
-
-        q.pp(Comment::List.new(comments))
-      end
     end
   end
 
@@ -4051,24 +3371,6 @@ module SyntaxTree
     def format(q)
       DotFormatter.new("..", self).format(q)
     end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("dot2")
-
-        if left
-          q.breakable
-          q.pp(left)
-        end
-
-        if right
-          q.breakable
-          q.pp(right)
-        end
-
-        q.pp(Comment::List.new(comments))
-      end
-    end
   end
 
   # Dot3 represents using the ... operator between two expressions. Usually this
@@ -4116,24 +3418,6 @@ module SyntaxTree
 
     def format(q)
       DotFormatter.new("...", self).format(q)
-    end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("dot3")
-
-        if left
-          q.breakable
-          q.pp(left)
-        end
-
-        if right
-          q.breakable
-          q.pp(right)
-        end
-
-        q.pp(Comment::List.new(comments))
-      end
     end
   end
 
@@ -4237,17 +3521,6 @@ module SyntaxTree
       end
     end
 
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("dyna_symbol")
-
-        q.breakable
-        q.group(2, "(", ")") { q.seplist(parts) { |part| q.pp(part) } }
-
-        q.pp(Comment::List.new(comments))
-      end
-    end
-
     private
 
     # Here we determine the quotes to use for a dynamic symbol. It's bound by a
@@ -4342,17 +3615,6 @@ module SyntaxTree
         end
       end
     end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("else")
-
-        q.breakable
-        q.pp(statements)
-
-        q.pp(Comment::List.new(comments))
-      end
-    end
   end
 
   # Elsif represents another clause in an +if+ or +unless+ chain.
@@ -4430,25 +3692,6 @@ module SyntaxTree
         end
       end
     end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("elsif")
-
-        q.breakable
-        q.pp(predicate)
-
-        q.breakable
-        q.pp(statements)
-
-        if consequent
-          q.breakable
-          q.pp(consequent)
-        end
-
-        q.pp(Comment::List.new(comments))
-      end
-    end
   end
 
   # EmbDoc represents a multi-line comment.
@@ -4497,15 +3740,6 @@ module SyntaxTree
       q.trim
       q.text(value)
     end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("embdoc")
-
-        q.breakable
-        q.pp(value)
-      end
-    end
   end
 
   # EmbExprBeg represents the beginning token for using interpolation inside of
@@ -4536,15 +3770,6 @@ module SyntaxTree
     def deconstruct_keys(keys)
       { value: value, location: location }
     end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("embexpr_beg")
-
-        q.breakable
-        q.pp(value)
-      end
-    end
   end
 
   # EmbExprEnd represents the ending token for using interpolation inside of a
@@ -4574,15 +3799,6 @@ module SyntaxTree
     
     def deconstruct_keys(keys)
       { value: value, location: location }
-    end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("embexpr_end")
-
-        q.breakable
-        q.pp(value)
-      end
     end
   end
 
@@ -4615,15 +3831,6 @@ module SyntaxTree
     
     def deconstruct_keys(keys)
       { value: value, location: location }
-    end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("embvar")
-
-        q.breakable
-        q.pp(value)
-      end
     end
   end
 
@@ -4680,17 +3887,6 @@ module SyntaxTree
         end
       end
     end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("ensure")
-
-        q.breakable
-        q.pp(statements)
-
-        q.pp(Comment::List.new(comments))
-      end
-    end
   end
 
   # ExcessedComma represents a trailing comma in a list of block parameters. It
@@ -4732,17 +3928,6 @@ module SyntaxTree
 
     def format(q)
       q.text(value)
-    end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("excessed_comma")
-
-        q.breakable
-        q.pp(value)
-
-        q.pp(Comment::List.new(comments))
-      end
     end
   end
 
@@ -4792,22 +3977,6 @@ module SyntaxTree
     def format(q)
       q.format(value)
       q.format(arguments)
-    end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("fcall")
-
-        q.breakable
-        q.pp(value)
-
-        if arguments
-          q.breakable
-          q.pp(arguments)
-        end
-
-        q.pp(Comment::List.new(comments))
-      end
     end
   end
 
@@ -4864,23 +4033,6 @@ module SyntaxTree
         q.format(name)
       end
     end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("field")
-
-        q.breakable
-        q.pp(parent)
-
-        q.breakable
-        q.pp(operator)
-
-        q.breakable
-        q.pp(name)
-
-        q.pp(Comment::List.new(comments))
-      end
-    end
   end
 
   # FloatLiteral represents a floating point number literal.
@@ -4916,17 +4068,6 @@ module SyntaxTree
 
     def format(q)
       q.text(value)
-    end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("float")
-
-        q.breakable
-        q.pp(value)
-
-        q.pp(Comment::List.new(comments))
-      end
     end
   end
 
@@ -4998,28 +4139,6 @@ module SyntaxTree
         q.format(right)
       end
     end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("fndptn")
-
-        if constant
-          q.breakable
-          q.pp(constant)
-        end
-
-        q.breakable
-        q.pp(left)
-
-        q.breakable
-        q.group(2, "(", ")") { q.seplist(values) { |value| q.pp(value) } }
-
-        q.breakable
-        q.pp(right)
-
-        q.pp(Comment::List.new(comments))
-      end
-    end
   end
 
   # For represents using a +for+ loop.
@@ -5087,23 +4206,6 @@ module SyntaxTree
         q.text("end")
       end
     end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("for")
-
-        q.breakable
-        q.pp(index)
-
-        q.breakable
-        q.pp(collection)
-
-        q.breakable
-        q.pp(statements)
-
-        q.pp(Comment::List.new(comments))
-      end
-    end
   end
 
   # GVar represents a global variable literal.
@@ -5139,17 +4241,6 @@ module SyntaxTree
 
     def format(q)
       q.text(value)
-    end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("gvar")
-
-        q.breakable
-        q.pp(value)
-
-        q.pp(Comment::List.new(comments))
-      end
     end
   end
 
@@ -5198,19 +4289,6 @@ module SyntaxTree
 
     def format_key(q, key)
       (@key_formatter ||= HashKeyFormatter.for(self)).format_key(q, key)
-    end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("hash")
-
-        if assocs.any?
-          q.breakable
-          q.group(2, "(", ")") { q.seplist(assocs) { |assoc| q.pp(assoc) } }
-        end
-
-        q.pp(Comment::List.new(comments))
-      end
     end
 
     private
@@ -5310,17 +4388,6 @@ module SyntaxTree
         end
       end
     end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("heredoc")
-
-        q.breakable
-        q.group(2, "(", ")") { q.seplist(parts) { |part| q.pp(part) } }
-
-        q.pp(Comment::List.new(comments))
-      end
-    end
   end
 
   # HeredocBeg represents the beginning declaration of a heredoc.
@@ -5359,17 +4426,6 @@ module SyntaxTree
 
     def format(q)
       q.text(value)
-    end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("heredoc_beg")
-
-        q.breakable
-        q.pp(value)
-
-        q.pp(Comment::List.new(comments))
-      end
     end
   end
 
@@ -5488,40 +4544,6 @@ module SyntaxTree
         contents.call
       end
     end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("hshptn")
-
-        if constant
-          q.breakable
-          q.pp(constant)
-        end
-
-        if keywords.any?
-          q.breakable
-          q.group(2, "(", ")") do
-            q.seplist(keywords) do |(key, value)|
-              q.group(2, "(", ")") do
-                q.pp(key)
-
-                if value
-                  q.breakable
-                  q.pp(value)
-                end
-              end
-            end
-          end
-        end
-
-        if keyword_rest
-          q.breakable
-          q.pp(keyword_rest)
-        end
-
-        q.pp(Comment::List.new(comments))
-      end
-    end
   end
 
   # The list of nodes that represent patterns inside of pattern matching so that
@@ -5562,17 +4584,6 @@ module SyntaxTree
 
     def format(q)
       q.text(value)
-    end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("ident")
-
-        q.breakable
-        q.pp(value)
-
-        q.pp(Comment::List.new(comments))
-      end
     end
   end
 
@@ -5709,25 +4720,6 @@ module SyntaxTree
     def format(q)
       ConditionalFormatter.new("if", self).format(q)
     end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("if")
-
-        q.breakable
-        q.pp(predicate)
-
-        q.breakable
-        q.pp(statements)
-
-        if consequent
-          q.breakable
-          q.pp(consequent)
-        end
-
-        q.pp(Comment::List.new(comments))
-      end
-    end
   end
 
   # IfOp represents a ternary clause.
@@ -5789,23 +4781,6 @@ module SyntaxTree
       end
 
       q.group { q.if_break { format_break(q) }.if_flat { format_flat(q) } }
-    end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("ifop")
-
-        q.breakable
-        q.pp(predicate)
-
-        q.breakable
-        q.pp(truthy)
-
-        q.breakable
-        q.pp(falsy)
-
-        q.pp(Comment::List.new(comments))
-      end
     end
 
     private
@@ -5932,20 +4907,6 @@ module SyntaxTree
     def format(q)
       ConditionalModFormatter.new("if", self).format(q)
     end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("if_mod")
-
-        q.breakable
-        q.pp(statement)
-
-        q.breakable
-        q.pp(predicate)
-
-        q.pp(Comment::List.new(comments))
-      end
-    end
   end
 
   # Imaginary represents an imaginary number literal.
@@ -5981,17 +4942,6 @@ module SyntaxTree
 
     def format(q)
       q.text(value)
-    end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("imaginary")
-
-        q.breakable
-        q.pp(value)
-
-        q.pp(Comment::List.new(comments))
-      end
     end
   end
 
@@ -6063,25 +5013,6 @@ module SyntaxTree
         end
       end
     end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("in")
-
-        q.breakable
-        q.pp(pattern)
-
-        q.breakable
-        q.pp(statements)
-
-        if consequent
-          q.breakable
-          q.pp(consequent)
-        end
-
-        q.pp(Comment::List.new(comments))
-      end
-    end
   end
 
   # Int represents an integer number literal.
@@ -6126,17 +5057,6 @@ module SyntaxTree
         q.text(value)
       end
     end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("int")
-
-        q.breakable
-        q.pp(value)
-
-        q.pp(Comment::List.new(comments))
-      end
-    end
   end
 
   # IVar represents an instance variable literal.
@@ -6172,17 +5092,6 @@ module SyntaxTree
 
     def format(q)
       q.text(value)
-    end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("ivar")
-
-        q.breakable
-        q.pp(value)
-
-        q.pp(Comment::List.new(comments))
-      end
     end
   end
 
@@ -6229,17 +5138,6 @@ module SyntaxTree
     def format(q)
       q.text(value)
     end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("kw")
-
-        q.breakable
-        q.pp(value)
-
-        q.pp(Comment::List.new(comments))
-      end
-    end
   end
 
   # KwRestParam represents defining a parameter in a method definition that
@@ -6277,17 +5175,6 @@ module SyntaxTree
     def format(q)
       q.text("**")
       q.format(name) if name
-    end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("kwrest_param")
-
-        q.breakable
-        q.pp(name)
-
-        q.pp(Comment::List.new(comments))
-      end
     end
   end
 
@@ -6334,18 +5221,6 @@ module SyntaxTree
     def format(q)
       q.text(value)
     end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("label")
-
-        q.breakable
-        q.text(":")
-        q.text(value[0...-1])
-
-        q.pp(Comment::List.new(comments))
-      end
-    end
   end
 
   # LabelEnd represents the end of a dynamic symbol.
@@ -6376,15 +5251,6 @@ module SyntaxTree
     
     def deconstruct_keys(keys)
       { value: value, location: location }
-    end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("label_end")
-
-        q.breakable
-        q.pp(value)
-      end
     end
   end
 
@@ -6462,20 +5328,6 @@ module SyntaxTree
         end
       end
     end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("lambda")
-
-        q.breakable
-        q.pp(params)
-
-        q.breakable
-        q.pp(statements)
-
-        q.pp(Comment::List.new(comments))
-      end
-    end
   end
 
   # LBrace represents the use of a left brace, i.e., {.
@@ -6508,17 +5360,6 @@ module SyntaxTree
 
     def format(q)
       q.text(value)
-    end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("lbrace")
-
-        q.breakable
-        q.pp(value)
-
-        q.pp(Comment::List.new(comments))
-      end
     end
   end
 
@@ -6553,17 +5394,6 @@ module SyntaxTree
     def format(q)
       q.text(value)
     end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("lbracket")
-
-        q.breakable
-        q.pp(value)
-
-        q.pp(Comment::List.new(comments))
-      end
-    end
   end
 
   # LParen represents the use of a left parenthesis, i.e., (.
@@ -6596,17 +5426,6 @@ module SyntaxTree
 
     def format(q)
       q.text(value)
-    end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("lparen")
-
-        q.breakable
-        q.pp(value)
-
-        q.pp(Comment::List.new(comments))
-      end
     end
   end
 
@@ -6665,20 +5484,6 @@ module SyntaxTree
         end
       end
     end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("massign")
-
-        q.breakable
-        q.pp(target)
-
-        q.breakable
-        q.pp(value)
-
-        q.pp(Comment::List.new(comments))
-      end
-    end
   end
 
   # MethodAddBlock represents a method call with a block argument.
@@ -6719,20 +5524,6 @@ module SyntaxTree
     def format(q)
       q.format(call)
       q.format(block)
-    end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("method_add_block")
-
-        q.breakable
-        q.pp(call)
-
-        q.breakable
-        q.pp(block)
-
-        q.pp(Comment::List.new(comments))
-      end
     end
   end
 
@@ -6778,17 +5569,6 @@ module SyntaxTree
     def format(q)
       q.seplist(parts) { |part| q.format(part) }
       q.text(",") if comma
-    end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("mlhs")
-
-        q.breakable
-        q.group(2, "(", ")") { q.seplist(parts) { |part| q.pp(part) } }
-
-        q.pp(Comment::List.new(comments))
-      end
     end
   end
 
@@ -6838,17 +5618,6 @@ module SyntaxTree
 
           q.breakable("")
         end
-      end
-    end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("mlhs_paren")
-
-        q.breakable
-        q.pp(contents)
-
-        q.pp(Comment::List.new(comments))
       end
     end
   end
@@ -6922,20 +5691,6 @@ module SyntaxTree
         end
       end
     end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("module")
-
-        q.breakable
-        q.pp(constant)
-
-        q.breakable
-        q.pp(bodystmt)
-
-        q.pp(Comment::List.new(comments))
-      end
-    end
   end
 
   # MRHS represents the values that are being assigned on the right-hand side of
@@ -6972,17 +5727,6 @@ module SyntaxTree
 
     def format(q)
       q.seplist(parts) { |part| q.format(part) }
-    end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("mrhs")
-
-        q.breakable
-        q.group(2, "(", ")") { q.seplist(parts) { |part| q.pp(part) } }
-
-        q.pp(Comment::List.new(comments))
-      end
     end
   end
 
@@ -7033,17 +5777,6 @@ module SyntaxTree
     def format(q)
       FlowControlFormatter.new("next", self).format(q)
     end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("next")
-
-        q.breakable
-        q.pp(arguments)
-
-        q.pp(Comment::List.new(comments))
-      end
-    end
   end
 
   # Op represents an operator literal in the source.
@@ -7081,17 +5814,6 @@ module SyntaxTree
     def format(q)
       q.text(value)
     end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("op")
-
-        q.breakable
-        q.pp(value)
-
-        q.pp(Comment::List.new(comments))
-      end
-    end
   end
 
   # OpAssign represents assigning a value to a variable or constant using an
@@ -7122,7 +5844,7 @@ module SyntaxTree
     end
 
     def accept(visitor)
-      visitor.visit_op_assign(self)
+      visitor.visit_opassign(self)
     end
 
     def child_nodes
@@ -7156,23 +5878,6 @@ module SyntaxTree
             q.format(value)
           end
         end
-      end
-    end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("opassign")
-
-        q.breakable
-        q.pp(target)
-
-        q.breakable
-        q.pp(operator)
-
-        q.breakable
-        q.pp(value)
-
-        q.pp(Comment::List.new(comments))
       end
     end
 
@@ -7442,70 +6147,6 @@ module SyntaxTree
         q.nest(0, &contents)
       end
     end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("params")
-
-        if requireds.any?
-          q.breakable
-          q.group(2, "(", ")") { q.seplist(requireds) { |name| q.pp(name) } }
-        end
-
-        if optionals.any?
-          q.breakable
-          q.group(2, "(", ")") do
-            q.seplist(optionals) do |(name, default)|
-              q.pp(name)
-              q.text("=")
-              q.group(2) do
-                q.breakable("")
-                q.pp(default)
-              end
-            end
-          end
-        end
-
-        if rest
-          q.breakable
-          q.pp(rest)
-        end
-
-        if posts.any?
-          q.breakable
-          q.group(2, "(", ")") { q.seplist(posts) { |value| q.pp(value) } }
-        end
-
-        if keywords.any?
-          q.breakable
-          q.group(2, "(", ")") do
-            q.seplist(keywords) do |(name, default)|
-              q.pp(name)
-
-              if default
-                q.text("=")
-                q.group(2) do
-                  q.breakable("")
-                  q.pp(default)
-                end
-              end
-            end
-          end
-        end
-
-        if keyword_rest
-          q.breakable
-          q.pp(keyword_rest)
-        end
-
-        if block
-          q.breakable
-          q.pp(block)
-        end
-
-        q.pp(Comment::List.new(comments))
-      end
-    end
   end
 
   # Paren represents using balanced parentheses in a couple places in a Ruby
@@ -7565,17 +6206,6 @@ module SyntaxTree
         q.text(")")
       end
     end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("paren")
-
-        q.breakable
-        q.pp(contents)
-
-        q.pp(Comment::List.new(comments))
-      end
-    end
   end
 
   # Period represents the use of the +.+ operator. It is usually found in method
@@ -7609,17 +6239,6 @@ module SyntaxTree
 
     def format(q)
       q.text(value)
-    end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("period")
-
-        q.breakable
-        q.pp(value)
-
-        q.pp(Comment::List.new(comments))
-      end
     end
   end
 
@@ -7658,17 +6277,6 @@ module SyntaxTree
       # it ends with the special __END__ syntax. In that case we want to
       # replicate the text exactly so we will just let it be.
       q.breakable(force: true) unless statements.body.last.is_a?(EndContent)
-    end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("program")
-
-        q.breakable
-        q.pp(statements)
-
-        q.pp(Comment::List.new(comments))
-      end
     end
   end
 
@@ -7728,17 +6336,6 @@ module SyntaxTree
           end
         end
         q.breakable("")
-      end
-    end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("qsymbols")
-
-        q.breakable
-        q.group(2, "(", ")") { q.seplist(elements) { |element| q.pp(element) } }
-
-        q.pp(Comment::List.new(comments))
       end
     end
   end
@@ -7841,17 +6438,6 @@ module SyntaxTree
         q.breakable("")
       end
     end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("qwords")
-
-        q.breakable
-        q.group(2, "(", ")") { q.seplist(elements) { |element| q.pp(element) } }
-
-        q.pp(Comment::List.new(comments))
-      end
-    end
   end
 
   # QWordsBeg represents the beginning of a string literal array.
@@ -7882,15 +6468,6 @@ module SyntaxTree
     
     def deconstruct_keys(keys)
       { value: value, location: location }
-    end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("qwords_beg")
-
-        q.breakable
-        q.pp(value)
-      end
     end
   end
 
@@ -7928,17 +6505,6 @@ module SyntaxTree
     def format(q)
       q.text(value)
     end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("rational")
-
-        q.breakable
-        q.pp(value)
-
-        q.pp(Comment::List.new(comments))
-      end
-    end
   end
 
   # RBrace represents the use of a right brace, i.e., +++.
@@ -7964,15 +6530,6 @@ module SyntaxTree
     def deconstruct_keys(keys)
       { value: value, location: location }
     end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("rbrace")
-
-        q.breakable
-        q.pp(value)
-      end
-    end
   end
 
   # RBracket represents the use of a right bracket, i.e., +]+.
@@ -7997,15 +6554,6 @@ module SyntaxTree
     
     def deconstruct_keys(keys)
       { value: value, location: location }
-    end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("rbracket")
-
-        q.breakable
-        q.pp(value)
-      end
     end
   end
 
@@ -8043,17 +6591,6 @@ module SyntaxTree
     def format(q)
       q.text(value)
     end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("redo")
-
-        q.breakable
-        q.pp(value)
-
-        q.pp(Comment::List.new(comments))
-      end
-    end
   end
 
   # RegexpContent represents the body of a regular expression.
@@ -8089,15 +6626,6 @@ module SyntaxTree
     def deconstruct_keys(keys)
       { beginning: beginning, parts: parts, location: location }
     end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("regexp_content")
-
-        q.breakable
-        q.group(2, "(", ")") { q.seplist(parts) { |part| q.pp(part) } }
-      end
-    end
   end
 
   # RegexpBeg represents the start of a regular expression literal.
@@ -8130,15 +6658,6 @@ module SyntaxTree
     
     def deconstruct_keys(keys)
       { value: value, location: location }
-    end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("regexp_beg")
-
-        q.breakable
-        q.pp(value)
-      end
     end
   end
 
@@ -8173,15 +6692,6 @@ module SyntaxTree
     
     def deconstruct_keys(keys)
       { value: value, location: location }
-    end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("regexp_end")
-
-        q.breakable
-        q.pp(value)
-      end
     end
   end
 
@@ -8271,17 +6781,6 @@ module SyntaxTree
       end
     end
 
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("regexp_literal")
-
-        q.breakable
-        q.group(2, "(", ")") { q.seplist(parts) { |part| q.pp(part) } }
-
-        q.pp(Comment::List.new(comments))
-      end
-    end
-
     private
 
     def include?(pattern)
@@ -8357,20 +6856,6 @@ module SyntaxTree
           q.text(" => ")
           q.format(variable)
         end
-      end
-    end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("rescue_ex")
-
-        q.breakable
-        q.pp(exceptions)
-
-        q.breakable
-        q.pp(variable)
-
-        q.pp(Comment::List.new(comments))
       end
     end
   end
@@ -8474,27 +6959,6 @@ module SyntaxTree
         end
       end
     end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("rescue")
-
-        if exception
-          q.breakable
-          q.pp(exception)
-        end
-
-        q.breakable
-        q.pp(statements)
-
-        if consequent
-          q.breakable
-          q.pp(consequent)
-        end
-
-        q.pp(Comment::List.new(comments))
-      end
-    end
   end
 
   # RescueMod represents the use of the modifier form of a +rescue+ clause.
@@ -8552,20 +7016,6 @@ module SyntaxTree
         q.breakable(force: true)
       end
     end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("rescue_mod")
-
-        q.breakable
-        q.pp(statement)
-
-        q.breakable
-        q.pp(value)
-
-        q.pp(Comment::List.new(comments))
-      end
-    end
   end
 
   # RestParam represents defining a parameter in a method definition that
@@ -8604,17 +7054,6 @@ module SyntaxTree
       q.text("*")
       q.format(name) if name
     end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("rest_param")
-
-        q.breakable
-        q.pp(name)
-
-        q.pp(Comment::List.new(comments))
-      end
-    end
   end
 
   # Retry represents the use of the +retry+ keyword.
@@ -8650,17 +7089,6 @@ module SyntaxTree
 
     def format(q)
       q.text(value)
-    end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("retry")
-
-        q.breakable
-        q.pp(value)
-
-        q.pp(Comment::List.new(comments))
-      end
     end
   end
 
@@ -8698,17 +7126,6 @@ module SyntaxTree
     def format(q)
       FlowControlFormatter.new("return", self).format(q)
     end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("return")
-
-        q.breakable
-        q.pp(arguments)
-
-        q.pp(Comment::List.new(comments))
-      end
-    end
   end
 
   # Return0 represents the bare +return+ keyword with no arguments.
@@ -8745,17 +7162,6 @@ module SyntaxTree
     def format(q)
       q.text(value)
     end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("return0")
-
-        q.breakable
-        q.pp(value)
-
-        q.pp(Comment::List.new(comments))
-      end
-    end
   end
 
   # RParen represents the use of a right parenthesis, i.e., +)+.
@@ -8780,15 +7186,6 @@ module SyntaxTree
     
     def deconstruct_keys(keys)
       { value: value, location: location }
-    end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("rparen")
-
-        q.breakable
-        q.pp(value)
-      end
     end
   end
 
@@ -8843,20 +7240,6 @@ module SyntaxTree
           q.format(bodystmt)
         end
         q.breakable(force: true)
-      end
-    end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("sclass")
-
-        q.breakable
-        q.pp(target)
-
-        q.breakable
-        q.pp(bodystmt)
-
-        q.pp(Comment::List.new(comments))
       end
     end
   end
@@ -8991,17 +7374,6 @@ module SyntaxTree
       end
     end
 
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("statements")
-
-        q.breakable
-        q.seplist(body) { |statement| q.pp(statement) }
-
-        q.pp(Comment::List.new(comments))
-      end
-    end
-
     private
 
     # As efficiently as possible, gather up all of the comments that have been
@@ -9064,15 +7436,6 @@ module SyntaxTree
     def deconstruct_keys(keys)
       { parts: parts, location: location }
     end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("string_content")
-
-        q.breakable
-        q.group(2, "(", ")") { q.seplist(parts) { |part| q.pp(part) } }
-      end
-    end
   end
 
   # StringConcat represents concatenating two strings together using a backward
@@ -9122,20 +7485,6 @@ module SyntaxTree
         end
       end
     end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("string_concat")
-
-        q.breakable
-        q.pp(left)
-
-        q.breakable
-        q.pp(right)
-
-        q.pp(Comment::List.new(comments))
-      end
-    end
   end
 
   # StringDVar represents shorthand interpolation of a variable into a string.
@@ -9175,17 +7524,6 @@ module SyntaxTree
       q.text('#{')
       q.format(variable)
       q.text("}")
-    end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("string_dvar")
-
-        q.breakable
-        q.pp(variable)
-
-        q.pp(Comment::List.new(comments))
-      end
     end
   end
 
@@ -9240,17 +7578,6 @@ module SyntaxTree
           q.breakable("")
           q.text("}")
         end
-      end
-    end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("string_embexpr")
-
-        q.breakable
-        q.pp(statements)
-
-        q.pp(Comment::List.new(comments))
       end
     end
   end
@@ -9320,17 +7647,6 @@ module SyntaxTree
         end
       end
     end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("string_literal")
-
-        q.breakable
-        q.group(2, "(", ")") { q.seplist(parts) { |part| q.pp(part) } }
-
-        q.pp(Comment::List.new(comments))
-      end
-    end
   end
 
   # Super represents using the +super+ keyword with arguments. It can optionally
@@ -9377,17 +7693,6 @@ module SyntaxTree
         end
       end
     end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("super")
-
-        q.breakable
-        q.pp(arguments)
-
-        q.pp(Comment::List.new(comments))
-      end
-    end
   end
 
   # SymBeg represents the beginning of a symbol literal.
@@ -9428,15 +7733,6 @@ module SyntaxTree
     def deconstruct_keys(keys)
       { value: value, location: location }
     end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("symbeg")
-
-        q.breakable
-        q.pp(value)
-      end
-    end
   end
 
   # SymbolContent represents symbol contents and is always the child of a
@@ -9466,15 +7762,6 @@ module SyntaxTree
     
     def deconstruct_keys(keys)
       { value: value, location: location }
-    end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("symbol_content")
-
-        q.breakable
-        q.pp(value)
-      end
     end
   end
 
@@ -9514,17 +7801,6 @@ module SyntaxTree
     def format(q)
       q.text(":")
       q.format(value)
-    end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("symbol_literal")
-
-        q.breakable
-        q.pp(value)
-
-        q.pp(Comment::List.new(comments))
-      end
     end
   end
 
@@ -9586,17 +7862,6 @@ module SyntaxTree
         q.breakable("")
       end
     end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("symbols")
-
-        q.breakable
-        q.group(2, "(", ")") { q.seplist(elements) { |element| q.pp(element) } }
-
-        q.pp(Comment::List.new(comments))
-      end
-    end
   end
 
   # SymbolsBeg represents the start of a symbol array literal with
@@ -9629,15 +7894,6 @@ module SyntaxTree
     def deconstruct_keys(keys)
       { value: value, location: location }
     end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("symbols_beg")
-
-        q.breakable
-        q.pp(value)
-      end
-    end
   end
 
   # TLambda represents the beginning of a lambda literal.
@@ -9666,15 +7922,6 @@ module SyntaxTree
     
     def deconstruct_keys(keys)
       { value: value, location: location }
-    end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("tlambda")
-
-        q.breakable
-        q.pp(value)
-      end
     end
   end
 
@@ -9705,15 +7952,6 @@ module SyntaxTree
     
     def deconstruct_keys(keys)
       { value: value, location: location }
-    end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("tlambeg")
-
-        q.breakable
-        q.pp(value)
-      end
     end
   end
 
@@ -9754,17 +7992,6 @@ module SyntaxTree
       q.text("::")
       q.format(constant)
     end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("top_const_field")
-
-        q.breakable
-        q.pp(constant)
-
-        q.pp(Comment::List.new(comments))
-      end
-    end
   end
 
   # TopConstRef is very similar to TopConstField except that it is not involved
@@ -9803,17 +8030,6 @@ module SyntaxTree
       q.text("::")
       q.format(constant)
     end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("top_const_ref")
-
-        q.breakable
-        q.pp(constant)
-
-        q.pp(Comment::List.new(comments))
-      end
-    end
   end
 
   # TStringBeg represents the beginning of a string literal.
@@ -9847,15 +8063,6 @@ module SyntaxTree
     
     def deconstruct_keys(keys)
       { value: value, location: location }
-    end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("tstring_beg")
-
-        q.breakable
-        q.pp(value)
-      end
     end
   end
 
@@ -9901,17 +8108,6 @@ module SyntaxTree
     def format(q)
       q.text(value)
     end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("tstring_content")
-
-        q.breakable
-        q.pp(value)
-
-        q.pp(Comment::List.new(comments))
-      end
-    end
   end
 
   # TStringEnd represents the end of a string literal.
@@ -9945,15 +8141,6 @@ module SyntaxTree
     
     def deconstruct_keys(keys)
       { value: value, location: location }
-    end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("tstring_end")
-
-        q.breakable
-        q.pp(value)
-      end
     end
   end
 
@@ -10002,17 +8189,6 @@ module SyntaxTree
       q.format(statement)
       q.text(")") if parentheses
     end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("not")
-
-        q.breakable
-        q.pp(statement)
-
-        q.pp(Comment::List.new(comments))
-      end
-    end
   end
 
   # Unary represents a unary method being called on an expression, as in +!+ or
@@ -10059,20 +8235,6 @@ module SyntaxTree
     def format(q)
       q.text(operator)
       q.format(statement)
-    end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("unary")
-
-        q.breakable
-        q.pp(operator)
-
-        q.breakable
-        q.pp(statement)
-
-        q.pp(Comment::List.new(comments))
-      end
     end
   end
 
@@ -10139,17 +8301,6 @@ module SyntaxTree
         end
       end
     end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("undef")
-
-        q.breakable
-        q.group(2, "(", ")") { q.seplist(symbols) { |symbol| q.pp(symbol) } }
-
-        q.pp(Comment::List.new(comments))
-      end
-    end
   end
 
   # Unless represents the first clause in an +unless+ chain.
@@ -10207,25 +8358,6 @@ module SyntaxTree
     def format(q)
       ConditionalFormatter.new("unless", self).format(q)
     end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("unless")
-
-        q.breakable
-        q.pp(predicate)
-
-        q.breakable
-        q.pp(statements)
-
-        if consequent
-          q.breakable
-          q.pp(consequent)
-        end
-
-        q.pp(Comment::List.new(comments))
-      end
-    end
   end
 
   # UnlessMod represents the modifier form of an +unless+ statement.
@@ -10270,20 +8402,6 @@ module SyntaxTree
 
     def format(q)
       ConditionalModFormatter.new("unless", self).format(q)
-    end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("unless_mod")
-
-        q.breakable
-        q.pp(statement)
-
-        q.breakable
-        q.pp(predicate)
-
-        q.pp(Comment::List.new(comments))
-      end
     end
   end
 
@@ -10391,20 +8509,6 @@ module SyntaxTree
         LoopFormatter.new("until", self, statements).format(q)
       end
     end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("until")
-
-        q.breakable
-        q.pp(predicate)
-
-        q.breakable
-        q.pp(statements)
-
-        q.pp(Comment::List.new(comments))
-      end
-    end
   end
 
   # UntilMod represents the modifier form of a +until+ loop.
@@ -10470,20 +8574,6 @@ module SyntaxTree
         LoopFormatter.new("until", self, statement).format(q)
       end
     end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("until_mod")
-
-        q.breakable
-        q.pp(statement)
-
-        q.breakable
-        q.pp(predicate)
-
-        q.pp(Comment::List.new(comments))
-      end
-    end
   end
 
   # VarAlias represents when you're using the +alias+ keyword with global
@@ -10530,20 +8620,6 @@ module SyntaxTree
       q.text(" ")
       q.format(right)
     end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("var_alias")
-
-        q.breakable
-        q.pp(left)
-
-        q.breakable
-        q.pp(right)
-
-        q.pp(Comment::List.new(comments))
-      end
-    end
   end
 
   # VarField represents a variable that is being assigned a value. As such, it
@@ -10581,17 +8657,6 @@ module SyntaxTree
 
     def format(q)
       q.format(value) if value
-    end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("var_field")
-
-        q.breakable
-        q.pp(value)
-
-        q.pp(Comment::List.new(comments))
-      end
     end
   end
 
@@ -10632,17 +8697,6 @@ module SyntaxTree
 
     def format(q)
       q.format(value)
-    end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("var_ref")
-
-        q.breakable
-        q.pp(value)
-
-        q.pp(Comment::List.new(comments))
-      end
     end
   end
 
@@ -10688,17 +8742,6 @@ module SyntaxTree
         q.format(value)
       end
     end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("pinned_var_ref")
-
-        q.breakable
-        q.pp(value)
-
-        q.pp(Comment::List.new(comments))
-      end
-    end
   end
 
   # VCall represent any plain named object with Ruby that could be either a
@@ -10736,17 +8779,6 @@ module SyntaxTree
     def format(q)
       q.format(value)
     end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("vcall")
-
-        q.breakable
-        q.pp(value)
-
-        q.pp(Comment::List.new(comments))
-      end
-    end
   end
 
   # VoidStmt represents an empty lexical block of code.
@@ -10780,13 +8812,6 @@ module SyntaxTree
     end
 
     def format(q)
-    end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("void_stmt")
-        q.pp(Comment::List.new(comments))
-      end
     end
   end
 
@@ -10880,25 +8905,6 @@ module SyntaxTree
         end
       end
     end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("when")
-
-        q.breakable
-        q.pp(arguments)
-
-        q.breakable
-        q.pp(statements)
-
-        if consequent
-          q.breakable
-          q.pp(consequent)
-        end
-
-        q.pp(Comment::List.new(comments))
-      end
-    end
   end
 
   # While represents a +while+ loop.
@@ -10954,20 +8960,6 @@ module SyntaxTree
         end
       else
         LoopFormatter.new("while", self, statements).format(q)
-      end
-    end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("while")
-
-        q.breakable
-        q.pp(predicate)
-
-        q.breakable
-        q.pp(statements)
-
-        q.pp(Comment::List.new(comments))
       end
     end
   end
@@ -11035,20 +9027,6 @@ module SyntaxTree
         LoopFormatter.new("while", self, statement).format(q)
       end
     end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("while_mod")
-
-        q.breakable
-        q.pp(statement)
-
-        q.breakable
-        q.pp(predicate)
-
-        q.pp(Comment::List.new(comments))
-      end
-    end
   end
 
   # Word represents an element within a special array literal that accepts
@@ -11092,17 +9070,6 @@ module SyntaxTree
 
     def format(q)
       q.format_each(parts)
-    end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("word")
-
-        q.breakable
-        q.group(2, "(", ")") { q.seplist(parts) { |part| q.pp(part) } }
-
-        q.pp(Comment::List.new(comments))
-      end
     end
   end
 
@@ -11164,17 +9131,6 @@ module SyntaxTree
         q.breakable("")
       end
     end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("words")
-
-        q.breakable
-        q.group(2, "(", ")") { q.seplist(elements) { |element| q.pp(element) } }
-
-        q.pp(Comment::List.new(comments))
-      end
-    end
   end
 
   # WordsBeg represents the beginning of a string literal array with
@@ -11207,15 +9163,6 @@ module SyntaxTree
     def deconstruct_keys(keys)
       { value: value, location: location }
     end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("words_beg")
-
-        q.breakable
-        q.pp(value)
-      end
-    end
   end
 
   # XString represents the contents of an XStringLiteral.
@@ -11244,15 +9191,6 @@ module SyntaxTree
     
     def deconstruct_keys(keys)
       { parts: parts, location: location }
-    end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("xstring")
-
-        q.breakable
-        q.group(2, "(", ")") { q.seplist(parts) { |part| q.pp(part) } }
-      end
     end
   end
 
@@ -11292,17 +9230,6 @@ module SyntaxTree
       q.text("`")
       q.format_each(parts)
       q.text("`")
-    end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("xstring_literal")
-
-        q.breakable
-        q.group(2, "(", ")") { q.seplist(parts) { |part| q.pp(part) } }
-
-        q.pp(Comment::List.new(comments))
-      end
     end
   end
 
@@ -11354,17 +9281,6 @@ module SyntaxTree
         end
       end
     end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("yield")
-
-        q.breakable
-        q.pp(arguments)
-
-        q.pp(Comment::List.new(comments))
-      end
-    end
   end
 
   # Yield0 represents the bare +yield+ keyword with no arguments.
@@ -11401,17 +9317,6 @@ module SyntaxTree
     def format(q)
       q.text(value)
     end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("yield0")
-
-        q.breakable
-        q.pp(value)
-
-        q.pp(Comment::List.new(comments))
-      end
-    end
   end
 
   # ZSuper represents the bare +super+ keyword with no arguments.
@@ -11447,17 +9352,6 @@ module SyntaxTree
 
     def format(q)
       q.text(value)
-    end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("zsuper")
-
-        q.breakable
-        q.pp(value)
-
-        q.pp(Comment::List.new(comments))
-      end
     end
   end
 end
