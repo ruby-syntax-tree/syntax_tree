@@ -122,16 +122,6 @@ module SyntaxTree
       }
     end
 
-    def visit_BEGIN(node)
-      {
-        type: :BEGIN,
-        lbrace: visit(node.lbrace),
-        stmts: visit(node.statements),
-        loc: visit_location(node.location),
-        cmts: visit_all(node.comments)
-      }
-    end
-
     def visit_backref(node)
       visit_token(:backref, node)
     end
@@ -144,6 +134,16 @@ module SyntaxTree
       {
         type: :bare_assoc_hash,
         assocs: visit_all(node.assocs),
+        loc: visit_location(node.location),
+        cmts: visit_all(node.comments)
+      }
+    end
+
+    def visit_BEGIN(node)
+      {
+        type: :BEGIN,
+        lbrace: visit(node.lbrace),
+        stmts: visit(node.statements),
         loc: visit_location(node.location),
         cmts: visit_all(node.comments)
       }
@@ -469,10 +469,6 @@ module SyntaxTree
         value: node.value,
         loc: visit_location(node.location)
       }
-    end
-
-    def visit___end__(node)
-      visit_token(:__end__, node)
     end
 
     def visit_ensure(node)
@@ -1304,6 +1300,10 @@ module SyntaxTree
 
     def visit_zsuper(node)
       visit_token(:zsuper, node)
+    end
+
+    def visit___end__(node)
+      visit_token(:__end__, node)
     end
 
     # Explicitly undefine the default aliased method for each of the visitor
