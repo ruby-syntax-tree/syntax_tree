@@ -124,7 +124,7 @@ module SyntaxTree
         start = Time.now
 
         formatted = handler.format(source)
-        File.write(filepath, formatted)
+        File.write(filepath, formatted) if filepath != :stdin
 
         color = source == formatted ? Color.gray(filepath) : filepath
         delta = ((Time.now - start) * 1000).round
@@ -191,11 +191,6 @@ module SyntaxTree
           return 0
         end
 
-        if arguments.empty?
-          warn(HELP)
-          return 1
-        end
-
         action =
           case name
           when "a", "ast"
@@ -215,6 +210,13 @@ module SyntaxTree
             return 1
           end
 
+        # If we're not reading from stdin and the user didn't supply and
+        # filepaths to be read, then we exit with the usage message.
+        if STDIN.tty? && arguments.empty?
+          warn(HELP)
+          return 1
+        end
+
         # If there are any plugins specified on the command line, then load them
         # by requiring them here. We do this by transforming something like
         #
@@ -224,40 +226,34 @@ module SyntaxTree
         #
         #     require "syntax_tree/haml"
         #
-        if arguments.first.start_with?("--plugins=")
+        if arguments.first&.start_with?("--plugins=")
           plugins = arguments.shift[/^--plugins=(.*)$/, 1]
           plugins.split(",").each { |plugin| require "syntax_tree/#{plugin}" }
         end
 
+        # Track whether or not there are any errors from any of the files that
+        # we take action on so that we can properly clean up and exit.
         errored = false
-        arguments.each do |pattern|
-          Dir.glob(pattern).each do |filepath|
-            next unless File.file?(filepath)
 
-            handler = HANDLERS[File.extname(filepath)]
-            source = handler.read(filepath)
+        each_file(arguments) do |handler, filepath, source|
+          action.run(handler, filepath, source)
+        rescue Parser::ParseError => error
+          warn("Error: #{error.message}")
 
-            begin
-              action.run(handler, filepath, source)
-            rescue Parser::ParseError => error
-              warn("Error: #{error.message}")
-
-              if error.lineno
-                highlight_error(error, source)
-              else
-                warn(error.message)
-                warn(error.backtrace)
-              end
-
-              errored = true
-            rescue Check::UnformattedError, Debug::NonIdempotentFormatError
-              errored = true
-            rescue => error
-              warn(error.message)
-              warn(error.backtrace)
-              errored = true
-            end
+          if error.lineno
+            highlight_error(error, source)
+          else
+            warn(error.message)
+            warn(error.backtrace)
           end
+
+          errored = true
+        rescue Check::UnformattedError, Debug::NonIdempotentFormatError
+          errored = true
+        rescue => error
+          warn(error.message)
+          warn(error.backtrace)
+          errored = true
         end
 
         if errored
@@ -270,6 +266,22 @@ module SyntaxTree
       end
 
       private
+
+      def each_file(arguments)
+        if STDIN.tty?
+          arguments.each do |pattern|
+            Dir.glob(pattern).each do |filepath|
+              next unless File.file?(filepath)
+
+              handler = HANDLERS[File.extname(filepath)]
+              source = handler.read(filepath)
+              yield handler, filepath, source
+            end
+          end
+        else
+          yield HANDLERS[".rb"], :stdin, STDIN.read
+        end
+      end
 
       # Highlights a snippet from a source and parse error.
       def highlight_error(error, source)
