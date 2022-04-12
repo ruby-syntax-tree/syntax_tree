@@ -1009,6 +1009,16 @@ module SyntaxTree
       assert_node(Command, "command", source, at: at)
     end
 
+    def test_multibyte_column_positions
+      source = <<~SOURCE
+        puts "Congrats"
+        puts "🎉 🎉"
+      SOURCE
+
+      at = location(lines: 2..2, chars: 16..26, columns: 0..10)
+      assert_node(Command, "command", source, at: at)
+    end
+
     private
 
     def location(lines: 1..1, chars: 0..0, columns: 0..0)

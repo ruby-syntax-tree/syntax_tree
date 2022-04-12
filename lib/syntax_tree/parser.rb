@@ -166,7 +166,8 @@ module SyntaxTree
     # This represents the current column we're in relative to the beginning of
     # the current line.
     def current_column
-      column - line_counts[lineno - 1].start
+      line = line_counts[lineno - 1]
+      line[column].to_i - line.start
     end
 
     # As we build up a list of tokens, we'll periodically need to go backwards
