@@ -27,20 +27,6 @@ module SyntaxTree
         after[location.start_char + "rescue".length] << " StandardError"
       end
 
-      # Adds the implicitly referenced value (local variable or method call)
-      # that is added into a hash when the value of a key-value pair is omitted.
-      # For example,
-      #
-      #     { value: }
-      #
-      # becomes
-      #
-      #     { value: value }
-      #
-      def missing_hash_value(key, location)
-        after[location.end_char] << " #{key}"
-      end
-
       # Adds implicit parentheses around certain expressions to make it clear
       # which subexpression will be evaluated first. For example,
       #
@@ -69,8 +55,6 @@ module SyntaxTree
           case [parent_node, child_node]
           in _, Rescue[exception: nil, location:]
             inlay_hints.bare_rescue(location)
-          in _, Assoc[key: Label[value: key], value: nil, location:]
-            inlay_hints.missing_hash_value(key[0...-1], location)
           in Assign | Binary | IfOp | OpAssign, IfOp[location:]
             inlay_hints.precedence_parentheses(location)
           in Assign | OpAssign, Binary[location:]
