@@ -163,6 +163,12 @@ module SyntaxTree
       line_counts[lineno - 1][column]
     end
 
+    # This represents the current column we're in relative to the beginning of
+    # the current line.
+    def current_column
+      column - line_counts[lineno - 1].start
+    end
+
     # As we build up a list of tokens, we'll periodically need to go backwards
     # and find the ones that we've already hit in order to determine the
     # location information for nodes that use them. For example, if you have a
@@ -251,10 +257,13 @@ module SyntaxTree
     def on_BEGIN(statements)
       lbrace = find_token(LBrace)
       rbrace = find_token(RBrace)
+      start_char = find_next_statement_start(lbrace.location.end_char)
 
       statements.bind(
-        find_next_statement_start(lbrace.location.end_char),
-        rbrace.location.start_char
+        start_char,
+        start_char - line_counts[lbrace.location.start_line - 1].start,
+        rbrace.location.start_char,
+        rbrace.location.start_column,
       )
 
       keyword = find_token(Kw, "BEGIN")
@@ -271,7 +280,7 @@ module SyntaxTree
     def on_CHAR(value)
       CHAR.new(
         value: value,
-        location: Location.token(line: lineno, char: char_pos, size: value.size)
+        location: Location.token(line: lineno, char: char_pos, column: current_column, size: value.size)
       )
     end
 
@@ -280,10 +289,13 @@ module SyntaxTree
     def on_END(statements)
       lbrace = find_token(LBrace)
       rbrace = find_token(RBrace)
+      start_char = find_next_statement_start(lbrace.location.end_char)
 
       statements.bind(
-        find_next_statement_start(lbrace.location.end_char),
-        rbrace.location.start_char
+        start_char,
+        start_char - line_counts[lbrace.location.start_line - 1].start,
+        rbrace.location.start_char,
+        rbrace.location.start_column
       )
 
       keyword = find_token(Kw, "END")
@@ -301,7 +313,7 @@ module SyntaxTree
       @__end__ =
         EndContent.new(
           value: source[(char_pos + value.length)..-1],
-          location: Location.token(line: lineno, char: char_pos, size: value.size)
+          location: Location.token(line: lineno, char: char_pos, column: current_column, size: value.size)
         )
     end
 
@@ -465,7 +477,7 @@ module SyntaxTree
     # :call-seq:
     #   on_args_new: () -> Args
     def on_args_new
-      Args.new(parts: [], location: Location.fixed(line: lineno, char: char_pos))
+      Args.new(parts: [], location: Location.fixed(line: lineno, column: current_column, char: char_pos))
     end
 
     # :call-seq:
@@ -551,7 +563,7 @@ module SyntaxTree
     def on_backref(value)
       Backref.new(
         value: value,
-        location: Location.token(line: lineno, char: char_pos, size: value.size)
+        location: Location.token(line: lineno, char: char_pos, column: current_column, size: value.size)
       )
     end
 
@@ -561,7 +573,7 @@ module SyntaxTree
       node =
         Backtick.new(
           value: value,
-          location: Location.token(line: lineno, char: char_pos, size: value.size)
+          location: Location.token(line: lineno, char: char_pos, column: current_column, size: value.size)
         )
 
       tokens << node
@@ -592,15 +604,20 @@ module SyntaxTree
         PinnedBegin.new(statement: bodystmt, location: location)
       else
         keyword = find_token(Kw, "begin")
-        end_char =
+        end_location =
           if bodystmt.rescue_clause || bodystmt.ensure_clause ||
               bodystmt.else_clause
-            bodystmt.location.end_char
+            bodystmt.location
           else
-            find_token(Kw, "end").location.end_char
+            find_token(Kw, "end").location
           end
 
-        bodystmt.bind(keyword.location.end_char, end_char)
+        bodystmt.bind(
+          keyword.location.end_char,
+          keyword.location.end_column,
+          end_location.end_char,
+          end_location.end_column
+        )
         location = keyword.location.to(bodystmt.location)
 
         Begin.new(bodystmt: bodystmt, location: location)
@@ -685,7 +702,7 @@ module SyntaxTree
         else_keyword: else_clause && find_token(Kw, "else"),
         else_clause: else_clause,
         ensure_clause: ensure_clause,
-        location: Location.fixed(line: lineno, char: char_pos)
+        location: Location.fixed(line: lineno, char: char_pos, column: current_column)
       )
     end
 
@@ -697,18 +714,24 @@ module SyntaxTree
     def on_brace_block(block_var, statements)
       lbrace = find_token(LBrace)
       rbrace = find_token(RBrace)
+      location = (block_var || lbrace).location
+      start_char = find_next_statement_start(location.end_char)
 
       statements.bind(
-        find_next_statement_start((block_var || lbrace).location.end_char),
-        rbrace.location.start_char
+        start_char,
+        start_char - line_counts[location.start_line - 1].start,
+        rbrace.location.start_char,
+        rbrace.location.start_column
       )
 
       location =
         Location.new(
           start_line: lbrace.location.start_line,
           start_char: lbrace.location.start_char,
+          start_column: lbrace.location.start_column,
           end_line: [rbrace.location.end_line, statements.location.end_line].max,
-          end_char: rbrace.location.end_char
+          end_char: rbrace.location.end_char,
+          end_column: rbrace.location.end_column
         )
 
       BraceBlock.new(
@@ -782,10 +805,14 @@ module SyntaxTree
     def on_class(constant, superclass, bodystmt)
       beginning = find_token(Kw, "class")
       ending = find_token(Kw, "end")
+      location = (superclass || constant).location
+      start_char = find_next_statement_start(location.end_char)
 
       bodystmt.bind(
-        find_next_statement_start((superclass || constant).location.end_char),
-        ending.location.start_char
+        start_char,
+        start_char - line_counts[location.start_line - 1].start,
+        ending.location.start_char,
+        ending.location.start_column
       )
 
       ClassDeclaration.new(
@@ -802,7 +829,7 @@ module SyntaxTree
       node =
         Comma.new(
           value: value,
-          location: Location.token(line: lineno, char: char_pos, size: value.size)
+          location: Location.token(line: lineno, char: char_pos, column: current_column, size: value.size)
         )
 
       tokens << node
@@ -847,7 +874,7 @@ module SyntaxTree
           value: value.chomp,
           inline: value.strip != lines[line - 1].strip,
           location:
-            Location.token(line: line, char: char_pos, size: value.size - 1)
+            Location.token(line: line, char: char_pos, column: current_column, size: value.size - 1)
         )
 
       @comments << comment
@@ -859,7 +886,7 @@ module SyntaxTree
     def on_const(value)
       Const.new(
         value: value,
-        location: Location.token(line: lineno, char: char_pos, size: value.size)
+        location: Location.token(line: lineno, char: char_pos, column: current_column, size: value.size)
       )
     end
 
@@ -894,7 +921,7 @@ module SyntaxTree
     def on_cvar(value)
       CVar.new(
         value: value,
-        location: Location.token(line: lineno, char: char_pos, size: value.size)
+        location: Location.token(line: lineno, char: char_pos, column: current_column, size: value.size)
       )
     end
 
@@ -918,12 +945,15 @@ module SyntaxTree
       # location information
       if params.is_a?(Params) && params.empty?
         end_char = name.location.end_char
+        end_column = name.location.end_column
         location =
           Location.new(
             start_line: params.location.start_line,
             start_char: end_char,
+            start_column: end_column,
             end_line: params.location.end_line,
-            end_char: end_char
+            end_char: end_char,
+            end_column: end_column
           )
 
         params = Params.new(location: location)
@@ -933,9 +963,13 @@ module SyntaxTree
 
       if ending
         tokens.delete(ending)
+        start_char = find_next_statement_start(params.location.end_char)
+
         bodystmt.bind(
-          find_next_statement_start(params.location.end_char),
-          ending.location.start_char
+          start_char,
+          start_char - line_counts[params.location.start_line - 1].start,
+          ending.location.start_char,
+          ending.location.start_column
         )
 
         Def.new(
@@ -993,12 +1027,15 @@ module SyntaxTree
       # location information
       if params.is_a?(Params) && params.empty?
         end_char = name.location.end_char
+        end_column = name.location.end_column
         location =
           Location.new(
             start_line: params.location.start_line,
             start_char: end_char,
+            start_column: end_column,
             end_line: params.location.end_line,
-            end_char: end_char
+            end_char: end_char,
+            end_column: end_column
           )
 
         params = Params.new(location: location)
@@ -1009,9 +1046,13 @@ module SyntaxTree
 
       if ending
         tokens.delete(ending)
+        start_char = find_next_statement_start(params.location.end_char)
+
         bodystmt.bind(
-          find_next_statement_start(params.location.end_char),
-          ending.location.start_char
+          start_char,
+          start_char - line_counts[params.location.start_line - 1].start,
+          ending.location.start_char,
+          ending.location.start_column
         )
 
         Defs.new(
@@ -1043,10 +1084,14 @@ module SyntaxTree
     def on_do_block(block_var, bodystmt)
       beginning = find_token(Kw, "do")
       ending = find_token(Kw, "end")
+      location = (block_var || beginning).location
+      start_char = find_next_statement_start(location.end_char)
 
       bodystmt.bind(
-        find_next_statement_start((block_var || beginning).location.end_char),
-        ending.location.start_char
+        start_char,
+        start_char - line_counts[location.start_line - 1].start,
+        ending.location.start_char,
+        ending.location.start_column
       )
 
       DoBlock.new(
@@ -1128,10 +1173,13 @@ module SyntaxTree
 
       node = tokens[index]
       ending = node.value == "end" ? tokens.delete_at(index) : node
+      start_char = find_next_statement_start(keyword.location.end_char)
 
       statements.bind(
-        find_next_statement_start(keyword.location.end_char),
-        ending.location.start_char
+        start_char,
+        start_char - line_counts[keyword.location.start_line - 1].start,
+        ending.location.start_char,
+        ending.location.start_column
       )
 
       Else.new(
@@ -1151,7 +1199,12 @@ module SyntaxTree
       beginning = find_token(Kw, "elsif")
       ending = consequent || find_token(Kw, "end")
 
-      statements.bind(predicate.location.end_char, ending.location.start_char)
+      statements.bind(
+        predicate.location.end_char,
+        predicate.location.end_column,
+        ending.location.start_char,
+        ending.location.start_column
+      )
 
       Elsif.new(
         predicate: predicate,
@@ -1174,7 +1227,7 @@ module SyntaxTree
       @embdoc =
         EmbDoc.new(
           value: value,
-          location: Location.fixed(line: lineno, char: char_pos)
+          location: Location.fixed(line: lineno, column: current_column, char: char_pos)
         )
     end
 
@@ -1189,8 +1242,10 @@ module SyntaxTree
             Location.new(
               start_line: location.start_line,
               start_char: location.start_char,
+              start_column: location.start_column,
               end_line: lineno,
-              end_char: char_pos + value.length - 1
+              end_char: char_pos + value.length - 1,
+              end_column: current_column + value.length - 1
             )
         )
 
@@ -1206,7 +1261,7 @@ module SyntaxTree
       node =
         EmbExprBeg.new(
           value: value,
-          location: Location.token(line: lineno, char: char_pos, size: value.size)
+          location: Location.token(line: lineno, char: char_pos, column: current_column, size: value.size)
         )
 
       tokens << node
@@ -1219,7 +1274,7 @@ module SyntaxTree
       node =
         EmbExprEnd.new(
           value: value,
-          location: Location.token(line: lineno, char: char_pos, size: value.size)
+          location: Location.token(line: lineno, char: char_pos, column: current_column, size: value.size)
         )
 
       tokens << node
@@ -1232,7 +1287,7 @@ module SyntaxTree
       node =
         EmbVar.new(
           value: value,
-          location: Location.token(line: lineno, char: char_pos, size: value.size)
+          location: Location.token(line: lineno, char: char_pos, column: current_column, size: value.size)
         )
 
       tokens << node
@@ -1247,9 +1302,12 @@ module SyntaxTree
       # We don't want to consume the :@kw event, because that would break
       # def..ensure..end chains.
       ending = find_token(Kw, "end", consume: false)
+      start_char = find_next_statement_start(keyword.location.end_char)
       statements.bind(
-        find_next_statement_start(keyword.location.end_char),
-        ending.location.start_char
+        start_char,
+        start_char - line_counts[keyword.location.start_line - 1].start,
+        ending.location.start_char,
+        ending.location.start_column
       )
 
       Ensure.new(
@@ -1296,7 +1354,7 @@ module SyntaxTree
     def on_float(value)
       FloatLiteral.new(
         value: value,
-        location: Location.token(line: lineno, char: char_pos, size: value.size)
+        location: Location.token(line: lineno, char: char_pos, column: current_column, size: value.size)
       )
     end
 
@@ -1341,7 +1399,9 @@ module SyntaxTree
 
       statements.bind(
         (keyword || collection).location.end_char,
-        ending.location.start_char
+        (keyword || collection).location.end_column,
+        ending.location.start_char,
+        ending.location.start_column
       )
 
       if index.is_a?(MLHS)
@@ -1362,7 +1422,7 @@ module SyntaxTree
     def on_gvar(value)
       GVar.new(
         value: value,
-        location: Location.token(line: lineno, char: char_pos, size: value.size)
+        location: Location.token(line: lineno, char: char_pos, column: current_column, size: value.size)
       )
     end
 
@@ -1383,7 +1443,7 @@ module SyntaxTree
     #   on_heredoc_beg: (String value) -> HeredocBeg
     def on_heredoc_beg(value)
       location =
-        Location.token(line: lineno, char: char_pos, size: value.size + 1)
+        Location.token(line: lineno, char: char_pos, column: current_column, size: value.size + 1)
 
       # Here we're going to artificially create an extra node type so that if
       # there are comments after the declaration of a heredoc, they get printed.
@@ -1419,8 +1479,10 @@ module SyntaxTree
           Location.new(
             start_line: heredoc.location.start_line,
             start_char: heredoc.location.start_char,
+            start_column: heredoc.location.start_column,
             end_line: lineno,
-            end_char: char_pos
+            end_char: char_pos,
+            end_column: current_column,
           )
       )
     end
@@ -1447,7 +1509,7 @@ module SyntaxTree
     def on_ident(value)
       Ident.new(
         value: value,
-        location: Location.token(line: lineno, char: char_pos, size: value.size)
+        location: Location.token(line: lineno, char: char_pos, column: current_column, size: value.size)
       )
     end
 
@@ -1461,7 +1523,12 @@ module SyntaxTree
       beginning = find_token(Kw, "if")
       ending = consequent || find_token(Kw, "end")
 
-      statements.bind(predicate.location.end_char, ending.location.start_char)
+      statements.bind(
+        predicate.location.end_char,
+        predicate.location.end_column,
+        ending.location.start_char,
+        ending.location.start_column
+      )
 
       If.new(
         predicate: predicate,
@@ -1507,7 +1574,7 @@ module SyntaxTree
     def on_imaginary(value)
       Imaginary.new(
         value: value,
-        location: Location.token(line: lineno, char: char_pos, size: value.size)
+        location: Location.token(line: lineno, char: char_pos, column: current_column, size: value.size)
       )
     end
 
@@ -1531,9 +1598,12 @@ module SyntaxTree
         statements_start = token
       end
 
+      start_char = find_next_statement_start(statements_start.location.end_char)
       statements.bind(
-        find_next_statement_start(statements_start.location.end_char),
-        ending.location.start_char
+        start_char,
+        start_char - line_counts[statements_start.location.start_line - 1].start,
+        ending.location.start_char,
+        ending.location.start_column
       )
 
       In.new(
@@ -1549,7 +1619,7 @@ module SyntaxTree
     def on_int(value)
       Int.new(
         value: value,
-        location: Location.token(line: lineno, char: char_pos, size: value.size)
+        location: Location.token(line: lineno, char: char_pos, column: current_column, size: value.size)
       )
     end
 
@@ -1558,7 +1628,7 @@ module SyntaxTree
     def on_ivar(value)
       IVar.new(
         value: value,
-        location: Location.token(line: lineno, char: char_pos, size: value.size)
+        location: Location.token(line: lineno, char: char_pos, column: current_column, size: value.size)
       )
     end
 
@@ -1568,7 +1638,7 @@ module SyntaxTree
       node =
         Kw.new(
           value: value,
-          location: Location.token(line: lineno, char: char_pos, size: value.size)
+          location: Location.token(line: lineno, char: char_pos, column: current_column, size: value.size)
         )
 
       tokens << node
@@ -1589,7 +1659,7 @@ module SyntaxTree
     def on_label(value)
       Label.new(
         value: value,
-        location: Location.token(line: lineno, char: char_pos, size: value.size)
+        location: Location.token(line: lineno, char: char_pos, column: current_column, size: value.size)
       )
     end
 
@@ -1599,7 +1669,7 @@ module SyntaxTree
       node =
         LabelEnd.new(
           value: value,
-          location: Location.token(line: lineno, char: char_pos, size: value.size)
+          location: Location.token(line: lineno, char: char_pos, column: current_column, size: value.size)
         )
 
       tokens << node
@@ -1625,7 +1695,12 @@ module SyntaxTree
         closing = find_token(Kw, "end")
       end
 
-      statements.bind(opening.location.end_char, closing.location.start_char)
+      statements.bind(
+        opening.location.end_char,
+        opening.location.end_column,
+        closing.location.start_char,
+        closing.location.start_column
+      )
 
       Lambda.new(
         params: params,
@@ -1640,7 +1715,7 @@ module SyntaxTree
       node =
         LBrace.new(
           value: value,
-          location: Location.token(line: lineno, char: char_pos, size: value.size)
+          location: Location.token(line: lineno, char: char_pos, column: current_column, size: value.size)
         )
 
       tokens << node
@@ -1653,7 +1728,7 @@ module SyntaxTree
       node =
         LBracket.new(
           value: value,
-          location: Location.token(line: lineno, char: char_pos, size: value.size)
+          location: Location.token(line: lineno, char: char_pos, column: current_column, size: value.size)
         )
 
       tokens << node
@@ -1666,7 +1741,7 @@ module SyntaxTree
       node =
         LParen.new(
           value: value,
-          location: Location.token(line: lineno, char: char_pos, size: value.size)
+          location: Location.token(line: lineno, char: char_pos, column: current_column, size: value.size)
         )
 
       tokens << node
@@ -1765,7 +1840,7 @@ module SyntaxTree
     # :call-seq:
     #   on_mlhs_new: () -> MLHS
     def on_mlhs_new
-      MLHS.new(parts: [], location: Location.fixed(line: lineno, char: char_pos))
+      MLHS.new(parts: [], location: Location.fixed(line: lineno, char: char_pos, column: current_column))
     end
 
     # :call-seq:
@@ -1791,10 +1866,13 @@ module SyntaxTree
     def on_module(constant, bodystmt)
       beginning = find_token(Kw, "module")
       ending = find_token(Kw, "end")
+      start_char = find_next_statement_start(constant.location.end_char)
 
       bodystmt.bind(
-        find_next_statement_start(constant.location.end_char),
-        ending.location.start_char
+        start_char,
+        start_char - line_counts[constant.location.start_line - 1].start,
+        ending.location.start_char,
+        ending.location.start_column
       )
 
       ModuleDeclaration.new(
@@ -1807,7 +1885,7 @@ module SyntaxTree
     # :call-seq:
     #   on_mrhs_new: () -> MRHS
     def on_mrhs_new
-      MRHS.new(parts: [], location: Location.fixed(line: lineno, char: char_pos))
+      MRHS.new(parts: [], location: Location.fixed(line: lineno, char: char_pos, column: current_column))
     end
 
     # :call-seq:
@@ -1876,7 +1954,7 @@ module SyntaxTree
       node =
         Op.new(
           value: value,
-          location: Location.token(line: lineno, char: char_pos, size: value.size)
+          location: Location.token(line: lineno, char: char_pos, column: current_column, size: value.size)
         )
 
       tokens << node
@@ -1935,7 +2013,7 @@ module SyntaxTree
         if parts.any?
           parts[0].location.to(parts[-1].location)
         else
-          Location.fixed(line: lineno, char: char_pos)
+          Location.fixed(line: lineno, char: char_pos, column: current_column)
         end
 
       Params.new(
@@ -1958,12 +2036,15 @@ module SyntaxTree
 
       if contents && contents.is_a?(Params)
         location = contents.location
+        start_char = find_next_statement_start(lparen.location.end_char)
         location =
           Location.new(
             start_line: location.start_line,
-            start_char: find_next_statement_start(lparen.location.end_char),
+            start_char: start_char,
+            start_column: start_char - line_counts[lparen.location.start_line - 1].start,
             end_line: location.end_line,
-            end_char: rparen.location.start_char
+            end_char: rparen.location.start_char,
+            end_column: rparen.location.start_column
           )
 
         contents =
@@ -2001,23 +2082,26 @@ module SyntaxTree
     def on_period(value)
       Period.new(
         value: value,
-        location: Location.token(line: lineno, char: char_pos, size: value.size)
+        location: Location.token(line: lineno, char: char_pos, column: current_column, size: value.size)
       )
     end
 
     # :call-seq:
     #   on_program: (Statements statements) -> Program
     def on_program(statements)
+      last_column = source.length - line_counts[lines.length - 1].start
       location =
         Location.new(
           start_line: 1,
           start_char: 0,
+          start_column: 0,
           end_line: lines.length,
-          end_char: source.length
+          end_char: source.length,
+          end_column: last_column
         )
 
       statements.body << @__end__ if @__end__
-      statements.bind(0, source.length)
+      statements.bind(0, 0, source.length, last_column)
 
       program = Program.new(statements: statements, location: location)
       attach_comments(program, @comments)
@@ -2130,7 +2214,7 @@ module SyntaxTree
       node =
         QSymbolsBeg.new(
           value: value,
-          location: Location.token(line: lineno, char: char_pos, size: value.size)
+          location: Location.token(line: lineno, char: char_pos, column: current_column, size: value.size)
         )
 
       tokens << node
@@ -2165,7 +2249,7 @@ module SyntaxTree
       node =
         QWordsBeg.new(
           value: value,
-          location: Location.token(line: lineno, char: char_pos, size: value.size)
+          location: Location.token(line: lineno, char: char_pos, column: current_column, size: value.size)
         )
 
       tokens << node
@@ -2185,7 +2269,7 @@ module SyntaxTree
     def on_rational(value)
       RationalLiteral.new(
         value: value,
-        location: Location.token(line: lineno, char: char_pos, size: value.size)
+        location: Location.token(line: lineno, char: char_pos, column: current_column, size: value.size)
       )
     end
 
@@ -2195,7 +2279,7 @@ module SyntaxTree
       node =
         RBrace.new(
           value: value,
-          location: Location.token(line: lineno, char: char_pos, size: value.size)
+          location: Location.token(line: lineno, char: char_pos, column: current_column, size: value.size)
         )
 
       tokens << node
@@ -2208,7 +2292,7 @@ module SyntaxTree
       node =
         RBracket.new(
           value: value,
-          location: Location.token(line: lineno, char: char_pos, size: value.size)
+          location: Location.token(line: lineno, char: char_pos, column: current_column, size: value.size)
         )
 
       tokens << node
@@ -2242,7 +2326,7 @@ module SyntaxTree
       node =
         RegexpBeg.new(
           value: value,
-          location: Location.token(line: lineno, char: char_pos, size: value.size)
+          location: Location.token(line: lineno, char: char_pos, column: current_column, size: value.size)
         )
 
       tokens << node
@@ -2254,7 +2338,7 @@ module SyntaxTree
     def on_regexp_end(value)
       RegexpEnd.new(
         value: value,
-        location: Location.token(line: lineno, char: char_pos, size: value.size)
+        location: Location.token(line: lineno, char: char_pos, column: current_column, size: value.size)
       )
     end
 
@@ -2296,9 +2380,12 @@ module SyntaxTree
       exceptions = exceptions[0] if exceptions.is_a?(Array)
 
       last_node = variable || exceptions || keyword
+      start_char = find_next_statement_start(last_node.location.end_char)
       statements.bind(
-        find_next_statement_start(last_node.location.end_char),
-        char_pos
+        start_char,
+        start_char - line_counts[last_node.location.start_line - 1].start,
+        char_pos,
+        current_column
       )
 
       # We add an additional inner node here that ripper doesn't provide so that
@@ -2313,8 +2400,10 @@ module SyntaxTree
               Location.new(
                 start_line: keyword.location.start_line,
                 start_char: keyword.location.end_char + 1,
+                start_column: keyword.location.end_column + 1,
                 end_line: last_node.location.end_line,
-                end_char: last_node.location.end_char
+                end_char: last_node.location.end_char,
+                end_column: last_node.location.end_column
               )
           )
         end
@@ -2328,8 +2417,10 @@ module SyntaxTree
           Location.new(
             start_line: keyword.location.start_line,
             start_char: keyword.location.start_char,
+            start_column: keyword.location.start_column,
             end_line: lineno,
-            end_char: char_pos
+            end_char: char_pos,
+            end_column: current_column
           )
       )
     end
@@ -2388,7 +2479,7 @@ module SyntaxTree
       node =
         RParen.new(
           value: value,
-          location: Location.token(line: lineno, char: char_pos, size: value.size)
+          location: Location.token(line: lineno, char: char_pos, column: current_column, size: value.size)
         )
 
       tokens << node
@@ -2400,10 +2491,13 @@ module SyntaxTree
     def on_sclass(target, bodystmt)
       beginning = find_token(Kw, "class")
       ending = find_token(Kw, "end")
+      start_char = find_next_statement_start(target.location.end_char)
 
       bodystmt.bind(
-        find_next_statement_start(target.location.end_char),
-        ending.location.start_char
+        start_char,
+        start_char - line_counts[target.location.start_line - 1].start,
+        ending.location.start_char,
+        ending.location.start_column
       )
 
       SClass.new(
@@ -2442,7 +2536,7 @@ module SyntaxTree
       Statements.new(
         self,
         body: [],
-        location: Location.fixed(line: lineno, char: char_pos)
+        location: Location.fixed(line: lineno, char: char_pos, column: current_column)
       )
     end
 
@@ -2476,7 +2570,7 @@ module SyntaxTree
     def on_string_content
       StringContent.new(
         parts: [],
-        location: Location.fixed(line: lineno, char: char_pos)
+        location: Location.fixed(line: lineno, char: char_pos, column: current_column)
       )
     end
 
@@ -2499,18 +2593,22 @@ module SyntaxTree
 
       statements.bind(
         embexpr_beg.location.end_char,
-        embexpr_end.location.start_char
+        embexpr_beg.location.end_column,
+        embexpr_end.location.start_char,
+        embexpr_end.location.start_column
       )
 
       location =
         Location.new(
           start_line: embexpr_beg.location.start_line,
           start_char: embexpr_beg.location.start_char,
+          start_column: embexpr_beg.location.start_column,
           end_line: [
             embexpr_end.location.end_line,
             statements.location.end_line
           ].max,
-          end_char: embexpr_end.location.end_char
+          end_char: embexpr_end.location.end_char,
+          end_column: embexpr_end.location.end_column
         )
 
       StringEmbExpr.new(statements: statements, location: location)
@@ -2538,11 +2636,13 @@ module SyntaxTree
           Location.new(
             start_line: tstring_beg.location.start_line,
             start_char: tstring_beg.location.start_char,
+            start_column: tstring_beg.location.start_column,
             end_line: [
               tstring_end.location.end_line,
               string.location.end_line
             ].max,
-            end_char: tstring_end.location.end_char
+            end_char: tstring_end.location.end_char,
+            end_column: tstring_end.location.end_column
           )
 
         StringLiteral.new(
@@ -2571,7 +2671,7 @@ module SyntaxTree
       node =
         SymBeg.new(
           value: value,
-          location: Location.token(line: lineno, char: char_pos, size: value.size)
+          location: Location.token(line: lineno, char: char_pos, column: current_column, size: value.size)
         )
 
       tokens << node
@@ -2625,7 +2725,7 @@ module SyntaxTree
       node =
         SymbolsBeg.new(
           value: value,
-          location: Location.token(line: lineno, char: char_pos, size: value.size)
+          location: Location.token(line: lineno, char: char_pos, column: current_column, size: value.size)
         )
 
       tokens << node
@@ -2650,7 +2750,7 @@ module SyntaxTree
       node =
         TLambda.new(
           value: value,
-          location: Location.token(line: lineno, char: char_pos, size: value.size)
+          location: Location.token(line: lineno, char: char_pos, column: current_column, size: value.size)
         )
 
       tokens << node
@@ -2663,7 +2763,7 @@ module SyntaxTree
       node =
         TLamBeg.new(
           value: value,
-          location: Location.token(line: lineno, char: char_pos, size: value.size)
+          location: Location.token(line: lineno, char: char_pos, column: current_column, size: value.size)
         )
 
       tokens << node
@@ -2698,7 +2798,7 @@ module SyntaxTree
       node =
         TStringBeg.new(
           value: value,
-          location: Location.token(line: lineno, char: char_pos, size: value.size)
+          location: Location.token(line: lineno, char: char_pos, column: current_column, size: value.size)
         )
 
       tokens << node
@@ -2710,7 +2810,7 @@ module SyntaxTree
     def on_tstring_content(value)
       TStringContent.new(
         value: value,
-        location: Location.token(line: lineno, char: char_pos, size: value.size)
+        location: Location.token(line: lineno, char: char_pos, column: current_column, size: value.size)
       )
     end
 
@@ -2720,7 +2820,7 @@ module SyntaxTree
       node =
         TStringEnd.new(
           value: value,
-          location: Location.token(line: lineno, char: char_pos, size: value.size)
+          location: Location.token(line: lineno, char: char_pos, column: current_column, size: value.size)
         )
 
       tokens << node
@@ -2794,7 +2894,12 @@ module SyntaxTree
       beginning = find_token(Kw, "unless")
       ending = consequent || find_token(Kw, "end")
 
-      statements.bind(predicate.location.end_char, ending.location.start_char)
+      statements.bind(
+        predicate.location.end_char,
+        predicate.location.end_column,
+        ending.location.start_char,
+        ending.location.start_column
+      )
 
       Unless.new(
         predicate: predicate,
@@ -2831,7 +2936,12 @@ module SyntaxTree
       end
 
       # Update the Statements location information
-      statements.bind(predicate.location.end_char, ending.location.start_char)
+      statements.bind(
+        predicate.location.end_char,
+        predicate.location.end_column,
+        ending.location.start_char,
+        ending.location.start_column
+      )
 
       Until.new(
         predicate: predicate,
@@ -2875,7 +2985,7 @@ module SyntaxTree
         else
           # You can hit this pattern if you're assigning to a splat using
           # pattern matching syntax in Ruby 2.7+
-          Location.fixed(line: lineno, char: char_pos)
+          Location.fixed(line: lineno, char: char_pos, column: current_column)
         end
 
       VarField.new(value: value, location: location)
@@ -2903,7 +3013,7 @@ module SyntaxTree
     # :call-seq:
     #   on_void_stmt: () -> VoidStmt
     def on_void_stmt
-      VoidStmt.new(location: Location.fixed(line: lineno, char: char_pos))
+      VoidStmt.new(location: Location.fixed(line: lineno, char: char_pos, column: current_column))
     end
 
     # :call-seq:
@@ -2922,9 +3032,13 @@ module SyntaxTree
         statements_start = token
       end
 
+      start_char = find_next_statement_start(statements_start.location.end_char)
+
       statements.bind(
-        find_next_statement_start(statements_start.location.end_char),
-        ending.location.start_char
+        start_char,
+        start_char - line_counts[statements_start.location.start_line - 1].start,
+        ending.location.start_char,
+        ending.location.start_column
       )
 
       When.new(
@@ -2950,7 +3064,12 @@ module SyntaxTree
       end
 
       # Update the Statements location information
-      statements.bind(predicate.location.end_char, ending.location.start_char)
+      statements.bind(
+        predicate.location.end_char,
+        predicate.location.end_column,
+        ending.location.start_char,
+        ending.location.start_column
+      )
 
       While.new(
         predicate: predicate,
@@ -2986,7 +3105,7 @@ module SyntaxTree
     # :call-seq:
     #   on_word_new: () -> Word
     def on_word_new
-      Word.new(parts: [], location: Location.fixed(line: lineno, char: char_pos))
+      Word.new(parts: [], location: Location.fixed(line: lineno, char: char_pos, column: current_column))
     end
 
     # :call-seq:
@@ -3005,7 +3124,7 @@ module SyntaxTree
       node =
         WordsBeg.new(
           value: value,
-          location: Location.token(line: lineno, char: char_pos, size: value.size)
+          location: Location.token(line: lineno, char: char_pos, column: current_column, size: value.size)
         )
 
       tokens << node

@@ -999,14 +999,26 @@ module SyntaxTree
       assert_node(ZSuper, "zsuper", "super")
     end
 
+    def test_column_positions
+      source = <<~SOURCE
+        puts 'Hello'
+        puts 'Goodbye'
+      SOURCE
+
+      at = location(lines: 2..2, chars: 13..27, columns: 0..14)
+      assert_node(Command, "command", source, at: at)
+    end
+
     private
 
-    def location(lines: 1..1, chars: 0..0)
+    def location(lines: 1..1, chars: 0..0, columns: 0..0)
       Location.new(
         start_line: lines.begin,
         start_char: chars.begin,
+        start_column: columns.begin,
         end_line: lines.end,
-        end_char: chars.end
+        end_char: chars.end,
+        end_column: columns.end
       )
     end
 
@@ -1014,7 +1026,8 @@ module SyntaxTree
       at ||=
         location(
           lines: 1..[1, source.count("\n")].max,
-          chars: 0..source.chomp.size
+          chars: 0..source.chomp.size,
+          columns: 0..source.chomp.size
         )
 
       # Parse the example, get the outputted parse tree, and assert that it was
