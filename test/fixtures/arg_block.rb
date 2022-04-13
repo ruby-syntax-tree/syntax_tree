@@ -18,3 +18,5 @@ foo(
 def foo(&)
   bar(&)
 end
+% # https://github.com/ruby-syntax-tree/syntax_tree/issues/45
+foo.instance_exec(&T.must(block))
