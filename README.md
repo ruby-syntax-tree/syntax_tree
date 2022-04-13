@@ -33,6 +33,7 @@ It is built with only standard library dependencies. It additionally ships with 
   - [textDocument/formatting](#textdocumentformatting)
   - [textDocument/inlayHints](#textdocumentinlayhints)
   - [syntaxTree/visualizing](#syntaxtreevisualizing)
+- [Plugins](#plugins)
 - [Contributing](#contributing)
 - [License](#license)
 
@@ -306,6 +307,26 @@ Implicity, the `2 * 3` is going to be executed first because the `*` operator ha
 ### syntaxTree/visualizing
 
 The language server additionally includes this custom request to return a textual representation of the syntax tree underlying the source code of a file. Language server clients can use this to (for example) open an additional tab with this information displayed.
+
+## Plugins
+
+You can register additional languages that can flow through the same CLI with Syntax Tree's plugin system. To register a new language, call:
+
+```ruby
+SyntaxTree.register_handler(".mylang", MyLanguage)
+```
+
+In this case, whenever the CLI encounters a filepath that ends with the given extension, it will invoke methods on `MyLanguage` instead of `SyntaxTree` itself. To make sure your object conforms to each of the necessary APIs, it should implement:
+
+* `MyLanguage.read(filepath)` - usually this is just an alias to `File.read(filepath)`, but if you need anything else that hook is here.
+* `MyLanguage.parse(source)` - this should return the syntax tree corresponding to the given source. Those objects should implement the `pretty_print` interface.
+* `MyLanguage.format(source)` - this should return the formatted version of the given source.
+
+Below are listed all of the "official" plugins hosted under the same GitHub organization, which can be used as references for how to implement other plugins.
+
+* [SyntaxTree::Haml](https://github.com/ruby-syntax-tree/syntax_tree-haml) for the [Haml template language](https://haml.info/).
+* [SyntaxTree::JSON](https://github.com/ruby-syntax-tree/syntax_tree-json) for JSON.
+* [SyntaxTree::RBS](https://github.com/ruby-syntax-tree/syntax_tree-rbs) for the [RBS type language](https://github.com/ruby/rbs).
 
 ## Contributing
 
