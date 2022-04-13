@@ -6,6 +6,21 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 
 ## [Unreleased]
 
+## [2.1.0] - 2022-04-12
+
+### Added
+
+- The `SyntaxTree::Visitor` class now implements the visitor pattern for Ruby nodes.
+- The `SyntaxTree::Visitor.visit_method(name)` method.
+- Support for Ruby 2.7.
+- Support for comments on `rescue` and `else` keywords.
+- `SyntaxTree::Location` now additionally has `start_column` and `end_column`.
+- The CLI now accepts content over STDIN for the `ast`, `check`, `debug`, `doc`, `format`, and `write` commands.
+
+### Removed
+
+- The missing hash value inlay hints have been removed.
+
 ## [2.0.1] - 2022-03-31
 
 ### Changed
@@ -128,7 +143,8 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 
 - 🎉 Initial release! 🎉
 
-[unreleased]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v2.0.1...HEAD
+[unreleased]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v2.1.0...HEAD
+[2.1.0]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v2.0.1...v2.1.0
 [2.0.1]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v2.0.0...v2.0.1
 [2.0.0]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v1.2.0...v2.0.0
 [1.2.0]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v1.1.1...v1.2.0
