@@ -3,13 +3,15 @@
 module SyntaxTree
   # Represents the location of a node in the tree from the source code.
   class Location
-    attr_reader :start_line, :start_char, :end_line, :end_char
+    attr_reader :start_line, :start_char, :start_column, :end_line, :end_char, :end_column
 
-    def initialize(start_line:, start_char:, end_line:, end_char:)
+    def initialize(start_line:, start_char:, start_column:, end_line:, end_char:, end_column:)
       @start_line = start_line
       @start_char = start_char
+      @start_column = start_column
       @end_line = end_line
       @end_char = end_char
+      @end_column = end_column
     end
 
     def lines
@@ -26,22 +28,26 @@ module SyntaxTree
       Location.new(
         start_line: start_line,
         start_char: start_char,
+        start_column: start_column,
         end_line: [end_line, other.end_line].max,
-        end_char: other.end_char
+        end_char: other.end_char,
+        end_column: other.end_column
       )
     end
 
-    def self.token(line:, char:, size:)
+    def self.token(line:, char:, column:, size:)
       new(
         start_line: line,
         start_char: char,
+        start_column: column,
         end_line: line,
-        end_char: char + size
+        end_char: char + size,
+        end_column: column + size
       )
     end
 
-    def self.fixed(line:, char:)
-      new(start_line: line, start_char: char, end_line: line, end_char: char)
+    def self.fixed(line:, char:, column:)
+      new(start_line: line, start_char: char, start_column: column, end_line: line, end_char: char, end_column: column)
     end
   end
 
@@ -1722,13 +1728,15 @@ module SyntaxTree
       @comments = comments
     end
 
-    def bind(start_char, end_char)
+    def bind(start_char, start_column, end_char, end_column)
       @location =
         Location.new(
           start_line: location.start_line,
           start_char: start_char,
+          start_column: start_column,
           end_line: location.end_line,
-          end_char: end_char
+          end_char: end_char,
+          end_column: end_column
         )
 
       parts = [rescue_clause, else_clause, ensure_clause]
@@ -1737,14 +1745,17 @@ module SyntaxTree
       consequent = parts.compact.first
       statements.bind(
         start_char,
-        consequent ? consequent.location.start_char : end_char
+        start_column,
+        consequent ? consequent.location.start_char : end_char,
+        consequent ? consequent.location.start_column : end_column
       )
 
       # Next we're going to determine the rescue clause if there is one
       if rescue_clause
         consequent = parts.drop(1).compact.first
         rescue_clause.bind_end(
-          consequent ? consequent.location.start_char : end_char
+          consequent ? consequent.location.start_char : end_char,
+          consequent ? consequent.location.start_column : end_column
         )
       end
     end
@@ -6898,20 +6909,22 @@ module SyntaxTree
       @comments = comments
     end
 
-    def bind_end(end_char)
+    def bind_end(end_char, end_column)
       @location =
         Location.new(
           start_line: location.start_line,
           start_char: location.start_char,
+          start_column: location.start_column,
           end_line: location.end_line,
-          end_char: end_char
+          end_char: end_char,
+          end_column: end_column
         )
 
       if consequent
-        consequent.bind_end(end_char)
-        statements.bind_end(consequent.location.start_char)
+        consequent.bind_end(end_char, end_column)
+        statements.bind_end(consequent.location.start_char, consequent.location.start_column)
       else
-        statements.bind_end(end_char)
+        statements.bind_end(end_char, end_column)
       end
     end
 
@@ -7268,13 +7281,15 @@ module SyntaxTree
       @comments = comments
     end
 
-    def bind(start_char, end_char)
+    def bind(start_char, start_column, end_char, end_column)
       @location =
         Location.new(
           start_line: location.start_line,
           start_char: start_char,
+          start_column: start_column,
           end_line: location.end_line,
-          end_char: end_char
+          end_char: end_char,
+          end_column: end_column
         )
 
       if body[0].is_a?(VoidStmt)
@@ -7283,8 +7298,10 @@ module SyntaxTree
           Location.new(
             start_line: location.start_line,
             start_char: start_char,
+            start_column: start_column,
             end_line: location.end_line,
-            end_char: start_char
+            end_char: start_char,
+            end_column: end_column
           )
 
         body[0] = VoidStmt.new(location: location)
@@ -7293,13 +7310,15 @@ module SyntaxTree
       attach_comments(start_char, end_char)
     end
 
-    def bind_end(end_char)
+    def bind_end(end_char, end_column)
       @location =
         Location.new(
           start_line: location.start_line,
           start_char: location.start_char,
+          start_column: location.start_column,
           end_line: location.end_line,
-          end_char: end_char
+          end_char: end_char,
+          end_column: end_column
         )
     end
 
