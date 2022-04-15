@@ -8168,7 +8168,7 @@ module SyntaxTree
   #     not value
   #
   class Not < Node
-    # [untyped] the statement on which to operate
+    # [nil | untyped] the statement on which to operate
     attr_reader :statement
 
     # [boolean] whether or not parentheses were used
@@ -8205,7 +8205,7 @@ module SyntaxTree
 
     def format(q)
       q.text(parentheses ? "not(" : "not ")
-      q.format(statement)
+      q.format(statement) if statement
       q.text(")") if parentheses
     end
   end

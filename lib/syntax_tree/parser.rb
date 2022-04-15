@@ -2837,19 +2837,17 @@ module SyntaxTree
         # parentheses they don't get reported as a paren node for some reason.
 
         beginning = find_token(Kw, "not")
-        ending = statement
+        ending = statement || beginning
+        parentheses = source[beginning.location.end_char] == "("
 
-        range = beginning.location.end_char...statement.location.start_char
-        paren = source[range].include?("(")
-
-        if paren
+        if parentheses
           find_token(LParen)
           ending = find_token(RParen)
         end
 
         Not.new(
           statement: statement,
-          parentheses: paren,
+          parentheses: parentheses,
           location: beginning.location.to(ending.location)
         )
       else
