@@ -761,8 +761,14 @@ module SyntaxTree
     #     (:call | Backtick | Const | Ident | Op) message
     #   ) -> Call
     def on_call(receiver, operator, message)
-      ending = message
-      ending = operator if message == :call
+      ending =
+        if message != :call
+          message
+        elsif operator != :"::"
+          operator
+        else
+          receiver
+        end
 
       Call.new(
         receiver: receiver,
