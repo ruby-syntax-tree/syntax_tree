@@ -2991,7 +2991,7 @@ module SyntaxTree
     #   ) -> VarField
     def on_var_field(value)
       location =
-        if value
+        if value && value != :nil
           value.location
         else
           # You can hit this pattern if you're assigning to a splat using
