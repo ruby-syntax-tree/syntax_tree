@@ -8677,7 +8677,11 @@ module SyntaxTree
     end
 
     def format(q)
-      q.format(value) if value
+      if value == :nil
+        q.text("nil")
+      elsif value
+        q.format(value)
+      end
     end
   end
 
