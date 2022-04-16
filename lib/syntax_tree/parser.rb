@@ -1501,13 +1501,19 @@ module SyntaxTree
     #     (nil | VarField) keyword_rest
     #   ) -> HshPtn
     def on_hshptn(constant, keywords, keyword_rest)
-      parts = [constant, keywords, keyword_rest].flatten(2).compact
+      parts = [constant, *keywords&.flatten(1), keyword_rest].compact
+      location =
+        if parts.empty?
+          find_token(LBrace).location.to(find_token(RBrace).location)
+        else
+          parts[0].location.to(parts[-1].location)
+        end
 
       HshPtn.new(
         constant: constant,
-        keywords: keywords,
+        keywords: keywords || [],
         keyword_rest: keyword_rest,
-        location: parts[0].location.to(parts[-1].location)
+        location: location
       )
     end
 

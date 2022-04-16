@@ -4536,6 +4536,7 @@ module SyntaxTree
     def format(q)
       parts = keywords.map { |(key, value)| KeywordFormatter.new(key, value) }
       parts << KeywordRestFormatter.new(keyword_rest) if keyword_rest
+
       contents = -> do
         q.seplist(parts) { |part| q.format(part, stackable: false) }
       end
@@ -4546,8 +4547,9 @@ module SyntaxTree
         return
       end
 
-      parent = q.parent
-      if PATTERNS.include?(parent.class)
+      if parts.empty?
+        q.text("{}")
+      elsif PATTERNS.include?(q.parent.class)
         q.text("{ ")
         contents.call
         q.text(" }")
