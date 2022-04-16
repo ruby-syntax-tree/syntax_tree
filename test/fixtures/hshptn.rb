@@ -44,3 +44,7 @@ end
 case foo
 in Foo[**bar]
 end
+%
+case foo
+in {}
+end
