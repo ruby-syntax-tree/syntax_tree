@@ -6,9 +6,15 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 
 ## [Unreleased]
 
+## [2.1.1] - 2022-04-16
+
 ### Changed
 
 - [#45](https://github.com/ruby-syntax-tree/syntax_tree/issues/45) - Fix parsing expressions like `foo.instance_exec(&T.must(block))`, where there are two `args_add_block` calls with a single `&`. Previously it was associating the `&` with the wrong block.
+- [#47](https://github.com/ruby-syntax-tree/syntax_tree/pull/47) - Handle expressions like `not()`.
+- [#48](https://github.com/ruby-syntax-tree/syntax_tree/pull/48) - Handle special call syntax with `::` operator.
+- [#49](https://github.com/ruby-syntax-tree/syntax_tree/pull/49) - Handle expressions like `case foo; in {}; end`.
+- [#50](https://github.com/ruby-syntax-tree/syntax_tree/pull/50) - Parsing expressions like `case foo; in **nil; end`.
 
 ## [2.1.0] - 2022-04-12
 
@@ -147,7 +153,8 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 
 - 🎉 Initial release! 🎉
 
-[unreleased]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v2.1.0...HEAD
+[unreleased]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v2.1.1...HEAD
+[2.1.1]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v2.1.0...v2.1.1
 [2.1.0]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v2.0.1...v2.1.0
 [2.0.1]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v2.0.0...v2.0.1
 [2.0.0]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v1.2.0...v2.0.0
