@@ -35,6 +35,21 @@ module SyntaxTree
       )
     end
 
+    def deconstruct
+      [start_line, start_char, start_column, end_line, end_char, end_column]
+    end
+
+    def deconstruct_keys(keys)
+      {
+        start_line: start_line,
+        start_char: start_char,
+        start_column: start_column,
+        end_line: end_line,
+        end_char: end_char,
+        end_column: end_column
+      }
+    end
+
     def self.token(line:, char:, column:, size:)
       new(
         start_line: line,
@@ -4334,6 +4349,9 @@ module SyntaxTree
     # [String] the ending of the heredoc
     attr_reader :ending
 
+    # [Integer] how far to dedent the heredoc
+    attr_reader :dedent
+
     # [Array[ StringEmbExpr | StringDVar | TStringContent ]] the parts of the
     # heredoc string literal
     attr_reader :parts
@@ -4341,9 +4359,10 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(beginning:, ending: nil, parts: [], location:, comments: [])
+    def initialize(beginning:, ending: nil, dedent: 0, parts: [], location:, comments: [])
       @beginning = beginning
       @ending = ending
+      @dedent = dedent
       @parts = parts
       @location = location
       @comments = comments
@@ -4538,7 +4557,12 @@ module SyntaxTree
       parts << KeywordRestFormatter.new(keyword_rest) if keyword_rest
 
       contents = -> do
-        q.seplist(parts) { |part| q.format(part, stackable: false) }
+        q.group { q.seplist(parts) { |part| q.format(part, stackable: false) } }
+
+        # If there isn't a constant, and there's a blank keyword_rest, then we
+        # have an plain ** that needs to have a `then` after it in order to
+        # parse correctly on the next parse.
+        q.text(" then") if !constant && keyword_rest && keyword_rest.value.nil?
       end
 
       if constant
@@ -5594,11 +5618,17 @@ module SyntaxTree
     # [MLHS | MLHSParen] the contents inside of the parentheses
     attr_reader :contents
 
+    # [boolean] whether or not there is a trailing comma at the end of this
+    # list, which impacts destructuring. It's an attr_accessor so that while
+    # the syntax tree is being built it can be set by its parent node
+    attr_accessor :comma
+
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(contents:, location:, comments: [])
+    def initialize(contents:, comma: false, location:, comments: [])
       @contents = contents
+      @comma = comma
       @location = location
       @comments = comments
     end
@@ -5622,6 +5652,7 @@ module SyntaxTree
 
       if parent.is_a?(MAssign) || parent.is_a?(MLHSParen)
         q.format(contents)
+        q.text(",") if comma
       else
         q.group(0, "(", ")") do
           q.indent do
@@ -5629,6 +5660,7 @@ module SyntaxTree
             q.format(contents)
           end
 
+          q.text(",") if comma
           q.breakable("")
         end
       end

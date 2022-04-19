@@ -1,5 +1,9 @@
 %
 case foo
+in ** then
+end
+%
+case foo
 in bar:
 end
 %

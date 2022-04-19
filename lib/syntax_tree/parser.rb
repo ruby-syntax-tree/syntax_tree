@@ -516,12 +516,46 @@ module SyntaxTree
     def on_aryptn(constant, requireds, rest, posts)
       parts = [constant, *requireds, rest, *posts].compact
 
+      # If there aren't any parts (no constant, no positional arguments), then
+      # we're matching an empty array. In this case, we're going to look for the
+      # left and right brackets explicitly. Otherwise, we'll just use the bounds
+      # of the various parts.
+      location =
+        if parts.empty?
+          find_token(LBracket).location.to(find_token(RBracket).location)
+        else
+          parts[0].location.to(parts[-1].location)
+        end
+
+      # If there's the optional then keyword, then we'll delete that and use it
+      # as the end bounds of the location.
+      if token = find_token(Kw, "then", consume: false)
+        tokens.delete(token)
+        location = location.to(token.location)
+      end
+
+      # If there is a plain *, then we're going to fix up the location of it
+      # here because it currently doesn't have anything to use for its precise
+      # location. If we hit a comma, then we've gone too far.
+      if rest.is_a?(VarField) && rest.value.nil?
+        tokens.rindex do |token|
+          case token
+          in Op[value: "*"]
+            rest = VarField.new(value: nil, location: token.location)
+            break
+          in Comma
+            break
+          else
+          end
+        end
+      end
+
       AryPtn.new(
         constant: constant,
         requireds: requireds || [],
         rest: rest,
         posts: posts || [],
-        location: parts[0].location.to(parts[-1].location)
+        location: location
       )
     end
 
@@ -1373,15 +1407,35 @@ module SyntaxTree
     #     VarField right
     #   ) -> FndPtn
     def on_fndptn(constant, left, values, right)
-      beginning = constant || find_token(LBracket)
-      ending = find_token(RBracket)
+      # The opening of this find pattern is either going to be a left bracket, a
+      # right left parenthesis, or the left splat. We're going to use this to
+      # determine how to find the closing of the pattern, as well as determining
+      # the location of the node.
+      opening =
+        find_token(LBracket, consume: false) ||
+        find_token(LParen, consume: false) ||
+        left
+
+      # The closing is based on the opening, which is either the matched
+      # punctuation or the right splat.
+      closing =
+        case opening
+        in LBracket
+          tokens.delete(opening)
+          find_token(RBracket)
+        in LParen
+          tokens.delete(opening)
+          find_token(RParen)
+        else
+          right
+        end
 
       FndPtn.new(
         constant: constant,
         left: left,
         values: values,
         right: right,
-        location: beginning.location.to(ending.location)
+        location: (constant || opening).location.to(closing.location)
       )
     end
 
@@ -1468,6 +1522,7 @@ module SyntaxTree
       @heredocs[-1] = Heredoc.new(
         beginning: heredoc.beginning,
         ending: heredoc.ending,
+        dedent: width,
         parts: string.parts,
         location: heredoc.location
       )
@@ -1481,6 +1536,7 @@ module SyntaxTree
       @heredocs[-1] = Heredoc.new(
         beginning: heredoc.beginning,
         ending: value.chomp,
+        dedent: heredoc.dedent,
         parts: heredoc.parts,
         location:
           Location.new(
@@ -1501,12 +1557,23 @@ module SyntaxTree
     #     (nil | VarField) keyword_rest
     #   ) -> HshPtn
     def on_hshptn(constant, keywords, keyword_rest)
+      # Create an artificial VarField if we find an extra ** on the end
+      if !keyword_rest && (token = find_token(Op, "**", consume: false))
+        tokens.delete(token)
+        keyword_rest = VarField.new(value: nil, location: token.location)
+      end
+
+      # Delete the optional then keyword
+      if token = find_token(Kw, "then", consume: false)
+        tokens.delete(token)
+      end
+
       parts = [constant, *keywords&.flatten(1), keyword_rest].compact
       location =
-        if parts.empty?
-          find_token(LBrace).location.to(find_token(RBrace).location)
-        else
+        if parts.any?
           parts[0].location.to(parts[-1].location)
+        else
+          find_token(LBrace).location.to(find_token(RBrace).location)
         end
 
       HshPtn.new(
@@ -2638,6 +2705,7 @@ module SyntaxTree
         Heredoc.new(
           beginning: heredoc.beginning,
           ending: heredoc.ending,
+          dedent: heredoc.dedent,
           parts: string.parts,
           location: heredoc.location
         )
@@ -3190,6 +3258,7 @@ module SyntaxTree
         Heredoc.new(
           beginning: heredoc.beginning,
           ending: heredoc.ending,
+          dedent: heredoc.dedent,
           parts: xstring.parts,
           location: heredoc.location
         )
