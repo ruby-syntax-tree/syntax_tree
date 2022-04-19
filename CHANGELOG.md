@@ -6,6 +6,19 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 
 ## [Unreleased]
 
+## [2.2.0] - 2022-04-19
+
+### Added
+
+- [#51](https://github.com/ruby-syntax-tree/syntax_tree/pull/51) - `SyntaxTree::Location` nodes now have pattern matching.
+- [#51](https://github.com/ruby-syntax-tree/syntax_tree/pull/51) - `SyntaxTree::Heredoc` now have a `dedent` field that indicates the number of spaces to strip from the beginning of the string content.
+
+### Changed
+
+- [#51](https://github.com/ruby-syntax-tree/syntax_tree/pull/51) - `SyntaxTree::HshPtn` will now add a `then` if you use a bare `**` and `SyntaxTree::AryPtn` will do the same for a bare `*` on the end.
+- [#51](https://github.com/ruby-syntax-tree/syntax_tree/pull/51) - `SyntaxTree::MLHSParen` now has a comma field in case a trailing comma has been added to a parenthesis destructuring, as in `((foo,))`.
+- [#51](https://github.com/ruby-syntax-tree/syntax_tree/pull/51) - `SyntaxTree::FndPtn` has much improved parsing now.
+
 ## [2.1.1] - 2022-04-16
 
 ### Changed
@@ -153,7 +166,8 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 
 - 🎉 Initial release! 🎉
 
-[unreleased]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v2.1.1...HEAD
+[unreleased]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v2.2.0...HEAD
+[2.2.0]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v2.1.1...v2.2.0
 [2.1.1]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v2.1.0...v2.1.1
 [2.1.0]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v2.0.1...v2.1.0
 [2.0.1]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v2.0.0...v2.0.1
