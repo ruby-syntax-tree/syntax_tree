@@ -1,12 +1,17 @@
 #!/usr/bin/env ruby
 # frozen_string_literal: true
 
-require "bundler/setup"
-require "benchmark/ips"
+require "bundler/inline"
 
-require_relative "../lib/syntax_tree"
-require "ruby_parser"
-require "parser/current"
+gemfile do
+  source "https://rubygems.org"
+  gem "benchmark-ips"
+  gem "parser", require: "parser/current"
+  gem "ruby_parser"
+end
+
+$:.unshift(File.expand_path("../lib", __dir__))
+require "syntax_tree"
 
 def compare(filepath)
   prefix = "#{File.expand_path("..", __dir__)}/"
@@ -30,7 +35,7 @@ filepaths = ARGV
 if filepaths.empty?
   filepaths = [
     File.expand_path("bench", __dir__),
-    File.expand_path("../lib/syntax_tree.rb", __dir__)
+    File.expand_path("../lib/syntax_tree/node.rb", __dir__)
   ]
 end
 
