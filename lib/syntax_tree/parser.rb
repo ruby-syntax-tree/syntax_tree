@@ -2079,12 +2079,16 @@ module SyntaxTree
       keyword_rest,
       block
     )
+      # This is to make it so that required keyword arguments
+      # have a `nil` for the value instead of a `false`.
+      keywords&.map! { |(key, value)| [key, value || nil] }
+
       parts = [
         *requireds,
         *optionals&.flatten(1),
         rest,
         *posts,
-        *keywords&.flat_map { |(key, value)| [key, value || nil] },
+        *keywords&.flatten(1),
         (keyword_rest if keyword_rest != :nil),
         (block if block != :&)
       ].compact
