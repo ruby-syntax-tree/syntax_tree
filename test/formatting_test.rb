@@ -9,5 +9,10 @@ module SyntaxTree
         assert_equal(fixture.formatted, SyntaxTree.format(fixture.source))
       end
     end
+
+    def test_format_class_level
+      source = "1+1"
+      assert_equal("1 + 1\n", SyntaxTree::Formatter.format(source, SyntaxTree.parse(source)))
+    end
   end
 end
