@@ -17,6 +17,13 @@ module SyntaxTree
       @quote = "\""
     end
 
+    def self.format(source, node)
+      formatter = new(source, [])
+      node.format(formatter)
+      formatter.flush
+      formatter.output.join
+    end
+
     def format(node, stackable: true)
       stack << node if stackable
       doc = nil
