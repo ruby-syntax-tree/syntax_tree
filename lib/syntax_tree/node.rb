@@ -2297,7 +2297,15 @@ module SyntaxTree
             q.format(message) if message != :call
           end
 
-          q.format(arguments) if arguments
+          case arguments
+          in ArgParen
+            q.format(arguments)
+          in Args
+            q.text(" ")
+            q.format(arguments)
+          else
+            # Do nothing if there are no arguments.
+          end
         end
       end
     end

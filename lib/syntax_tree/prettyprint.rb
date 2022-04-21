@@ -1020,6 +1020,7 @@ class PrettyPrint
   # to build the break contents.
   def if_flat
     doc = IfBreak.new
+    target << doc
 
     with_target(doc.flat_contents) { yield }
   end
