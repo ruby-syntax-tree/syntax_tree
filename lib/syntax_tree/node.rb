@@ -2066,7 +2066,12 @@ module SyntaxTree
             part = arguments.parts.first
 
             if part.is_a?(Paren)
-              q.format(arguments)
+              if part.contents.body.length == 1 && skip_parens?(part.contents.body.first)
+                q.text(" ")
+                q.format(part.contents.body.first)
+              else
+                q.format(arguments)
+              end
             elsif part.is_a?(ArrayLiteral)
               q.text(" ")
               q.format(arguments)
@@ -2090,6 +2095,17 @@ module SyntaxTree
       end
       q.breakable("")
       q.if_break { q.text(closing) }
+    end
+
+    def skip_parens?(node)
+      case node
+      in Int | FloatLiteral
+        true
+      in VarRef[value: GVar | IVar | CVar | Kw | Const]
+        true
+      else
+        false
+      end
     end
   end
 
