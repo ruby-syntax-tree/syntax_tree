@@ -2213,7 +2213,7 @@ module SyntaxTree
   end
 
   class CallChainFormatter
-    # [Call] the top of the call chain
+    # [Call | MethodAddBlock] the top of the call chain
     attr_reader :node
 
     def initialize(node)
@@ -2221,10 +2221,6 @@ module SyntaxTree
     end
 
     def format(q)
-      q.group { q.if_break { format_chain(q) }.if_flat { node.format_contents(q) } }
-    end
-
-    def format_chain(q)
       children = [node]
 
       # First, walk down the chain until we get to the point where we're not
@@ -2242,6 +2238,14 @@ module SyntaxTree
         end
       end
 
+      if children.length > 2
+        q.group { q.if_break { format_chain(q, children) }.if_flat { node.format_contents(q) } }
+      else
+        node.format_contents(q)
+      end
+    end
+
+    def format_chain(q, children)
       # We're going to have some specialized behavior for if it's an entire
       # chain of calls without arguments except for the last one. This is common
       # enough in Ruby source code that it's worth the extra complexity here.
@@ -2263,6 +2267,11 @@ module SyntaxTree
         end
 
         q.indent do
+          # We track another variable that checks if you need to move the
+          # operator to the previous line in case there are trailing comments
+          # and a trailing operator.
+          skip_operator = false
+
           while child = children.pop
             case child
             in Call[receiver: Call[message: { value: "where" }], message: { value: "not" }]
@@ -2277,7 +2286,17 @@ module SyntaxTree
             else
             end
 
-            format_child(q, child, skip_attached: empty_except_last && children.empty?)
+            format_child(q, child, skip_operator: skip_operator, skip_attached: empty_except_last && children.empty?)
+
+            # If the parent call node has a comment on the message then we need
+            # to print the operator trailing in order to keep it working.
+            case children.last
+            in Call[message: { comments: [_, *] }, operator:]
+              q.format(CallOperatorFormatter.new(operator))
+              skip_operator = true
+            else
+              skip_operator = false
+            end
 
             # Pop off the formatter's stack so that it aligns with what would
             # have happened if we had been formatting normally.
@@ -2315,11 +2334,11 @@ module SyntaxTree
         .include?(child.receiver.class)
     end
 
-    def format_child(q, child, skip_attached: false)
+    def format_child(q, child, skip_operator: false, skip_attached: false)
       # First, format the actual contents of the child.
       case child
       in Call
-        q.format(CallOperatorFormatter.new(child.operator))
+        q.format(CallOperatorFormatter.new(child.operator)) unless skip_operator
         q.format(child.message) if child.message != :call
         child.format_arguments(q) unless skip_attached
       in MethodAddBlock
@@ -5925,6 +5944,17 @@ module SyntaxTree
     end
 
     def format(q)
+      # If we're at the top of a call chain, then we're going to do some
+      # specialized printing in case we can print it nicely. We _only_ do this
+      # at the top of the chain to avoid weird recursion issues.
+      if !CallChainFormatter.chained?(q.parent) && CallChainFormatter.chained?(call)
+        q.group { q.if_break { CallChainFormatter.new(self).format(q) }.if_flat { format_contents(q) } }
+      else
+        format_contents(q)
+      end
+    end
+
+    def format_contents(q)
       q.format(call)
       q.format(block)
     end
