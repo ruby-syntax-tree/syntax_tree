@@ -3060,7 +3060,10 @@ module SyntaxTree
         q.group do
           q.text("def ")
           q.format(name)
-          q.format(params) if !params.is_a?(Params) || !params.empty?
+
+          if !params.is_a?(Params) || !params.empty? || params.comments.any?
+            q.format(params)
+          end
         end
 
         unless bodystmt.empty?
@@ -3280,7 +3283,10 @@ module SyntaxTree
           q.format(target)
           q.format(CallOperatorFormatter.new(operator), stackable: false)
           q.format(name)
-          q.format(params) if !params.is_a?(Params) || !params.empty?
+
+          if !params.is_a?(Params) || !params.empty? || params.comments.any?
+            q.format(params)
+          end
         end
 
         unless bodystmt.empty?
@@ -6317,7 +6323,9 @@ module SyntaxTree
         q.format(rest) if rest && rest.is_a?(ExcessedComma)
       end
 
-      if [Def, Defs, DefEndless].include?(q.parent.class)
+      if ![Def, Defs, DefEndless].include?(q.parent.class) || parts.empty?
+        q.nest(0, &contents)
+      else
         q.group(0, "(", ")") do
           q.indent do
             q.breakable("")
@@ -6325,8 +6333,6 @@ module SyntaxTree
           end
           q.breakable("")
         end
-      else
-        q.nest(0, &contents)
       end
     end
   end
@@ -8394,8 +8400,6 @@ module SyntaxTree
         q.text(")")
       elsif ternary
         q.if_break {}.if_flat { q.text(")") }
-      else
-        q.text(" ")
       end
     end
   end
