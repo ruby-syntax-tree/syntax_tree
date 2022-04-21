@@ -3,7 +3,7 @@
 require_relative "test_helper"
 
 class VisitorTest < Minitest::Test
-  unless ENV["FAST"]
+  if ENV["CI"]
     def test_visit_all_nodes
       visitor = SyntaxTree::Visitor.new
 

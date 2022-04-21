@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-return if ENV["FAST"]
+return unless ENV["CI"]
 require_relative "test_helper"
 
 module SyntaxTree
