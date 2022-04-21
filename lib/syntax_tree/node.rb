@@ -2066,7 +2066,12 @@ module SyntaxTree
             part = arguments.parts.first
 
             if part.is_a?(Paren)
-              q.format(arguments)
+              if part.contents.body.length == 1 && skip_parens?(part.contents.body.first)
+                q.text(" ")
+                q.format(part.contents.body.first)
+              else
+                q.format(arguments)
+              end
             elsif part.is_a?(ArrayLiteral)
               q.text(" ")
               q.format(arguments)
@@ -2090,6 +2095,17 @@ module SyntaxTree
       end
       q.breakable("")
       q.if_break { q.text(closing) }
+    end
+
+    def skip_parens?(node)
+      case node
+      in Int | FloatLiteral
+        true
+      in VarRef[value: GVar | IVar | CVar | Kw | Const]
+        true
+      else
+        false
+      end
     end
   end
 
@@ -4664,6 +4680,11 @@ module SyntaxTree
         return
       end
 
+      if contains_conditional?
+        format_break(q, force: true)
+        return
+      end
+
       if node.consequent || node.statements.empty?
         q.group { format_break(q, force: true) }
       else
@@ -4699,6 +4720,11 @@ module SyntaxTree
 
       q.breakable(force: force)
       q.text("end")
+    end
+
+    def contains_conditional?
+      node.statements.body.length == 1 &&
+      [If, IfMod, IfOp, Unless, UnlessMod].include?(node.statements.body.first.class)
     end
   end
 
