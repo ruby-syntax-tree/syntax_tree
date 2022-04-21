@@ -4678,6 +4678,13 @@ module SyntaxTree
     end
 
     def format(q)
+      # If we can transform this node into a ternary, then we're going to print
+      # a special version that uses the ternary operator if it fits on one line.
+      if can_ternary?
+        format_ternary(q)
+        return
+      end
+
       # If the predicate of the conditional contains an assignment (in which
       # case we can't know for certain that that assignment doesn't impact the
       # statements inside the conditional) then we can't use the modifier form
@@ -4687,12 +4694,7 @@ module SyntaxTree
         return
       end
 
-      if contains_conditional?
-        format_break(q, force: true)
-        return
-      end
-
-      if node.consequent || node.statements.empty?
+      if node.consequent || node.statements.empty? || contains_conditional?
         q.group { format_break(q, force: true) }
       else
         q.group do
@@ -4729,9 +4731,91 @@ module SyntaxTree
       q.text("end")
     end
 
+    def format_ternary(q)
+      q.group do
+        q.if_break do
+          q.text("#{keyword} ")
+          q.nest(keyword.length + 1) { q.format(node.predicate) }
+
+          q.indent do
+            q.breakable
+            q.format(node.statements)
+          end
+
+          q.breakable
+          q.group do
+            q.format(node.consequent.keyword)
+            q.indent do
+              q.breakable
+              q.format(node.consequent.statements)
+            end
+          end
+
+          q.breakable
+          q.text("end")
+        end.if_flat do
+          Parentheses.flat(q) do
+            q.format(node.predicate)
+            q.text(" ? ")
+
+            statements = [node.statements, node.consequent.statements]
+            statements.reverse! if keyword == "unless"
+
+            q.format(statements[0])
+            q.text(" : ")
+            q.format(statements[1])
+          end
+        end
+      end
+    end
+
     def contains_conditional?
       node.statements.body.length == 1 &&
       [If, IfMod, IfOp, Unless, UnlessMod].include?(node.statements.body.first.class)
+    end
+
+    # In order for an `if` or `unless` expression to be shortened to a ternary,
+    # there has to be one and only one consequent clause which is an Else. Both
+    # the body of the main node and the body of the Else node must have only one
+    # statement, and that statement must pass the `can_ternary_statements?`
+    # check.
+    def can_ternary?
+      case node
+      in { predicate: Assign | Command | CommandCall | MAssign | OpAssign }
+        false
+      in { consequent: Else[statements:] }
+        can_ternary_statements?(statements) &&
+          can_ternary_statements?(node.statements)
+      else
+        false
+      end
+    end
+
+    # Certain expressions cannot be reduced to a ternary without adding
+    # parentheses around them. In this case we say they cannot be ternaried and
+    # default instead to breaking them into multiple lines.
+    def can_ternary_statements?(statements)
+      return false if statements.body.length != 1
+      statement = statements.body.first
+
+      # This is a list of nodes that should not be allowed to be a part of a
+      # ternary clause.
+      no_ternary = [
+        Alias, Assign, Break, Command, CommandCall, Heredoc, If, IfMod, IfOp,
+        Lambda, MAssign, Next, OpAssign, RescueMod, Return, Return0, Super,
+        Undef, Unless, UnlessMod, Until, UntilMod, VarAlias, VoidStmt, While,
+        WhileMod, Yield, Yield0, ZSuper
+      ]
+
+      # Here we're going to check that the only statement inside the statements
+      # node is no a part of our denied list of nodes that can be ternaries.
+      #
+      # If the user is using one of the lower precedence "and" or "or"
+      # operators, then we can't use a ternary expression as it would break the
+      # flow control.
+      #
+      !no_ternary.include?(statement.class) &&
+        !(statement.is_a?(Binary) && %i[and or].include?(statement.operator))
     end
   end
 
