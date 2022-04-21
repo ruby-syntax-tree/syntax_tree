@@ -2212,6 +2212,68 @@ module SyntaxTree
     end
   end
 
+  class CallChainFormatter
+    # [Call] the top of the call chain
+    attr_reader :node
+
+    def initialize(node)
+      @node = node
+    end
+
+    def format(q)
+      children = [node]
+      children << children.last.receiver while children.last.receiver.is_a?(Call)
+      q.format(children.last.receiver)
+
+      q.group do
+        format_child(q, children.pop) if attach_directly?(children.last)
+
+        q.indent do
+          children.reverse_each do |child|
+            case child
+            in { receiver: Call[message: { value: "where" }], message: { value: "not" } }
+              # This is very specialized behavior wherein we group
+              # .where.not calls together because it looks better. For more
+              # information, see
+              # https://github.com/prettier/plugin-ruby/issues/862.
+            else
+              q.breakable("")
+            end
+
+            format_child(q, child)
+          end
+        end
+      end
+    end
+
+    private
+
+    # For certain nodes, we want to attach directly to the end and don't
+    # want to indent the first call. So we'll pop off the first children and
+    # format it separately here.
+    def attach_directly?(child)
+      [ArrayLiteral, HashLiteral, Heredoc, If, Unless, XStringLiteral]
+        .include?(child.receiver.class)
+    end
+
+    def format_child(q, child)
+      q.format(CallOperatorFormatter.new(child.operator))
+      q.format(child.message) if child.message != :call
+      child.format_arguments(q)
+
+      # If there are any comments on this node then we need to explicitly print
+      # them out here since we're bypassing the normal comment printing.
+      if child.comments.any?
+        child.comments.each do |comment|
+          comment.inline? ? q.text(" ") : q.breakable
+          comment.format(q)
+        end
+
+        q.break_parent
+      end
+    end
+  end
+
   # Call represents a method call.
   #
   #     receiver.message
@@ -2277,6 +2339,33 @@ module SyntaxTree
     def format(q)
       call_operator = CallOperatorFormatter.new(operator)
 
+      # If we're at the top of a call chain, then we're going to do some
+      # specialized printing in case we can print it nicely. We _only_ do this
+      # at the top of the chain to avoid weird recursion issues.
+      if !q.parent.is_a?(Call) && receiver.is_a?(Call)
+        q.group { q.if_break { CallChainFormatter.new(self).format(q) }.if_flat { format_contents(q) } }
+      else
+        format_contents(q)
+      end
+    end
+
+    def format_arguments(q)
+      case arguments
+      in ArgParen
+        q.format(arguments)
+      in Args
+        q.text(" ")
+        q.format(arguments)
+      else
+        # Do nothing if there are no arguments.
+      end
+    end
+
+    private
+
+    def format_contents(q)
+      call_operator = CallOperatorFormatter.new(operator)
+
       q.group do
         q.format(receiver)
 
@@ -2297,15 +2386,7 @@ module SyntaxTree
             q.format(message) if message != :call
           end
 
-          case arguments
-          in ArgParen
-            q.format(arguments)
-          in Args
-            q.text(" ")
-            q.format(arguments)
-          else
-            # Do nothing if there are no arguments.
-          end
+          format_arguments(q)
         end
       end
     end
