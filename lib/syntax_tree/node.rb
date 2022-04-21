@@ -2614,26 +2614,24 @@ module SyntaxTree
     def format(q)
       q.group do
         q.format(message)
-        q.text(" ")
-
-        if align?(self)
-          q.nest(message.value.length + 1) { q.format(arguments) }
-        else
-          q.format(arguments)
-        end
+        align(q, self) { q.format(arguments) }
       end
     end
 
     private
 
-    def align?(node)
+    def align(q, node, &block)
       case node.arguments
       in Args[parts: [Def | Defs | DefEndless]]
-        false
+        q.text(" ")
+        yield
+      in Args[parts: [IfOp]]
+        yield
       in Args[parts: [Command => command]]
-        align?(command)
+        align(q, command, &block)
       else
-        true
+        q.text(" ")
+        q.nest(message.value.length + 1) { yield }
       end
     end
   end
@@ -2705,9 +2703,15 @@ module SyntaxTree
             q.format(message)
           end
 
-        if arguments
+        case arguments
+        in Args[parts: [IfOp]]
+          q.if_flat { q.text(" ") }
+          q.format(arguments)
+        in Args
           q.text(" ")
           q.nest(argument_alignment(q, doc)) { q.format(arguments) }
+        else
+          # If there are no arguments, print nothing.
         end
       end
     end
@@ -8467,7 +8471,7 @@ module SyntaxTree
       if parentheses
         q.text(")")
       elsif ternary
-        q.if_break {}.if_flat { q.text(")") }
+        q.if_flat { q.text(")") }
       end
     end
   end

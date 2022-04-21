@@ -458,6 +458,10 @@ class PrettyPrint
       IfBreakBuilder.new
     end
 
+    # Also effectively unnecessary, but here for compatibility.
+    def if_flat
+    end
+
     # A noop that immediately yields.
     def indent
       yield
@@ -1009,6 +1013,15 @@ class PrettyPrint
 
     with_target(doc.break_contents) { yield }
     IfBreakBuilder.new(self, doc)
+  end
+
+  # This is similar to if_break in that it also inserts an IfBreak node into the
+  # print tree, however it's starting from the flat contents, and cannot be used
+  # to build the break contents.
+  def if_flat
+    doc = IfBreak.new
+
+    with_target(doc.flat_contents) { yield }
   end
 
   # Very similar to the #nest method, this indents the nested content by one
