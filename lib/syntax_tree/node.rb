@@ -1042,17 +1042,16 @@ module SyntaxTree
   # Determins if the following value should be indented or not.
   module AssignFormatting
     def self.skip_indent?(value)
-      (value.is_a?(Call) && skip_indent?(value.receiver)) ||
-        [
-          ArrayLiteral,
-          HashLiteral,
-          Heredoc,
-          Lambda,
-          QSymbols,
-          QWords,
-          Symbols,
-          Words
-        ].include?(value.class)
+      case value
+      in ArrayLiteral | HashLiteral | Heredoc | Lambda | QSymbols | QWords | Symbols | Words
+        true
+      in Call[receiver:]
+        skip_indent?(receiver)
+      in DynaSymbol[quote:]
+        quote.start_with?("%s")
+      else
+        false
+      end
     end
   end
 
