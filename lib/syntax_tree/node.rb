@@ -816,6 +816,29 @@ module SyntaxTree
       end
     end
 
+    class EmptyWithCommentsFormatter
+      # [LBracket] the opening bracket
+      attr_reader :lbracket
+
+      def initialize(lbracket)
+        @lbracket = lbracket
+      end
+
+      def format(q)
+        q.group do
+          q.text("[")
+          q.indent do
+            lbracket.comments.each do |comment|
+              q.breakable(force: true)
+              comment.format(q)
+            end
+          end
+          q.breakable(force: true)
+          q.text("]")
+        end
+      end
+    end
+
     # [LBracket] the bracket that opens this array
     attr_reader :lbracket
 
@@ -864,6 +887,11 @@ module SyntaxTree
 
       if var_refs?(q)
         VarRefsFormatter.new(contents).format(q)
+        return
+      end
+
+      if empty_with_comments?
+        EmptyWithCommentsFormatter.new(lbracket).format(q)
         return
       end
 
@@ -918,6 +946,12 @@ module SyntaxTree
           contents.parts.sum { |part| part.value.value.length + 2 } >
             q.maxwidth * 2
         )
+    end
+
+    # If we have an empty array that contains only comments, then we're going
+    # to do some special printing to ensure they get indented correctly.
+    def empty_with_comments?
+      contents.nil? && lbracket.comments.any? && lbracket.comments.none?(&:inline?)
     end
   end
 
@@ -4311,6 +4345,29 @@ module SyntaxTree
   #     { key => value }
   #
   class HashLiteral < Node
+    class EmptyWithCommentsFormatter
+      # [LBrace] the opening brace
+      attr_reader :lbrace
+
+      def initialize(lbrace)
+        @lbrace = lbrace
+      end
+
+      def format(q)
+        q.group do
+          q.text("{")
+          q.indent do
+            lbrace.comments.each do |comment|
+              q.breakable(force: true)
+              comment.format(q)
+            end
+          end
+          q.breakable(force: true)
+          q.text("}")
+        end
+      end
+    end
+
     # [LBrace] the left brace that opens this hash
     attr_reader :lbrace
 
@@ -4355,7 +4412,18 @@ module SyntaxTree
 
     private
 
+    # If we have an empty hash that contains only comments, then we're going
+    # to do some special printing to ensure they get indented correctly.
+    def empty_with_comments?
+      assocs.empty? && lbrace.comments.any? && lbrace.comments.none?(&:inline?)
+    end
+
     def format_contents(q)
+      if empty_with_comments?
+        EmptyWithCommentsFormatter.new(lbrace).format(q)
+        return
+      end
+
       q.format(lbrace)
 
       if assocs.empty?
@@ -7584,19 +7652,20 @@ module SyntaxTree
         comment = parser_comments[comment_index]
         location = comment.location
 
-        if !comment.inline? && (start_char <= location.start_char) &&
-             (end_char >= location.end_char) && !comment.ignore?
-          parser_comments.delete_at(comment_index)
-
-          while (node = body[body_index]) &&
-                  (
-                    node.is_a?(VoidStmt) ||
-                      node.location.start_char < location.start_char
-                  )
+        if !comment.inline? && (start_char <= location.start_char) && (end_char >= location.end_char) && !comment.ignore?
+          while (node = body[body_index]) && (node.is_a?(VoidStmt) || node.location.start_char < location.start_char)
             body_index += 1
           end
 
-          body.insert(body_index, comment)
+          if body_index != 0 && body[body_index - 1].location.start_char < location.start_char && body[body_index - 1].location.end_char > location.start_char
+            # The previous node entirely encapsules the comment, so we don't
+            # want to attach it here since it will get attached normally. This
+            # is mostly in the case of hash and array literals.
+            comment_index += 1
+          else
+            parser_comments.delete_at(comment_index)
+            body.insert(body_index, comment)
+          end
         else
           comment_index += 1
         end
