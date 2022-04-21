@@ -4025,7 +4025,15 @@ module SyntaxTree
 
     def format(q)
       q.format(value)
-      q.format(arguments)
+
+      if arguments.is_a?(ArgParen) && arguments.arguments.nil? && !value.is_a?(Const)
+        # If you're using an explicit set of parentheses on something that looks
+        # like a constant, then we need to match that in order to maintain valid
+        # Ruby. For example, you could do something like Foo(), on which we
+        # would need to keep the parentheses to make it look like a method call.
+      else
+        q.format(arguments)
+      end
     end
   end
 
@@ -4664,6 +4672,52 @@ module SyntaxTree
     end
   end
 
+  # In order for an `if` or `unless` expression to be shortened to a ternary,
+  # there has to be one and only one consequent clause which is an Else. Both
+  # the body of the main node and the body of the Else node must have only one
+  # statement, and that statement must not be on the denied list of potential
+  # statements.
+  module Ternaryable
+    class << self
+      def call(node)
+        case node
+        in { predicate: Assign | Command | CommandCall | MAssign | OpAssign }
+          false
+        in { statements: { body: [truthy] }, consequent: Else[statements: { body: [falsy] }] }
+          ternaryable?(truthy) && ternaryable?(falsy)
+        else
+          false
+        end
+      end
+
+      private
+
+      # Certain expressions cannot be reduced to a ternary without adding
+      # parentheses around them. In this case we say they cannot be ternaried and
+      # default instead to breaking them into multiple lines.
+      def ternaryable?(statement)
+        # This is a list of nodes that should not be allowed to be a part of a
+        # ternary clause.
+        no_ternary = [
+          Alias, Assign, Break, Command, CommandCall, Heredoc, If, IfMod, IfOp,
+          Lambda, MAssign, Next, OpAssign, RescueMod, Return, Return0, Super,
+          Undef, Unless, UnlessMod, Until, UntilMod, VarAlias, VoidStmt, While,
+          WhileMod, Yield, Yield0, ZSuper
+        ]
+
+        # Here we're going to check that the only statement inside the
+        # statements node is no a part of our denied list of nodes that can be
+        # ternaries.
+        #
+        # If the user is using one of the lower precedence "and" or "or"
+        # operators, then we can't use a ternary expression as it would break
+        # the flow control.
+        !no_ternary.include?(statement.class) &&
+          !(statement.is_a?(Binary) && %i[and or].include?(statement.operator))
+      end
+    end
+  end
+
   # Formats an If or Unless node.
   class ConditionalFormatter
     # [String] the keyword associated with this conditional
@@ -4680,7 +4734,7 @@ module SyntaxTree
     def format(q)
       # If we can transform this node into a ternary, then we're going to print
       # a special version that uses the ternary operator if it fits on one line.
-      if can_ternary?
+      if Ternaryable.call(node)
         format_ternary(q)
         return
       end
@@ -4746,7 +4800,13 @@ module SyntaxTree
           q.group do
             q.format(node.consequent.keyword)
             q.indent do
-              q.breakable
+              # This is a very special case of breakable where we want to force
+              # it into the output but we _don't_ want to explicitly break the
+              # parent. If a break-parent shows up in the tree, then it's going
+              # to force it all the way up to the tree, which is going to negate
+              # the ternary. Maybe this should be an option in prettyprint? As
+              # in force: :no_break_parent or something.
+              q.target << PrettyPrint::Breakable.new(" ", 1, force: true)
               q.format(node.consequent.statements)
             end
           end
@@ -4770,52 +4830,12 @@ module SyntaxTree
     end
 
     def contains_conditional?
-      node.statements.body.length == 1 &&
-      [If, IfMod, IfOp, Unless, UnlessMod].include?(node.statements.body.first.class)
-    end
-
-    # In order for an `if` or `unless` expression to be shortened to a ternary,
-    # there has to be one and only one consequent clause which is an Else. Both
-    # the body of the main node and the body of the Else node must have only one
-    # statement, and that statement must pass the `can_ternary_statements?`
-    # check.
-    def can_ternary?
       case node
-      in { predicate: Assign | Command | CommandCall | MAssign | OpAssign }
-        false
-      in { consequent: Else[statements:] }
-        can_ternary_statements?(statements) &&
-          can_ternary_statements?(node.statements)
+      in { statements: { body: [If | IfMod | IfOp | Unless | UnlessMod] } }
+        true
       else
         false
       end
-    end
-
-    # Certain expressions cannot be reduced to a ternary without adding
-    # parentheses around them. In this case we say they cannot be ternaried and
-    # default instead to breaking them into multiple lines.
-    def can_ternary_statements?(statements)
-      return false if statements.body.length != 1
-      statement = statements.body.first
-
-      # This is a list of nodes that should not be allowed to be a part of a
-      # ternary clause.
-      no_ternary = [
-        Alias, Assign, Break, Command, CommandCall, Heredoc, If, IfMod, IfOp,
-        Lambda, MAssign, Next, OpAssign, RescueMod, Return, Return0, Super,
-        Undef, Unless, UnlessMod, Until, UntilMod, VarAlias, VoidStmt, While,
-        WhileMod, Yield, Yield0, ZSuper
-      ]
-
-      # Here we're going to check that the only statement inside the statements
-      # node is no a part of our denied list of nodes that can be ternaries.
-      #
-      # If the user is using one of the lower precedence "and" or "or"
-      # operators, then we can't use a ternary expression as it would break the
-      # flow control.
-      #
-      !no_ternary.include?(statement.class) &&
-        !(statement.is_a?(Binary) && %i[and or].include?(statement.operator))
     end
   end
 
@@ -8355,9 +8375,28 @@ module SyntaxTree
     end
 
     def format(q)
-      q.text(parentheses ? "not(" : "not ")
+      parent = q.parents.take(2)[1]
+      ternary = (parent.is_a?(If) || parent.is_a?(Unless)) && Ternaryable.call(parent)
+
+      q.text("not")
+
+      if parentheses
+        q.text("(")
+      elsif ternary
+        q.if_break { q.text(" ") }.if_flat { q.text("(") }
+      else
+        q.text(" ")
+      end
+
       q.format(statement) if statement
-      q.text(")") if parentheses
+
+      if parentheses
+        q.text(")")
+      elsif ternary
+        q.if_break {}.if_flat { q.text(")") }
+      else
+        q.text(" ")
+      end
     end
   end
 
