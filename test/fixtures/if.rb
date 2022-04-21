@@ -28,3 +28,7 @@ end
 if (foo += 1)
   foo
 end
+%
+if foo
+  a ? b : c
+end

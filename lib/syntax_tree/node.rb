@@ -4680,6 +4680,11 @@ module SyntaxTree
         return
       end
 
+      if contains_conditional?
+        format_break(q, force: true)
+        return
+      end
+
       if node.consequent || node.statements.empty?
         q.group { format_break(q, force: true) }
       else
@@ -4715,6 +4720,11 @@ module SyntaxTree
 
       q.breakable(force: force)
       q.text("end")
+    end
+
+    def contains_conditional?
+      node.statements.body.length == 1 &&
+      [If, IfMod, IfOp, Unless, UnlessMod].include?(node.statements.body.first.class)
     end
   end
 

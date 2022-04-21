@@ -28,3 +28,7 @@ end
 unless (foo += 1)
   foo
 end
+%
+unless foo
+  a ? b : c
+end
