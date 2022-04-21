@@ -2221,28 +2221,87 @@ module SyntaxTree
     end
 
     def format(q)
+      q.group { q.if_break { format_chain(q) }.if_flat { node.format_contents(q) } }
+    end
+
+    def format_chain(q)
       children = [node]
-      children << children.last.receiver while children.last.receiver.is_a?(Call)
+
+      # First, walk down the chain until we get to the point where we're not
+      # longer at a chainable node.
+      while true
+        case children.last
+        in Call[receiver: Call]
+          children << children.last.receiver
+        in Call[receiver: MethodAddBlock[call: Call]]
+          children << children.last.receiver
+        in MethodAddBlock[call: Call]
+          children << children.last.call
+        else
+          break
+        end
+      end
+
+      # We're going to have some specialized behavior for if it's an entire
+      # chain of calls without arguments except for the last one. This is common
+      # enough in Ruby source code that it's worth the extra complexity here.
+      empty_except_last =
+        children.drop(1).all? do |child|
+          child.is_a?(Call) && child.arguments.nil?
+        end
+
+      # Here, we're going to add all of the children onto the stack of the
+      # formatter so it's as if we had descending normally into them. This is
+      # necessary so they can check their parents as normal.
+      q.stack.concat(children)
       q.format(children.last.receiver)
 
       q.group do
-        format_child(q, children.pop) if attach_directly?(children.last)
+        if attach_directly?(children.last)
+          format_child(q, children.pop)
+          q.stack.pop
+        end
 
         q.indent do
-          children.reverse_each do |child|
+          while child = children.pop
             case child
-            in { receiver: Call[message: { value: "where" }], message: { value: "not" } }
+            in Call[receiver: Call[message: { value: "where" }], message: { value: "not" }]
               # This is very specialized behavior wherein we group
               # .where.not calls together because it looks better. For more
               # information, see
               # https://github.com/prettier/plugin-ruby/issues/862.
-            else
+            in Call
+              # If we're at a Call node and not a MethodAddBlock node in the
+              # chain then we're going to add a newline so it indents properly.
               q.breakable("")
+            else
             end
 
-            format_child(q, child)
+            format_child(q, child, skip_attached: empty_except_last && children.empty?)
+
+            # Pop off the formatter's stack so that it aligns with what would
+            # have happened if we had been formatting normally.
+            q.stack.pop
           end
         end
+      end
+
+      if empty_except_last
+        case node
+        in Call
+          node.format_arguments(q)
+        in MethodAddBlock[block:]
+          q.format(block)
+        end
+      end
+    end
+
+    def self.chained?(node)
+      case node
+      in Call | MethodAddBlock[call: Call]
+        true
+      else
+        false
       end
     end
 
@@ -2256,10 +2315,16 @@ module SyntaxTree
         .include?(child.receiver.class)
     end
 
-    def format_child(q, child)
-      q.format(CallOperatorFormatter.new(child.operator))
-      q.format(child.message) if child.message != :call
-      child.format_arguments(q)
+    def format_child(q, child, skip_attached: false)
+      # First, format the actual contents of the child.
+      case child
+      in Call
+        q.format(CallOperatorFormatter.new(child.operator))
+        q.format(child.message) if child.message != :call
+        child.format_arguments(q) unless skip_attached
+      in MethodAddBlock
+        q.format(child.block) unless skip_attached
+      end
 
       # If there are any comments on this node then we need to explicitly print
       # them out here since we're bypassing the normal comment printing.
@@ -2342,7 +2407,7 @@ module SyntaxTree
       # If we're at the top of a call chain, then we're going to do some
       # specialized printing in case we can print it nicely. We _only_ do this
       # at the top of the chain to avoid weird recursion issues.
-      if !q.parent.is_a?(Call) && receiver.is_a?(Call)
+      if !CallChainFormatter.chained?(q.parent) && CallChainFormatter.chained?(receiver)
         q.group { q.if_break { CallChainFormatter.new(self).format(q) }.if_flat { format_contents(q) } }
       else
         format_contents(q)
@@ -2360,8 +2425,6 @@ module SyntaxTree
         # Do nothing if there are no arguments.
       end
     end
-
-    private
 
     def format_contents(q)
       call_operator = CallOperatorFormatter.new(operator)
