@@ -53,3 +53,15 @@ next @a
 next(A)
 -
 next A
+%
+next([])
+-
+next []
+%
+next([1])
+-
+next [1]
+%
+next([1, 2])
+-
+next 1, 2

@@ -50,7 +50,7 @@ module SyntaxTree
         # Print all comments that were found after the node.
         trailing.each do |comment|
           line_suffix(priority: COMMENT_PRIORITY) do
-            text(" ")
+            comment.inline? ? text(" ") : breakable
             comment.format(self)
             break_parent
           end
