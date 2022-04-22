@@ -25,3 +25,15 @@ return(
   foo
   bar
 )
+%
+return([1, 2, 3])
+-
+return 1, 2, 3
+%
+return [1, 2, 3]
+-
+return 1, 2, 3
+%
+return []
+%
+return [1]

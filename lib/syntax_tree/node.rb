@@ -2068,13 +2068,19 @@ module SyntaxTree
             if part.is_a?(Paren)
               if part.contents.body.length == 1 && skip_parens?(part.contents.body.first)
                 q.text(" ")
-                q.format(part.contents.body.first)
+                contents = part.contents.body.first
+                contents = contents.contents if contents.is_a?(ArrayLiteral)
+                q.format(contents)
               else
                 q.format(arguments)
               end
             elsif part.is_a?(ArrayLiteral)
               q.text(" ")
-              q.format(arguments)
+              if part.contents && part.contents.parts.length > 1
+                q.format(part.contents)
+              else
+                q.format(arguments)
+              end
             else
               format_arguments(q, "(", ")")
             end
@@ -2086,6 +2092,7 @@ module SyntaxTree
     end
 
     private
+
 
     def format_arguments(q, opening, closing)
       q.if_break { q.text(opening) }
@@ -2099,7 +2106,7 @@ module SyntaxTree
 
     def skip_parens?(node)
       case node
-      in Int | FloatLiteral
+      in Int | FloatLiteral | ArrayLiteral
         true
       in VarRef[value: GVar | IVar | CVar | Kw | Const]
         true
@@ -2523,7 +2530,7 @@ module SyntaxTree
     end
 
     alias deconstruct child_nodes
-    
+
     def deconstruct_keys(keys)
       { value: value, location: location }
     end
@@ -3808,7 +3815,7 @@ module SyntaxTree
     end
 
     alias deconstruct child_nodes
-    
+
     def deconstruct_keys(keys)
       { value: value, location: location }
     end
@@ -3838,7 +3845,7 @@ module SyntaxTree
     end
 
     alias deconstruct child_nodes
-    
+
     def deconstruct_keys(keys)
       { value: value, location: location }
     end
@@ -3870,7 +3877,7 @@ module SyntaxTree
     end
 
     alias deconstruct child_nodes
-    
+
     def deconstruct_keys(keys)
       { value: value, location: location }
     end
@@ -5311,7 +5318,7 @@ module SyntaxTree
     end
 
     alias deconstruct child_nodes
-    
+
     def deconstruct_keys(keys)
       { value: value, location: location }
     end
@@ -6436,7 +6443,7 @@ module SyntaxTree
     end
 
     alias deconstruct child_nodes
-    
+
     def deconstruct_keys(keys)
       { value: value, location: location }
     end
@@ -6536,7 +6543,7 @@ module SyntaxTree
     end
 
     alias deconstruct child_nodes
-    
+
     def deconstruct_keys(keys)
       { value: value, location: location }
     end
@@ -6597,7 +6604,7 @@ module SyntaxTree
     end
 
     alias deconstruct child_nodes
-    
+
     def deconstruct_keys(keys)
       { value: value, location: location }
     end
@@ -6622,7 +6629,7 @@ module SyntaxTree
     end
 
     alias deconstruct child_nodes
-    
+
     def deconstruct_keys(keys)
       { value: value, location: location }
     end
@@ -6693,7 +6700,7 @@ module SyntaxTree
     end
 
     alias deconstruct child_nodes
-    
+
     def deconstruct_keys(keys)
       { beginning: beginning, parts: parts, location: location }
     end
@@ -6726,7 +6733,7 @@ module SyntaxTree
     end
 
     alias deconstruct child_nodes
-    
+
     def deconstruct_keys(keys)
       { value: value, location: location }
     end
@@ -6760,7 +6767,7 @@ module SyntaxTree
     end
 
     alias deconstruct child_nodes
-    
+
     def deconstruct_keys(keys)
       { value: value, location: location }
     end
@@ -7246,7 +7253,7 @@ module SyntaxTree
       @value = value
       @location = location
     end
-  
+
     def accept(visitor)
       visitor.visit_rparen(self)
     end
@@ -7256,7 +7263,7 @@ module SyntaxTree
     end
 
     alias deconstruct child_nodes
-    
+
     def deconstruct_keys(keys)
       { value: value, location: location }
     end
@@ -7511,7 +7518,7 @@ module SyntaxTree
     end
 
     alias deconstruct child_nodes
-    
+
     def deconstruct_keys(keys)
       { parts: parts, location: location }
     end
@@ -7808,7 +7815,7 @@ module SyntaxTree
     end
 
     alias deconstruct child_nodes
-    
+
     def deconstruct_keys(keys)
       { value: value, location: location }
     end
@@ -7838,7 +7845,7 @@ module SyntaxTree
     end
 
     alias deconstruct child_nodes
-    
+
     def deconstruct_keys(keys)
       { value: value, location: location }
     end
@@ -7969,7 +7976,7 @@ module SyntaxTree
     end
 
     alias deconstruct child_nodes
-    
+
     def deconstruct_keys(keys)
       { value: value, location: location }
     end
@@ -7998,7 +8005,7 @@ module SyntaxTree
     end
 
     alias deconstruct child_nodes
-    
+
     def deconstruct_keys(keys)
       { value: value, location: location }
     end
@@ -8028,7 +8035,7 @@ module SyntaxTree
     end
 
     alias deconstruct child_nodes
-    
+
     def deconstruct_keys(keys)
       { value: value, location: location }
     end
@@ -8139,7 +8146,7 @@ module SyntaxTree
     end
 
     alias deconstruct child_nodes
-    
+
     def deconstruct_keys(keys)
       { value: value, location: location }
     end
@@ -8217,7 +8224,7 @@ module SyntaxTree
     end
 
     alias deconstruct child_nodes
-    
+
     def deconstruct_keys(keys)
       { value: value, location: location }
     end
@@ -9242,7 +9249,7 @@ module SyntaxTree
     end
 
     alias deconstruct child_nodes
-    
+
     def deconstruct_keys(keys)
       { value: value, location: location }
     end
@@ -9271,7 +9278,7 @@ module SyntaxTree
     end
 
     alias deconstruct child_nodes
-    
+
     def deconstruct_keys(keys)
       { parts: parts, location: location }
     end
