@@ -2068,7 +2068,9 @@ module SyntaxTree
             if part.is_a?(Paren)
               if part.contents.body.length == 1 && skip_parens?(part.contents.body.first)
                 q.text(" ")
-                q.format(part.contents.body.first)
+                contents = part.contents.body.first
+                contents = contents.contents if contents.is_a?(ArrayLiteral)
+                q.format(contents)
               else
                 q.format(arguments)
               end
