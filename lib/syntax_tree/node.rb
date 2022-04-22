@@ -2076,7 +2076,11 @@ module SyntaxTree
               end
             elsif part.is_a?(ArrayLiteral)
               q.text(" ")
-              q.format(part.contents)
+              if part.contents && part.contents.parts.length > 1
+                q.format(part.contents)
+              else
+                q.format(arguments)
+              end
             else
               format_arguments(q, "(", ")")
             end
