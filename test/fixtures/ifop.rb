@@ -8,3 +8,5 @@ if foooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo
 else
   baz
 end
+%
+foo bar ? 1 : 2

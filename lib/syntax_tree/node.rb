@@ -2899,6 +2899,7 @@ module SyntaxTree
         q.text(" ")
         yield
       in Args[parts: [IfOp]]
+        q.if_flat { q.text(" ") }
         yield
       in Args[parts: [Command => command]]
         align(q, command, &block)
