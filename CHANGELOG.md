@@ -6,6 +6,27 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 
 ## [Unreleased]
 
+## [2.3.0] - 2022-04-22
+
+### Added
+
+- [#52](https://github.com/ruby-syntax-tree/syntax_tree/pull/52) - `SyntaxTree::Formatter.format` for formatting an already parsed node.
+- [#56](https://github.com/ruby-syntax-tree/syntax_tree/pull/56) - `if` and `unless` can now be transformed into ternaries if they're simple enough.
+- [#56](https://github.com/ruby-syntax-tree/syntax_tree/pull/56) - Nicely format call chains by one indentation.
+- [#56](https://github.com/ruby-syntax-tree/syntax_tree/pull/56) - Handle trailing operators in call chains when they are necessary because of comments.
+- [#56](https://github.com/ruby-syntax-tree/syntax_tree/pull/56) - Add some specialized formatting for Sorbet `sig` blocks to make them appear nicer.
+
+### Changed
+
+- [#53](https://github.com/ruby-syntax-tree/syntax_tree/pull/53) - Optional keyword arguments on method declarations have a value of `nil` now instead of `false`. This makes it easier to use the visitor.
+- [#54](https://github.com/ruby-syntax-tree/syntax_tree/pull/54) - Flow control operators can now skip parentheses for simple, individual arguments. e.g., `break(1)` becomes `break 1`.
+- [#54](https://github.com/ruby-syntax-tree/syntax_tree/pull/54) - Don't allow modifier conditionals to modify ternaries.
+- [#55](https://github.com/ruby-syntax-tree/syntax_tree/pull/55) - Skip parentheses and brackets on arrays for flow control operators. e.g., `break([1, 2, 3])` becomes `break 1, 2, 3`.
+- [#56](https://github.com/ruby-syntax-tree/syntax_tree/pull/56) - Don't add parentheses to method calls if you don't need them.
+- [#56](https://github.com/ruby-syntax-tree/syntax_tree/pull/56) - Format comments on empty parameter sets. e.g., `def foo # bar` should keeps its comment.
+- [#56](https://github.com/ruby-syntax-tree/syntax_tree/pull/56) - `%s[]` symbols on assignments should not indent to the next line.
+- [#56](https://github.com/ruby-syntax-tree/syntax_tree/pull/56) - Empty hash and array literals with comments inside of them should be formatted correctly.
+
 ## [2.2.0] - 2022-04-19
 
 ### Added
@@ -166,7 +187,8 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 
 - 🎉 Initial release! 🎉
 
-[unreleased]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v2.2.0...HEAD
+[unreleased]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v2.3.0...HEAD
+[2.3.0]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v2.2.0...v2.3.0
 [2.2.0]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v2.1.1...v2.2.0
 [2.1.1]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v2.1.0...v2.1.1
 [2.1.0]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v2.0.1...v2.1.0
