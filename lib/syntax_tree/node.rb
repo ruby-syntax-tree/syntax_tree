@@ -2222,6 +2222,7 @@ module SyntaxTree
 
     def format(q)
       children = [node]
+      threshold = 3
 
       # First, walk down the chain until we get to the point where we're not
       # longer at a chainable node.
@@ -2238,7 +2239,27 @@ module SyntaxTree
         end
       end
 
-      if children.length > 2
+      # Here, we have very specialized behavior where if we're within a sig
+      # block, then we're going to assume we're creating a Sorbet type
+      # signature. In that case, we really want the threshold to be lowered so
+      # that we create method chains off of any two method calls within the
+      # block. For more details, see
+      # https://github.com/prettier/plugin-ruby/issues/863.
+      parents = q.parents.take(4)
+      if parent = parents[2]
+        # If we're at a do_block, then we want to go one more level up. This is
+        # because do blocks have BodyStmt nodes instead of just Statements
+        # nodes.
+        parent = parents[3] if parent.is_a?(DoBlock)
+
+        case parent
+        in MethodAddBlock[call: FCall[value: { value: "sig" }]]
+          threshold = 2
+        else
+        end
+      end
+
+      if children.length >= threshold
         q.group { q.if_break { format_chain(q, children) }.if_flat { node.format_contents(q) } }
       else
         node.format_contents(q)
@@ -2329,18 +2350,20 @@ module SyntaxTree
     # For certain nodes, we want to attach directly to the end and don't
     # want to indent the first call. So we'll pop off the first children and
     # format it separately here.
-    def attach_directly?(child)
+    def attach_directly?(node)
       [ArrayLiteral, HashLiteral, Heredoc, If, Unless, XStringLiteral]
-        .include?(child.receiver.class)
+        .include?(node.receiver.class)
     end
 
     def format_child(q, child, skip_operator: false, skip_attached: false)
       # First, format the actual contents of the child.
       case child
       in Call
-        q.format(CallOperatorFormatter.new(child.operator)) unless skip_operator
-        q.format(child.message) if child.message != :call
-        child.format_arguments(q) unless skip_attached
+        q.group do
+          q.format(CallOperatorFormatter.new(child.operator)) unless skip_operator
+          q.format(child.message) if child.message != :call
+          child.format_arguments(q) unless skip_attached
+        end
       in MethodAddBlock
         q.format(child.block) unless skip_attached
       end
