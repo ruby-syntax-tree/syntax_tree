@@ -79,7 +79,7 @@ class PrettyPrint
     end
 
     def pretty_print(q)
-      q.group(2, "align([", "])") do
+      q.group(2, "align#{indent}([", "])") do
         q.seplist(contents) { |content| q.pp(content) }
       end
     end
@@ -161,7 +161,7 @@ class PrettyPrint
     end
 
     def pretty_print(q)
-      q.group(2, "group([", "])") do
+      q.group(2, break? ? "breakGroup([" : "group([", "])") do
         q.seplist(contents) { |content| q.pp(content) }
       end
     end
@@ -763,9 +763,7 @@ class PrettyPrint
 
     # This is a linear stack instead of a mutually recursive call defined on
     # the individual doc nodes for efficiency.
-    while commands.any?
-      indent, mode, doc = commands.pop
-
+    while (indent, mode, doc = commands.pop)
       case doc
       when Text
         doc.objects.each { |object| buffer << object }
@@ -793,10 +791,10 @@ class PrettyPrint
           end
         end
       when IfBreak
-        if mode == MODE_BREAK
-          commands << [indent, mode, doc.break_contents] if doc.break_contents
-        elsif mode == MODE_FLAT
-          commands << [indent, mode, doc.flat_contents] if doc.flat_contents
+        if mode == MODE_BREAK && doc.break_contents.any?
+          commands << [indent, mode, doc.break_contents]
+        elsif mode == MODE_FLAT && doc.flat_contents.any?
+          commands << [indent, mode, doc.flat_contents]
         end
       when LineSuffix
         line_suffixes << [indent, mode, doc.contents, doc.priority]
@@ -1130,10 +1128,10 @@ class PrettyPrint
       when Group
         commands << [indent, doc.break? ? MODE_BREAK : mode, doc.contents]
       when IfBreak
-        if mode == MODE_BREAK
-          commands << [indent, mode, doc.break_contents] if doc.break_contents
-        else
-          commands << [indent, mode, doc.flat_contents] if doc.flat_contents
+        if mode == MODE_BREAK && doc.break_contents.any?
+          commands << [indent, mode, doc.break_contents]
+        elsif mode == MODE_FLAT && doc.flat_contents.any?
+          commands << [indent, mode, doc.flat_contents]
         end
       when Breakable
         if mode == MODE_FLAT && !doc.force?

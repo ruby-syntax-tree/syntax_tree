@@ -1585,12 +1585,12 @@ module SyntaxTree
         q.text(" ") unless power
 
         if operator == :<<
-          q.text(operator)
+          q.text(operator.to_s)
           q.text(" ")
           q.format(right)
         else
           q.group do
-            q.text(operator)
+            q.text(operator.to_s)
 
             q.indent do
               q.breakable(power ? "" : " ")
@@ -2075,12 +2075,12 @@ module SyntaxTree
     end
   end
 
-  # Formats either a Break or Next node.
+  # Formats either a Break, Next, or Return node.
   class FlowControlFormatter
     # [String] the keyword to print
     attr_reader :keyword
 
-    # [Break | Next] the node being formatted
+    # [Break | Next | Return] the node being formatted
     attr_reader :node
 
     def initialize(keyword, node)
@@ -2089,43 +2089,118 @@ module SyntaxTree
     end
 
     def format(q)
-      arguments = node.arguments
-
       q.group do
         q.text(keyword)
 
-        if arguments.parts.any?
-          if arguments.parts.length == 1
-            part = arguments.parts.first
-
-            if part.is_a?(Paren)
-              if part.contents.body.length == 1 && skip_parens?(part.contents.body.first)
-                q.text(" ")
-                contents = part.contents.body.first
-                contents = contents.contents if contents.is_a?(ArrayLiteral)
-                q.format(contents)
-              else
-                q.format(arguments)
-              end
-            elsif part.is_a?(ArrayLiteral)
-              q.text(" ")
-              if part.contents && part.contents.parts.length > 1
-                q.format(part.contents)
-              else
-                q.format(arguments)
-              end
-            else
-              format_arguments(q, "(", ")")
-            end
-          else
-            format_arguments(q, " [", "]")
-          end
+        case node.arguments.parts
+        in []
+          # Here there are no arguments at all, so we're not going to print
+          # anything. This would be like if we had:
+          #
+          #     break
+          #
+        in [Paren[contents: { body: [ArrayLiteral[contents: { parts: [_, _, *] }] => array] }]]
+          # Here we have a single argument that is a set of parentheses wrapping
+          # an array literal that has at least 2 elements. We're going to print
+          # the contents of the array directly. This would be like if we had:
+          #
+          #     break([1, 2, 3])
+          #
+          # which we will print as:
+          #
+          #     break 1, 2, 3
+          #
+          q.text(" ")
+          format_array_contents(q, array)
+        in [Paren[contents: { body: [ArrayLiteral => statement] }]]
+          # Here we have a single argument that is a set of parentheses wrapping
+          # an array literal that has 0 or 1 elements. We're going to skip the
+          # parentheses but print the array itself. This would be like if we
+          # had:
+          #
+          #     break([1])
+          #
+          # which we will print as:
+          #
+          #     break [1]
+          #
+          q.text(" ")
+          q.format(statement)
+        in [Paren[contents: { body: [statement] }]] if skip_parens?(statement)
+          # Here we have a single argument that is a set of parentheses that
+          # themselves contain a single statement. That statement is a simple
+          # value that we can skip the parentheses for. This would be like if we
+          # had:
+          #
+          #     break(1)
+          #
+          # which we will print as:
+          #
+          #     break 1
+          #
+          q.text(" ")
+          q.format(statement)
+        in [Paren => part]
+          # Here we have a single argument that is a set of parentheses. We're
+          # going to print the parentheses themselves as if they were the set of
+          # arguments. This would be like if we had:
+          #
+          #     break(foo.bar)
+          #
+          q.format(part)
+        in [ArrayLiteral[contents: { parts: [_, _, *] }] => array]
+          # Here there is a single argument that is an array literal with at
+          # least two elements. We skip directly into the array literal's
+          # elements in order to print the contents. This would be like if we
+          # had:
+          #
+          #     break [1, 2, 3]
+          #
+          # which we will print as:
+          #
+          #     break 1, 2, 3
+          #
+          q.text(" ")
+          format_array_contents(q, array)
+        in [ArrayLiteral => part]
+          # Here there is a single argument that is an array literal with 0 or 1
+          # elements. In this case we're going to print the array as it is
+          # because skipping the brackets would change the remaining. This would
+          # be like if we had:
+          #
+          #     break []
+          #     break [1]
+          #
+          q.text(" ")
+          q.format(part)
+        in [_]
+          # Here there is a single argument that hasn't matched one of our
+          # previous cases. We're going to print the argument as it is. This
+          # would be like if we had:
+          #
+          #     break foo
+          #
+          format_arguments(q, "(", ")")
+        else
+          # If there are multiple arguments, format them all. If the line is
+          # going to break into multiple, then use brackets to start and end the
+          # expression.
+          format_arguments(q, " [", "]")
         end
       end
     end
 
     private
 
+    def format_array_contents(q, array)
+      q.if_break { q.text("[") }
+      q.indent do
+        q.breakable("")
+        q.format(array.contents)
+      end
+      q.breakable("")
+      q.if_break { q.text("]") }
+    end
 
     def format_arguments(q, opening, closing)
       q.if_break { q.text(opening) }
@@ -2139,9 +2214,9 @@ module SyntaxTree
 
     def skip_parens?(node)
       case node
-      in Int | FloatLiteral | ArrayLiteral
+      in FloatLiteral | Imaginary | Int | RationalLiteral
         true
-      in VarRef[value: GVar | IVar | CVar | Kw | Const]
+      in VarRef[value: Const | CVar | GVar | IVar | Kw]
         true
       else
         false
@@ -2307,7 +2382,13 @@ module SyntaxTree
             else
             end
 
-            format_child(q, child, skip_operator: skip_operator, skip_attached: empty_except_last && children.empty?)
+            format_child(
+              q,
+              child,
+              skip_comments: children.empty?,
+              skip_operator: skip_operator,
+              skip_attached: empty_except_last && children.empty?
+            )
 
             # If the parent call node has a comment on the message then we need
             # to print the operator trailing in order to keep it working.
@@ -2355,7 +2436,7 @@ module SyntaxTree
         .include?(node.receiver.class)
     end
 
-    def format_child(q, child, skip_operator: false, skip_attached: false)
+    def format_child(q, child, skip_comments: false, skip_operator: false, skip_attached: false)
       # First, format the actual contents of the child.
       case child
       in Call
@@ -2370,7 +2451,7 @@ module SyntaxTree
 
       # If there are any comments on this node then we need to explicitly print
       # them out here since we're bypassing the normal comment printing.
-      if child.comments.any?
+      if child.comments.any? && !skip_comments
         child.comments.each do |comment|
           comment.inline? ? q.text(" ") : q.breakable
           comment.format(q)
@@ -2444,8 +2525,6 @@ module SyntaxTree
     end
 
     def format(q)
-      call_operator = CallOperatorFormatter.new(operator)
-
       # If we're at the top of a call chain, then we're going to do some
       # specialized printing in case we can print it nicely. We _only_ do this
       # at the top of the chain to avoid weird recursion issues.
@@ -4950,14 +5029,24 @@ module SyntaxTree
   # statements.
   module Ternaryable
     class << self
-      def call(node)
-        case node
-        in { predicate: Assign | Command | CommandCall | MAssign | OpAssign }
+      def call(q, node)
+        case q.parents.take(2)[1]
+        in Paren[contents: Statements[body: [node]]]
+          # If this is a conditional inside of a parentheses as the only
+          # content, then we don't want to transform it into a ternary.
+          # Presumably the user wanted it to be an explicit conditional because
+          # there are parentheses around it. So we'll just leave it in place.
           false
-        in { statements: { body: [truthy] }, consequent: Else[statements: { body: [falsy] }] }
-          ternaryable?(truthy) && ternaryable?(falsy)
         else
-          false
+          # Otherwise, we're going to check the conditional for certain cases.
+          case node
+          in { predicate: Assign | Command | CommandCall | MAssign | OpAssign }
+            false
+          in { statements: { body: [truthy] }, consequent: Else[statements: { body: [falsy] }] }
+            ternaryable?(truthy) && ternaryable?(falsy)
+          else
+            false
+          end
         end
       end
 
@@ -5005,7 +5094,7 @@ module SyntaxTree
     def format(q)
       # If we can transform this node into a ternary, then we're going to print
       # a special version that uses the ternary operator if it fits on one line.
-      if Ternaryable.call(node)
+      if Ternaryable.call(q, node)
         format_ternary(q)
         return
       end
@@ -5220,7 +5309,7 @@ module SyntaxTree
         Yield0, ZSuper
       ]
 
-      if force_flat.include?(truthy.class) || force_flat.include?(falsy.class)
+      if q.parent.is_a?(Paren) || force_flat.include?(truthy.class) || force_flat.include?(falsy.class)
         q.group { format_flat(q) }
         return
       end
@@ -8659,7 +8748,7 @@ module SyntaxTree
 
     def format(q)
       parent = q.parents.take(2)[1]
-      ternary = (parent.is_a?(If) || parent.is_a?(Unless)) && Ternaryable.call(parent)
+      ternary = (parent.is_a?(If) || parent.is_a?(Unless)) && Ternaryable.call(q, parent)
 
       q.text("not")
 
