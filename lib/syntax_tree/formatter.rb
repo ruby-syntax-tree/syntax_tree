@@ -9,8 +9,8 @@ module SyntaxTree
 
     attr_reader :source, :stack, :quote
 
-    def initialize(source, ...)
-      super(...)
+    def initialize(source, *args)
+      super(*args)
 
       @source = source
       @stack = []
