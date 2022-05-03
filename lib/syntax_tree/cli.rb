@@ -103,7 +103,7 @@ module SyntaxTree
     # An action of the CLI that prints out the doc tree IR for the given source.
     class Doc < Action
       def run(handler, filepath, source)
-        formatter = Formatter.new([])
+        formatter = Formatter.new(source, [])
         handler.parse(source).format(formatter)
         pp formatter.groups.first
       end
@@ -113,6 +113,26 @@ module SyntaxTree
     class Format < Action
       def run(handler, filepath, source)
         puts handler.format(source)
+      end
+    end
+
+    # An action of the CLI that converts the source into its equivalent JSON
+    # representation.
+    class Json < Action
+      def run(handler, filepath, source)
+        object = Visitor::JSONVisitor.new.visit(handler.parse(source))
+        puts JSON.pretty_generate(object)
+      end
+    end
+
+    # An action of the CLI that outputs a pattern-matching Ruby expression that
+    # would match the input given.
+    class Match < Action
+      def run(handler, filepath, source)
+        formatter = Formatter.new(source, [])
+        Visitor::MatchVisitor.new(formatter).visit(handler.parse(source))
+        formatter.flush
+        puts formatter.output.join
       end
     end
 
@@ -153,6 +173,12 @@ module SyntaxTree
 
       #{Color.bold("stree format [OPTIONS] [FILE]")}
         Print out the formatted version of the given files
+
+      #{Color.bold("stree json [OPTIONS] [FILE]")}
+        Print out the JSON representation of the given files
+
+      #{Color.bold("stree match [OPTIONS] [FILE]")}
+        Print out a pattern-matching Ruby expression that would match the given files
 
       #{Color.bold("stree help")}
         Display this help message
@@ -201,6 +227,10 @@ module SyntaxTree
             Debug.new
           when "doc"
             Doc.new
+          when "j", "json"
+            Json.new
+          when "m", "match"
+            Match.new
           when "f", "format"
             Format.new
           when "w", "write"

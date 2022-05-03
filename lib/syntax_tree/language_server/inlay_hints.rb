@@ -2,12 +2,70 @@
 
 module SyntaxTree
   class LanguageServer
-    class InlayHints
-      attr_reader :before, :after
+    class InlayHints < Visitor
+      attr_reader :stack, :before, :after
 
       def initialize
+        @stack = []
         @before = Hash.new { |hash, key| hash[key] = +"" }
         @after = Hash.new { |hash, key| hash[key] = +"" }
+      end
+
+      def visit(node)
+        stack << node
+        result = super
+        stack.pop
+        result
+      end
+
+      # Adds parentheses around assignments contained within the default values
+      # of parameters. For example,
+      #
+      #     def foo(a = b = c)
+      #     end
+      #
+      # becomes
+      #
+      #     def foo(a = ₍b = c₎)
+      #     end
+      #
+      def visit_assign(node)
+        parentheses(node.location) if stack[-2].is_a?(Params)
+      end
+
+      # Adds parentheses around binary expressions to make it clear which
+      # subexpression will be evaluated first. For example,
+      #
+      #     a + b * c
+      #
+      # becomes
+      #
+      #     a + ₍b * c₎
+      #
+      def visit_binary(node)
+        case stack[-2]
+        in Assign | OpAssign
+          parentheses(node.location)
+        in Binary[operator: operator] if operator != node.operator
+          parentheses(node.location)
+        else
+        end
+      end
+
+      # Adds parentheses around ternary operators contained within certain
+      # expressions where it could be confusing which subexpression will get
+      # evaluated first. For example,
+      #
+      #     a ? b : c ? d : e
+      #
+      # becomes
+      #
+      #     a ? b : ₍c ? d : e₎
+      #
+      def visit_if_op(node)
+        if stack[-2] in Assign | Binary | IfOp | OpAssign
+          parentheses(node.location)
+        end
       end
 
       # Adds the implicitly rescued StandardError into a bare rescue clause. For
@@ -23,54 +81,38 @@ module SyntaxTree
       #     rescue StandardError
       #     end
       #
-      def bare_rescue(location)
-        after[location.start_char + "rescue".length] << " StandardError"
+      def visit_rescue(node)
+        if node.exception.nil?
+          after[node.location.start_char + "rescue".length] << " StandardError"
+        end
       end
 
-      # Adds implicit parentheses around certain expressions to make it clear
-      # which subexpression will be evaluated first. For example,
+      # Adds parentheses around unary statements using the - operator that are
+      # contained within Binary nodes. For example,
       #
-      #     a + b * c
+      #     -a + b
       #
       # becomes
       #
-      #     a + ₍b * c₎
+      #     ₍-a₎ + b
       #
-      def precedence_parentheses(location)
-        before[location.start_char] << "₍"
-        after[location.end_char] << "₎"
+      def visit_unary(node)
+        if stack[-2].is_a?(Binary) && (node.operator == "-")
+          parentheses(node.location)
+        end
       end
 
       def self.find(program)
-        inlay_hints = new
-        queue = [[nil, program]]
+        visitor = new
+        visitor.visit(program)
+        visitor
+      end
 
-        until queue.empty?
-          parent_node, child_node = queue.shift
+      private
 
-          child_node.child_nodes.each do |grand_child_node|
-            queue << [child_node, grand_child_node] if grand_child_node
-          end
-
-          case [parent_node, child_node]
-          in _, Rescue[exception: nil, location:]
-            inlay_hints.bare_rescue(location)
-          in Assign | Binary | IfOp | OpAssign, IfOp[location:]
-            inlay_hints.precedence_parentheses(location)
-          in Assign | OpAssign, Binary[location:]
-            inlay_hints.precedence_parentheses(location)
-          in Binary[operator: parent_oper], Binary[operator: child_oper, location:] if parent_oper != child_oper
-            inlay_hints.precedence_parentheses(location)
-          in Binary, Unary[operator: "-", location:]
-            inlay_hints.precedence_parentheses(location)
-          in Params, Assign[location:]
-            inlay_hints.precedence_parentheses(location)
-          else
-            # do nothing
-          end
-        end
-
-        inlay_hints
+      def parentheses(location)
+        before[location.start_char] << "₍"
+        after[location.end_char] << "₎"
       end
     end
   end
