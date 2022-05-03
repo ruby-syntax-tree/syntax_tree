@@ -107,7 +107,7 @@ module SyntaxTree
         q.nest(0) do
           q.text(name)
           q.text(": ")
-          q.text(value)
+          value.pretty_print(q)
         end
       end
     end
