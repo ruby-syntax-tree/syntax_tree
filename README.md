@@ -122,6 +122,73 @@ For a file that contains `1 + 1`, you will receive:
 1 + 1
 ```
 
+### json
+
+This command will output a JSON representation of the syntax tree that is functionally equivalent to the input. This is mostly used in contexts where you need to access the tree from JavaScript or serialize it over a network.
+
+```sh
+stree json path/to/file.rb
+```
+
+For a file that contains `1 + 1`, you will receive:
+
+```json
+{
+  "type": "program",
+  "location": [1, 0, 1, 6],
+  "statements": {
+    "type": "statements",
+    "location": [1, 0, 1, 6],
+    "body": [
+      {
+        "type": "binary",
+        "location": [1, 0, 1, 5],
+        "left": {
+          "type": "int",
+          "location": [1, 0, 1, 1],
+          "value": "1",
+          "comments": []
+        },
+        "operator": "+",
+        "right": {
+          "type": "int",
+          "location": [1, 4, 1, 5],
+          "value": "1",
+          "comments": []
+        },
+        "comments": []
+      }
+    ],
+    "comments": []
+  },
+  "comments": []
+}
+```
+
+### match
+
+This command will output a Ruby case-match expression that would match correctly against the input.
+
+```sh
+stree match path/to/file.rb
+```
+
+For a file that contains `1 + 1`, you will receive:
+
+```ruby
+SyntaxTree::Program[
+  statements: SyntaxTree::Statements[
+    body: [
+      SyntaxTree::Binary[
+        left: SyntaxTree::Int[value: "1"],
+        operator: :+,
+        right: SyntaxTree::Int[value: "1"]
+      ]
+    ]
+  ]
+]
+```
+
 ### write
 
 This command will format the listed files and write that formatted version back to the source files. Note that this overwrites the original content, to be sure to be using a version control system.
