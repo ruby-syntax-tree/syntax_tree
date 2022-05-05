@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 module SyntaxTree
+  # Syntax Tree ships with the `stree` CLI, which can be used to inspect and
+  # manipulate Ruby code. This module is responsible for powering that CLI.
   module CLI
     # A utility wrapper around colored strings in the output.
     class Color
@@ -46,7 +48,7 @@ module SyntaxTree
 
     # An action of the CLI that prints out the AST for the given source.
     class AST < Action
-      def run(handler, filepath, source)
+      def run(handler, _filepath, source)
         pp handler.parse(source)
       end
     end
@@ -100,7 +102,7 @@ module SyntaxTree
 
     # An action of the CLI that prints out the doc tree IR for the given source.
     class Doc < Action
-      def run(handler, filepath, source)
+      def run(handler, _filepath, source)
         formatter = Formatter.new(source, [])
         handler.parse(source).format(formatter)
         pp formatter.groups.first
@@ -109,7 +111,7 @@ module SyntaxTree
 
     # An action of the CLI that formats the input source and prints it out.
     class Format < Action
-      def run(handler, filepath, source)
+      def run(handler, _filepath, source)
         puts handler.format(source)
       end
     end
@@ -117,7 +119,7 @@ module SyntaxTree
     # An action of the CLI that converts the source into its equivalent JSON
     # representation.
     class Json < Action
-      def run(handler, filepath, source)
+      def run(handler, _filepath, source)
         object = Visitor::JSONVisitor.new.visit(handler.parse(source))
         puts JSON.pretty_generate(object)
       end
@@ -126,7 +128,7 @@ module SyntaxTree
     # An action of the CLI that outputs a pattern-matching Ruby expression that
     # would match the input given.
     class Match < Action
-      def run(handler, filepath, source)
+      def run(handler, _filepath, source)
         formatter = Formatter.new(source, [])
         Visitor::MatchVisitor.new(formatter).visit(handler.parse(source))
         formatter.flush
@@ -296,7 +298,7 @@ module SyntaxTree
       private
 
       def each_file(arguments)
-        if $stdin.tty?
+        if $stdin.tty? || arguments.any?
           arguments.each do |pattern|
             Dir
               .glob(pattern)

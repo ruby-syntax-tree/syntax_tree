@@ -12,9 +12,6 @@ AllCops:
 
 Layout/LineLength:
   Max: 80
-  AllowedPatterns:
-  - '^\s*in '
-  - '^\s*location: Location'
 
 Lint/DuplicateBranch:
   Enabled: false
@@ -24,6 +21,9 @@ Lint/InterpolationCheck:
 
 Lint/MissingSuper:
   Enabled: false
+
+Lint/UnusedMethodArgument:
+  AllowUnusedKeywordArguments: true
 
 Metrics:
   Enabled: false
@@ -71,18 +71,4 @@ Style/PerlBackrefs:
   Enabled: false
 
 Style/SpecialGlobalVars:
-  Enabled: false
-
-###
-
-Lint/AssignmentInCondition:
-  Enabled: false
-
-Lint/UnusedMethodArgument:
-  Enabled: false
-
-Style/Documentation:
-  Enabled: false
-
-Style/StringLiterals:
   Enabled: false

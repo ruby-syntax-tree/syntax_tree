@@ -7,6 +7,11 @@ require "uri"
 require_relative "language_server/inlay_hints"
 
 module SyntaxTree
+  # Syntax Tree additionally ships with a language server conforming to the
+  # language server protocol. It can be invoked through the CLI by running:
+  #
+  #     stree lsp
+  #
   class LanguageServer
     attr_reader :input, :output
 
@@ -21,7 +26,7 @@ module SyntaxTree
           hash[uri] = File.binread(CGI.unescape(URI.parse(uri).path))
         end
 
-      while headers = input.gets("\r\n\r\n")
+      while (headers = input.gets("\r\n\r\n"))
         source = input.read(headers[/Content-Length: (\d+)/i, 1].to_i)
         request = JSON.parse(source, symbolize_names: true)
 

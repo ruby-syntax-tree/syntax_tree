@@ -16,6 +16,8 @@ It is built with only standard library dependencies. It additionally ships with 
   - [ast](#ast)
   - [check](#check)
   - [format](#format)
+  - [json](#json)
+  - [match](#match)
   - [write](#write)
 - [Library](#library)
   - [SyntaxTree.read(filepath)](#syntaxtreereadfilepath)
@@ -34,6 +36,9 @@ It is built with only standard library dependencies. It additionally ships with 
   - [textDocument/inlayHints](#textdocumentinlayhints)
   - [syntaxTree/visualizing](#syntaxtreevisualizing)
 - [Plugins](#plugins)
+- [Integration](#integration)
+  - [RuboCop](#rubocop)
+  - [VSCode](#vscode)
 - [Contributing](#contributing)
 - [License](#license)
 
@@ -394,6 +399,25 @@ Below are listed all of the "official" plugins hosted under the same GitHub orga
 * [SyntaxTree::Haml](https://github.com/ruby-syntax-tree/syntax_tree-haml) for the [Haml template language](https://haml.info/).
 * [SyntaxTree::JSON](https://github.com/ruby-syntax-tree/syntax_tree-json) for JSON.
 * [SyntaxTree::RBS](https://github.com/ruby-syntax-tree/syntax_tree-rbs) for the [RBS type language](https://github.com/ruby/rbs).
+
+When invoking the CLI, you pass through the list of plugins with the `--plugins` options to the commands that accept them. They should be a comma-delimited list. When the CLI first starts, it will require the files corresponding to those names.
+
+## Integration
+
+Syntax Tree's goal is to seemlessly integrate into your workflow. To this end, it provides a couple of additional tools beyond the CLI and the Ruby library.
+
+### RuboCop
+
+RuboCop and Syntax Tree serve different purposes, but there is overlap with some of RuboCop's functionality. Syntax Tree provides a RuboCop configuration file to disable rules that are redundant with Syntax Tree. To use this configuration file, add the following snippet to the top of your project's `.rubocop.yml`:
+
+```yaml
+inherit_gem:
+  syntax_tree: config/rubocop.yml
+```
+
+### VSCode
+
+To integrate Syntax Tree into VSCode, you should use the official VSCode extension [ruby-syntax-tree/vscode-syntax-tree](https://github.com/ruby-syntax-tree/vscode-syntax-tree).
 
 ## Contributing
 

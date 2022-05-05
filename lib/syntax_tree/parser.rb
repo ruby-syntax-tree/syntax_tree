@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 module SyntaxTree
+  # Parser is a subclass of the Ripper library that subscribes to the stream of
+  # tokens and nodes coming from the parser and builds up a syntax tree.
   class Parser < Ripper
     # A special parser error so that we can get nice syntax displays on the
     # error message when prettier prints out the results.
@@ -548,7 +550,7 @@ module SyntaxTree
 
       # If there's the optional then keyword, then we'll delete that and use it
       # as the end bounds of the location.
-      if token = find_token(Kw, "then", consume: false)
+      if (token = find_token(Kw, "then", consume: false))
         tokens.delete(token)
         location = location.to(token.location)
       end
@@ -866,7 +868,7 @@ module SyntaxTree
     # :call-seq:
     #   on_case: (untyped value, untyped consequent) -> Case | RAssign
     def on_case(value, consequent)
-      if keyword = find_token(Kw, "case", consume: false)
+      if (keyword = find_token(Kw, "case", consume: false))
         tokens.delete(keyword)
 
         Case.new(
@@ -1691,7 +1693,7 @@ module SyntaxTree
       end
 
       # Delete the optional then keyword
-      if token = find_token(Kw, "then", consume: false)
+      if (token = find_token(Kw, "then", consume: false))
         parts << token
         tokens.delete(token)
       end
@@ -1805,7 +1807,7 @@ module SyntaxTree
       ending = consequent || find_token(Kw, "end")
 
       statements_start = pattern
-      if token = find_token(Kw, "then", consume: false)
+      if (token = find_token(Kw, "then", consume: false))
         tokens.delete(token)
         statements_start = token
       end
@@ -3422,7 +3424,7 @@ module SyntaxTree
       ending = consequent || find_token(Kw, "end")
 
       statements_start = arguments
-      if token = find_token(Kw, "then", consume: false)
+      if (token = find_token(Kw, "then", consume: false))
         tokens.delete(token)
         statements_start = token
       end

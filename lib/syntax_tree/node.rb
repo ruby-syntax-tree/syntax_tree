@@ -51,7 +51,7 @@ module SyntaxTree
       [start_line, start_char, start_column, end_line, end_char, end_column]
     end
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       {
         start_line: start_line,
         start_char: start_char,
@@ -159,7 +159,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       {
         lbrace: lbrace,
         statements: statements,
@@ -211,7 +211,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       { value: value, location: location, comments: comments }
     end
 
@@ -262,7 +262,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       {
         lbrace: lbrace,
         statements: statements,
@@ -317,7 +317,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       { value: value, location: location, comments: comments }
     end
 
@@ -342,6 +342,8 @@ module SyntaxTree
   # symbols (note that this includes dynamic symbols like
   # :"left-#{middle}-right").
   class Alias < Node
+    # Formats an argument to the alias keyword. For symbol literals it uses the
+    # value of the symbol directly to look like bare words.
     class AliasArgumentFormatter
       # [DynaSymbol | SymbolLiteral] the argument being passed to alias
       attr_reader :argument
@@ -393,7 +395,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       { left: left, right: right, location: location, comments: comments }
     end
 
@@ -454,7 +456,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       {
         collection: collection,
         index: index,
@@ -515,7 +517,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       {
         collection: collection,
         index: index,
@@ -577,7 +579,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       { arguments: arguments, location: location, comments: comments }
     end
 
@@ -625,7 +627,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       { parts: parts, location: location, comments: comments }
     end
 
@@ -661,7 +663,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       { value: value, location: location, comments: comments }
     end
 
@@ -698,7 +700,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       { value: value, location: location, comments: comments }
     end
 
@@ -748,7 +750,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       { value: value, location: location, comments: comments }
     end
 
@@ -764,6 +766,7 @@ module SyntaxTree
   #     [one, two, three]
   #
   class ArrayLiteral < Node
+    # Formats an array of multiple simple string literals into the %w syntax.
     class QWordsFormatter
       # [Args] the contents of the array
       attr_reader :contents
@@ -789,6 +792,7 @@ module SyntaxTree
       end
     end
 
+    # Formats an array of multiple simple symbol literals into the %i syntax.
     class QSymbolsFormatter
       # [Args] the contents of the array
       attr_reader :contents
@@ -810,6 +814,28 @@ module SyntaxTree
       end
     end
 
+    # Formats an array that contains only a list of variable references. To make
+    # things simpler, if there are a bunch, we format them all using the "fill"
+    # algorithm as opposed to breaking them into a ton of lines. For example,
+    #
+    #     [foo, bar, baz]
+    #
+    # instead of becoming:
+    #
+    #     [
+    #       foo,
+    #       bar,
+    #       baz
+    #     ]
+    #
+    # would instead become:
+    #
+    #     [
+    #       foo, bar,
+    #       baz
+    #     ]
+    #
+    # provided the line length was hit between `bar` and `baz`.
     class VarRefsFormatter
       # [Args] the contents of the array
       attr_reader :contents
@@ -835,6 +861,9 @@ module SyntaxTree
       end
     end
 
+    # This is a special formatter used if the array literal contains no values
+    # but _does_ contain comments. In this case we do some special formatting to
+    # make sure the comments gets indented properly.
     class EmptyWithCommentsFormatter
       # [LBracket] the opening bracket
       attr_reader :lbracket
@@ -884,7 +913,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       {
         lbracket: lbracket,
         contents: contents,
@@ -993,6 +1022,7 @@ module SyntaxTree
   # and an optional array of positional matches that occur after the splat.
   # All of the in clauses above would create an AryPtn node.
   class AryPtn < Node
+    # Formats the optional splat of an array pattern.
     class RestFormatter
       # [VarField] the identifier that represents the remaining positionals
       attr_reader :value
@@ -1055,7 +1085,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       {
         constant: constant,
         requireds: requireds,
@@ -1146,7 +1176,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       { target: target, value: value, location: location, comments: comments }
     end
 
@@ -1208,7 +1238,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       { key: key, value: value, location: location, comments: comments }
     end
 
@@ -1266,7 +1296,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       { value: value, location: location, comments: comments }
     end
 
@@ -1304,7 +1334,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       { value: value, location: location, comments: comments }
     end
 
@@ -1339,7 +1369,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       { value: value, location: location, comments: comments }
     end
 
@@ -1352,6 +1382,7 @@ module SyntaxTree
   # hash or bare hash. It first determines if every key in the hash can use
   # labels. If it can, it uses labels. Otherwise it uses hash rockets.
   module HashKeyFormatter
+    # Formats the keys of a hash literal using labels.
     class Labels
       def format_key(q, key)
         case key
@@ -1367,6 +1398,7 @@ module SyntaxTree
       end
     end
 
+    # Formats the keys of a hash literal using hash rockets.
     class Rockets
       def format_key(q, key)
         case key
@@ -1440,7 +1472,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       { assocs: assocs, location: location, comments: comments }
     end
 
@@ -1482,7 +1514,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       { bodystmt: bodystmt, location: location, comments: comments }
     end
 
@@ -1530,7 +1562,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       { statement: statement, location: location, comments: comments }
     end
 
@@ -1590,7 +1622,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       {
         left: left,
         operator: operator,
@@ -1705,7 +1737,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       { params: params, locals: locals, location: location, comments: comments }
     end
 
@@ -1749,7 +1781,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       { name: name, location: location, comments: comments }
     end
 
@@ -1845,7 +1877,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       {
         statements: statements,
         rescue_clause: rescue_clause,
@@ -1891,6 +1923,7 @@ module SyntaxTree
 
   # Responsible for formatting either a BraceBlock or a DoBlock.
   class BlockFormatter
+    # Formats the opening brace or keyword of a block.
     class BlockOpenFormatter
       # [String] the actual output that should be printed
       attr_reader :text
@@ -2083,7 +2116,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       {
         lbrace: lbrace,
         block_var: block_var,
@@ -2282,7 +2315,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       { arguments: arguments, location: location, comments: comments }
     end
 
@@ -2314,6 +2347,20 @@ module SyntaxTree
     end
   end
 
+  # This is probably the most complicated formatter in this file. It's
+  # responsible for formatting chains of method calls, with or without arguments
+  # or blocks. In general, we want to go from something like
+  #
+  #     foo.bar.baz
+  #
+  # to
+  #
+  #     foo
+  #       .bar
+  #       .baz
+  #
+  # Of course there are a lot of caveats to that, including trailing operators
+  # when necessary, where comments are places, how blocks are aligned, etc.
   class CallChainFormatter
     # [Call | MethodAddBlock] the top of the call chain
     attr_reader :node
@@ -2348,7 +2395,7 @@ module SyntaxTree
       # block. For more details, see
       # https://github.com/prettier/plugin-ruby/issues/863.
       parents = q.parents.take(4)
-      if parent = parents[2]
+      if (parent = parents[2])
         # If we're at a do_block, then we want to go one more level up. This is
         # because do blocks have BodyStmt nodes instead of just Statements
         # nodes.
@@ -2399,7 +2446,7 @@ module SyntaxTree
           # and a trailing operator.
           skip_operator = false
 
-          while child = children.pop
+          while (child = children.pop)
             case child
             in Call[
                  receiver: Call[message: { value: "where" }],
@@ -2556,7 +2603,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       {
         receiver: receiver,
         operator: operator,
@@ -2666,7 +2713,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       {
         keyword: keyword,
         value: value,
@@ -2731,7 +2778,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       {
         value: value,
         operator: operator,
@@ -2820,7 +2867,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       {
         constant: constant,
         superclass: superclass,
@@ -2885,7 +2932,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       { value: value, location: location }
     end
   end
@@ -2923,7 +2970,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       {
         message: message,
         arguments: arguments,
@@ -3005,7 +3052,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       {
         receiver: receiver,
         operator: operator,
@@ -3144,7 +3191,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       { value: value, inline: inline, location: location }
     end
 
@@ -3190,7 +3237,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       { value: value, location: location, comments: comments }
     end
 
@@ -3232,7 +3279,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       {
         parent: parent,
         constant: constant,
@@ -3279,7 +3326,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       {
         parent: parent,
         constant: constant,
@@ -3324,7 +3371,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       { constant: constant, location: location, comments: comments }
     end
 
@@ -3360,7 +3407,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       { value: value, location: location, comments: comments }
     end
 
@@ -3404,7 +3451,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       {
         name: name,
         params: params,
@@ -3489,7 +3536,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       {
         target: target,
         operator: operator,
@@ -3557,7 +3604,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       { value: value, location: location, comments: comments }
     end
 
@@ -3623,7 +3670,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       {
         target: target,
         operator: operator,
@@ -3698,7 +3745,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       {
         keyword: keyword,
         block_var: block_var,
@@ -3778,7 +3825,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       { left: left, right: right, location: location, comments: comments }
     end
 
@@ -3826,7 +3873,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       { left: left, right: right, location: location, comments: comments }
     end
 
@@ -3913,7 +3960,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       { parts: parts, quote: quote, location: location, comments: comments }
     end
 
@@ -4013,7 +4060,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       {
         keyword: keyword,
         statements: statements,
@@ -4079,7 +4126,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       {
         predicate: predicate,
         statements: statements,
@@ -4151,7 +4198,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       { value: value, location: location }
     end
 
@@ -4186,7 +4233,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       { value: value, location: location }
     end
   end
@@ -4216,7 +4263,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       { value: value, location: location }
     end
   end
@@ -4248,7 +4295,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       { value: value, location: location }
     end
   end
@@ -4287,7 +4334,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       {
         keyword: keyword,
         statements: statements,
@@ -4341,7 +4388,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       { value: value, location: location, comments: comments }
     end
 
@@ -4384,7 +4431,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       {
         value: value,
         arguments: arguments,
@@ -4444,7 +4491,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       {
         parent: parent,
         operator: operator,
@@ -4490,7 +4537,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       { value: value, location: location, comments: comments }
     end
 
@@ -4542,7 +4589,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       {
         constant: constant,
         left: left,
@@ -4606,7 +4653,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       {
         index: index,
         collection: collection,
@@ -4663,7 +4710,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       { value: value, location: location, comments: comments }
     end
 
@@ -4677,6 +4724,9 @@ module SyntaxTree
   #     { key => value }
   #
   class HashLiteral < Node
+    # This is a special formatter used if the hash literal contains no values
+    # but _does_ contain comments. In this case we do some special formatting to
+    # make sure the comments gets indented properly.
     class EmptyWithCommentsFormatter
       # [LBrace] the opening brace
       attr_reader :lbrace
@@ -4726,7 +4776,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       { lbrace: lbrace, assocs: assocs, location: location, comments: comments }
     end
 
@@ -4821,7 +4871,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       {
         beginning: beginning,
         location: location,
@@ -4897,7 +4947,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       { value: value, location: location, comments: comments }
     end
 
@@ -4914,6 +4964,7 @@ module SyntaxTree
   #     end
   #
   class HshPtn < Node
+    # Formats a key-value pair in a hash pattern. The value is optional.
     class KeywordFormatter
       # [Label] the keyword being used
       attr_reader :key
@@ -4940,6 +4991,7 @@ module SyntaxTree
       end
     end
 
+    # Formats the optional double-splat from the pattern.
     class KeywordRestFormatter
       # [VarField] the parameter that matches the remaining keywords
       attr_reader :keyword_rest
@@ -4989,7 +5041,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       {
         constant: constant,
         keywords: keywords,
@@ -5087,7 +5139,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       { value: value, location: location, comments: comments }
     end
 
@@ -5104,7 +5156,7 @@ module SyntaxTree
     def self.call(parent)
       queue = [parent]
 
-      while node = queue.shift
+      while (node = queue.shift)
         return true if [Assign, MAssign, OpAssign].include?(node.class)
         queue += node.child_nodes
       end
@@ -5339,7 +5391,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       {
         predicate: predicate,
         statements: statements,
@@ -5389,7 +5441,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       {
         predicate: predicate,
         truthy: truthy,
@@ -5528,7 +5580,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       {
         statement: statement,
         predicate: predicate,
@@ -5569,7 +5621,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       { value: value, location: location, comments: comments }
     end
 
@@ -5616,7 +5668,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       {
         pattern: pattern,
         statements: statements,
@@ -5675,7 +5727,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       { value: value, location: location, comments: comments }
     end
 
@@ -5719,7 +5771,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       { value: value, location: location, comments: comments }
     end
 
@@ -5764,7 +5816,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       { value: value, location: location, comments: comments }
     end
 
@@ -5801,7 +5853,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       { name: name, location: location, comments: comments }
     end
 
@@ -5847,7 +5899,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       { value: value, location: location, comments: comments }
     end
 
@@ -5882,7 +5934,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       { value: value, location: location }
     end
   end
@@ -5918,7 +5970,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       {
         params: params,
         statements: statements,
@@ -5989,7 +6041,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       { value: value, location: location, comments: comments }
     end
 
@@ -6022,7 +6074,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       { value: value, location: location, comments: comments }
     end
 
@@ -6055,7 +6107,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       { value: value, location: location, comments: comments }
     end
 
@@ -6105,7 +6157,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       { target: target, value: value, location: location, comments: comments }
     end
 
@@ -6152,7 +6204,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       { call: call, block: block, location: location, comments: comments }
     end
 
@@ -6213,7 +6265,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       { parts: parts, location: location, comma: comma, comments: comments }
     end
 
@@ -6257,7 +6309,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       { contents: contents, location: location, comments: comments }
     end
 
@@ -6313,7 +6365,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       {
         constant: constant,
         bodystmt: bodystmt,
@@ -6380,7 +6432,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       { parts: parts, location: location, comments: comments }
     end
 
@@ -6429,7 +6481,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       { arguments: arguments, location: location, comments: comments }
     end
 
@@ -6466,7 +6518,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       { value: value, location: location, comments: comments }
     end
 
@@ -6512,7 +6564,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       {
         target: target,
         operator: operator,
@@ -6621,6 +6673,8 @@ module SyntaxTree
   #     def method(param) end
   #
   class Params < Node
+    # Formats the optional position of the parameters. This includes the label,
+    # as well as the default value.
     class OptionalFormatter
       # [Ident] the name of the parameter
       attr_reader :name
@@ -6644,6 +6698,8 @@ module SyntaxTree
       end
     end
 
+    # Formats the keyword position of the parameters. This includes the label,
+    # as well as an optional default value.
     class KeywordFormatter
       # [Ident] the name of the parameter
       attr_reader :name
@@ -6670,6 +6726,8 @@ module SyntaxTree
       end
     end
 
+    # Formats the keyword_rest position of the parameters. This can be the **nil
+    # syntax, the ... syntax, or the ** syntax.
     class KeywordRestFormatter
       # [:nil | ArgsForward | KwRestParam] the value of the parameter
       attr_reader :value
@@ -6764,7 +6822,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       {
         location: location,
         requireds: requireds,
@@ -6845,7 +6903,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       {
         lparen: lparen,
         contents: contents,
@@ -6896,7 +6954,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       { value: value, location: location, comments: comments }
     end
 
@@ -6929,7 +6987,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       { statements: statements, location: location, comments: comments }
     end
 
@@ -6974,7 +7032,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       {
         beginning: beginning,
         elements: elements,
@@ -7029,7 +7087,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       { value: value, location: location }
     end
 
@@ -7074,7 +7132,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       {
         beginning: beginning,
         elements: elements,
@@ -7129,7 +7187,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       { value: value, location: location }
     end
   end
@@ -7161,7 +7219,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       { value: value, location: location, comments: comments }
     end
 
@@ -7190,7 +7248,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       { value: value, location: location }
     end
   end
@@ -7215,7 +7273,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       { value: value, location: location }
     end
   end
@@ -7247,7 +7305,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       { value: value, location: location, comments: comments }
     end
 
@@ -7286,7 +7344,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       { beginning: beginning, parts: parts, location: location }
     end
   end
@@ -7319,7 +7377,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       { value: value, location: location }
     end
   end
@@ -7353,7 +7411,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       { value: value, location: location }
     end
   end
@@ -7394,7 +7452,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       {
         beginning: beginning,
         ending: ending,
@@ -7499,7 +7557,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       {
         exceptions: exceptions,
         variable: variable,
@@ -7593,7 +7651,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       {
         keyword: keyword,
         exception: exception,
@@ -7660,7 +7718,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       {
         statement: statement,
         value: value,
@@ -7714,7 +7772,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       { name: name, location: location, comments: comments }
     end
 
@@ -7751,7 +7809,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       { value: value, location: location, comments: comments }
     end
 
@@ -7787,7 +7845,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       { arguments: arguments, location: location, comments: comments }
     end
 
@@ -7823,7 +7881,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       { value: value, location: location, comments: comments }
     end
 
@@ -7852,7 +7910,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       { value: value, location: location }
     end
   end
@@ -7891,7 +7949,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       {
         target: target,
         bodystmt: bodystmt,
@@ -7993,7 +8051,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       { parser: parser, body: body, location: location, comments: comments }
     end
 
@@ -8115,7 +8173,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       { parts: parts, location: location }
     end
   end
@@ -8153,14 +8211,14 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       { left: left, right: right, location: location, comments: comments }
     end
 
     def format(q)
       q.group do
         q.format(left)
-        q.text(' \\')
+        q.text(" \\")
         q.indent do
           q.breakable(force: true)
           q.format(right)
@@ -8198,7 +8256,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       { variable: variable, location: location, comments: comments }
     end
 
@@ -8238,7 +8296,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       { statements: statements, location: location, comments: comments }
     end
 
@@ -8296,7 +8354,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       { parts: parts, quote: quote, location: location, comments: comments }
     end
 
@@ -8359,7 +8417,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       { arguments: arguments, location: location, comments: comments }
     end
 
@@ -8412,7 +8470,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       { value: value, location: location }
     end
   end
@@ -8442,7 +8500,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       { value: value, location: location }
     end
   end
@@ -8476,7 +8534,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       { value: value, location: location, comments: comments }
     end
 
@@ -8517,7 +8575,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       {
         beginning: beginning,
         elements: elements,
@@ -8573,7 +8631,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       { value: value, location: location }
     end
   end
@@ -8602,7 +8660,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       { value: value, location: location }
     end
   end
@@ -8632,7 +8690,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       { value: value, location: location }
     end
   end
@@ -8666,7 +8724,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       { constant: constant, location: location, comments: comments }
     end
 
@@ -8704,7 +8762,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       { constant: constant, location: location, comments: comments }
     end
 
@@ -8743,7 +8801,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       { value: value, location: location }
     end
   end
@@ -8783,7 +8841,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       { value: value, location: location, comments: comments }
     end
 
@@ -8821,7 +8879,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       { value: value, location: location }
     end
   end
@@ -8857,7 +8915,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       {
         statement: statement,
         parentheses: parentheses,
@@ -8924,7 +8982,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       {
         operator: operator,
         statement: statement,
@@ -8944,6 +9002,9 @@ module SyntaxTree
   #     undef method
   #
   class Undef < Node
+    # Undef accepts a variable number of arguments that can be either DynaSymbol
+    # or SymbolLiteral objects. For SymbolLiteral objects we descend directly
+    # into the value in order to have it come out as bare words.
     class UndefArgumentFormatter
       # [DynaSymbol | SymbolLiteral] the symbol to undefine
       attr_reader :node
@@ -8987,7 +9048,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       { symbols: symbols, location: location, comments: comments }
     end
 
@@ -9046,7 +9107,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       {
         predicate: predicate,
         statements: statements,
@@ -9092,7 +9153,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       {
         statement: statement,
         predicate: predicate,
@@ -9189,7 +9250,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       {
         predicate: predicate,
         statements: statements,
@@ -9245,7 +9306,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       {
         statement: statement,
         predicate: predicate,
@@ -9311,7 +9372,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       { left: left, right: right, location: location, comments: comments }
     end
 
@@ -9354,7 +9415,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       { value: value, location: location, comments: comments }
     end
 
@@ -9398,7 +9459,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       { value: value, location: location, comments: comments }
     end
 
@@ -9439,7 +9500,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       { value: value, location: location, comments: comments }
     end
 
@@ -9479,7 +9540,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       { value: value, location: location, comments: comments }
     end
 
@@ -9514,7 +9575,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       { location: location, comments: comments }
     end
 
@@ -9565,7 +9626,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       {
         arguments: arguments,
         statements: statements,
@@ -9646,7 +9707,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       {
         predicate: predicate,
         statements: statements,
@@ -9702,7 +9763,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       {
         statement: statement,
         predicate: predicate,
@@ -9771,7 +9832,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       { parts: parts, location: location, comments: comments }
     end
 
@@ -9811,7 +9872,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       {
         beginning: beginning,
         elements: elements,
@@ -9867,7 +9928,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       { value: value, location: location }
     end
   end
@@ -9896,7 +9957,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       { parts: parts, location: location }
     end
   end
@@ -9929,7 +9990,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       { parts: parts, location: location, comments: comments }
     end
 
@@ -9967,7 +10028,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       { arguments: arguments, location: location, comments: comments }
     end
 
@@ -10017,7 +10078,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       { value: value, location: location, comments: comments }
     end
 
@@ -10053,7 +10114,7 @@ module SyntaxTree
 
     alias deconstruct child_nodes
 
-    def deconstruct_keys(keys)
+    def deconstruct_keys(_keys)
       { value: value, location: location, comments: comments }
     end
 

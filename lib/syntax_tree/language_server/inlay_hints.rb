@@ -2,6 +2,13 @@
 
 module SyntaxTree
   class LanguageServer
+    # This class provides inlay hints for the language server. It is loosely
+    # designed around the LSP spec, but existed before the spec was finalized so
+    # is a little different for now.
+    #
+    # For more information, see the spec here:
+    # https://github.com/microsoft/language-server-protocol/issues/956.
+    #
     class InlayHints < Visitor
       attr_reader :stack, :before, :after
 

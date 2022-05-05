@@ -1,6 +1,9 @@
 # frozen_string_literal: true
 
 module SyntaxTree
+  # Visitor is a parent class that provides the ability to walk down the tree
+  # and handle a subset of nodes. By defining your own subclass, you can
+  # explicitly handle a node type by defining a visit_* method.
   class Visitor
     # This is raised when you use the Visitor.visit_method method and it fails.
     # It is correctable to through DidYouMean.

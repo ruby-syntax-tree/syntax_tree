@@ -9,13 +9,8 @@ Layout:
 #
 # Users can always override these defaults in their own rubocop.yml files.
 # https://github.com/prettier/plugin-ruby/issues/825
-#
-# We're also explicitly allowing pattern matching to extend beyond the maximum
-# line length, since SyntaxTree prefers putting patterns on a single line.
 Layout/LineLength:
   Enabled: true
-  AllowedPatterns:
-  - '^\s*in '
 
 Style/MultilineIfModifier:
   Enabled: false

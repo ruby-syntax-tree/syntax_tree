@@ -37,7 +37,9 @@ jobs:
         bundler-cache: true
         ruby-version: '3.1'
     - name: Check
-      run: bundle exec rake check
+      run: |
+        bundle exec rake check
+        bundle exec rubocop
 
   automerge:
     name: AutoMerge

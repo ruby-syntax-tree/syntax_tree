@@ -47,7 +47,7 @@ module SyntaxTree
         end
       end
 
-      def node(node, type)
+      def node(_node, type)
         q.group(2, "(", ")") do
           q.text(type)
           yield
