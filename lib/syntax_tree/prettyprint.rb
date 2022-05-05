@@ -778,17 +778,20 @@ class PrettyPrint
         position -= buffer.trim!
       when Group
         if mode == MODE_FLAT && !should_remeasure
-          commands <<
-            [indent, doc.break? ? MODE_BREAK : MODE_FLAT, doc.contents]
+          commands << [
+            indent,
+            doc.break? ? MODE_BREAK : MODE_FLAT,
+            doc.contents
+          ]
         else
           should_remeasure = false
           next_cmd = [indent, MODE_FLAT, doc.contents]
-          commands <<
-            if !doc.break? && fits?(next_cmd, commands, maxwidth - position)
-              next_cmd
-            else
-              [indent, MODE_BREAK, doc.contents]
-            end
+          commands << if !doc.break? &&
+               fits?(next_cmd, commands, maxwidth - position)
+            next_cmd
+          else
+            [indent, MODE_BREAK, doc.contents]
+          end
         end
       when IfBreak
         if mode == MODE_BREAK && doc.break_contents.any?

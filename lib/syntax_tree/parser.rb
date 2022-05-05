@@ -1679,7 +1679,7 @@ module SyntaxTree
 
       # If there's no constant, there may be braces, so we're going to look for
       # those to get our bounds.
-      if !constant
+      unless constant
         lbrace = find_token(LBrace, consume: false)
         rbrace = find_token(RBrace, consume: false)
 

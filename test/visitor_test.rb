@@ -12,9 +12,9 @@ class VisitorTest < Minitest::Test
 
       program.statements.body.last.bodystmt.statements.body.each do |node|
         case node
-        in SyntaxTree::ClassDeclaration[superclass: {
-             value: { value: "Node" }
-           }]
+        in SyntaxTree::ClassDeclaration[
+             superclass: { value: { value: "Node" } }
+           ]
           # this is a class we want to look at
         else
           next
@@ -31,11 +31,9 @@ class VisitorTest < Minitest::Test
           end
 
         case accept
-        in {
-             bodystmt: {
-               statements: {
-                 body: [SyntaxTree::Call[message: { value: visit_method }]]
-               }
+        in bodystmt: {
+             statements: {
+               body: [SyntaxTree::Call[message: { value: visit_method }]]
              }
            }
           assert_respond_to(visitor, visit_method)

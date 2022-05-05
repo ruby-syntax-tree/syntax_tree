@@ -3,9 +3,21 @@
 module SyntaxTree
   # Represents the location of a node in the tree from the source code.
   class Location
-    attr_reader :start_line, :start_char, :start_column, :end_line, :end_char, :end_column
+    attr_reader :start_line,
+                :start_char,
+                :start_column,
+                :end_line,
+                :end_char,
+                :end_column
 
-    def initialize(start_line:, start_char:, start_column:, end_line:, end_char:, end_column:)
+    def initialize(
+      start_line:,
+      start_char:,
+      start_column:,
+      end_line:,
+      end_char:,
+      end_column:
+    )
       @start_line = start_line
       @start_char = start_char
       @start_column = start_column
@@ -62,7 +74,14 @@ module SyntaxTree
     end
 
     def self.fixed(line:, char:, column:)
-      new(start_line: line, start_char: char, start_column: column, end_line: line, end_char: char, end_column: column)
+      new(
+        start_line: line,
+        start_char: char,
+        start_column: column,
+        end_line: line,
+        end_char: char,
+        end_column: column
+      )
     end
   end
 
@@ -951,7 +970,8 @@ module SyntaxTree
     # If we have an empty array that contains only comments, then we're going
     # to do some special printing to ensure they get indented correctly.
     def empty_with_comments?
-      contents.nil? && lbracket.comments.any? && lbracket.comments.none?(&:inline?)
+      contents.nil? && lbracket.comments.any? &&
+        lbracket.comments.none?(&:inline?)
     end
   end
 
@@ -1079,7 +1099,8 @@ module SyntaxTree
   module AssignFormatting
     def self.skip_indent?(value)
       case value
-      in ArrayLiteral | HashLiteral | Heredoc | Lambda | QSymbols | QWords | Symbols | Words
+      in ArrayLiteral | HashLiteral | Heredoc | Lambda | QSymbols | QWords |
+           Symbols | Words
         true
       in Call[receiver:]
         skip_indent?(receiver)
@@ -1935,9 +1956,9 @@ module SyntaxTree
       end
 
       q.group do
-        q.if_break { format_break(q, break_opening, break_closing) }.if_flat do
-          format_flat(q, flat_opening, flat_closing)
-        end
+        q
+          .if_break { format_break(q, break_opening, break_closing) }
+          .if_flat { format_flat(q, flat_opening, flat_closing) }
       end
     end
 
@@ -2101,7 +2122,11 @@ module SyntaxTree
           #
           #     break
           #
-        in [Paren[contents: { body: [ArrayLiteral[contents: { parts: [_, _, *] }] => array] }]]
+        in [Paren[
+             contents: {
+               body: [ArrayLiteral[contents: { parts: [_, _, *] }] => array]
+             }
+           ]]
           # Here we have a single argument that is a set of parentheses wrapping
           # an array literal that has at least 2 elements. We're going to print
           # the contents of the array directly. This would be like if we had:
@@ -2337,7 +2362,11 @@ module SyntaxTree
       end
 
       if children.length >= threshold
-        q.group { q.if_break { format_chain(q, children) }.if_flat { node.format_contents(q) } }
+        q.group do
+          q
+            .if_break { format_chain(q, children) }
+            .if_flat { node.format_contents(q) }
+        end
       else
         node.format_contents(q)
       end
@@ -2348,9 +2377,9 @@ module SyntaxTree
       # chain of calls without arguments except for the last one. This is common
       # enough in Ruby source code that it's worth the extra complexity here.
       empty_except_last =
-        children.drop(1).all? do |child|
-          child.is_a?(Call) && child.arguments.nil?
-        end
+        children
+          .drop(1)
+          .all? { |child| child.is_a?(Call) && child.arguments.nil? }
 
       # Here, we're going to add all of the children onto the stack of the
       # formatter so it's as if we had descending normally into them. This is
@@ -2372,7 +2401,10 @@ module SyntaxTree
 
           while child = children.pop
             case child
-            in Call[receiver: Call[message: { value: "where" }], message: { value: "not" }]
+            in Call[
+                 receiver: Call[message: { value: "where" }],
+                 message: { value: "not" }
+               ]
               # This is very specialized behavior wherein we group
               # .where.not calls together because it looks better. For more
               # information, see
@@ -2434,16 +2466,25 @@ module SyntaxTree
     # want to indent the first call. So we'll pop off the first children and
     # format it separately here.
     def attach_directly?(node)
-      [ArrayLiteral, HashLiteral, Heredoc, If, Unless, XStringLiteral]
-        .include?(node.receiver.class)
+      [ArrayLiteral, HashLiteral, Heredoc, If, Unless, XStringLiteral].include?(
+        node.receiver.class
+      )
     end
 
-    def format_child(q, child, skip_comments: false, skip_operator: false, skip_attached: false)
+    def format_child(
+      q,
+      child,
+      skip_comments: false,
+      skip_operator: false,
+      skip_attached: false
+    )
       # First, format the actual contents of the child.
       case child
       in Call
         q.group do
-          q.format(CallOperatorFormatter.new(child.operator)) unless skip_operator
+          unless skip_operator
+            q.format(CallOperatorFormatter.new(child.operator))
+          end
           q.format(child.message) if child.message != :call
           child.format_arguments(q) unless skip_attached
         end
@@ -2530,8 +2571,13 @@ module SyntaxTree
       # If we're at the top of a call chain, then we're going to do some
       # specialized printing in case we can print it nicely. We _only_ do this
       # at the top of the chain to avoid weird recursion issues.
-      if !CallChainFormatter.chained?(q.parent) && CallChainFormatter.chained?(receiver)
-        q.group { q.if_break { CallChainFormatter.new(self).format(q) }.if_flat { format_contents(q) } }
+      if !CallChainFormatter.chained?(q.parent) &&
+           CallChainFormatter.chained?(receiver)
+        q.group do
+          q
+            .if_break { CallChainFormatter.new(self).format(q) }
+            .if_flat { format_contents(q) }
+        end
       else
         format_contents(q)
       end
@@ -3802,7 +3848,7 @@ module SyntaxTree
     # quotes, then single quotes would deactivate it.)
     def self.locked?(node)
       node.parts.any? do |part|
-        part.is_a?(TStringContent) && part.value.match?(/#[@${]|[\\]/)
+        part.is_a?(TStringContent) && part.value.match?(/\\|#[@${]/)
       end
     end
 
@@ -3908,9 +3954,14 @@ module SyntaxTree
         matching = Quotes.matching(quote[2])
         pattern = /[\n#{Regexp.escape(matching)}'"]/
 
-        if parts.any? { |part|
-             part.is_a?(TStringContent) && part.value.match?(pattern)
-           }
+        # This check is to ensure we don't find a matching quote inside of the
+        # symbol that would be confusing.
+        matched =
+          parts.any? do |part|
+            part.is_a?(TStringContent) && part.value.match?(pattern)
+          end
+
+        if matched
           [quote, matching]
         elsif Quotes.locked?(self)
           ["#{":" unless hash_key}'", "'"]
@@ -4345,7 +4396,8 @@ module SyntaxTree
     def format(q)
       q.format(value)
 
-      if arguments.is_a?(ArgParen) && arguments.arguments.nil? && !value.is_a?(Const)
+      if arguments.is_a?(ArgParen) && arguments.arguments.nil? &&
+           !value.is_a?(Const)
         # If you're using an explicit set of parentheses on something that looks
         # like a constant, then we need to match that in order to maintain valid
         # Ruby. For example, you could do something like Foo(), on which we
@@ -4743,7 +4795,14 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(beginning:, ending: nil, dedent: 0, parts: [], location:, comments: [])
+    def initialize(
+      beginning:,
+      ending: nil,
+      dedent: 0,
+      parts: [],
+      location:,
+      comments: []
+    )
       @beginning = beginning
       @ending = ending
       @dedent = dedent
@@ -4777,8 +4836,12 @@ module SyntaxTree
       # prettyprint module. It's when you want to force a newline, but don't
       # want to force the break parent.
       breakable = -> do
-        q.target <<
-          PrettyPrint::Breakable.new(" ", 1, indent: false, force: true)
+        q.target << PrettyPrint::Breakable.new(
+          " ",
+          1,
+          indent: false,
+          force: true
+        )
       end
 
       q.group do
@@ -4973,7 +5036,7 @@ module SyntaxTree
 
       # If there's only one pair, then we'll just print the contents provided
       # we're not inside another pattern.
-      if !PATTERNS.include?(q.parent) && parts.size == 1
+      if !PATTERNS.include?(q.parent.class) && parts.size == 1
         contents.call
         return
       end
@@ -5068,9 +5131,12 @@ module SyntaxTree
         else
           # Otherwise, we're going to check the conditional for certain cases.
           case node
-          in { predicate: Assign | Command | CommandCall | MAssign | OpAssign }
+          in predicate: Assign | Command | CommandCall | MAssign | OpAssign
             false
-          in { statements: { body: [truthy] }, consequent: Else[statements: { body: [falsy] }] }
+          in {
+               statements: { body: [truthy] },
+               consequent: Else[statements: { body: [falsy] }]
+             }
             ternaryable?(truthy) && ternaryable?(falsy)
           else
             false
@@ -5081,8 +5147,8 @@ module SyntaxTree
       private
 
       # Certain expressions cannot be reduced to a ternary without adding
-      # parentheses around them. In this case we say they cannot be ternaried and
-      # default instead to breaking them into multiple lines.
+      # parentheses around them. In this case we say they cannot be ternaried
+      # and default instead to breaking them into multiple lines.
       def ternaryable?(statement)
         # This is a list of nodes that should not be allowed to be a part of a
         # ternary clause.
@@ -5140,13 +5206,15 @@ module SyntaxTree
         q.group { format_break(q, force: true) }
       else
         q.group do
-          q.if_break { format_break(q, force: false) }.if_flat do
-            Parentheses.flat(q) do
-              q.format(node.statements)
-              q.text(" #{keyword} ")
-              q.format(node.predicate)
+          q
+            .if_break { format_break(q, force: false) }
+            .if_flat do
+              Parentheses.flat(q) do
+                q.format(node.statements)
+                q.text(" #{keyword} ")
+                q.format(node.predicate)
+              end
             end
-          end
         end
       end
     end
@@ -5175,51 +5243,53 @@ module SyntaxTree
 
     def format_ternary(q)
       q.group do
-        q.if_break do
-          q.text("#{keyword} ")
-          q.nest(keyword.length + 1) { q.format(node.predicate) }
+        q
+          .if_break do
+            q.text("#{keyword} ")
+            q.nest(keyword.length + 1) { q.format(node.predicate) }
 
-          q.indent do
-            q.breakable
-            q.format(node.statements)
-          end
-
-          q.breakable
-          q.group do
-            q.format(node.consequent.keyword)
             q.indent do
-              # This is a very special case of breakable where we want to force
-              # it into the output but we _don't_ want to explicitly break the
-              # parent. If a break-parent shows up in the tree, then it's going
-              # to force it all the way up to the tree, which is going to negate
-              # the ternary. Maybe this should be an option in prettyprint? As
-              # in force: :no_break_parent or something.
-              q.target << PrettyPrint::Breakable.new(" ", 1, force: true)
-              q.format(node.consequent.statements)
+              q.breakable
+              q.format(node.statements)
+            end
+
+            q.breakable
+            q.group do
+              q.format(node.consequent.keyword)
+              q.indent do
+                # This is a very special case of breakable where we want to
+                # force it into the output but we _don't_ want to explicitly
+                # break the parent. If a break-parent shows up in the tree, then
+                # it's going to force it all the way up to the tree, which is
+                # going to negate the ternary. Maybe this should be an option in
+                # prettyprint? As in force: :no_break_parent or something.
+                q.target << PrettyPrint::Breakable.new(" ", 1, force: true)
+                q.format(node.consequent.statements)
+              end
+            end
+
+            q.breakable
+            q.text("end")
+          end
+          .if_flat do
+            Parentheses.flat(q) do
+              q.format(node.predicate)
+              q.text(" ? ")
+
+              statements = [node.statements, node.consequent.statements]
+              statements.reverse! if keyword == "unless"
+
+              q.format(statements[0])
+              q.text(" : ")
+              q.format(statements[1])
             end
           end
-
-          q.breakable
-          q.text("end")
-        end.if_flat do
-          Parentheses.flat(q) do
-            q.format(node.predicate)
-            q.text(" ? ")
-
-            statements = [node.statements, node.consequent.statements]
-            statements.reverse! if keyword == "unless"
-
-            q.format(statements[0])
-            q.text(" : ")
-            q.format(statements[1])
-          end
-        end
       end
     end
 
     def contains_conditional?
       case node
-      in { statements: { body: [If | IfMod | IfOp | Unless | UnlessMod] } }
+      in statements: { body: [If | IfMod | IfOp | Unless | UnlessMod] }
         true
       else
         false
@@ -5337,7 +5407,8 @@ module SyntaxTree
         Yield0, ZSuper
       ]
 
-      if q.parent.is_a?(Paren) || force_flat.include?(truthy.class) || force_flat.include?(falsy.class)
+      if q.parent.is_a?(Paren) || force_flat.include?(truthy.class) ||
+           force_flat.include?(falsy.class)
         q.group { format_flat(q) }
         return
       end
@@ -5869,25 +5940,27 @@ module SyntaxTree
         end
 
         q.text(" ")
-        q.if_break do
-          force_parens =
-            q.parents.any? do |node|
-              node.is_a?(Command) || node.is_a?(CommandCall)
+        q
+          .if_break do
+            force_parens =
+              q.parents.any? do |node|
+                node.is_a?(Command) || node.is_a?(CommandCall)
+              end
+
+            q.text(force_parens ? "{" : "do")
+            q.indent do
+              q.breakable
+              q.format(statements)
             end
 
-          q.text(force_parens ? "{" : "do")
-          q.indent do
             q.breakable
-            q.format(statements)
+            q.text(force_parens ? "}" : "end")
           end
-
-          q.breakable
-          q.text(force_parens ? "}" : "end")
-        end.if_flat do
-          q.text("{ ")
-          q.format(statements)
-          q.text(" }")
-        end
+          .if_flat do
+            q.text("{ ")
+            q.format(statements)
+            q.text(" }")
+          end
       end
     end
   end
@@ -6087,8 +6160,13 @@ module SyntaxTree
       # If we're at the top of a call chain, then we're going to do some
       # specialized printing in case we can print it nicely. We _only_ do this
       # at the top of the chain to avoid weird recursion issues.
-      if !CallChainFormatter.chained?(q.parent) && CallChainFormatter.chained?(call)
-        q.group { q.if_break { CallChainFormatter.new(self).format(q) }.if_flat { format_contents(q) } }
+      if !CallChainFormatter.chained?(q.parent) &&
+           CallChainFormatter.chained?(call)
+        q.group do
+          q
+            .if_break { CallChainFormatter.new(self).format(q) }
+            .if_flat { format_contents(q) }
+        end
       else
         format_contents(q)
       end
@@ -6502,7 +6580,16 @@ module SyntaxTree
   # This approach maintains the nice conciseness of the inline version, while
   # keeping the correct semantic meaning.
   module Parentheses
-    NODES = [Args, Assign, Assoc, Binary, Call, Defined, MAssign, OpAssign].freeze
+    NODES = [
+      Args,
+      Assign,
+      Assoc,
+      Binary,
+      Call,
+      Defined,
+      MAssign,
+      OpAssign
+    ].freeze
 
     def self.flat(q)
       return yield unless NODES.include?(q.parent.class)
@@ -6596,11 +6683,7 @@ module SyntaxTree
       end
 
       def format(q)
-        if value == :nil
-          q.text("**nil")
-        else
-          q.format(value)
-        end
+        value == :nil ? q.text("**nil") : q.format(value)
       end
     end
 
@@ -6702,18 +6785,17 @@ module SyntaxTree
       ]
 
       parts << rest if rest && !rest.is_a?(ExcessedComma)
-      parts +=
-        [
-          *posts,
-          *keywords.map { |(name, value)| KeywordFormatter.new(name, value) }
-        ]
+      parts += [
+        *posts,
+        *keywords.map { |(name, value)| KeywordFormatter.new(name, value) }
+      ]
 
       parts << KeywordRestFormatter.new(keyword_rest) if keyword_rest
       parts << block if block
 
       contents = -> do
         q.seplist(parts) { |part| q.format(part) }
-        q.format(rest) if rest&.is_a?(ExcessedComma)
+        q.format(rest) if rest.is_a?(ExcessedComma)
       end
 
       if ![Def, Defs, DefEndless].include?(q.parent.class) || parts.empty?
@@ -7323,7 +7405,7 @@ module SyntaxTree
     end
 
     def format(q)
-      braces = ambiguous?(q) || include?(%r{\/})
+      braces = ambiguous?(q) || include?(%r{/})
 
       if braces && include?(/[{}]/)
         q.group do
@@ -7492,7 +7574,10 @@ module SyntaxTree
 
       if consequent
         consequent.bind_end(end_char, end_column)
-        statements.bind_end(consequent.location.start_char, consequent.location.start_column)
+        statements.bind_end(
+          consequent.location.start_char,
+          consequent.location.start_column
+        )
       else
         statements.bind_end(end_char, end_column)
       end
@@ -7978,12 +8063,19 @@ module SyntaxTree
         comment = parser_comments[comment_index]
         location = comment.location
 
-        if !comment.inline? && (start_char <= location.start_char) && (end_char >= location.end_char) && !comment.ignore?
-          while (node = body[body_index]) && (node.is_a?(VoidStmt) || node.location.start_char < location.start_char)
+        if !comment.inline? && (start_char <= location.start_char) &&
+             (end_char >= location.end_char) && !comment.ignore?
+          while (node = body[body_index]) &&
+                  (
+                    node.is_a?(VoidStmt) ||
+                      node.location.start_char < location.start_char
+                  )
             body_index += 1
           end
 
-          if body_index != 0 && body[body_index - 1].location.start_char < location.start_char && body[body_index - 1].location.end_char > location.start_char
+          if body_index != 0 &&
+               body[body_index - 1].location.start_char < location.start_char &&
+               body[body_index - 1].location.end_char > location.start_char
             # The previous node entirely encapsules the comment, so we don't
             # want to attach it here since it will get attached normally. This
             # is mostly in the case of hash and array literals.
@@ -8776,7 +8868,9 @@ module SyntaxTree
 
     def format(q)
       parent = q.parents.take(2)[1]
-      ternary = (parent.is_a?(If) || parent.is_a?(Unless)) && Ternaryable.call(q, parent)
+      ternary =
+        (parent.is_a?(If) || parent.is_a?(Unless)) &&
+          Ternaryable.call(q, parent)
 
       q.text("not")
 
@@ -9037,13 +9131,15 @@ module SyntaxTree
       end
 
       q.group do
-        q.if_break { format_break(q) }.if_flat do
-          Parentheses.flat(q) do
-            q.format(statements)
-            q.text(" #{keyword} ")
-            q.format(node.predicate)
+        q
+          .if_break { format_break(q) }
+          .if_flat do
+            Parentheses.flat(q) do
+              q.format(statements)
+              q.text(" #{keyword} ")
+              q.format(node.predicate)
+            end
           end
-        end
       end
     end
 

@@ -29,9 +29,9 @@ module SyntaxTree
         in { method: "initialize", id: }
           store.clear
           write(id: id, result: { capabilities: capabilities })
-        in { method: "initialized" }
+        in method: "initialized"
           # ignored
-        in { method: "shutdown" }
+        in method: "shutdown"
           store.clear
           return
         in {
@@ -68,7 +68,7 @@ module SyntaxTree
           output = []
           PP.pp(SyntaxTree.parse(store[uri]), output)
           write(id: id, result: output.join)
-        in { method: %r{\$/.+} }
+        in method: %r{\$/.+}
           # ignored
         else
           raise "Unhandled: #{request}"
