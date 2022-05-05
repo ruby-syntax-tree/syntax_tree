@@ -24,9 +24,26 @@ jobs:
         ruby-version: ${{ matrix.ruby }}
     - name: Test
       run: bundle exec rake test
+
+  check:
+    name: Check
+    runs-on: ubuntu-latest
+    env:
+      CI: true
+    steps:
+    - uses: actions/checkout@master
+    - uses: ruby/setup-ruby@v1
+      with:
+        bundler-cache: true
+        ruby-version: '3.1'
+    - name: Check
+      run: bundle exec rake check
+
   automerge:
     name: AutoMerge
-    needs: ci
+    needs:
+    - ci
+    - check
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request_target' && github.actor == 'dependabot[bot]'
     steps:
