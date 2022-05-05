@@ -14,9 +14,17 @@ end
 case foo
 in bar:, baz:
 end
+-
+case foo
+in { bar:, baz: }
+end
 %
 case foo
 in bar: bar, baz: baz
+end
+-
+case foo
+in { bar: bar, baz: baz }
 end
 %
 case foo
@@ -24,8 +32,10 @@ in **bar
 end
 %
 case foo
-in foo:, # comment1
-   bar: # comment2
+in {
+     foo:, # comment1
+     bar: # comment2
+   }
   baz
 end
 %

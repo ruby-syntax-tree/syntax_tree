@@ -1675,24 +1675,32 @@ module SyntaxTree
         keyword_rest = VarField.new(value: nil, location: token.location)
       end
 
-      # Delete the optional then keyword
-      if token = find_token(Kw, "then", consume: false)
-        tokens.delete(token)
+      parts = [constant, *keywords&.flatten(1), keyword_rest].compact
+
+      # If there's no constant, there may be braces, so we're going to look for
+      # those to get our bounds.
+      if !constant
+        lbrace = find_token(LBrace, consume: false)
+        rbrace = find_token(RBrace, consume: false)
+
+        if lbrace && rbrace
+          parts = [lbrace, *parts, rbrace]
+          tokens.delete(lbrace)
+          tokens.delete(rbrace)
+        end
       end
 
-      parts = [constant, *keywords&.flatten(1), keyword_rest].compact
-      location =
-        if parts.any?
-          parts[0].location.to(parts[-1].location)
-        else
-          find_token(LBrace).location.to(find_token(RBrace).location)
-        end
+      # Delete the optional then keyword
+      if token = find_token(Kw, "then", consume: false)
+        parts << token
+        tokens.delete(token)
+      end
 
       HshPtn.new(
         constant: constant,
         keywords: keywords || [],
         keyword_rest: keyword_rest,
-        location: location
+        location: parts[0].location.to(parts[-1].location)
       )
     end
 

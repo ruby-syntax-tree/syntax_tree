@@ -1067,6 +1067,8 @@ module SyntaxTree
         q.text("[")
         q.seplist(parts) { |part| q.format(part) }
         q.text("]")
+      elsif parts.empty?
+        q.text("[]")
       else
         q.group { q.seplist(parts) { |part| q.format(part) } }
       end
@@ -4947,20 +4949,45 @@ module SyntaxTree
         q.text(" then") if !constant && keyword_rest && keyword_rest.value.nil?
       end
 
+      # If there is a constant, we're going to format to have the constant name
+      # first and then use brackets.
       if constant
-        q.format(constant)
-        q.group(0, "[", "]", &contents)
+        q.group do
+          q.format(constant)
+          q.text("[")
+          q.indent do
+            q.breakable("")
+            contents.call
+          end
+          q.breakable("")
+          q.text("]")
+        end
         return
       end
 
+      # If there's nothing at all, then we're going to use empty braces.
       if parts.empty?
         q.text("{}")
-      elsif PATTERNS.include?(q.parent.class)
-        q.text("{ ")
+        return
+      end
+
+      # If there's only one pair, then we'll just print the contents provided
+      # we're not inside another pattern.
+      if !PATTERNS.include?(q.parent) && parts.size == 1
         contents.call
-        q.text(" }")
-      else
-        contents.call
+        return
+      end
+
+      # Otherwise, we're going to always use braces to make it clear it's a hash
+      # pattern.
+      q.group do
+        q.text("{")
+        q.indent do
+          q.breakable
+          contents.call
+        end
+        q.breakable
+        q.text("}")
       end
     end
   end
