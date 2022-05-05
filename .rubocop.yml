@@ -49,6 +49,9 @@ Style/GuardClause:
 Style/IdenticalConditionalBranches:
   Enabled: false
 
+Style/IfInsideElse:
+  Enabled: false
+
 Style/KeywordParametersOrder:
   Enabled: false
 

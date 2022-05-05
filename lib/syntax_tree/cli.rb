@@ -83,9 +83,7 @@ module SyntaxTree
         warning = "[#{Color.yellow("warn")}] #{filepath}"
         formatted = handler.format(source)
 
-        if formatted != handler.format(formatted)
-          raise NonIdempotentFormatError
-        end
+        raise NonIdempotentFormatError if formatted != handler.format(formatted)
       rescue StandardError
         warn(warning)
         raise
@@ -300,13 +298,15 @@ module SyntaxTree
       def each_file(arguments)
         if $stdin.tty?
           arguments.each do |pattern|
-            Dir.glob(pattern).each do |filepath|
-              next unless File.file?(filepath)
+            Dir
+              .glob(pattern)
+              .each do |filepath|
+                next unless File.file?(filepath)
 
-              handler = HANDLERS[File.extname(filepath)]
-              source = handler.read(filepath)
-              yield handler, filepath, source
-            end
+                handler = HANDLERS[File.extname(filepath)]
+                source = handler.read(filepath)
+                yield handler, filepath, source
+              end
           end
         else
           yield HANDLERS[".rb"], :stdin, $stdin.read

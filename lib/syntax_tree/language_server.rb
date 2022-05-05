@@ -34,17 +34,37 @@ module SyntaxTree
         in { method: "shutdown" }
           store.clear
           return
-        in { method: "textDocument/didChange", params: { textDocument: { uri: }, contentChanges: [{ text: }, *] } }
+        in {
+             method: "textDocument/didChange",
+             params: { textDocument: { uri: }, contentChanges: [{ text: }, *] }
+           }
           store[uri] = text
-        in { method: "textDocument/didOpen", params: { textDocument: { uri:, text: } } }
+        in {
+             method: "textDocument/didOpen",
+             params: { textDocument: { uri:, text: } }
+           }
           store[uri] = text
-        in { method: "textDocument/didClose", params: { textDocument: { uri: } } }
+        in {
+             method: "textDocument/didClose", params: { textDocument: { uri: } }
+           }
           store.delete(uri)
-        in { method: "textDocument/formatting", id:, params: { textDocument: { uri: } } }
+        in {
+             method: "textDocument/formatting",
+             id:,
+             params: { textDocument: { uri: } }
+           }
           write(id: id, result: [format(store[uri])])
-        in { method: "textDocument/inlayHints", id:, params: { textDocument: { uri: } } }
+        in {
+             method: "textDocument/inlayHints",
+             id:,
+             params: { textDocument: { uri: } }
+           }
           write(id: id, result: inlay_hints(store[uri]))
-        in { method: "syntaxTree/visualizing", id:, params: { textDocument: { uri: } } }
+        in {
+             method: "syntaxTree/visualizing",
+             id:,
+             params: { textDocument: { uri: } }
+           }
           output = []
           PP.pp(SyntaxTree.parse(store[uri]), output)
           write(id: id, result: output.join)
@@ -61,15 +81,24 @@ module SyntaxTree
     def capabilities
       {
         documentFormattingProvider: true,
-        textDocumentSync: { change: 1, openClose: true }
+        textDocumentSync: {
+          change: 1,
+          openClose: true
+        }
       }
     end
 
     def format(source)
       {
         range: {
-          start: { line: 0, character: 0 },
-          end: { line: source.lines.size + 1, character: 0 }
+          start: {
+            line: 0,
+            character: 0
+          },
+          end: {
+            line: source.lines.size + 1,
+            character: 0
+          }
         },
         newText: SyntaxTree.format(source)
       }

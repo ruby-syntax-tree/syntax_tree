@@ -24,7 +24,9 @@ module SyntaxTree
 
       def corrections
         @corrections ||=
-          DidYouMean::SpellChecker.new(dictionary: Visitor.visit_methods).correct(visit_method)
+          DidYouMean::SpellChecker.new(
+            dictionary: Visitor.visit_methods
+          ).correct(visit_method)
       end
 
       DidYouMean.correct_error(VisitMethodError, self)
