@@ -22,12 +22,12 @@ module Fixtures
     fndptn
     rassign
     rassign_rocket
-  ]
+  ].freeze
 
   FIXTURES_3_1_0 = %w[
     pinned_begin
     var_field_rassign
-  ]
+  ].freeze
 
   Fixture = Struct.new(:name, :source, :formatted, keyword_init: true)
 
@@ -57,9 +57,7 @@ module Fixtures
         # If there's a comment starting with >= that starts after the % that
         # delineates the test, then we're going to check if the version
         # satisfies that constraint.
-        if comment&.start_with?(">=")
-          next if ruby_version < Gem::Version.new(comment.split[1])
-        end
+        next if comment&.start_with?(">=") && (ruby_version < Gem::Version.new(comment.split[1]))
 
         name = :"#{fixture}_#{index}"
         yield Fixture.new(name: name, source: source, formatted: formatted || source)

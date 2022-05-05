@@ -761,7 +761,7 @@ module SyntaxTree
               if part.is_a?(StringLiteral)
                 q.format(part.parts.first)
               else
-                q.text(part.value[1..-1])
+                q.text(part.value[1..])
               end
             end
           end
@@ -1190,7 +1190,7 @@ module SyntaxTree
     end
 
     def format(q)
-      if value&.is_a?(HashLiteral)
+      if value.is_a?(HashLiteral)
         format_contents(q)
       else
         q.group { format_contents(q) }
@@ -2301,7 +2301,7 @@ module SyntaxTree
 
       # First, walk down the chain until we get to the point where we're not
       # longer at a chainable node.
-      while true
+      loop do
         case children.last
         in Call[receiver: Call]
           children << children.last.receiver
@@ -3079,7 +3079,7 @@ module SyntaxTree
     end
 
     def ignore?
-      value[1..-1].strip == "stree-ignore"
+      value[1..].strip == "stree-ignore"
     end
 
     def comments
@@ -3917,7 +3917,7 @@ module SyntaxTree
         end
       elsif Quotes.locked?(self)
         if quote.start_with?(":")
-          [hash_key ? quote[1..-1] : quote, quote[1..-1]]
+          [hash_key ? quote[1..] : quote, quote[1..]]
         else
           [hash_key ? quote : ":#{quote}", quote]
         end
@@ -4967,7 +4967,7 @@ module SyntaxTree
 
   # The list of nodes that represent patterns inside of pattern matching so that
   # when a pattern is being printed it knows if it's nested.
-  PATTERNS = [AryPtn, Binary, FndPtn, HshPtn, RAssign]
+  PATTERNS = [AryPtn, Binary, FndPtn, HshPtn, RAssign].freeze
 
   # Ident represents an identifier anywhere in code. It can represent a very
   # large number of things, depending on where it is in the syntax tree.
@@ -5587,7 +5587,7 @@ module SyntaxTree
         # the values, then we're going to insert them every 3 characters
         # starting from the right.
         index = (value.length + 2) % 3
-        q.text("  #{value}"[index..-1].scan(/.../).join("_").strip)
+        q.text("  #{value}"[index..].scan(/.../).join("_").strip)
       else
         q.text(value)
       end
@@ -6475,7 +6475,7 @@ module SyntaxTree
   # This approach maintains the nice conciseness of the inline version, while
   # keeping the correct semantic meaning.
   module Parentheses
-    NODES = [Args, Assign, Assoc, Binary, Call, Defined, MAssign, OpAssign]
+    NODES = [Args, Assign, Assoc, Binary, Call, Defined, MAssign, OpAssign].freeze
 
     def self.flat(q)
       return yield unless NODES.include?(q.parent.class)
@@ -6686,7 +6686,7 @@ module SyntaxTree
 
       contents = -> do
         q.seplist(parts) { |part| q.format(part) }
-        q.format(rest) if rest && rest.is_a?(ExcessedComma)
+        q.format(rest) if rest&.is_a?(ExcessedComma)
       end
 
       if ![Def, Defs, DefEndless].include?(q.parent.class) || parts.empty?
@@ -7323,14 +7323,14 @@ module SyntaxTree
           end
 
           q.text("}")
-          q.text(ending[1..-1])
+          q.text(ending[1..])
         end
       else
         q.group do
           q.text("/")
           q.format_each(parts)
           q.text("/")
-          q.text(ending[1..-1])
+          q.text(ending[1..])
         end
       end
     end

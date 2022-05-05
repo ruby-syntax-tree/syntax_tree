@@ -130,11 +130,12 @@ module SyntaxTree
       last_index = 0
 
       @source.lines.each do |line|
-        if line.size == line.bytesize
-          @line_counts << SingleByteString.new(last_index)
-        else
-          @line_counts << MultiByteString.new(last_index, line)
-        end
+        @line_counts <<
+          if line.size == line.bytesize
+            SingleByteString.new(last_index)
+          else
+            MultiByteString.new(last_index, line)
+          end
 
         last_index += line.size
       end
@@ -2043,7 +2044,13 @@ module SyntaxTree
 
     # :call-seq:
     #   on_opassign: (
-    #     (ARefField | ConstPathField | Field | TopConstField | VarField) target,
+    #     (
+    #       ARefField |
+    #       ConstPathField |
+    #       Field |
+    #       TopConstField |
+    #       VarField
+    #     ) target,
     #     Op operator,
     #     untyped value
     #   ) -> OpAssign
@@ -2118,7 +2125,7 @@ module SyntaxTree
       lparen = find_token(LParen)
       rparen = find_token(RParen)
 
-      if contents && contents.is_a?(Params)
+      if contents&.is_a?(Params)
         location = contents.location
         start_char = find_next_statement_start(lparen.location.end_char)
         location =
@@ -2703,7 +2710,7 @@ module SyntaxTree
     def on_string_literal(string)
       heredoc = @heredocs[-1]
 
-      if heredoc && heredoc.ending
+      if heredoc&.ending
         heredoc = @heredocs.pop
 
         Heredoc.new(

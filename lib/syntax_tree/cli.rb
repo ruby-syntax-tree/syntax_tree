@@ -242,7 +242,7 @@ module SyntaxTree
 
         # If we're not reading from stdin and the user didn't supply and
         # filepaths to be read, then we exit with the usage message.
-        if STDIN.tty? && arguments.empty?
+        if $stdin.tty? && arguments.empty?
           warn(HELP)
           return 1
         end
@@ -280,7 +280,7 @@ module SyntaxTree
           errored = true
         rescue Check::UnformattedError, Debug::NonIdempotentFormatError
           errored = true
-        rescue => error
+        rescue StandardError => error
           warn(error.message)
           warn(error.backtrace)
           errored = true
@@ -298,7 +298,7 @@ module SyntaxTree
       private
 
       def each_file(arguments)
-        if STDIN.tty?
+        if $stdin.tty?
           arguments.each do |pattern|
             Dir.glob(pattern).each do |filepath|
               next unless File.file?(filepath)
@@ -309,7 +309,7 @@ module SyntaxTree
             end
           end
         else
-          yield HANDLERS[".rb"], :stdin, STDIN.read
+          yield HANDLERS[".rb"], :stdin, $stdin.read
         end
       end
 

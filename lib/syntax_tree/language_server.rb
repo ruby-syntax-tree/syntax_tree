@@ -10,7 +10,7 @@ module SyntaxTree
   class LanguageServer
     attr_reader :input, :output
 
-    def initialize(input: STDIN, output: STDOUT)
+    def initialize(input: $stdin, output: $stdout)
       @input = input.binmode
       @output = output.binmode
     end
@@ -88,6 +88,8 @@ module SyntaxTree
         after: inlay_hints.after.map(&serialize)
       }
     rescue Parser::ParseError
+      # If there is a parse error, then we're not going to return any inlay
+      # hints for this source.
     end
 
     def write(value)

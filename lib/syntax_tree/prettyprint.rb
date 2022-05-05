@@ -419,9 +419,9 @@ class PrettyPrint
       target.trim!
     end
 
-    # ----------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     # Container node builders
-    # ----------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
 
     # Opens a block for grouping objects to be pretty printed.
     #
@@ -546,17 +546,17 @@ class PrettyPrint
         last_spaces = 0
       end
 
-      next_queue.each do |part|
-        case part
+      next_queue.each do |next_part|
+        case next_part
         when IndentPart
           flush_spaces.call
           add_spaces.call(2)
         when StringAlignPart
           flush_spaces.call
-          next_value += part.n
-          next_length += part.n.length
+          next_value += next_part.n
+          next_length += next_part.n.length
         when NumberAlignPart
-          last_spaces += part.n
+          last_spaces += next_part.n
         end
       end
 
@@ -783,12 +783,12 @@ class PrettyPrint
         else
           should_remeasure = false
           next_cmd = [indent, MODE_FLAT, doc.contents]
-
-          if !doc.break? && fits?(next_cmd, commands, maxwidth - position)
-            commands << next_cmd
-          else
-            commands << [indent, MODE_BREAK, doc.contents]
-          end
+          commands <<
+            if !doc.break? && fits?(next_cmd, commands, maxwidth - position)
+              next_cmd
+            else
+              [indent, MODE_BREAK, doc.contents]
+            end
         end
       when IfBreak
         if mode == MODE_BREAK && doc.break_contents.any?
@@ -1060,7 +1060,7 @@ class PrettyPrint
   def text(object = "", width = object.length)
     doc = target.last
 
-    unless Text === doc
+    unless doc.is_a?(Text)
       doc = Text.new
       target << doc
     end
