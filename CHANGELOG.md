@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 
 ## [Unreleased]
 
+### Added
+
+- [#65](https://github.com/ruby-syntax-tree/syntax_tree/pull/65) - Add a rubocop config at `config/rubocop.yml` that we can ship with the gem so folks can inherit from it to get their styling correct.
+- [#65](https://github.com/ruby-syntax-tree/syntax_tree/pull/65) - Improve hash pattern formatting by a lot - multiple lines are now not so ugly.
+
 ## [2.3.1] - 2022-04-22
 
 ### Changed
