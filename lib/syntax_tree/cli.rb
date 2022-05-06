@@ -129,10 +129,7 @@ module SyntaxTree
     # would match the input given.
     class Match < Action
       def run(handler, _filepath, source)
-        formatter = Formatter.new(source, [])
-        Visitor::MatchVisitor.new(formatter).visit(handler.parse(source))
-        formatter.flush
-        puts formatter.output.join
+        puts handler.parse(source).construct_keys
       end
     end
 
@@ -269,14 +266,7 @@ module SyntaxTree
           action.run(handler, filepath, source)
         rescue Parser::ParseError => error
           warn("Error: #{error.message}")
-
-          if error.lineno
-            highlight_error(error, source)
-          else
-            warn(error.message)
-            warn(error.backtrace)
-          end
-
+          highlight_error(error, source)
           errored = true
         rescue Check::UnformattedError, Debug::NonIdempotentFormatError
           errored = true

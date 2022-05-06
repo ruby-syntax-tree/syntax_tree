@@ -1,14 +1,88 @@
 # frozen_string_literal: true
 
 require "simplecov"
-SimpleCov.start { add_filter("prettyprint.rb") }
+SimpleCov.start do
+  add_filter("prettyprint.rb")
+
+  unless ENV["CI"]
+    add_filter("accept_methods_test.rb")
+    add_filter("idempotency_test.rb")
+  end
+end
 
 $LOAD_PATH.unshift(File.expand_path("../lib", __dir__))
 require "syntax_tree"
+require "syntax_tree/cli"
 
 require "json"
+require "tempfile"
 require "pp"
 require "minitest/autorun"
+
+module SyntaxTree
+  module Assertions
+    class Recorder
+      attr_reader :called
+
+      def initialize
+        @called = nil
+      end
+
+      def method_missing(called, ...)
+        @called = called
+      end
+    end
+
+    private
+
+    # This is a special kind of assertion that is going to get loaded into all
+    # of test cases. It asserts against a whole bunch of stuff that every node
+    # type should be able to handle. It's here so that we can use it in a bunch
+    # of tests.
+    def assert_syntax_tree(node)
+      # First, get the visit method name.
+      recorder = Recorder.new
+      node.accept(recorder)
+
+      # Next, get the "type" which is effectively an underscored version of
+      # the name of the class.
+      type = recorder.called[/^visit_(.+)$/, 1]
+
+      # Test that the method that is called when you call accept is a valid
+      # visit method on the visitor.
+      assert_respond_to(Visitor.new, recorder.called)
+
+      # Test that you can call child_nodes and the pattern matching methods on
+      # this class.
+      assert_kind_of(Array, node.child_nodes)
+      assert_kind_of(Array, node.deconstruct)
+      assert_kind_of(Hash, node.deconstruct_keys([]))
+
+      # Assert that it can be pretty printed to a string.
+      pretty = PP.singleline_pp(node, +"")
+      refute_includes(pretty, "#<")
+      assert_includes(pretty, type)
+
+      # Serialize the node to JSON, parse it back out, and assert that we have
+      # found the expected type.
+      json = node.to_json
+      refute_includes(json, "#<")
+      assert_equal(type, JSON.parse(json)["type"])
+
+      # Get a match expression from the node, then assert that it can in fact
+      # match the node.
+      # rubocop:disable all
+      assert(eval(<<~RUBY))
+        case node
+        in #{node.construct_keys}
+          true
+        end
+      RUBY
+    end
+  end
+end
+
+Minitest::Test.include(SyntaxTree::Assertions)
 
 # There are a bunch of fixtures defined in test/fixtures. They exercise every
 # possible combination of syntax that leads to variations in the types of nodes.

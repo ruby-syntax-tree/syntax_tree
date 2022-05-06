@@ -1,4 +1,6 @@
 %
+{}
+%
 { bar: bar }
 %
 { :bar => bar }
@@ -22,4 +24,8 @@
 {
   bar: barrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr,
   baz: bazzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+}
+%
+{
+  # comment
 }

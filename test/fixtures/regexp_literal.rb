@@ -53,3 +53,7 @@ foo(/ bar/)
 /foo\/bar/
 -
 %r{foo/bar}
+%
+/foo\/bar\/#{baz}/
+-
+%r{foo/bar/#{baz}}

@@ -32,3 +32,6 @@ end
 if foo
   a ? b : c
 end
+%
+if foo {}
+end

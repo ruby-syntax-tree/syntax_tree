@@ -23,3 +23,8 @@ end
 %
 meta3 meta2 meta1 def self.foo
 end
+%
+foo bar {}
+%
+foo bar do
+end

@@ -121,6 +121,10 @@ module SyntaxTree
       visitor = Visitor::JSONVisitor.new
       visitor.visit(self).to_json(*opts)
     end
+
+    def construct_keys
+      PP.format(+"") { |q| Visitor::MatchVisitor.new(q).visit(self) }
+    end
   end
 
   # BEGINBlock represents the use of the +BEGIN+ keyword, which hooks into the
@@ -7089,15 +7093,6 @@ module SyntaxTree
 
     def deconstruct_keys(_keys)
       { value: value, location: location }
-    end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("qsymbols_beg")
-
-        q.breakable
-        q.pp(value)
-      end
     end
   end
 

@@ -19,11 +19,29 @@
 -
 [foo, bar, baz]
 %
+fooooooooooooooooo = 1
+[fooooooooooooooooo, fooooooooooooooooo, fooooooooooooooooo, fooooooooooooooooo, fooooooooooooooooo, fooooooooooooooooo, fooooooooooooooooo, fooooooooooooooooo, fooooooooooooooooo, fooooooooooooooooo]
+-
+fooooooooooooooooo = 1
+[
+  fooooooooooooooooo, fooooooooooooooooo, fooooooooooooooooo,
+  fooooooooooooooooo, fooooooooooooooooo, fooooooooooooooooo,
+  fooooooooooooooooo, fooooooooooooooooo, fooooooooooooooooo, fooooooooooooooooo
+]
+%
+[
+  # comment
+]
+%
 ["foo"]
 %
 ["foo", "bar"]
 -
 %w[foo bar]
+%
+["f", ?b]
+-
+%w[f b]
 %
 [
   "foo",

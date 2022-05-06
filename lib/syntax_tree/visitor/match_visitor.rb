@@ -12,10 +12,17 @@ module SyntaxTree
       end
 
       def visit(node)
-        if node.is_a?(Node)
+        case node
+        when Node
           super
+        when String
+          # pp will split up a string on newlines and concat them together using
+          # a "+" operator. This breaks the pattern matching expression. So
+          # instead we're going to check here for strings and manually put the
+          # entire value into the output buffer.
+          q.text(node.inspect)
         else
-          node.pretty_print(q)
+          q.pp(node)
         end
       end
 
@@ -28,7 +35,7 @@ module SyntaxTree
           q.text("comments: [")
           q.indent do
             q.breakable("")
-            q.seplist(node.comments) { |comment| comment.pretty_print(q) }
+            q.seplist(node.comments) { |comment| visit(comment) }
           end
           q.breakable("")
           q.text("]")
@@ -107,7 +114,7 @@ module SyntaxTree
         q.nest(0) do
           q.text(name)
           q.text(": ")
-          value.pretty_print(q)
+          q.pp(value)
         end
       end
     end
