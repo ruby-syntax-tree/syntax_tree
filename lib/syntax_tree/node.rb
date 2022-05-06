@@ -7456,6 +7456,7 @@ module SyntaxTree
       {
         beginning: beginning,
         ending: ending,
+        options: options,
         parts: parts,
         location: location,
         comments: comments
@@ -7490,16 +7491,20 @@ module SyntaxTree
           end
 
           q.text("}")
-          q.text(ending[1..])
+          q.text(options)
         end
       else
         q.group do
           q.text("/")
           q.format_each(parts)
           q.text("/")
-          q.text(ending[1..])
+          q.text(options)
         end
       end
+    end
+
+    def options
+      ending[1..]
     end
 
     private

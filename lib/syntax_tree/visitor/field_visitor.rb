@@ -738,6 +738,7 @@ module SyntaxTree
       def visit_regexp_literal(node)
         node(node, "regexp_literal") do
           list("parts", node.parts)
+          field("options", node.options)
           comments(node)
         end
       end
