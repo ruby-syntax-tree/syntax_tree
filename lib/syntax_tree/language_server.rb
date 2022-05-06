@@ -7,10 +7,15 @@ require "uri"
 require_relative "language_server/inlay_hints"
 
 module SyntaxTree
+  # Syntax Tree additionally ships with a language server conforming to the
+  # language server protocol. It can be invoked through the CLI by running:
+  #
+  #     stree lsp
+  #
   class LanguageServer
     attr_reader :input, :output
 
-    def initialize(input: STDIN, output: STDOUT)
+    def initialize(input: $stdin, output: $stdout)
       @input = input.binmode
       @output = output.binmode
     end
@@ -21,7 +26,7 @@ module SyntaxTree
           hash[uri] = File.binread(CGI.unescape(URI.parse(uri).path))
         end
 
-      while headers = input.gets("\r\n\r\n")
+      while (headers = input.gets("\r\n\r\n"))
         source = input.read(headers[/Content-Length: (\d+)/i, 1].to_i)
         request = JSON.parse(source, symbolize_names: true)
 
@@ -29,26 +34,46 @@ module SyntaxTree
         in { method: "initialize", id: }
           store.clear
           write(id: id, result: { capabilities: capabilities })
-        in { method: "initialized" }
+        in method: "initialized"
           # ignored
-        in { method: "shutdown" }
+        in method: "shutdown"
           store.clear
           return
-        in { method: "textDocument/didChange", params: { textDocument: { uri: }, contentChanges: [{ text: }, *] } }
+        in {
+             method: "textDocument/didChange",
+             params: { textDocument: { uri: }, contentChanges: [{ text: }, *] }
+           }
           store[uri] = text
-        in { method: "textDocument/didOpen", params: { textDocument: { uri:, text: } } }
+        in {
+             method: "textDocument/didOpen",
+             params: { textDocument: { uri:, text: } }
+           }
           store[uri] = text
-        in { method: "textDocument/didClose", params: { textDocument: { uri: } } }
+        in {
+             method: "textDocument/didClose", params: { textDocument: { uri: } }
+           }
           store.delete(uri)
-        in { method: "textDocument/formatting", id:, params: { textDocument: { uri: } } }
+        in {
+             method: "textDocument/formatting",
+             id:,
+             params: { textDocument: { uri: } }
+           }
           write(id: id, result: [format(store[uri])])
-        in { method: "textDocument/inlayHints", id:, params: { textDocument: { uri: } } }
+        in {
+             method: "textDocument/inlayHints",
+             id:,
+             params: { textDocument: { uri: } }
+           }
           write(id: id, result: inlay_hints(store[uri]))
-        in { method: "syntaxTree/visualizing", id:, params: { textDocument: { uri: } } }
+        in {
+             method: "syntaxTree/visualizing",
+             id:,
+             params: { textDocument: { uri: } }
+           }
           output = []
           PP.pp(SyntaxTree.parse(store[uri]), output)
           write(id: id, result: output.join)
-        in { method: %r{\$/.+} }
+        in method: %r{\$/.+}
           # ignored
         else
           raise "Unhandled: #{request}"
@@ -61,15 +86,24 @@ module SyntaxTree
     def capabilities
       {
         documentFormattingProvider: true,
-        textDocumentSync: { change: 1, openClose: true }
+        textDocumentSync: {
+          change: 1,
+          openClose: true
+        }
       }
     end
 
     def format(source)
       {
         range: {
-          start: { line: 0, character: 0 },
-          end: { line: source.lines.size + 1, character: 0 }
+          start: {
+            line: 0,
+            character: 0
+          },
+          end: {
+            line: source.lines.size + 1,
+            character: 0
+          }
         },
         newText: SyntaxTree.format(source)
       }
@@ -88,6 +122,8 @@ module SyntaxTree
         after: inlay_hints.after.map(&serialize)
       }
     rescue Parser::ParseError
+      # If there is a parse error, then we're not going to return any inlay
+      # hints for this source.
     end
 
     def write(value)

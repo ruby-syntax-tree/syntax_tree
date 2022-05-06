@@ -30,6 +30,10 @@ unless PrettyPrint.const_defined?(:Align)
   end
 end
 
+# Syntax Tree is a suite of tools built on top of the internal CRuby parser. It
+# provides the ability to generate a syntax tree from source, as well as the
+# tools necessary to inspect and manipulate that syntax tree. It can be used to
+# build formatters, linters, language servers, and more.
 module SyntaxTree
   # This holds references to objects that respond to both #parse and #format
   # so that we can use them in the CLI.

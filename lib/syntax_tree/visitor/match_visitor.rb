@@ -56,7 +56,7 @@ module SyntaxTree
         end
       end
 
-      def node(node, type)
+      def node(node, _type)
         items = []
         q.with_target(items) { yield }
 

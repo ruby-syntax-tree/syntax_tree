@@ -1,0 +1,74 @@
+inherit_from: config/rubocop.yml
+
+AllCops:
+  DisplayCopNames: true
+  DisplayStyleGuide: true
+  NewCops: enable
+  SuggestExtensions: false
+  TargetRubyVersion: 2.7
+  Exclude:
+  - '{bin,coverage,pkg,test/fixtures,vendor,tmp}/**/*'
+  - test.rb
+
+Layout/LineLength:
+  Max: 80
+
+Lint/DuplicateBranch:
+  Enabled: false
+
+Lint/InterpolationCheck:
+  Enabled: false
+
+Lint/MissingSuper:
+  Enabled: false
+
+Lint/UnusedMethodArgument:
+  AllowUnusedKeywordArguments: true
+
+Metrics:
+  Enabled: false
+
+Naming/MethodName:
+  Enabled: false
+
+Naming/MethodParameterName:
+  Enabled: false
+
+Naming/RescuedExceptionsVariableName:
+  PreferredName: error
+
+Style/ExplicitBlockArgument:
+  Enabled: false
+
+Style/FormatString:
+  EnforcedStyle: percent
+
+Style/GuardClause:
+  Enabled: false
+
+Style/IdenticalConditionalBranches:
+  Enabled: false
+
+Style/IfInsideElse:
+  Enabled: false
+
+Style/KeywordParametersOrder:
+  Enabled: false
+
+Style/MutableConstant:
+  Enabled: false
+
+Style/NegatedIfElseCondition:
+  Enabled: false
+
+Style/NumericPredicate:
+  Enabled: false
+
+Style/ParallelAssignment:
+  Enabled: false
+
+Style/PerlBackrefs:
+  Enabled: false
+
+Style/SpecialGlobalVars:
+  Enabled: false

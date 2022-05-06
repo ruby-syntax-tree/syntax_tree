@@ -12,7 +12,10 @@ module SyntaxTree
 
     def test_format_class_level
       source = "1+1"
-      assert_equal("1 + 1\n", SyntaxTree::Formatter.format(source, SyntaxTree.parse(source)))
+      assert_equal(
+        "1 + 1\n",
+        SyntaxTree::Formatter.format(source, SyntaxTree.parse(source))
+      )
     end
   end
 end

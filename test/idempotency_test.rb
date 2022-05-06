@@ -10,7 +10,11 @@ module SyntaxTree
         source = SyntaxTree.read(filepath)
         formatted = SyntaxTree.format(source)
 
-        assert_equal(formatted, SyntaxTree.format(formatted), "expected #{filepath} to be formatted idempotently")
+        assert_equal(
+          formatted,
+          SyntaxTree.format(formatted),
+          "expected #{filepath} to be formatted idempotently"
+        )
       end
     end
   end

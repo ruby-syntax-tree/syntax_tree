@@ -22,12 +22,9 @@ module Fixtures
     fndptn
     rassign
     rassign_rocket
-  ]
+  ].freeze
 
-  FIXTURES_3_1_0 = %w[
-    pinned_begin
-    var_field_rassign
-  ]
+  FIXTURES_3_1_0 = %w[pinned_begin var_field_rassign].freeze
 
   Fixture = Struct.new(:name, :source, :formatted, keyword_init: true)
 
@@ -50,20 +47,30 @@ module Fixtures
       filepath = File.expand_path("fixtures/#{fixture}.rb", __dir__)
 
       # For each fixture in the fixture file yield a Fixture object.
-      File.readlines(filepath).slice_before(delimiter).each_with_index do |source, index|
-        comment = source.shift.match(delimiter)[1]
-        source, formatted = source.join.split("-\n")
+      File
+        .readlines(filepath)
+        .slice_before(delimiter)
+        .each_with_index do |source, index|
+          comment = source.shift.match(delimiter)[1]
+          source, formatted = source.join.split("-\n")
 
-        # If there's a comment starting with >= that starts after the % that
-        # delineates the test, then we're going to check if the version
-        # satisfies that constraint.
-        if comment&.start_with?(">=")
-          next if ruby_version < Gem::Version.new(comment.split[1])
+          # If there's a comment starting with >= that starts after the % that
+          # delineates the test, then we're going to check if the version
+          # satisfies that constraint.
+          if comment&.start_with?(">=") &&
+               (ruby_version < Gem::Version.new(comment.split[1]))
+            next
+          end
+
+          name = :"#{fixture}_#{index}"
+          yield(
+            Fixture.new(
+              name: name,
+              source: source,
+              formatted: formatted || source
+            )
+          )
         end
-
-        name = :"#{fixture}_#{index}"
-        yield Fixture.new(name: name, source: source, formatted: formatted || source)
-      end
     end
   end
 end

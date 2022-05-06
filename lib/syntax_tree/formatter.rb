@@ -41,11 +41,12 @@ module SyntaxTree
 
         # If the node has a stree-ignore comment right before it, then we're
         # going to just print out the node as it was seen in the source.
-        if leading.last&.ignore?
-          doc = text(source[node.location.start_char...node.location.end_char])
-        else
-          doc = node.format(self)
-        end
+        doc =
+          if leading.last&.ignore?
+            text(source[node.location.start_char...node.location.end_char])
+          else
+            node.format(self)
+          end
 
         # Print all comments that were found after the node.
         trailing.each do |comment|

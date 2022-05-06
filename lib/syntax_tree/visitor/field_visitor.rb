@@ -220,9 +220,7 @@ module SyntaxTree
       end
 
       def visit_comma(node)
-        node(node, "comma") do
-          field("value", node)
-        end
+        node(node, "comma") { field("value", node) }
       end
 
       def visit_command(node)
@@ -244,9 +242,7 @@ module SyntaxTree
       end
 
       def visit_comment(node)
-        node(node, "comment") do
-          field("value", node.value)
-        end
+        node(node, "comment") { field("value", node.value) }
       end
 
       def visit_const(node)
@@ -376,27 +372,19 @@ module SyntaxTree
       end
 
       def visit_embdoc(node)
-        node(node, "embdoc") do
-          field("value", node.value)
-        end
+        node(node, "embdoc") { field("value", node.value) }
       end
 
       def visit_embexpr_beg(node)
-        node(node, "embexpr_beg") do
-          field("value", node.value)
-        end
+        node(node, "embexpr_beg") { field("value", node.value) }
       end
 
       def visit_embexpr_end(node)
-        node(node, "embexpr_end") do
-          field("value", node.value)
-        end
+        node(node, "embexpr_end") { field("value", node.value) }
       end
 
       def visit_embvar(node)
-        node(node, "embvar") do
-          field("value", node.value)
-        end
+        node(node, "embvar") { field("value", node.value) }
       end
 
       def visit_ensure(node)
@@ -548,9 +536,7 @@ module SyntaxTree
       end
 
       def visit_label_end(node)
-        node(node, "label_end") do
-          field("value", node.value)
-        end
+        node(node, "label_end") { field("value", node.value) }
       end
 
       def visit_lambda(node)
@@ -698,9 +684,7 @@ module SyntaxTree
       end
 
       def visit_qsymbols_beg(node)
-        node(node, "qsymbols_beg") do
-          field("value", node.value)
-        end
+        node(node, "qsymbols_beg") { field("value", node.value) }
       end
 
       def visit_qwords(node)
@@ -711,9 +695,7 @@ module SyntaxTree
       end
 
       def visit_qwords_beg(node)
-        node(node, "qwords_beg") do
-          field("value", node.value)
-        end
+        node(node, "qwords_beg") { field("value", node.value) }
       end
 
       def visit_rassign(node)
@@ -730,15 +712,11 @@ module SyntaxTree
       end
 
       def visit_rbrace(node)
-        node(node, "rbrace") do
-          field("value", node.value)
-        end
+        node(node, "rbrace") { field("value", node.value) }
       end
 
       def visit_rbracket(node)
-        node(node, "rbracket") do
-          field("value", node.value)
-        end
+        node(node, "rbracket") { field("value", node.value) }
       end
 
       def visit_redo(node)
@@ -746,21 +724,15 @@ module SyntaxTree
       end
 
       def visit_regexp_beg(node)
-        node(node, "regexp_beg") do
-          field("value", node.value)
-        end
+        node(node, "regexp_beg") { field("value", node.value) }
       end
 
       def visit_regexp_content(node)
-        node(node, "regexp_content") do
-          list("parts", node.parts)
-        end
+        node(node, "regexp_content") { list("parts", node.parts) }
       end
 
       def visit_regexp_end(node)
-        node(node, "regexp_end") do
-          field("value", node.value)
-        end
+        node(node, "regexp_end") { field("value", node.value) }
       end
 
       def visit_regexp_literal(node)
@@ -818,9 +790,7 @@ module SyntaxTree
       end
 
       def visit_rparen(node)
-        node(node, "rparen") do
-          field("value", node.value)
-        end
+        node(node, "rparen") { field("value", node.value) }
       end
 
       def visit_sclass(node)
@@ -847,9 +817,7 @@ module SyntaxTree
       end
 
       def visit_string_content(node)
-        node(node, "string_content") do
-          list("parts", node.parts)
-        end
+        node(node, "string_content") { list("parts", node.parts) }
       end
 
       def visit_string_dvar(node)
@@ -881,15 +849,11 @@ module SyntaxTree
       end
 
       def visit_symbeg(node)
-        node(node, "symbeg") do
-          field("value", node.value)
-        end
+        node(node, "symbeg") { field("value", node.value) }
       end
 
       def visit_symbol_content(node)
-        node(node, "symbol_content") do
-          field("value", node.value)
-        end
+        node(node, "symbol_content") { field("value", node.value) }
       end
 
       def visit_symbol_literal(node)
@@ -907,21 +871,15 @@ module SyntaxTree
       end
 
       def visit_symbols_beg(node)
-        node(node, "symbols_beg") do
-          field("value", node.value)
-        end
+        node(node, "symbols_beg") { field("value", node.value) }
       end
 
       def visit_tlambda(node)
-        node(node, "tlambda") do
-          field("value", node.value)
-        end
+        node(node, "tlambda") { field("value", node.value) }
       end
 
       def visit_tlambeg(node)
-        node(node, "tlambeg") do
-          field("value", node.value)
-        end
+        node(node, "tlambeg") { field("value", node.value) }
       end
 
       def visit_top_const_field(node)
@@ -939,9 +897,7 @@ module SyntaxTree
       end
 
       def visit_tstring_beg(node)
-        node(node, "tstring_beg") do
-          field("value", node.value)
-        end
+        node(node, "tstring_beg") { field("value", node.value) }
       end
 
       def visit_tstring_content(node)
@@ -949,9 +905,7 @@ module SyntaxTree
       end
 
       def visit_tstring_end(node)
-        node(node, "tstring_end") do
-          field("value", node.value)
-        end
+        node(node, "tstring_end") { field("value", node.value) }
       end
 
       def visit_unary(node)
@@ -1032,9 +986,7 @@ module SyntaxTree
       end
 
       def visit_void_stmt(node)
-        node(node, "void_stmt") do
-          comments(node)
-        end
+        node(node, "void_stmt") { comments(node) }
       end
 
       def visit_when(node)
@@ -1077,15 +1029,11 @@ module SyntaxTree
       end
 
       def visit_words_beg(node)
-        node(node, "words_beg") do
-          field("value", node.value)
-        end
+        node(node, "words_beg") { field("value", node.value) }
       end
 
       def visit_xstring(node)
-        node(node, "xstring") do
-          list("parts", node.parts)
-        end
+        node(node, "xstring") { list("parts", node.parts) }
       end
 
       def visit_xstring_literal(node)

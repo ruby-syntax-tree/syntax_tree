@@ -375,7 +375,7 @@ class PrettyPrint
     #                This argument is a noop.
     # * +newline+ - Argument position expected to be here for compatibility.
     #               This argument is a noop.
-    def initialize(output, maxwidth = nil, newline = nil)
+    def initialize(output, _maxwidth = nil, _newline = nil)
       @output = Buffer.for(output)
       @target = @output
       @line_suffixes = Buffer::ArrayBuffer.new
@@ -397,7 +397,7 @@ class PrettyPrint
     # They are all noop arguments.
     def breakable(
       separator = " ",
-      width = separator.length,
+      _width = separator.length,
       indent: nil,
       force: nil
     )
@@ -410,7 +410,7 @@ class PrettyPrint
 
     # Appends +separator+ to the output buffer. +width+ is a noop here for
     # compatibility.
-    def fill_breakable(separator = " ", width = separator.length)
+    def fill_breakable(separator = " ", _width = separator.length)
       target << separator
     end
 
@@ -419,9 +419,9 @@ class PrettyPrint
       target.trim!
     end
 
-    # ----------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     # Container node builders
-    # ----------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
 
     # Opens a block for grouping objects to be pretty printed.
     #
@@ -432,11 +432,11 @@ class PrettyPrint
     # * +open_width+ - noop argument. Present for compatibility.
     # * +close_width+ - noop argument. Present for compatibility.
     def group(
-      indent = nil,
+      _indent = nil,
       open_object = "",
       close_object = "",
-      open_width = nil,
-      close_width = nil
+      _open_width = nil,
+      _close_width = nil
     )
       target << open_object
       yield
@@ -478,14 +478,14 @@ class PrettyPrint
     # Takes +indent+ arg, but does nothing with it.
     #
     # Yields to a block.
-    def nest(indent)
+    def nest(_indent)
       yield
     end
 
     # Add +object+ to the text to be output.
     #
     # +width+ argument is here for compatibility. It is a noop argument.
-    def text(object = "", width = nil)
+    def text(object = "", _width = nil)
       target << object
     end
   end
@@ -546,17 +546,17 @@ class PrettyPrint
         last_spaces = 0
       end
 
-      next_queue.each do |part|
-        case part
+      next_queue.each do |next_part|
+        case next_part
         when IndentPart
           flush_spaces.call
           add_spaces.call(2)
         when StringAlignPart
           flush_spaces.call
-          next_value += part.n
-          next_length += part.n.length
+          next_value += next_part.n
+          next_length += next_part.n.length
         when NumberAlignPart
-          last_spaces += part.n
+          last_spaces += next_part.n
         end
       end
 
@@ -623,9 +623,9 @@ class PrettyPrint
   #
   def self.singleline_format(
     output = "".dup,
-    maxwidth = nil,
-    newline = nil,
-    genspace = nil
+    _maxwidth = nil,
+    _newline = nil,
+    _genspace = nil
   )
     q = SingleLine.new(output)
     yield q
@@ -778,16 +778,19 @@ class PrettyPrint
         position -= buffer.trim!
       when Group
         if mode == MODE_FLAT && !should_remeasure
-          commands <<
-            [indent, doc.break? ? MODE_BREAK : MODE_FLAT, doc.contents]
+          commands << [
+            indent,
+            doc.break? ? MODE_BREAK : MODE_FLAT,
+            doc.contents
+          ]
         else
           should_remeasure = false
           next_cmd = [indent, MODE_FLAT, doc.contents]
-
-          if !doc.break? && fits?(next_cmd, commands, maxwidth - position)
-            commands << next_cmd
+          commands << if !doc.break? &&
+               fits?(next_cmd, commands, maxwidth - position)
+            next_cmd
           else
-            commands << [indent, MODE_BREAK, doc.contents]
+            [indent, MODE_BREAK, doc.contents]
           end
         end
       when IfBreak
@@ -1060,7 +1063,7 @@ class PrettyPrint
   def text(object = "", width = object.length)
     doc = target.last
 
-    unless Text === doc
+    unless doc.is_a?(Text)
       doc = Text.new
       target << doc
     end

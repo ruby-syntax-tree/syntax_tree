@@ -9,7 +9,8 @@ module SyntaxTree
       events = Ripper::EVENTS
 
       # Next, subtract all of the events that we have explicitly defined.
-      events -= Parser.private_instance_methods(false).grep(/^on_(\w+)/) { $1.to_sym }
+      events -=
+        Parser.private_instance_methods(false).grep(/^on_(\w+)/) { $1.to_sym }
 
       # Next, subtract the list of events that we purposefully skipped.
       events -= %i[
