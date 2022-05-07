@@ -1388,14 +1388,19 @@ module SyntaxTree
   module HashKeyFormatter
     # Formats the keys of a hash literal using labels.
     class Labels
+      LABEL = /^[@$_A-Za-z]([_A-Za-z0-9]*)?([!_=?A-Za-z0-9])?$/
+
       def format_key(q, key)
         case key
-        when Label
+        in Label
           q.format(key)
-        when SymbolLiteral
+        in SymbolLiteral
           q.format(key.value)
           q.text(":")
-        when DynaSymbol
+        in DynaSymbol[parts: [TStringContent[value: LABEL] => part]]
+          q.format(part)
+          q.text(":")
+        in DynaSymbol
           q.format(key)
           q.text(":")
         end

@@ -119,8 +119,10 @@ module SyntaxTree
     end
 
     def test_no_arguments
-      *, stderr = capture_io { SyntaxTree::CLI.run(["check"]) }
-      assert_includes(stderr, "stree help")
+      $stdin.stub(:tty?, true) do
+        *, stderr = capture_io { SyntaxTree::CLI.run(["check"]) }
+        assert_includes(stderr, "stree help")
+      end
     end
 
     def test_no_arguments_no_tty
@@ -134,7 +136,7 @@ module SyntaxTree
     end
 
     def test_generic_error
-      SyntaxTree.stub(:format, -> (*) { raise }) do
+      SyntaxTree.stub(:format, ->(*) { raise }) do
         result = run_cli("format")
         refute_equal(0, result.status)
       end
@@ -154,9 +156,7 @@ module SyntaxTree
 
       status = nil
       stdio, stderr =
-        capture_io do
-          status = SyntaxTree::CLI.run([command, file.path])
-        end
+        capture_io { status = SyntaxTree::CLI.run([command, file.path]) }
 
       Result.new(status: status, stdio: stdio, stderr: stderr)
     ensure

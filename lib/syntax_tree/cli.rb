@@ -332,7 +332,21 @@ module SyntaxTree
       # Take a line of Ruby source and colorize the output.
       def colorize_line(line)
         require "irb"
-        IRB::Color.colorize_code(line, complete: false, ignore_error: true)
+        IRB::Color.colorize_code(line, **colorize_options)
+      end
+
+      # These are the options we're going to pass into IRB::Color.colorize_code.
+      # Since we support multiple versions of IRB, we're going to need to do
+      # some reflection to make sure we always pass valid options.
+      def colorize_options
+        options = { complete: false }
+
+        parameters = IRB::Color.method(:colorize_code).parameters
+        if parameters.any? { |(_type, name)| name == :ignore_error }
+          options[:ignore_error] = true
+        end
+
+        options
       end
     end
   end

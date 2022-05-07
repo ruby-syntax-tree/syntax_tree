@@ -9,7 +9,7 @@
 %
 { :"bar" => bar }
 -
-{ "bar": bar }
+{ bar: bar }
 %
 { bar => bar, baz: baz }
 -
