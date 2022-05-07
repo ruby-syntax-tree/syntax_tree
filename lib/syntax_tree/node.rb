@@ -3904,7 +3904,7 @@ module SyntaxTree
     # quotes, then single quotes would deactivate it.)
     def self.locked?(node)
       node.parts.any? do |part|
-        part.is_a?(TStringContent) && part.value.match?(/\\|#[@${]/)
+        !part.is_a?(TStringContent) || part.value.match?(/\\|#[@${]/)
       end
     end
 
