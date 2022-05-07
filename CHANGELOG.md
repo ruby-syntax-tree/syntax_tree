@@ -6,11 +6,21 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 
 ## [Unreleased]
 
+## [2.4.0] - 2022-05-07
+
 ### Added
 
 - [#65](https://github.com/ruby-syntax-tree/syntax_tree/pull/65) - Add a rubocop config at `config/rubocop.yml` that we can ship with the gem so folks can inherit from it to get their styling correct.
 - [#65](https://github.com/ruby-syntax-tree/syntax_tree/pull/65) - Improve hash pattern formatting by a lot - multiple lines are now not so ugly.
 - [#62](https://github.com/ruby-syntax-tree/syntax_tree/issues/62) - Add `options` as a method on `SyntaxTree::RegexpLiteral`, add it to pattern matching, and describe it using the `SyntaxTree::Visitor::FieldVisitor` class.
+- [#69](https://github.com/ruby-syntax-tree/syntax_tree/pull/69) - The `construct_keys` option has been added to every `SyntaxTree::Node` descendant. This allows building a pattern match expression that can be used later. It is meant as a reflection API, not necessarily something that should be eval'd.
+- [#69](https://github.com/ruby-syntax-tree/syntax_tree/pull/69) - You can now call `stree json` to get a JSON representation of your syntax tree.
+- [#69](https://github.com/ruby-syntax-tree/syntax_tree/pull/69) - You can now call `stree match` to get a Ruby pattern matching expression to match against the given input.
+
+### Changed
+
+- [#69](https://github.com/ruby-syntax-tree/syntax_tree/pull/69) - Fixed a long-standing bug with pretty-print where if certain things were required in different orders you could end up with a bug in `PP` when calling pretty-print with a confusing error referring to inspect keys.
+- [#69](https://github.com/ruby-syntax-tree/syntax_tree/pull/69) - `SyntaxTree.read` can now handle an empty file.
 
 ## [2.3.1] - 2022-04-22
 
@@ -199,7 +209,9 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 
 - 🎉 Initial release! 🎉
 
-[unreleased]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v2.3.0...HEAD
+[unreleased]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v2.4.0...HEAD
+[2.4.0]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v2.3.1...v2.4.0
+[2.3.1]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v2.3.0...v2.3.1
 [2.3.0]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v2.2.0...v2.3.0
 [2.2.0]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v2.1.1...v2.2.0
 [2.1.1]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v2.1.0...v2.1.1
