@@ -404,7 +404,17 @@ The language server additionally includes this custom request to return a textua
 
 ## Plugins
 
-You can register additional languages that can flow through the same CLI with Syntax Tree's plugin system. To register a new language, call:
+You can register additional configuration and additional languages that can flow through the same CLI with Syntax Tree's plugin system. When invoking the CLI, you pass through the list of plugins with the `--plugins` options to the commands that accept them. They should be a comma-delimited list. When the CLI first starts, it will require the files corresponding to those names.
+
+### Configuration
+
+To register additional configuration, define a file somewhere in your load path named `syntax_tree/my_plugin` directory. Then when invoking the CLI, you will pass `--plugins=my_plugin`. That will get required. In this way, you can modify Syntax Tree however you would like. Some plugins ship with Syntax Tree itself. They are:
+
+* `plugin/single_quotes` - This will change all of your string literals to use single quotes instead of the default double quotes.
+
+### Languages
+
+To register a new language, call:
 
 ```ruby
 SyntaxTree.register_handler(".mylang", MyLanguage)
@@ -416,13 +426,11 @@ In this case, whenever the CLI encounters a filepath that ends with the given ex
 * `MyLanguage.parse(source)` - this should return the syntax tree corresponding to the given source. Those objects should implement the `pretty_print` interface.
 * `MyLanguage.format(source)` - this should return the formatted version of the given source.
 
-Below are listed all of the "official" plugins hosted under the same GitHub organization, which can be used as references for how to implement other plugins.
+Below are listed all of the "official" language plugins hosted under the same GitHub organization, which can be used as references for how to implement other plugins.
 
-* [SyntaxTree::Haml](https://github.com/ruby-syntax-tree/syntax_tree-haml) for the [Haml template language](https://haml.info/).
-* [SyntaxTree::JSON](https://github.com/ruby-syntax-tree/syntax_tree-json) for JSON.
-* [SyntaxTree::RBS](https://github.com/ruby-syntax-tree/syntax_tree-rbs) for the [RBS type language](https://github.com/ruby/rbs).
-
-When invoking the CLI, you pass through the list of plugins with the `--plugins` options to the commands that accept them. They should be a comma-delimited list. When the CLI first starts, it will require the files corresponding to those names.
+* [haml](https://github.com/ruby-syntax-tree/syntax_tree-haml) for the [Haml template language](https://haml.info/).
+* [json](https://github.com/ruby-syntax-tree/syntax_tree-json) for JSON.
+* [rbs](https://github.com/ruby-syntax-tree/syntax_tree-rbs) for the [RBS type language](https://github.com/ruby/rbs).
 
 ## Integration
 
