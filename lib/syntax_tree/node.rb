@@ -121,6 +121,10 @@ module SyntaxTree
       visitor = Visitor::JSONVisitor.new
       visitor.visit(self).to_json(*opts)
     end
+
+    def construct_keys
+      PP.format(+"") { |q| Visitor::MatchVisitor.new(q).visit(self) }
+    end
   end
 
   # BEGINBlock represents the use of the +BEGIN+ keyword, which hooks into the
@@ -1384,14 +1388,19 @@ module SyntaxTree
   module HashKeyFormatter
     # Formats the keys of a hash literal using labels.
     class Labels
+      LABEL = /^[@$_A-Za-z]([_A-Za-z0-9]*)?([!_=?A-Za-z0-9])?$/
+
       def format_key(q, key)
         case key
-        when Label
+        in Label
           q.format(key)
-        when SymbolLiteral
+        in SymbolLiteral
           q.format(key.value)
           q.text(":")
-        when DynaSymbol
+        in DynaSymbol[parts: [TStringContent[value: LABEL] => part]]
+          q.format(part)
+          q.text(":")
+        in DynaSymbol
           q.format(key)
           q.text(":")
         end
@@ -7089,15 +7098,6 @@ module SyntaxTree
 
     def deconstruct_keys(_keys)
       { value: value, location: location }
-    end
-
-    def pretty_print(q)
-      q.group(2, "(", ")") do
-        q.text("qsymbols_beg")
-
-        q.breakable
-        q.pp(value)
-      end
     end
   end
 

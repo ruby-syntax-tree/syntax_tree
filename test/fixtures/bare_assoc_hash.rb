@@ -7,7 +7,7 @@ foo(bar: bar)
 %
 foo(:"bar" => bar)
 -
-foo("bar": bar)
+foo(bar: bar)
 %
 foo(bar => bar, baz: baz)
 -

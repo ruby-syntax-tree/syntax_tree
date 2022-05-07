@@ -9,15 +9,15 @@ module SyntaxTree
     end
 
     def test_BEGIN
-      assert_node(BEGINBlock, "BEGIN", "BEGIN {}")
+      assert_node(BEGINBlock, "BEGIN {}")
     end
 
     def test_CHAR
-      assert_node(CHAR, "CHAR", "?a")
+      assert_node(CHAR, "?a")
     end
 
     def test_END
-      assert_node(ENDBlock, "END", "END {}")
+      assert_node(ENDBlock, "END {}")
     end
 
     def test___end__
@@ -28,29 +28,29 @@ module SyntaxTree
       SOURCE
 
       at = location(lines: 2..2, chars: 6..14)
-      assert_node(EndContent, "__end__", source, at: at)
+      assert_node(EndContent, source, at: at)
     end
 
     def test_alias
-      assert_node(Alias, "alias", "alias left right")
+      assert_node(Alias, "alias left right")
     end
 
     def test_aref
-      assert_node(ARef, "aref", "collection[index]")
+      assert_node(ARef, "collection[index]")
     end
 
     def test_aref_field
       source = "collection[index] = value"
 
       at = location(chars: 0..17)
-      assert_node(ARefField, "aref_field", source, at: at, &:target)
+      assert_node(ARefField, source, at: at, &:target)
     end
 
     def test_arg_paren
       source = "method(argument)"
 
       at = location(chars: 6..16)
-      assert_node(ArgParen, "arg_paren", source, at: at, &:arguments)
+      assert_node(ArgParen, source, at: at, &:arguments)
     end
 
     def test_arg_paren_heredoc
@@ -61,23 +61,21 @@ module SyntaxTree
       SOURCE
 
       at = location(lines: 1..3, chars: 6..28)
-      assert_node(ArgParen, "arg_paren", source, at: at, &:arguments)
+      assert_node(ArgParen, source, at: at, &:arguments)
     end
 
     def test_args
       source = "method(first, second, third)"
 
       at = location(chars: 7..27)
-      assert_node(Args, "args", source, at: at) do |node|
-        node.arguments.arguments
-      end
+      assert_node(Args, source, at: at) { |node| node.arguments.arguments }
     end
 
     def test_arg_block
       source = "method(argument, &block)"
 
       at = location(chars: 17..23)
-      assert_node(ArgBlock, "arg_block", source, at: at) do |node|
+      assert_node(ArgBlock, source, at: at) do |node|
         node.arguments.arguments.parts[1]
       end
     end
@@ -91,7 +89,7 @@ module SyntaxTree
         SOURCE
 
         at = location(lines: 2..2, chars: 29..30)
-        assert_node(ArgBlock, "arg_block", source, at: at) do |node|
+        assert_node(ArgBlock, source, at: at) do |node|
           node.bodystmt.statements.body.first.arguments.arguments.parts[0]
         end
       end
@@ -101,7 +99,7 @@ module SyntaxTree
       source = "method(prefix, *arguments, suffix)"
 
       at = location(chars: 15..25)
-      assert_node(ArgStar, "arg_star", source, at: at) do |node|
+      assert_node(ArgStar, source, at: at) do |node|
         node.arguments.arguments.parts[1]
       end
     end
@@ -114,13 +112,13 @@ module SyntaxTree
       SOURCE
 
       at = location(lines: 2..2, chars: 29..32)
-      assert_node(ArgsForward, "args_forward", source, at: at) do |node|
+      assert_node(ArgsForward, source, at: at) do |node|
         node.bodystmt.statements.body.first.arguments.arguments.parts.last
       end
     end
 
     def test_array
-      assert_node(ArrayLiteral, "array", "[1]")
+      assert_node(ArrayLiteral, "[1]")
     end
 
     def test_aryptn
@@ -132,20 +130,18 @@ module SyntaxTree
       SOURCE
 
       at = location(lines: 2..2, chars: 18..47)
-      assert_node(AryPtn, "aryptn", source, at: at) do |node|
-        node.consequent.pattern
-      end
+      assert_node(AryPtn, source, at: at) { |node| node.consequent.pattern }
     end
 
     def test_assign
-      assert_node(Assign, "assign", "variable = value")
+      assert_node(Assign, "variable = value")
     end
 
     def test_assoc
       source = "{ key1: value1, key2: value2 }"
 
       at = location(chars: 2..14)
-      assert_node(Assoc, "assoc", source, at: at) { |node| node.assocs.first }
+      assert_node(Assoc, source, at: at) { |node| node.assocs.first }
     end
 
     guard_version("3.1.0") do
@@ -153,7 +149,7 @@ module SyntaxTree
         source = "{ key1:, key2: }"
 
         at = location(chars: 2..7)
-        assert_node(Assoc, "assoc", source, at: at) { |node| node.assocs.first }
+        assert_node(Assoc, source, at: at) { |node| node.assocs.first }
       end
     end
 
@@ -161,26 +157,39 @@ module SyntaxTree
       source = "{ **pairs }"
 
       at = location(chars: 2..9)
-      assert_node(AssocSplat, "assoc_splat", source, at: at) do |node|
-        node.assocs.first
-      end
+      assert_node(AssocSplat, source, at: at) { |node| node.assocs.first }
     end
 
     def test_backref
-      assert_node(Backref, "backref", "$1")
+      assert_node(Backref, "$1")
     end
 
     def test_backtick
       at = location(chars: 4..5)
-      assert_node(Backtick, "backtick", "def `() end", at: at, &:name)
+      assert_node(Backtick, "def `() end", at: at, &:name)
     end
 
     def test_bare_assoc_hash
       source = "method(key1: value1, key2: value2)"
 
       at = location(chars: 7..33)
-      assert_node(BareAssocHash, "bare_assoc_hash", source, at: at) do |node|
+      assert_node(BareAssocHash, source, at: at) do |node|
         node.arguments.arguments.parts.first
+      end
+    end
+
+    guard_version("3.1.0") do
+      def test_pinned_begin
+        source = <<~SOURCE
+          case value
+          in ^(expression)
+          end
+        SOURCE
+
+        at = location(lines: 2..2, chars: 14..27, columns: 3..16)
+        assert_node(PinnedBegin, source, at: at) do |node|
+          node.consequent.pattern
+        end
       end
     end
 
@@ -191,7 +200,7 @@ module SyntaxTree
         end
       SOURCE
 
-      assert_node(Begin, "begin", source)
+      assert_node(Begin, source)
     end
 
     def test_begin_clauses
@@ -207,11 +216,11 @@ module SyntaxTree
         end
       SOURCE
 
-      assert_node(Begin, "begin", source)
+      assert_node(Begin, source)
     end
 
     def test_binary
-      assert_node(Binary, "binary", "collection << value")
+      assert_node(Binary, "collection << value")
     end
 
     def test_block_var
@@ -221,16 +230,14 @@ module SyntaxTree
       SOURCE
 
       at = location(chars: 10..65)
-      assert_node(BlockVar, "block_var", source, at: at) do |node|
-        node.block.block_var
-      end
+      assert_node(BlockVar, source, at: at) { |node| node.block.block_var }
     end
 
     def test_blockarg
       source = "def method(&block); end"
 
       at = location(chars: 11..17)
-      assert_node(BlockArg, "blockarg", source, at: at) do |node|
+      assert_node(BlockArg, source, at: at) do |node|
         node.params.contents.block
       end
     end
@@ -240,7 +247,7 @@ module SyntaxTree
         source = "def method(&); end"
 
         at = location(chars: 11..12)
-        assert_node(BlockArg, "blockarg", source, at: at) do |node|
+        assert_node(BlockArg, source, at: at) do |node|
           node.params.contents.block
         end
       end
@@ -260,22 +267,22 @@ module SyntaxTree
       SOURCE
 
       at = location(lines: 9..9, chars: 5..64)
-      assert_node(BodyStmt, "bodystmt", source, at: at, &:bodystmt)
+      assert_node(BodyStmt, source, at: at, &:bodystmt)
     end
 
     def test_brace_block
       source = "method { |variable| variable + 1 }"
 
       at = location(chars: 7..34)
-      assert_node(BraceBlock, "brace_block", source, at: at, &:block)
+      assert_node(BraceBlock, source, at: at, &:block)
     end
 
     def test_break
-      assert_node(Break, "break", "break value")
+      assert_node(Break, "break value")
     end
 
     def test_call
-      assert_node(Call, "call", "receiver.message")
+      assert_node(Call, "receiver.message")
     end
 
     def test_case
@@ -286,63 +293,77 @@ module SyntaxTree
         end
       SOURCE
 
-      assert_node(Case, "case", source)
+      assert_node(Case, source)
     end
 
     guard_version("3.0.0") do
       def test_rassign_in
-        assert_node(RAssign, "rassign", "value in pattern")
+        assert_node(RAssign, "value in pattern")
       end
 
       def test_rassign_rocket
-        assert_node(RAssign, "rassign", "value => pattern")
+        assert_node(RAssign, "value => pattern")
       end
     end
 
     def test_class
-      assert_node(ClassDeclaration, "class", "class Child < Parent; end")
+      assert_node(ClassDeclaration, "class Child < Parent; end")
     end
 
     def test_command
-      assert_node(Command, "command", "method argument")
+      assert_node(Command, "method argument")
     end
 
     def test_command_call
-      assert_node(CommandCall, "command_call", "object.method argument")
+      assert_node(CommandCall, "object.method argument")
     end
 
     def test_comment
-      assert_node(Comment, "comment", "# comment", at: location(chars: 0..8))
+      assert_node(Comment, "# comment", at: location(chars: 0..8))
+    end
+
+    # This test is to ensure that comments get parsed and printed properly in
+    # all of the visitors. We do this by checking against a node that we're sure
+    # will have comments attached to it in order to exercise all of the various
+    # comments methods on the visitors.
+    def test_comment_attached
+      source = <<~SOURCE
+        def method # comment
+        end
+      SOURCE
+
+      at = location(chars: 10..10)
+      assert_node(Params, source, at: at, &:params)
     end
 
     def test_const
-      assert_node(Const, "const", "Constant", &:value)
+      assert_node(Const, "Constant", &:value)
     end
 
     def test_const_path_field
       source = "object::Const = value"
 
       at = location(chars: 0..13)
-      assert_node(ConstPathField, "const_path_field", source, at: at, &:target)
+      assert_node(ConstPathField, source, at: at, &:target)
     end
 
     def test_const_path_ref
-      assert_node(ConstPathRef, "const_path_ref", "object::Const")
+      assert_node(ConstPathRef, "object::Const")
     end
 
     def test_const_ref
       source = "class Container; end"
 
       at = location(chars: 6..15)
-      assert_node(ConstRef, "const_ref", source, at: at, &:constant)
+      assert_node(ConstRef, source, at: at, &:constant)
     end
 
     def test_cvar
-      assert_node(CVar, "cvar", "@@variable", &:value)
+      assert_node(CVar, "@@variable", &:value)
     end
 
     def test_def
-      assert_node(Def, "def", "def method(param) result end")
+      assert_node(Def, "def method(param) result end")
     end
 
     def test_def_paramless
@@ -351,27 +372,27 @@ module SyntaxTree
         end
       SOURCE
 
-      assert_node(Def, "def", source)
+      assert_node(Def, source)
     end
 
     guard_version("3.0.0") do
       def test_def_endless
-        assert_node(DefEndless, "def_endless", "def method = result")
+        assert_node(DefEndless, "def method = result")
       end
     end
 
     guard_version("3.1.0") do
       def test_def_endless_command
-        assert_node(DefEndless, "def_endless", "def method = result argument")
+        assert_node(DefEndless, "def method = result argument")
       end
     end
 
     def test_defined
-      assert_node(Defined, "defined", "defined?(variable)")
+      assert_node(Defined, "defined?(variable)")
     end
 
     def test_defs
-      assert_node(Defs, "defs", "def object.method(param) result end")
+      assert_node(Defs, "def object.method(param) result end")
     end
 
     def test_defs_paramless
@@ -380,35 +401,33 @@ module SyntaxTree
         end
       SOURCE
 
-      assert_node(Defs, "defs", source)
+      assert_node(Defs, source)
     end
 
     def test_do_block
       source = "method do |variable| variable + 1 end"
 
       at = location(chars: 7..37)
-      assert_node(DoBlock, "do_block", source, at: at, &:block)
+      assert_node(DoBlock, source, at: at, &:block)
     end
 
     def test_dot2
-      assert_node(Dot2, "dot2", "1..3")
+      assert_node(Dot2, "1..3")
     end
 
     def test_dot3
-      assert_node(Dot3, "dot3", "1...3")
+      assert_node(Dot3, "1...3")
     end
 
     def test_dyna_symbol
-      assert_node(DynaSymbol, "dyna_symbol", ':"#{variable}"')
+      assert_node(DynaSymbol, ':"#{variable}"')
     end
 
     def test_dyna_symbol_hash_key
       source = '{ "#{key}": value }'
 
       at = location(chars: 2..11)
-      assert_node(DynaSymbol, "dyna_symbol", source, at: at) do |node|
-        node.assocs.first.key
-      end
+      assert_node(DynaSymbol, source, at: at) { |node| node.assocs.first.key }
     end
 
     def test_else
@@ -419,7 +438,7 @@ module SyntaxTree
       SOURCE
 
       at = location(lines: 2..3, chars: 9..17)
-      assert_node(Else, "else", source, at: at, &:consequent)
+      assert_node(Else, source, at: at, &:consequent)
     end
 
     def test_elsif
@@ -431,7 +450,7 @@ module SyntaxTree
       SOURCE
 
       at = location(lines: 2..4, chars: 9..30)
-      assert_node(Elsif, "elsif", source, at: at, &:consequent)
+      assert_node(Elsif, source, at: at, &:consequent)
     end
 
     def test_embdoc
@@ -442,7 +461,7 @@ module SyntaxTree
         =end
       SOURCE
 
-      assert_node(EmbDoc, "embdoc", source)
+      assert_node(EmbDoc, source)
     end
 
     def test_ensure
@@ -453,33 +472,31 @@ module SyntaxTree
       SOURCE
 
       at = location(lines: 2..3, chars: 6..16)
-      assert_node(Ensure, "ensure", source, at: at) do |node|
-        node.bodystmt.ensure_clause
-      end
+      assert_node(Ensure, source, at: at) { |node| node.bodystmt.ensure_clause }
     end
 
     def test_excessed_comma
       source = "proc { |x,| }"
 
       at = location(chars: 9..10)
-      assert_node(ExcessedComma, "excessed_comma", source, at: at) do |node|
+      assert_node(ExcessedComma, source, at: at) do |node|
         node.block.block_var.params.rest
       end
     end
 
     def test_fcall
-      assert_node(FCall, "fcall", "method(argument)")
+      assert_node(FCall, "method(argument)")
     end
 
     def test_field
       source = "object.variable = value"
 
       at = location(chars: 0..15)
-      assert_node(Field, "field", source, at: at, &:target)
+      assert_node(Field, source, at: at, &:target)
     end
 
     def test_float_literal
-      assert_node(FloatLiteral, "float", "1.0")
+      assert_node(FloatLiteral, "1.0")
     end
 
     guard_version("3.0.0") do
@@ -491,22 +508,20 @@ module SyntaxTree
         SOURCE
 
         at = location(lines: 2..2, chars: 14..32)
-        assert_node(FndPtn, "fndptn", source, at: at) do |node|
-          node.consequent.pattern
-        end
+        assert_node(FndPtn, source, at: at) { |node| node.consequent.pattern }
       end
     end
 
     def test_for
-      assert_node(For, "for", "for value in list do end")
+      assert_node(For, "for value in list do end")
     end
 
     def test_gvar
-      assert_node(GVar, "gvar", "$variable", &:value)
+      assert_node(GVar, "$variable", &:value)
     end
 
     def test_hash
-      assert_node(HashLiteral, "hash", "{ key => value }")
+      assert_node(HashLiteral, "{ key => value }")
     end
 
     def test_heredoc
@@ -517,7 +532,7 @@ module SyntaxTree
       SOURCE
 
       at = location(lines: 1..3, chars: 0..22)
-      assert_node(Heredoc, "heredoc", source, at: at)
+      assert_node(Heredoc, source, at: at)
     end
 
     def test_heredoc_beg
@@ -528,7 +543,7 @@ module SyntaxTree
       SOURCE
 
       at = location(chars: 0..11)
-      assert_node(HeredocBeg, "heredoc_beg", source, at: at, &:beginning)
+      assert_node(HeredocBeg, source, at: at, &:beginning)
     end
 
     def test_hshptn
@@ -539,29 +554,27 @@ module SyntaxTree
       SOURCE
 
       at = location(lines: 2..2, chars: 14..36)
-      assert_node(HshPtn, "hshptn", source, at: at) do |node|
-        node.consequent.pattern
-      end
+      assert_node(HshPtn, source, at: at) { |node| node.consequent.pattern }
     end
 
     def test_ident
-      assert_node(Ident, "ident", "value", &:value)
+      assert_node(Ident, "value", &:value)
     end
 
     def test_if
-      assert_node(If, "if", "if value then else end")
+      assert_node(If, "if value then else end")
     end
 
-    def test_ifop
-      assert_node(IfOp, "ifop", "value ? true : false")
+    def test_if_op
+      assert_node(IfOp, "value ? true : false")
     end
 
     def test_if_mod
-      assert_node(IfMod, "if_mod", "expression if predicate")
+      assert_node(IfMod, "expression if predicate")
     end
 
     def test_imaginary
-      assert_node(Imaginary, "imaginary", "1i")
+      assert_node(Imaginary, "1i")
     end
 
     def test_in
@@ -573,27 +586,27 @@ module SyntaxTree
       SOURCE
 
       at = location(lines: 2..4, chars: 11..33)
-      assert_node(In, "in", source, at: at, &:consequent)
+      assert_node(In, source, at: at, &:consequent)
     end
 
     def test_int
-      assert_node(Int, "int", "1")
+      assert_node(Int, "1")
     end
 
     def test_ivar
-      assert_node(IVar, "ivar", "@variable", &:value)
+      assert_node(IVar, "@variable", &:value)
     end
 
     def test_kw
       at = location(chars: 1..3)
-      assert_node(Kw, "kw", ":if", at: at, &:value)
+      assert_node(Kw, ":if", at: at, &:value)
     end
 
     def test_kwrest_param
       source = "def method(**kwargs) end"
 
       at = location(chars: 11..19)
-      assert_node(KwRestParam, "kwrest_param", source, at: at) do |node|
+      assert_node(KwRestParam, source, at: at) do |node|
         node.params.contents.keyword_rest
       end
     end
@@ -602,64 +615,62 @@ module SyntaxTree
       source = "{ key: value }"
 
       at = location(chars: 2..6)
-      assert_node(Label, "label", source, at: at) do |node|
-        node.assocs.first.key
-      end
+      assert_node(Label, source, at: at) { |node| node.assocs.first.key }
     end
 
     def test_lambda
       source = "->(value) { value * 2 }"
 
-      assert_node(Lambda, "lambda", source)
+      assert_node(Lambda, source)
     end
 
     def test_lambda_do
       source = "->(value) do value * 2 end"
 
-      assert_node(Lambda, "lambda", source)
+      assert_node(Lambda, source)
     end
 
     def test_lbrace
       source = "method {}"
 
       at = location(chars: 7..8)
-      assert_node(LBrace, "lbrace", source, at: at) { |node| node.block.lbrace }
+      assert_node(LBrace, source, at: at) { |node| node.block.lbrace }
     end
 
     def test_lparen
       source = "(1 + 1)"
 
       at = location(chars: 0..1)
-      assert_node(LParen, "lparen", source, at: at, &:lparen)
+      assert_node(LParen, source, at: at, &:lparen)
     end
 
     def test_massign
-      assert_node(MAssign, "massign", "first, second, third = value")
+      assert_node(MAssign, "first, second, third = value")
     end
 
     def test_method_add_block
-      assert_node(MethodAddBlock, "method_add_block", "method {}")
+      assert_node(MethodAddBlock, "method {}")
     end
 
     def test_mlhs
       source = "left, right = value"
 
       at = location(chars: 0..11)
-      assert_node(MLHS, "mlhs", source, at: at, &:target)
+      assert_node(MLHS, source, at: at, &:target)
     end
 
     def test_mlhs_add_post
       source = "left, *middle, right = values"
 
       at = location(chars: 0..20)
-      assert_node(MLHS, "mlhs", source, at: at, &:target)
+      assert_node(MLHS, source, at: at, &:target)
     end
 
     def test_mlhs_paren
       source = "(left, right) = value"
 
       at = location(chars: 0..13)
-      assert_node(MLHSParen, "mlhs_paren", source, at: at, &:target)
+      assert_node(MLHSParen, source, at: at, &:target)
     end
 
     def test_module
@@ -668,34 +679,34 @@ module SyntaxTree
         end
       SOURCE
 
-      assert_node(ModuleDeclaration, "module", source)
+      assert_node(ModuleDeclaration, source)
     end
 
     def test_mrhs
       source = "values = first, second, third"
 
       at = location(chars: 9..29)
-      assert_node(MRHS, "mrhs", source, at: at, &:value)
+      assert_node(MRHS, source, at: at, &:value)
     end
 
     def test_mrhs_add_star
       source = "values = first, *rest"
 
       at = location(chars: 9..21)
-      assert_node(MRHS, "mrhs", source, at: at, &:value)
+      assert_node(MRHS, source, at: at, &:value)
     end
 
     def test_next
-      assert_node(Next, "next", "next(value)")
+      assert_node(Next, "next(value)")
     end
 
     def test_op
       at = location(chars: 4..5)
-      assert_node(Op, "op", "def +(value) end", at: at, &:name)
+      assert_node(Op, "def +(value) end", at: at, &:name)
     end
 
     def test_opassign
-      assert_node(OpAssign, "opassign", "variable += value")
+      assert_node(OpAssign, "variable += value")
     end
 
     def test_params
@@ -711,33 +722,34 @@ module SyntaxTree
       SOURCE
 
       at = location(lines: 2..7, chars: 11..93)
-      assert_node(Params, "params", source, at: at) do |node|
-        node.params.contents
-      end
+      assert_node(Params, source, at: at) { |node| node.params.contents }
     end
 
     def test_params_posts
       source = "def method(*rest, post) end"
 
       at = location(chars: 11..22)
-      assert_node(Params, "params", source, at: at) do |node|
-        node.params.contents
-      end
+      assert_node(Params, source, at: at) { |node| node.params.contents }
     end
 
     def test_paren
-      assert_node(Paren, "paren", "(1 + 2)")
+      assert_node(Paren, "(1 + 2)")
     end
 
     def test_period
       at = location(chars: 6..7)
-      assert_node(Period, "period", "object.method", at: at, &:operator)
+      assert_node(Period, "object.method", at: at, &:operator)
     end
 
     def test_program
       parser = SyntaxTree::Parser.new("variable")
       program = parser.parse
       refute(parser.error?)
+
+      case program
+      in statements: { body: [statement] }
+        assert_kind_of(VCall, statement)
+      end
 
       json = JSON.parse(program.to_json)
       io = StringIO.new
@@ -750,23 +762,23 @@ module SyntaxTree
     end
 
     def test_qsymbols
-      assert_node(QSymbols, "qsymbols", "%i[one two three]")
+      assert_node(QSymbols, "%i[one two three]")
     end
 
     def test_qwords
-      assert_node(QWords, "qwords", "%w[one two three]")
+      assert_node(QWords, "%w[one two three]")
     end
 
     def test_rational
-      assert_node(RationalLiteral, "rational", "1r")
+      assert_node(RationalLiteral, "1r")
     end
 
     def test_redo
-      assert_node(Redo, "redo", "redo")
+      assert_node(Redo, "redo")
     end
 
     def test_regexp_literal
-      assert_node(RegexpLiteral, "regexp_literal", "/abc/")
+      assert_node(RegexpLiteral, "/abc/")
     end
 
     def test_rescue_ex
@@ -777,7 +789,7 @@ module SyntaxTree
       SOURCE
 
       at = location(lines: 2..2, chars: 13..35)
-      assert_node(RescueEx, "rescue_ex", source, at: at) do |node|
+      assert_node(RescueEx, source, at: at) do |node|
         node.bodystmt.rescue_clause.exception
       end
     end
@@ -792,43 +804,41 @@ module SyntaxTree
       SOURCE
 
       at = location(lines: 2..5, chars: 6..58)
-      assert_node(Rescue, "rescue", source, at: at) do |node|
-        node.bodystmt.rescue_clause
-      end
+      assert_node(Rescue, source, at: at) { |node| node.bodystmt.rescue_clause }
     end
 
     def test_rescue_mod
-      assert_node(RescueMod, "rescue_mod", "expression rescue value")
+      assert_node(RescueMod, "expression rescue value")
     end
 
     def test_rest_param
       source = "def method(*rest) end"
 
       at = location(chars: 11..16)
-      assert_node(RestParam, "rest_param", source, at: at) do |node|
+      assert_node(RestParam, source, at: at) do |node|
         node.params.contents.rest
       end
     end
 
     def test_retry
-      assert_node(Retry, "retry", "retry")
+      assert_node(Retry, "retry")
     end
 
     def test_return
-      assert_node(Return, "return", "return value")
+      assert_node(Return, "return value")
     end
 
     def test_return0
-      assert_node(Return0, "return0", "return")
+      assert_node(Return0, "return")
     end
 
     def test_sclass
-      assert_node(SClass, "sclass", "class << self; end")
+      assert_node(SClass, "class << self; end")
     end
 
     def test_statements
       at = location(chars: 1..6)
-      assert_node(Statements, "statements", "(value)", at: at, &:contents)
+      assert_node(Statements, "(value)", at: at, &:contents)
     end
 
     def test_string_concat
@@ -837,12 +847,12 @@ module SyntaxTree
           'right'
       SOURCE
 
-      assert_node(StringConcat, "string_concat", source)
+      assert_node(StringConcat, source)
     end
 
     def test_string_dvar
       at = location(chars: 1..11)
-      assert_node(StringDVar, "string_dvar", '"#@variable"', at: at) do |node|
+      assert_node(StringDVar, '"#@variable"', at: at) do |node|
         node.parts.first
       end
     end
@@ -851,94 +861,99 @@ module SyntaxTree
       source = '"#{variable}"'
 
       at = location(chars: 1..12)
-      assert_node(StringEmbExpr, "string_embexpr", source, at: at) do |node|
-        node.parts.first
-      end
+      assert_node(StringEmbExpr, source, at: at) { |node| node.parts.first }
     end
 
     def test_string_literal
-      assert_node(StringLiteral, "string_literal", "\"string\"")
+      assert_node(StringLiteral, "\"string\"")
     end
 
     def test_super
-      assert_node(Super, "super", "super value")
+      assert_node(Super, "super value")
     end
 
     def test_symbol_literal
-      assert_node(SymbolLiteral, "symbol_literal", ":symbol")
+      assert_node(SymbolLiteral, ":symbol")
     end
 
     def test_symbols
-      assert_node(Symbols, "symbols", "%I[one two three]")
+      assert_node(Symbols, "%I[one two three]")
     end
 
     def test_top_const_field
       source = "::Constant = value"
 
       at = location(chars: 0..10)
-      assert_node(TopConstField, "top_const_field", source, at: at, &:target)
+      assert_node(TopConstField, source, at: at, &:target)
     end
 
     def test_top_const_ref
-      assert_node(TopConstRef, "top_const_ref", "::Constant")
+      assert_node(TopConstRef, "::Constant")
     end
 
     def test_tstring_content
       source = "\"string\""
 
       at = location(chars: 1..7)
-      assert_node(TStringContent, "tstring_content", source, at: at) do |node|
-        node.parts.first
-      end
+      assert_node(TStringContent, source, at: at) { |node| node.parts.first }
     end
 
     def test_not
-      assert_node(Not, "not", "not(value)")
+      assert_node(Not, "not(value)")
     end
 
     def test_unary
-      assert_node(Unary, "unary", "+value")
+      assert_node(Unary, "+value")
     end
 
     def test_undef
-      assert_node(Undef, "undef", "undef value")
+      assert_node(Undef, "undef value")
     end
 
     def test_unless
-      assert_node(Unless, "unless", "unless value then else end")
+      assert_node(Unless, "unless value then else end")
     end
 
     def test_unless_mod
-      assert_node(UnlessMod, "unless_mod", "expression unless predicate")
+      assert_node(UnlessMod, "expression unless predicate")
     end
 
     def test_until
-      assert_node(Until, "until", "until value do end")
+      assert_node(Until, "until value do end")
     end
 
     def test_until_mod
-      assert_node(UntilMod, "until_mod", "expression until predicate")
+      assert_node(UntilMod, "expression until predicate")
     end
 
     def test_var_alias
-      assert_node(VarAlias, "var_alias", "alias $new $old")
+      assert_node(VarAlias, "alias $new $old")
     end
 
     def test_var_field
       at = location(chars: 0..8)
-      assert_node(VarField, "var_field", "variable = value", at: at, &:target)
+      assert_node(VarField, "variable = value", at: at, &:target)
+    end
+
+    guard_version("3.1.0") do
+      def test_pinned_var_ref
+        source = "foo in ^bar"
+        at = location(chars: 7..11)
+
+        assert_node(PinnedVarRef, source, at: at, &:pattern)
+      end
     end
 
     def test_var_ref
-      assert_node(VarRef, "var_ref", "true")
+      assert_node(VarRef, "true")
     end
 
     def test_vcall
-      assert_node(VCall, "vcall", "variable")
+      assert_node(VCall, "variable")
     end
 
     def test_void_stmt
-      assert_node(VoidStmt, "void_stmt", ";;", at: location(chars: 0..0))
+      assert_node(VoidStmt, ";;", at: location(chars: 0..0))
     end
 
     def test_when
@@ -950,30 +965,28 @@ module SyntaxTree
       SOURCE
 
       at = location(lines: 2..4, chars: 11..52)
-      assert_node(When, "when", source, at: at, &:consequent)
+      assert_node(When, source, at: at, &:consequent)
     end
 
     def test_while
-      assert_node(While, "while", "while value do end")
+      assert_node(While, "while value do end")
     end
 
     def test_while_mod
-      assert_node(WhileMod, "while_mod", "expression while predicate")
+      assert_node(WhileMod, "expression while predicate")
     end
 
     def test_word
       at = location(chars: 3..7)
-      assert_node(Word, "word", "%W[word]", at: at) do |node|
-        node.elements.first
-      end
+      assert_node(Word, "%W[word]", at: at) { |node| node.elements.first }
     end
 
     def test_words
-      assert_node(Words, "words", "%W[one two three]")
+      assert_node(Words, "%W[one two three]")
     end
 
     def test_xstring_literal
-      assert_node(XStringLiteral, "xstring_literal", "`ls`")
+      assert_node(XStringLiteral, "`ls`")
     end
 
     def test_xstring_heredoc
@@ -984,19 +997,19 @@ module SyntaxTree
       SOURCE
 
       at = location(lines: 1..3, chars: 0..18)
-      assert_node(Heredoc, "heredoc", source, at: at)
+      assert_node(Heredoc, source, at: at)
     end
 
     def test_yield
-      assert_node(Yield, "yield", "yield value")
+      assert_node(Yield, "yield value")
     end
 
     def test_yield0
-      assert_node(Yield0, "yield0", "yield")
+      assert_node(Yield0, "yield")
     end
 
     def test_zsuper
-      assert_node(ZSuper, "zsuper", "super")
+      assert_node(ZSuper, "super")
     end
 
     def test_column_positions
@@ -1006,7 +1019,7 @@ module SyntaxTree
       SOURCE
 
       at = location(lines: 2..2, chars: 13..27, columns: 0..14)
-      assert_node(Command, "command", source, at: at)
+      assert_node(Command, source, at: at)
     end
 
     def test_multibyte_column_positions
@@ -1016,7 +1029,7 @@ module SyntaxTree
       SOURCE
 
       at = location(lines: 2..2, chars: 16..26, columns: 0..10)
-      assert_node(Command, "command", source, at: at)
+      assert_node(Command, source, at: at)
     end
 
     private
@@ -1032,7 +1045,7 @@ module SyntaxTree
       )
     end
 
-    def assert_node(kind, type, source, at: nil)
+    def assert_node(kind, source, at: nil)
       at ||=
         location(
           lines: 1..[1, source.count("\n")].max,
@@ -1057,16 +1070,8 @@ module SyntaxTree
       assert_kind_of(kind, node)
       assert_equal(at, node.location)
 
-      # Serialize the node to JSON, parse it back out, and assert that we have
-      # found the expected type.
-      json = JSON.parse(node.to_json)
-      assert_equal(type, json["type"])
-
-      # Pretty-print the node to a singleline and then assert that the top
-      # s-expression of the printed output matches the expected type.
-      io = StringIO.new
-      PP.singleline_pp(node, io)
-      assert_match(/^\(#{type}.*\)$/, io.string)
+      # Finally, test that this node responds to everything it should.
+      assert_syntax_tree(node)
     end
   end
 end

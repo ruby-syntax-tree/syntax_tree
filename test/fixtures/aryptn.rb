@@ -1,5 +1,9 @@
 %
 case foo
+in []
+end
+%
+case foo
 in _, _
 end
 %

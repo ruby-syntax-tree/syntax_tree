@@ -30,6 +30,16 @@ unless PrettyPrint.const_defined?(:Align)
   end
 end
 
+# When PP is running, it expects that everything that interacts with it is going
+# to flow through PP.pp, since that's the main entry into the module from the
+# perspective of its uses in core Ruby. In doing so, it calls guard_inspect_key
+# at the top of the PP.pp method, which establishes some thread-local hashes to
+# check for cycles in the pretty printed tree. This means that if you want to
+# manually call pp on some object _before_ you have established these hashes,
+# you're going to break everything. So this call ensures that those hashes have
+# been set up before anything uses pp manually.
+PP.new(+"", 0).guard_inspect_key {}
+
 # Syntax Tree is a suite of tools built on top of the internal CRuby parser. It
 # provides the ability to generate a syntax tree from source, as well as the
 # tools necessary to inspect and manipulate that syntax tree. It can be used to
@@ -67,8 +77,10 @@ module SyntaxTree
   def self.read(filepath)
     encoding =
       File.open(filepath, "r") do |file|
+        break Encoding.default_external if file.eof?
+
         header = file.readline
-        header += file.readline if header.start_with?("#!")
+        header += file.readline if !file.eof? && header.start_with?("#!")
         Ripper.new(header).tap(&:parse).encoding
       end
 

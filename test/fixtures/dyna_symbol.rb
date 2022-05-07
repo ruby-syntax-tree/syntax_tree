@@ -15,7 +15,7 @@
 %
 { %s[foo] => bar }
 -
-{ "foo": bar }
+{ foo: bar }
 %
 %s[
   foo

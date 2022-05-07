@@ -54,3 +54,7 @@ end
 case
 when foo... then
 end
+%
+case
+when foo # comment
+end

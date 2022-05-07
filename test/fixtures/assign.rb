@@ -10,6 +10,10 @@ foo = <<~HERE
   bar
 HERE
 %
+foo = %s[
+  bar
+]
+%
 foo = barrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr
 -
 foo =

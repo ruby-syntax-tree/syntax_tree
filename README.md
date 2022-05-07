@@ -29,6 +29,7 @@ It is built with only standard library dependencies. It additionally ships with 
   - [pretty_print(q)](#pretty_printq)
   - [to_json(*opts)](#to_jsonopts)
   - [format(q)](#formatq)
+  - [construct_keys](#construct_keys)
 - [Visitor](#visitor)
   - [visit_method](#visit_method)
 - [Language server](#language-server)
@@ -293,6 +294,27 @@ binary.format(formatter)
 formatter.flush
 formatter.output.join
 # => "1 + 1"
+```
+
+### construct_keys
+
+Every node responds to `construct_keys`, which will return a string that contains a Ruby pattern-matching expression that could be used to match against the current node. It's meant to be used in tooling and through the CLI mostly.
+
+```ruby
+program = SyntaxTree.parse("1 + 1")
+puts program.construct_keys
+
+# SyntaxTree::Program[
+#   statements: SyntaxTree::Statements[            
+#     body: [                                      
+#       SyntaxTree::Binary[                        
+#         left: SyntaxTree::Int[value: "1"],       
+#         operator: :+,                            
+#         right: SyntaxTree::Int[value: "1"]       
+#       ]                                          
+#     ]                                            
+#   ]                                              
+# ] 
 ```
 
 ## Visitor

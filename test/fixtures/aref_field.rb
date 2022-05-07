@@ -8,3 +8,5 @@ foo[
 ] = baz
 %
 foo[bar] # comment
+%
+foo[bar] += baz

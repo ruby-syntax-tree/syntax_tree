@@ -23,3 +23,8 @@ expect(foo).to_not receive(foooooooooooooooooooooooooooooooooooooooooooooooooooo
 expect(foo).to_not receive(
   fooooooooooooooooooooooooooooooooooooooooooooooooooooooooo
 )
+%
+foo.bar baz {}
+%
+foo.bar baz do
+end

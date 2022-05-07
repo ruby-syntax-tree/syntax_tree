@@ -9,7 +9,46 @@ module SyntaxTree
     #
     # In order to properly use this class, you will need to subclass it and
     # implement #comments, #field, #list, #node, #pairs, and #text. Those are
-    # documented at the bottom of this file.
+    # documented here.
+    #
+    # == comments(node)
+    #
+    # This accepts the node that is being visited and does something depending
+    # on the comments attached to the node.
+    #
+    # == field(name, value)
+    #
+    # This accepts the name of the field being visited as a string (like
+    # "value") and the actual value of that field. The value can be a subclass
+    # of Node or any other type that can be held within the tree.
+    #
+    # == list(name, values)
+    #
+    # This accepts the name of the field being visited as well as a list of
+    # values. This is used, for example, when visiting something like the body
+    # of a Statements node.
+    #
+    # == node(name, node)
+    #
+    # This is the parent serialization method for each node. It is called with
+    # the node itself, as well as the type of the node as a string. The type
+    # is an internally used value that usually resembles the name of the
+    # ripper event that generated the node. The method should yield to the
+    # given block which then calls through to visit each of the fields on the
+    # node.
+    #
+    # == text(name, value)
+    #
+    # This accepts the name of the field being visited as well as a string
+    # value representing the value of the field.
+    #
+    # == pairs(name, values)
+    #
+    # This accepts the name of the field being visited as well as a list of
+    # pairs that represent the value of the field. It is used only in a couple
+    # of circumstances, like when visiting the list of optional parameters
+    # defined on a method.
+    #
     class FieldVisitor < Visitor
       attr_reader :q
 
@@ -220,7 +259,7 @@ module SyntaxTree
       end
 
       def visit_comma(node)
-        node(node, "comma") { field("value", node) }
+        node(node, "comma") { field("value", node.value) }
       end
 
       def visit_command(node)
@@ -491,7 +530,7 @@ module SyntaxTree
       end
 
       def visit_if_op(node)
-        node(node, "ifop") do
+        node(node, "if_op") do
           field("predicate", node.predicate)
           field("truthy", node.truthy)
           field("falsy", node.falsy)
@@ -1064,50 +1103,6 @@ module SyntaxTree
       end
 
       private
-
-      # This accepts the node that is being visited and does something depending
-      # on the comments attached to the node.
-      def comments(node)
-        raise NotImplementedError
-      end
-
-      # This accepts the name of the field being visited as a string (like
-      # "value") and the actual value of that field. The value can be a subclass
-      # of Node or any other type that can be held within the tree.
-      def field(name, value)
-        raise NotImplementedError
-      end
-
-      # This accepts the name of the field being visited as well as a list of
-      # values. This is used, for example, when visiting something like the body
-      # of a Statements node.
-      def list(name, values)
-        raise NotImplementedError
-      end
-
-      # This is the parent serialization method for each node. It is called with
-      # the node itself, as well as the type of the node as a string. The type
-      # is an internally used value that usually resembles the name of the
-      # ripper event that generated the node. The method should yield to the
-      # given block which then calls through to visit each of the fields on the
-      # node.
-      def node(node, type)
-        raise NotImplementedError
-      end
-
-      # This accepts the name of the field being visited as well as a string
-      # value representing the value of the field.
-      def text(name, value)
-        raise NotImplementedError
-      end
-
-      # This accepts the name of the field being visited as well as a list of
-      # pairs that represent the value of the field. It is used only in a couple
-      # of circumstances, like when visiting the list of optional parameters
-      # defined on a method.
-      def pairs(name, values)
-        raise NotImplementedError
-      end
 
       def visit_token(node, type)
         node(node, type) do

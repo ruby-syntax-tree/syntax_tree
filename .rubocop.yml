@@ -16,6 +16,9 @@ Layout/LineLength:
 Lint/DuplicateBranch:
   Enabled: false
 
+Lint/EmptyBlock:
+  Enabled: false
+
 Lint/InterpolationCheck:
   Enabled: false
 
@@ -53,6 +56,9 @@ Style/IfInsideElse:
   Enabled: false
 
 Style/KeywordParametersOrder:
+  Enabled: false
+
+Style/MissingRespondToMissing:
   Enabled: false
 
 Style/MutableConstant:
