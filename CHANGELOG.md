@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 
 ## [Unreleased]
 
+## [2.4.1] - 2022-05-10
+
+- Fix nested hash patterns from accidentally adding a `then` to their output.
+
 ## [2.4.0] - 2022-05-07
 
 ### Added
@@ -209,7 +213,8 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 
 - 🎉 Initial release! 🎉
 
-[unreleased]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v2.4.0...HEAD
+[unreleased]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v2.4.1...HEAD
+[2.4.1]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v2.4.0...v2.4.1
 [2.4.0]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v2.3.1...v2.4.0
 [2.3.1]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v2.3.0...v2.3.1
 [2.3.0]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v2.2.0...v2.3.0

@@ -1671,9 +1671,15 @@ module SyntaxTree
     #     (nil | VarField) keyword_rest
     #   ) -> HshPtn
     def on_hshptn(constant, keywords, keyword_rest)
-      # Create an artificial VarField if we find an extra ** on the end
-      if !keyword_rest && (token = find_token(Op, "**", consume: false))
+      if keyword_rest
+        # We're doing this to delete the token from the list so that it doesn't
+        # confuse future patterns by thinking they have an extra ** on the end.
+        find_token(Op, "**")
+      elsif (token = find_token(Op, "**", consume: false))
         tokens.delete(token)
+
+        # Create an artificial VarField if we find an extra ** on the end. This
+        # means the formatting will be a little more consistent.
         keyword_rest = VarField.new(value: nil, location: token.location)
       end
 
