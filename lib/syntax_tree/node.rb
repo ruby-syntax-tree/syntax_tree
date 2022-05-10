@@ -5064,13 +5064,16 @@ module SyntaxTree
       parts = keywords.map { |(key, value)| KeywordFormatter.new(key, value) }
       parts << KeywordRestFormatter.new(keyword_rest) if keyword_rest
 
+      nested = PATTERNS.include?(q.parent.class)
       contents = -> do
         q.group { q.seplist(parts) { |part| q.format(part, stackable: false) } }
 
         # If there isn't a constant, and there's a blank keyword_rest, then we
         # have an plain ** that needs to have a `then` after it in order to
         # parse correctly on the next parse.
-        q.text(" then") if !constant && keyword_rest && keyword_rest.value.nil?
+        if !constant && keyword_rest && keyword_rest.value.nil? && !nested
+          q.text(" then")
+        end
       end
 
       # If there is a constant, we're going to format to have the constant name
@@ -5097,7 +5100,7 @@ module SyntaxTree
 
       # If there's only one pair, then we'll just print the contents provided
       # we're not inside another pattern.
-      if !PATTERNS.include?(q.parent.class) && parts.size == 1
+      if !nested && parts.size == 1
         contents.call
         return
       end

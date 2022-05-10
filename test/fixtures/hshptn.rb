@@ -66,3 +66,8 @@ end
 case foo
 in **nil
 end
+%
+case foo
+in bar, { baz:, **nil }
+in qux:
+end
