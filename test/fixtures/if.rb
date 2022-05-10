@@ -35,3 +35,9 @@ end
 %
 if foo {}
 end
+%
+if not a
+  b
+else
+  c
+end
