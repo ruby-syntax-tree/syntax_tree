@@ -46,3 +46,5 @@
 { foo: "bar" }
 %
 { "foo #{bar}": "baz" }
+%
+{ "foo=": "baz" }

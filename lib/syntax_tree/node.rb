@@ -1388,7 +1388,7 @@ module SyntaxTree
   module HashKeyFormatter
     # Formats the keys of a hash literal using labels.
     class Labels
-      LABEL = /^[@$_A-Za-z]([_A-Za-z0-9]*)?([!_=?A-Za-z0-9])?$/
+      LABEL = /\A[A-Za-z_](\w*[\w!?])?\z/
 
       def format_key(q, key)
         case key
