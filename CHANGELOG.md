@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 
 ## [Unreleased]
 
+### Changed
+
+- Correct the pattern for checking if a dynamic symbol can be converted into a label as a hash key.
+
 ## [2.4.1] - 2022-05-10
 
 - [#73](https://github.com/ruby-syntax-tree/syntax_tree/pull/73) - Fix nested hash patterns from accidentally adding a `then` to their output.
