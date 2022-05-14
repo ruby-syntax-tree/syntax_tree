@@ -123,7 +123,7 @@ module SyntaxTree
     end
 
     def construct_keys
-      PP.format(+"") { |q| Visitor::MatchVisitor.new(q).visit(self) }
+      PrettierPrint.format(+"") { |q| Visitor::MatchVisitor.new(q).visit(self) }
     end
   end
 
@@ -1666,52 +1666,6 @@ module SyntaxTree
     end
   end
 
-  # This module will remove any breakables from the list of contents so that no
-  # newlines are present in the output.
-  module RemoveBreaks
-    class << self
-      def call(doc)
-        marker = Object.new
-        stack = [doc]
-
-        while stack.any?
-          doc = stack.pop
-
-          if doc == marker
-            stack.pop
-            next
-          end
-
-          stack += [doc, marker]
-
-          case doc
-          when PrettyPrint::Align, PrettyPrint::Indent, PrettyPrint::Group
-            doc.contents.map! { |child| remove_breaks(child) }
-            stack += doc.contents.reverse
-          when PrettyPrint::IfBreak
-            doc.flat_contents.map! { |child| remove_breaks(child) }
-            stack += doc.flat_contents.reverse
-          end
-        end
-      end
-
-      private
-
-      def remove_breaks(doc)
-        case doc
-        when PrettyPrint::Breakable
-          text = PrettyPrint::Text.new
-          text.add(object: doc.force? ? "; " : doc.separator, width: doc.width)
-          text
-        when PrettyPrint::IfBreak
-          PrettyPrint::Align.new(indent: 0, contents: doc.flat_contents)
-        else
-          doc
-        end
-      end
-    end
-  end
-
   # BlockVar represents the parameters being declared for a block. Effectively
   # this node is everything contained within the pipes. This includes all of the
   # various parameter types, as well as block-local variable declarations.
@@ -1752,8 +1706,7 @@ module SyntaxTree
 
     def format(q)
       q.group(0, "|", "|") do
-        doc = q.format(params)
-        RemoveBreaks.call(doc)
+        q.remove_breaks(q.format(params))
 
         if locals.any?
           q.text("; ")
@@ -3096,31 +3049,6 @@ module SyntaxTree
 
     private
 
-    # This is a somewhat naive method that is attempting to sum up the width of
-    # the doc nodes that make up the given doc node. This is used to align
-    # content.
-    def doc_width(parent)
-      queue = [parent]
-      width = 0
-
-      until queue.empty?
-        doc = queue.shift
-
-        case doc
-        when PrettyPrint::Text
-          width += doc.width
-        when PrettyPrint::Indent, PrettyPrint::Align, PrettyPrint::Group
-          queue = doc.contents + queue
-        when PrettyPrint::IfBreak
-          queue = doc.break_contents + queue
-        when PrettyPrint::Breakable
-          width = 0
-        end
-      end
-
-      width
-    end
-
     def argument_alignment(q, doc)
       # Very special handling case for rspec matchers. In general with rspec
       # matchers you expect to see something like:
@@ -3138,7 +3066,7 @@ module SyntaxTree
       if %w[to not_to to_not].include?(message.value)
         0
       else
-        width = doc_width(doc) + 1
+        width = q.last_position(doc) + 1
         width > (q.maxwidth / 2) ? 0 : width
       end
     end
@@ -4891,17 +4819,9 @@ module SyntaxTree
     end
 
     def format(q)
-      # This is a very specific behavior that should probably be included in the
-      # prettyprint module. It's when you want to force a newline, but don't
-      # want to force the break parent.
-      breakable = -> do
-        q.target << PrettyPrint::Breakable.new(
-          " ",
-          1,
-          indent: false,
-          force: true
-        )
-      end
+      # This is a very specific behavior where you want to force a newline, but
+      # don't want to force the break parent.
+      breakable = -> { q.breakable(indent: false, force: :skip_break_parent) }
 
       q.group do
         q.format(beginning)
@@ -5325,9 +5245,8 @@ module SyntaxTree
                 # force it into the output but we _don't_ want to explicitly
                 # break the parent. If a break-parent shows up in the tree, then
                 # it's going to force it all the way up to the tree, which is
-                # going to negate the ternary. Maybe this should be an option in
-                # prettyprint? As in force: :no_break_parent or something.
-                q.target << PrettyPrint::Breakable.new(" ", 1, force: true)
+                # going to negate the ternary.
+                q.breakable(force: :skip_break_parent)
                 q.format(node.consequent.statements)
               end
             end
@@ -8314,8 +8233,7 @@ module SyntaxTree
         # same line in the source, then we're going to leave them in place and
         # assume that's the way the developer wanted this expression
         # represented.
-        doc = q.group(0, '#{', "}") { q.format(statements) }
-        RemoveBreaks.call(doc)
+        q.remove_breaks(q.group(0, '#{', "}") { q.format(statements) })
       else
         q.group do
           q.text('#{')
