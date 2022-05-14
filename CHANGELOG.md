@@ -13,6 +13,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 ### Changed
 
 - Correct the pattern for checking if a dynamic symbol can be converted into a label as a hash key.
+- Disallow conditionals with `not` without parentheses in the predicate from turning into a ternary.
 
 ## [2.4.1] - 2022-05-10
 

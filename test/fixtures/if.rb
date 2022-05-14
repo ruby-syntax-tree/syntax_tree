@@ -41,3 +41,11 @@ if not a
 else
   c
 end
+%
+if not(a)
+  b
+else
+  c
+end
+-
+not(a) ? b : c
