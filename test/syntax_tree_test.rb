@@ -29,6 +29,10 @@ module SyntaxTree
       assert_raises(Parser::ParseError) { SyntaxTree.parse("<>") }
     end
 
+    def test_maxwidth_format
+      assert_equal("foo +\n  bar\n", SyntaxTree.format("foo + bar", 5))
+    end
+
     def test_read
       source = SyntaxTree.read(__FILE__)
       assert_equal(Encoding.default_external, source.encoding)

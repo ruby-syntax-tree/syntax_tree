@@ -40,8 +40,8 @@ module SyntaxTree
   end
 
   # Parses the given source and returns the formatted source.
-  def self.format(source)
-    formatter = Formatter.new(source, [])
+  def self.format(source, maxwidth = 80)
+    formatter = Formatter.new(source, [], maxwidth)
     parse(source).format(formatter)
 
     formatter.flush
