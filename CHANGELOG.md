@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 
 ## [Unreleased]
 
+### Added
+
+- Support an optional `maxwidth` second argument to `SyntaxTree.format`.
+
 ### Changed
 
 - Correct the pattern for checking if a dynamic symbol can be converted into a label as a hash key.
