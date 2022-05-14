@@ -6,14 +6,16 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 
 ## [Unreleased]
 
+## [2.5.0] - 2022-05-13
+
 ### Added
 
-- Support an optional `maxwidth` second argument to `SyntaxTree.format`.
+- [#79](https://github.com/ruby-syntax-tree/syntax_tree/pull/79) - Support an optional `maxwidth` second argument to `SyntaxTree.format`.
 
 ### Changed
 
-- Correct the pattern for checking if a dynamic symbol can be converted into a label as a hash key.
-- Disallow conditionals with `not` without parentheses in the predicate from turning into a ternary.
+- [#77](https://github.com/ruby-syntax-tree/syntax_tree/pull/77) - Correct the pattern for checking if a dynamic symbol can be converted into a label as a hash key.
+- [#72](https://github.com/ruby-syntax-tree/syntax_tree/pull/72) - Disallow conditionals with `not` without parentheses in the predicate from turning into a ternary.
 
 ## [2.4.1] - 2022-05-10
 
@@ -222,7 +224,8 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 
 - 🎉 Initial release! 🎉
 
-[unreleased]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v2.4.1...HEAD
+[unreleased]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v2.5.0...HEAD
+[2.5.0]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v2.4.1...v2.5.0
 [2.4.1]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v2.4.0...v2.4.1
 [2.4.0]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v2.3.1...v2.4.0
 [2.3.1]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v2.3.0...v2.3.1
