@@ -2,7 +2,7 @@
 
 require "json"
 require "pp"
-require "prettyprint"
+require "prettier_print"
 require "ripper"
 require "stringio"
 
@@ -15,30 +15,6 @@ require_relative "syntax_tree/visitor/field_visitor"
 require_relative "syntax_tree/visitor/json_visitor"
 require_relative "syntax_tree/visitor/match_visitor"
 require_relative "syntax_tree/visitor/pretty_print_visitor"
-
-# If PrettyPrint::Align isn't defined, then we haven't gotten the updated
-# version of prettyprint. In that case we'll define our own. This is going to
-# overwrite a bunch of methods, so silencing them as well.
-unless PrettyPrint.const_defined?(:Align)
-  verbose = $VERBOSE
-  $VERBOSE = nil
-
-  begin
-    require_relative "syntax_tree/prettyprint"
-  ensure
-    $VERBOSE = verbose
-  end
-end
-
-# When PP is running, it expects that everything that interacts with it is going
-# to flow through PP.pp, since that's the main entry into the module from the
-# perspective of its uses in core Ruby. In doing so, it calls guard_inspect_key
-# at the top of the PP.pp method, which establishes some thread-local hashes to
-# check for cycles in the pretty printed tree. This means that if you want to
-# manually call pp on some object _before_ you have established these hashes,
-# you're going to break everything. So this call ensures that those hashes have
-# been set up before anything uses pp manually.
-PP.new(+"", 0).guard_inspect_key {}
 
 # Syntax Tree is a suite of tools built on top of the internal CRuby parser. It
 # provides the ability to generate a syntax tree from source, as well as the

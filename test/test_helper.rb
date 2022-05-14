@@ -2,8 +2,6 @@
 
 require "simplecov"
 SimpleCov.start do
-  add_filter("prettyprint.rb")
-
   unless ENV["CI"]
     add_filter("accept_methods_test.rb")
     add_filter("idempotency_test.rb")

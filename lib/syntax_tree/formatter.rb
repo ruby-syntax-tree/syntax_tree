@@ -3,7 +3,7 @@
 module SyntaxTree
   # A slightly enhanced PP that knows how to format recursively including
   # comments.
-  class Formatter < PP
+  class Formatter < PrettierPrint
     COMMENT_PRIORITY = 1
     HEREDOC_PRIORITY = 2
 

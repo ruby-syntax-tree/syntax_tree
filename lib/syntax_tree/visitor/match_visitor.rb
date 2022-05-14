@@ -22,7 +22,7 @@ module SyntaxTree
           # entire value into the output buffer.
           q.text(node.inspect)
         else
-          q.pp(node)
+          node.pretty_print(q)
         end
       end
 
@@ -114,7 +114,7 @@ module SyntaxTree
         q.nest(0) do
           q.text(name)
           q.text(": ")
-          q.pp(value)
+          value.pretty_print(q)
         end
       end
     end
