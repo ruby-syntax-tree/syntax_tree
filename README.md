@@ -223,7 +223,7 @@ This function takes an input string containing Ruby code and returns the syntax 
 
 ### SyntaxTree.format(source)
 
-This function takes an input string containing Ruby code, parses it into its underlying syntax tree, and formats it back out to a string.
+This function takes an input string containing Ruby code, parses it into its underlying syntax tree, and formats it back out to a string. You can optionally pass a second argument to this method as well that is the maximum width to print. It defaults to `80`.
 
 ## Nodes
 
