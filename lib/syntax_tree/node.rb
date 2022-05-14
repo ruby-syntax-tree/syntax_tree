@@ -5115,7 +5115,7 @@ module SyntaxTree
         else
           # Otherwise, we're going to check the conditional for certain cases.
           case node
-          in predicate: Assign | Command | CommandCall | MAssign | OpAssign
+          in predicate: Assign | Command | CommandCall | MAssign | Not | OpAssign
             false
           in {
                statements: { body: [truthy] },
