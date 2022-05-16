@@ -3,6 +3,9 @@
 require "rake"
 require "rake/tasklib"
 
+require "syntax_tree"
+require "syntax_tree/cli"
+
 module SyntaxTree
   module Rake
     # A Rake task that runs check on a set of source files.
@@ -21,16 +24,25 @@ module SyntaxTree
     #
     class CheckTask < ::Rake::TaskLib
       # Name of the task.
-      # Defaults to :stree_check.
+      # Defaults to :"stree:check".
       attr_accessor :name
 
       # Glob pattern to match source files.
       # Defaults to 'lib/**/*.rb'.
       attr_accessor :source_files
 
-      def initialize(name = :stree_check)
+      # The set of plugins to require.
+      # Defaults to [].
+      attr_accessor :plugins
+
+      def initialize(
+        name = :"stree:check",
+        source_files = ::Rake::FileList["lib/**/*.rb"],
+        plugins = []
+      )
         @name = name
-        @source_files = "lib/**/*.rb"
+        @source_files = source_files
+        @plugins = plugins
 
         yield self if block_given?
         define_task
@@ -44,7 +56,10 @@ module SyntaxTree
       end
 
       def run_task
-        SyntaxTree::CLI.run(["check", source_files].compact)
+        arguments = ["check"]
+        arguments << "--plugins=#{plugins.join(",")}" if plugins.any?
+
+        SyntaxTree::CLI.run(arguments + Array(source_files))
       end
     end
   end

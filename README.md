@@ -38,6 +38,7 @@ It is built with only standard library dependencies. It additionally ships with 
   - [syntaxTree/visualizing](#syntaxtreevisualizing)
 - [Plugins](#plugins)
 - [Integration](#integration)
+  - [Rake](#rake)
   - [RuboCop](#rubocop)
   - [VSCode](#vscode)
 - [Contributing](#contributing)
@@ -435,6 +436,46 @@ Below are listed all of the "official" language plugins hosted under the same Gi
 ## Integration
 
 Syntax Tree's goal is to seemlessly integrate into your workflow. To this end, it provides a couple of additional tools beyond the CLI and the Ruby library.
+
+### Rake
+
+Syntax Tree ships with the ability to define [rake](https://github.com/ruby/rake) tasks that will trigger runs of the CLI. To define them in your application, add the following configuration to your `Rakefile`:
+
+```ruby
+require "syntax_tree/rake_tasks"
+SyntaxTree::Rake::CheckTask.new
+SyntaxTree::Rake::WriteTask.new
+```
+
+These calls will define `rake stree:check` and `rake stree:write` (equivalent to calling `stree check` and `stree write` respectively). You can configure them by either passing arguments to the `new` method or by using a block.
+
+#### `name`
+
+If you'd like to change the default name of the rake task, you can pass that as the first optioon, as in:
+
+```ruby
+SyntaxTree::Rake::WriteTask.new(:format)
+```
+
+#### `source_files`
+
+If you wanted to configure Syntax Tree to check or write different files than the default (`lib/**/*.rb`), you can set the `source_files` field, as in:
+
+```ruby
+SyntaxTree::Rake::WriteTask.new do |t|
+  t.source_files = FileList[%w[Gemfile Rakefile lib/**/*.rb test/**/*.rb]]
+end
+```
+
+#### `plugins`
+
+If you're running Syntax Tree with plugins (either your own or the pre-built ones), you can pass that to the `plugins` field, as in:
+
+```ruby
+SyntaxTree::Rake::WriteTask.new do |t|
+  t.plugins = ["plugin/single_quotes"]
+end
+```
 
 ### RuboCop
 

@@ -38,7 +38,7 @@ jobs:
         ruby-version: '3.1'
     - name: Check
       run: |
-        bundle exec rake check
+        bundle exec rake stree:check
         bundle exec rubocop
 
   automerge:

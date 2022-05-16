@@ -3,6 +3,9 @@
 require "rake"
 require "rake/tasklib"
 
+require "syntax_tree"
+require "syntax_tree/cli"
+
 module SyntaxTree
   module Rake
     # A Rake task that runs format on a set of source files.
@@ -21,16 +24,25 @@ module SyntaxTree
     #
     class WriteTask < ::Rake::TaskLib
       # Name of the task.
-      # Defaults to :stree_write.
+      # Defaults to :"stree:write".
       attr_accessor :name
 
       # Glob pattern to match source files.
       # Defaults to 'lib/**/*.rb'.
       attr_accessor :source_files
 
-      def initialize(name = :stree_write)
+      # The set of plugins to require.
+      # Defaults to [].
+      attr_accessor :plugins
+
+      def initialize(
+        name = :"stree:write",
+        source_files = ::Rake::FileList["lib/**/*.rb"],
+        plugins = []
+      )
         @name = name
-        @source_files = "lib/**/*.rb"
+        @source_files = source_files
+        @plugins = plugins
 
         yield self if block_given?
         define_task
@@ -44,7 +56,10 @@ module SyntaxTree
       end
 
       def run_task
-        SyntaxTree::CLI.run(["write", source_files].compact)
+        arguments = ["write"]
+        arguments << "--plugins=#{plugins.join(",")}" if plugins.any?
+
+        SyntaxTree::CLI.run(arguments + Array(source_files))
       end
     end
   end

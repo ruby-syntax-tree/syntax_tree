@@ -2,6 +2,7 @@
 
 require "bundler/gem_tasks"
 require "rake/testtask"
+require "syntax_tree/rake_tasks"
 
 Rake::TestTask.new(:test) do |t|
   t.libs << "test"
@@ -11,24 +12,8 @@ end
 
 task default: :test
 
-FILEPATHS = %w[
-  Gemfile
-  Rakefile
-  syntax_tree.gemspec
-  lib/**/*.rb
-  test/*.rb
-].freeze
+SOURCE_FILES =
+  FileList[%w[Gemfile Rakefile syntax_tree.gemspec lib/**/*.rb test/*.rb]]
 
-task :syntax_tree do
-  $:.unshift File.expand_path("lib", __dir__)
-  require "syntax_tree"
-  require "syntax_tree/cli"
-end
-
-task check: :syntax_tree do
-  exit SyntaxTree::CLI.run(["check"] + FILEPATHS)
-end
-
-task format: :syntax_tree do
-  exit SyntaxTree::CLI.run(["write"] + FILEPATHS)
-end
+SyntaxTree::Rake::CheckTask.new { |t| t.source_files = SOURCE_FILES }
+SyntaxTree::Rake::WriteTask.new { |t| t.source_files = SOURCE_FILES }
