@@ -37,6 +37,8 @@ It is built with only standard library dependencies. It additionally ships with 
   - [textDocument/inlayHints](#textdocumentinlayhints)
   - [syntaxTree/visualizing](#syntaxtreevisualizing)
 - [Plugins](#plugins)
+  - [Configuration](#configuration)
+  - [Languages](#languages)
 - [Integration](#integration)
   - [Rake](#rake)
   - [RuboCop](#rubocop)
@@ -409,9 +411,12 @@ You can register additional configuration and additional languages that can flow
 
 ### Configuration
 
-To register additional configuration, define a file somewhere in your load path named `syntax_tree/my_plugin` directory. Then when invoking the CLI, you will pass `--plugins=my_plugin`. That will get required. In this way, you can modify Syntax Tree however you would like. Some plugins ship with Syntax Tree itself. They are:
+To register additional configuration, define a file somewhere in your load path named `syntax_tree/my_plugin`. Then when invoking the CLI, you will pass `--plugins=my_plugin`. To require multiple, separate them by a comma. In this way, you can modify Syntax Tree however you would like. Some plugins ship with Syntax Tree itself. They are:
 
 * `plugin/single_quotes` - This will change all of your string literals to use single quotes instead of the default double quotes.
+* `plugin/trailing_comma` - This will put trailing commas into multiline array literals, hash literals, and method calls that can support trailing commas.
+
+If you're using Syntax Tree as a library, you should require those files directly.
 
 ### Languages
 

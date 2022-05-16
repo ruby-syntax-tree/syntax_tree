@@ -597,8 +597,28 @@ module SyntaxTree
         q.indent do
           q.breakable("")
           q.format(arguments)
+          q.if_break { q.text(",") } if q.trailing_comma? && trailing_comma?
         end
         q.breakable("")
+      end
+    end
+
+    private
+
+    def trailing_comma?
+      case arguments
+      in Args[parts: [*, ArgBlock]]
+        # If the last argument is a block, then we can't put a trailing comma
+        # after it without resulting in a syntax error.
+        false
+      in Args[parts: [Command | CommandCall]]
+        # If the only argument is a command or command call, then a trailing
+        # comma would be parsed as part of that expression instead of on this
+        # one, so we don't want to add a trailing comma.
+        false
+      else
+        # Otherwise, we should be okay to add a trailing comma.
+        true
       end
     end
   end
@@ -859,6 +879,7 @@ module SyntaxTree
             end
 
             q.seplist(contents.parts, separator) { |part| q.format(part) }
+            q.if_break { q.text(",") } if q.trailing_comma?
           end
           q.breakable("")
         end
@@ -954,6 +975,7 @@ module SyntaxTree
           q.indent do
             q.breakable("")
             q.format(contents)
+            q.if_break { q.text(",") } if q.trailing_comma?
           end
         end
 
@@ -4751,6 +4773,7 @@ module SyntaxTree
         q.indent do
           q.breakable
           q.seplist(assocs) { |assoc| q.format(assoc) }
+          q.if_break { q.text(",") } if q.trailing_comma?
         end
         q.breakable
       end
