@@ -1940,6 +1940,41 @@ module SyntaxTree
             token.location.start_char > beginning.location.start_char
         end
 
+      # We need to do some special mapping here. Since ripper doesn't support
+      # capturing lambda var until 3.2, we need to normalize all of that here.
+      params =
+        case params
+        in Paren[contents: Params]
+          # In this case we've gotten to the <3.2 parentheses wrapping a set of
+          # parameters case. Here we need to manually scan for lambda locals.
+          range = (params.location.start_char + 1)...params.location.end_char
+          locals = lambda_locals(source[range])
+
+          location = params.contents.location
+          location = location.to(locals.last.location) if locals.any?
+
+          Paren.new(
+            lparen: params.lparen,
+            contents:
+              LambdaVar.new(
+                params: params.contents,
+                locals: locals,
+                location: location
+              ),
+            location: params.location,
+            comments: params.comments
+          )
+        in Params
+          # In this case we've gotten to the <3.2 plain set of parameters. In
+          # this case there cannot be lambda locals, so we will wrap the
+          # parameters into a lambda var that has no locals.
+          LambdaVar.new(params: params, locals: [], location: params.location)
+        in LambdaVar
+          # In this case we've gotten to 3.2+ lambda var. In this case we don't
+          # need to do anything and can just the value as given.
+          params
+        end
+
       if braces
         opening = find_token(TLamBeg)
         closing = find_token(RBrace)
@@ -1960,6 +1995,84 @@ module SyntaxTree
         statements: statements,
         location: beginning.location.to(closing.location)
       )
+    end
+
+    # :call-seq:
+    #   on_lambda_var: (Params params, Array[ Ident ] locals) -> LambdaVar
+    def on_lambda_var(params, locals)
+      location = params.location
+      location = location.to(locals.last.location) if locals.any?
+
+      LambdaVar.new(params: params, locals: locals || [], location: location)
+    end
+
+    # Ripper doesn't support capturing lambda local variables until 3.2. To
+    # mitigate this, we have to parse that code for ourselves. We use the range
+    # from the parentheses to find where we _should_ be looking. Then we check
+    # if the resulting tokens match a pattern that we determine means that the
+    # declaration has block-local variables. Once it does, we parse those out
+    # and convert them into Ident nodes.
+    def lambda_locals(source)
+      tokens = Ripper.lex(source)
+
+      # First, check that we have a semi-colon. If we do, then we can start to
+      # parse the tokens _after_ the semicolon.
+      index = tokens.rindex { |token| token[1] == :on_semicolon }
+      return [] unless index
+
+      # Next, map over the tokens and convert them into Ident nodes. Bail out
+      # midway through if we encounter a token we didn't expect. Basically we're
+      # making our own mini-parser here. To do that we'll walk through a small
+      # state machine:
+      #
+      #     ┌────────┐               ┌────────┐                ┌─────────┐
+      #     │        │               │        │                │┌───────┐│
+      # ──> │  item  │ ─── ident ──> │  next  │ ─── rparen ──> ││ final ││
+      #     │        │ <── comma ─── │        │                │└───────┘│
+      #     └────────┘               └────────┘                └─────────┘
+      #        │  ^                     │  ^
+      #        └──┘                     └──┘
+      #    ignored_nl, sp              nl, sp
+      #
+      state = :item
+      transitions = {
+        item: {
+          on_ignored_nl: :item,
+          on_sp: :item,
+          on_ident: :next
+        },
+        next: {
+          on_nl: :next,
+          on_sp: :next,
+          on_comma: :item,
+          on_rparen: :final
+        },
+        final: {
+        }
+      }
+
+      tokens[(index + 1)..].each_with_object([]) do |token, locals|
+        (lineno, column), type, value, = token
+
+        # Make the state transition for the parser. This is going to raise a
+        # KeyError if we don't have a transition for the current state and type.
+        # But that shouldn't actually be possible because ripper would have
+        # found a syntax error by then.
+        state = transitions[state].fetch(type)
+
+        # If we hit an identifier, then add it to our list.
+        next if type != :on_ident
+
+        location =
+          Location.token(
+            line: lineno,
+            char: line_counts[lineno - 1][column],
+            column: column,
+            size: value.size
+          )
+
+        locals << Ident.new(value: value, location: location)
+      end
     end
 
     # :call-seq:

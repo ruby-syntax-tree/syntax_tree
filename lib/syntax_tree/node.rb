@@ -5900,7 +5900,7 @@ module SyntaxTree
   #     ->(value) { value * 2 }
   #
   class Lambda < Node
-    # [Params | Paren] the parameter declaration for this lambda
+    # [LambdaVar | Paren] the parameter declaration for this lambda
     attr_reader :params
 
     # [BodyStmt | Statements] the expressions to be executed in this lambda
@@ -5955,20 +5955,96 @@ module SyntaxTree
                 node.is_a?(Command) || node.is_a?(CommandCall)
               end
 
-            q.text(force_parens ? "{" : "do")
-            q.indent do
-              q.breakable
-              q.format(statements)
-            end
+            if force_parens
+              q.text("{")
 
-            q.breakable
-            q.text(force_parens ? "}" : "end")
+              unless statements.empty?
+                q.indent do
+                  q.breakable
+                  q.format(statements)
+                end
+                q.breakable
+              end
+
+              q.text("}")
+            else
+              q.text("do")
+
+              unless statements.empty?
+                q.indent do
+                  q.breakable
+                  q.format(statements)
+                end
+              end
+
+              q.breakable
+              q.text("end")
+            end
           end
           .if_flat do
-            q.text("{ ")
-            q.format(statements)
-            q.text(" }")
+            q.text("{")
+
+            unless statements.empty?
+              q.text(" ")
+              q.format(statements)
+              q.text(" ")
+            end
+
+            q.text("}")
           end
+      end
+    end
+  end
+
+  # LambdaVar represents the parameters being declared for a lambda. Effectively
+  # this node is everything contained within the parentheses. This includes all
+  # of the various parameter types, as well as block-local variable
+  # declarations.
+  #
+  #     -> (positional, optional = value, keyword:, &block; local) do
+  #     end
+  #
+  class LambdaVar < Node
+    # [Params] the parameters being declared with the block
+    attr_reader :params
+
+    # [Array[ Ident ]] the list of block-local variable declarations
+    attr_reader :locals
+
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(params:, locals:, location:, comments: [])
+      @params = params
+      @locals = locals
+      @location = location
+      @comments = comments
+    end
+
+    def accept(visitor)
+      visitor.visit_lambda_var(self)
+    end
+
+    def child_nodes
+      [params, *locals]
+    end
+
+    alias deconstruct child_nodes
+
+    def deconstruct_keys(_keys)
+      { params: params, locals: locals, location: location, comments: comments }
+    end
+
+    def empty?
+      params.empty? && locals.empty?
+    end
+
+    def format(q)
+      q.format(params)
+
+      if locals.any?
+        q.text("; ")
+        q.seplist(locals, -> { q.text(", ") }) { |local| q.format(local) }
       end
     end
   end

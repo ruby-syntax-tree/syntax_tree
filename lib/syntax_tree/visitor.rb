@@ -301,6 +301,9 @@ module SyntaxTree
     # Visit a Lambda node.
     alias visit_lambda visit_child_nodes
 
+    # Visit a LambdaVar node.
+    alias visit_lambda_var visit_child_nodes
+
     # Visit a LBrace node.
     alias visit_lbrace visit_child_nodes
 
