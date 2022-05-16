@@ -7,7 +7,12 @@ module SyntaxTree
     COMMENT_PRIORITY = 1
     HEREDOC_PRIORITY = 2
 
-    attr_reader :source, :stack, :quote
+    attr_reader :source, :stack
+
+    # These options are overridden in plugins to we need to make sure they are
+    # available here.
+    attr_reader :quote, :trailing_comma
+    alias trailing_comma? trailing_comma
 
     def initialize(source, ...)
       super(...)
@@ -15,6 +20,7 @@ module SyntaxTree
       @source = source
       @stack = []
       @quote = "\""
+      @trailing_comma = false
     end
 
     def self.format(source, node)
