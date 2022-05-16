@@ -9,6 +9,12 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 ### Added
 
 - [#74](https://github.com/ruby-syntax-tree/syntax_tree/pull/74) - Add Rake test to run check and format commands.
+- [#83](https://github.com/ruby-syntax-tree/syntax_tree/pull/83) - Add a trailing commas plugin.
+- [#84](https://github.com/ruby-syntax-tree/syntax_tree/pull/84) - Handle lambda block-local variables.
+
+### Changed
+
+- [#85](https://github.com/ruby-syntax-tree/syntax_tree/pull/85) - Better handle trailing operators on command calls.
 
 ## [2.5.0] - 2022-05-13
 
