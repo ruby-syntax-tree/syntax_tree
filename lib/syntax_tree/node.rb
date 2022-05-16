@@ -3052,8 +3052,20 @@ module SyntaxTree
         doc =
           q.nest(0) do
             q.format(receiver)
-            q.format(CallOperatorFormatter.new(operator), stackable: false)
-            q.format(message)
+
+            # If there are leading comments on the message then we know we have
+            # a newline in the source that is forcing these things apart. In
+            # this case we will have to use a trailing operator.
+            if message.comments.any?(&:leading?)
+              q.format(CallOperatorFormatter.new(operator), stackable: false)
+              q.indent do
+                q.breakable("")
+                q.format(message)
+              end
+            else
+              q.format(CallOperatorFormatter.new(operator), stackable: false)
+              q.format(message)
+            end
           end
 
         case arguments

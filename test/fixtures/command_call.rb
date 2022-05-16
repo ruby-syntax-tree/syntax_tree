@@ -28,3 +28,7 @@ foo.bar baz {}
 %
 foo.bar baz do
 end
+%
+foo.
+  # comment
+  bar baz
