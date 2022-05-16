@@ -447,11 +447,11 @@ SyntaxTree::Rake::CheckTask.new
 SyntaxTree::Rake::WriteTask.new
 ```
 
-These calls will define `rake stree:check` and `rake stree:write` (equivalent to calling `stree check` and `stree write` respectively). You can configure them by either passing arguments to the `new` method or by using a block.
+These calls will define `rake stree:check` and `rake stree:write` (equivalent to calling `stree check` and `stree write` with the CLI respectively). You can configure them by either passing arguments to the `new` method or by using a block.
 
 #### `name`
 
-If you'd like to change the default name of the rake task, you can pass that as the first optioon, as in:
+If you'd like to change the default name of the rake task, you can pass that as the first argument, as in:
 
 ```ruby
 SyntaxTree::Rake::WriteTask.new(:format)
