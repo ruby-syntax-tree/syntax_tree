@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 
 ## [Unreleased]
 
+## [2.6.0] - 2022-05-16
+
 ### Added
 
 - [#74](https://github.com/ruby-syntax-tree/syntax_tree/pull/74) - Add Rake test to run check and format commands.
@@ -234,7 +236,8 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 
 - 🎉 Initial release! 🎉
 
-[unreleased]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v2.5.0...HEAD
+[unreleased]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v2.6.0...HEAD
+[2.6.0]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v2.5.0...v2.6.0
 [2.5.0]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v2.4.1...v2.5.0
 [2.4.1]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v2.4.0...v2.4.1
 [2.4.0]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v2.3.1...v2.4.0
