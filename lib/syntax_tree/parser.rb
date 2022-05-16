@@ -2054,11 +2054,10 @@ module SyntaxTree
       tokens[(index + 1)..].each_with_object([]) do |token, locals|
         (lineno, column), type, value, = token
 
-        # Make the state transition for the parser. This is going to raise a
-        # KeyError if we don't have a transition for the current state and type.
-        # But that shouldn't actually be possible because ripper would have
-        # found a syntax error by then.
-        state = transitions[state].fetch(type)
+        # Make the state transition for the parser. If there isn't a transition
+        # from the current state to a new state for this type, then we're in a
+        # pattern that isn't actually locals. In that case we can return [].
+        state = transitions[state].fetch(type) { return [] }
 
         # If we hit an identifier, then add it to our list.
         next if type != :on_ident
