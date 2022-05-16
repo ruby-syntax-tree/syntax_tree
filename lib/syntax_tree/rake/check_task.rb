@@ -45,8 +45,6 @@ module SyntaxTree
 
       def run_task
         SyntaxTree::CLI.run(["check", source_files].compact)
-
-        # exit($?.exitstatus) if $?&.exited?
       end
     end
   end
