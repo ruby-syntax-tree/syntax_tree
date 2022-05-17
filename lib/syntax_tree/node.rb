@@ -3864,9 +3864,9 @@ module SyntaxTree
     # whichever quote the user chose. (If they chose single quotes, then double
     # quoting would activate the escape sequence, and if they chose double
     # quotes, then single quotes would deactivate it.)
-    def self.locked?(node)
+    def self.locked?(node, quote)
       node.parts.any? do |part|
-        !part.is_a?(TStringContent) || part.value.match?(/\\|#[@${]/)
+        !part.is_a?(TStringContent) || part.value.match?(/\\|#[@${]|#{quote}/)
       end
     end
 
@@ -3981,12 +3981,12 @@ module SyntaxTree
 
         if matched
           [quote, matching]
-        elsif Quotes.locked?(self)
+        elsif Quotes.locked?(self, q.quote)
           ["#{":" unless hash_key}'", "'"]
         else
           ["#{":" unless hash_key}#{q.quote}", q.quote]
         end
-      elsif Quotes.locked?(self)
+      elsif Quotes.locked?(self, q.quote)
         if quote.start_with?(":")
           [hash_key ? quote[1..] : quote, quote[1..]]
         else
@@ -8404,7 +8404,7 @@ module SyntaxTree
       end
 
       opening_quote, closing_quote =
-        if !Quotes.locked?(self)
+        if !Quotes.locked?(self, q.quote)
           [q.quote, q.quote]
         elsif quote.start_with?("%")
           [quote, Quotes.matching(quote[/%[qQ]?(.)/, 1])]

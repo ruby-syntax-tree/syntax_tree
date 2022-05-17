@@ -26,6 +26,10 @@ module SyntaxTree
         assert_format(":'symbol'\n", ":\"symbol\"")
       end
 
+      def test_single_quote_in_string
+        assert_format("\"str'ing\"\n")
+      end
+
       def test_label
         assert_format(
           "{ foo => foo, :'bar' => bar }\n",
