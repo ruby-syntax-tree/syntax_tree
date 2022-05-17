@@ -32,6 +32,7 @@ It is built with only standard library dependencies. It additionally ships with 
   - [construct_keys](#construct_keys)
 - [Visitor](#visitor)
   - [visit_method](#visit_method)
+  - [BasicVisitor](#basicvisitor)
 - [Language server](#language-server)
   - [textDocument/formatting](#textdocumentformatting)
   - [textDocument/inlayHints](#textdocumentinlayhints)
@@ -372,6 +373,20 @@ Did you mean?  visit_binary
 	from (irb):1:in `<main>'
 	from bin/console:8:in `<main>'
 ```
+
+### BasicVisitor
+
+When you're defining your own visitor, by default it will walk down the tree even if you don't define `visit_*` methods. This is to ensure you can define a subset of the necessary methods in order to only interact with the nodes you're interested in. If you'd like to change this default to instead raise an error if you visit a node you haven't explicitly handled, you can instead inherit from `BasicVisitor`.
+
+```ruby
+class MyVisitor < SyntaxTree::BasicVisitor
+  def visit_int(node)
+    # ...
+  end
+end
+```
+
+The visitor defined above will error out unless it's only visiting a `SyntaxTree::Int` node. This is useful in a couple of ways, e.g., if you're trying to define a visitor to handle the whole tree but it's currently a work-in-progress.
 
 ## Language server
 
