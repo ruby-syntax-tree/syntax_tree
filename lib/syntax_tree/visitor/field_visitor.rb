@@ -49,9 +49,7 @@ module SyntaxTree
     # of circumstances, like when visiting the list of optional parameters
     # defined on a method.
     #
-    class FieldVisitor < Visitor
-      attr_reader :q
-
+    class FieldVisitor < BasicVisitor
       def visit_aref(node)
         node(node, "aref") do
           field("collection", node.collection)
