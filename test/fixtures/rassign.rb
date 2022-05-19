@@ -12,3 +12,11 @@ foooooooooooooooooooooooooooooooooooooo => barrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr
 -
 foooooooooooooooooooooooooooooooooooooo =>
   barrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr
+%
+foo => [
+  ConstantConstantConstant,
+  ConstantConstantConstant,
+  ConstantConstantConstant,
+  ConstantConstantConstant,
+  ConstantConstantConstant
+]
