@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 
 ## [Unreleased]
 
+## [2.7.0] - 2022-05-19
+
+### Added
+
+- [#88](https://github.com/ruby-syntax-tree/syntax_tree/pull/88) - Provide a `SyntaxTree::BasicVisitor` that has no visit methods implemented.
+
+### Changed
+
+- [#90](https://github.com/ruby-syntax-tree/syntax_tree/pull/90) - Provide better formatting for `SyntaxTree::AryPtn` when its nested inside a `SyntaxTree::RAssign`.
+
 ## [2.6.0] - 2022-05-16
 
 ### Added
@@ -236,7 +246,8 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 
 - 🎉 Initial release! 🎉
 
-[unreleased]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v2.6.0...HEAD
+[unreleased]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v2.7.0...HEAD
+[2.7.0]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v2.6.0...v2.7.0
 [2.6.0]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v2.5.0...v2.6.0
 [2.5.0]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v2.4.1...v2.5.0
 [2.4.1]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v2.4.0...v2.4.1
