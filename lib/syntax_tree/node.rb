@@ -1131,7 +1131,11 @@ module SyntaxTree
         q.group do
           q.format(constant)
           q.text("[")
-          q.seplist(parts) { |part| q.format(part) }
+          q.indent do
+            q.breakable("")
+            q.seplist(parts) { |part| q.format(part) }
+          end
+          q.breakable("")
           q.text("]")
         end
 
@@ -1141,7 +1145,11 @@ module SyntaxTree
       parent = q.parent
       if parts.length == 1 || PATTERNS.include?(parent.class)
         q.text("[")
-        q.seplist(parts) { |part| q.format(part) }
+        q.indent do
+          q.breakable("")
+          q.seplist(parts) { |part| q.format(part) }
+        end
+        q.breakable("")
         q.text("]")
       elsif parts.empty?
         q.text("[]")
@@ -2777,10 +2785,17 @@ module SyntaxTree
         q.format(value)
         q.text(" ")
         q.format(operator)
-        q.group do
-          q.indent do
-            q.breakable
-            q.format(pattern)
+
+        case pattern
+        in AryPtn | FndPtn | HshPtn
+          q.text(" ")
+          q.format(pattern)
+        else
+          q.group do
+            q.indent do
+              q.breakable
+              q.format(pattern)
+            end
           end
         end
       end
@@ -4573,16 +4588,26 @@ module SyntaxTree
 
     def format(q)
       q.format(constant) if constant
-      q.group(0, "[", "]") do
-        q.text("*")
-        q.format(left)
-        q.comma_breakable
 
-        q.seplist(values) { |value| q.format(value) }
-        q.comma_breakable
+      q.group do
+        q.text("[")
 
-        q.text("*")
-        q.format(right)
+        q.indent do
+          q.breakable("")
+
+          q.text("*")
+          q.format(left)
+          q.comma_breakable
+
+          q.seplist(values) { |value| q.format(value) }
+          q.comma_breakable
+
+          q.text("*")
+          q.format(right)
+        end
+
+        q.breakable("")
+        q.text("]")
       end
     end
   end
