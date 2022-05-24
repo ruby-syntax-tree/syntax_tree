@@ -70,9 +70,7 @@ module SyntaxTree
              id:,
              params: { textDocument: { uri: } }
            }
-          output = []
-          PP.pp(SyntaxTree.parse(store[uri]), output)
-          write(id: id, result: output.join)
+          write(id: id, result: PP.pp(SyntaxTree.parse(store[uri]), +""))
         in method: %r{\$/.+}
           # ignored
         else

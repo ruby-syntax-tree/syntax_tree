@@ -2129,11 +2129,13 @@ module SyntaxTree
           #
           #     break
           #
-        in [Paren[
-             contents: {
-               body: [ArrayLiteral[contents: { parts: [_, _, *] }] => array]
-             }
-           ]]
+        in [
+             Paren[
+               contents: {
+                 body: [ArrayLiteral[contents: { parts: [_, _, *] }] => array]
+               }
+             ]
+           ]
           # Here we have a single argument that is a set of parentheses wrapping
           # an array literal that has at least 2 elements. We're going to print
           # the contents of the array directly. This would be like if we had:
@@ -2146,7 +2148,9 @@ module SyntaxTree
           #
           q.text(" ")
           format_array_contents(q, array)
-        in [Paren[contents: { body: [ArrayLiteral => statement] }]]
+        in [
+             Paren[contents: { body: [ArrayLiteral => statement] }]
+           ]
           # Here we have a single argument that is a set of parentheses wrapping
           # an array literal that has 0 or 1 elements. We're going to skip the
           # parentheses but print the array itself. This would be like if we
@@ -2174,7 +2178,9 @@ module SyntaxTree
           #
           q.text(" ")
           q.format(statement)
-        in [Paren => part]
+        in [
+             Paren => part
+           ]
           # Here we have a single argument that is a set of parentheses. We're
           # going to print the parentheses themselves as if they were the set of
           # arguments. This would be like if we had:
@@ -2182,7 +2188,9 @@ module SyntaxTree
           #     break(foo.bar)
           #
           q.format(part)
-        in [ArrayLiteral[contents: { parts: [_, _, *] }] => array]
+        in [
+             ArrayLiteral[contents: { parts: [_, _, *] }] => array
+           ]
           # Here there is a single argument that is an array literal with at
           # least two elements. We skip directly into the array literal's
           # elements in order to print the contents. This would be like if we
@@ -2196,7 +2204,9 @@ module SyntaxTree
           #
           q.text(" ")
           format_array_contents(q, array)
-        in [ArrayLiteral => part]
+        in [
+             ArrayLiteral => part
+           ]
           # Here there is a single argument that is an array literal with 0 or 1
           # elements. In this case we're going to print the array as it is
           # because skipping the brackets would change the remaining. This would
@@ -2207,7 +2217,9 @@ module SyntaxTree
           #
           q.text(" ")
           q.format(part)
-        in [_]
+        in [
+             _
+           ]
           # Here there is a single argument that hasn't matched one of our
           # previous cases. We're going to print the argument as it is. This
           # would be like if we had:
