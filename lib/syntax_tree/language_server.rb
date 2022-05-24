@@ -107,10 +107,6 @@ module SyntaxTree
       }
     end
 
-    def log(message)
-      write(method: "window/logMessage", params: { type: 4, message: message })
-    end
-
     def inlay_hints(source)
       inlay_hints = InlayHints.find(SyntaxTree.parse(source))
       serialize = ->(position, text) { { position: position, text: text } }
