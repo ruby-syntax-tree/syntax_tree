@@ -74,7 +74,7 @@ module SyntaxTree
         in method: %r{\$/.+}
           # ignored
         else
-          raise "Unhandled: #{request}"
+          raise ArgumentError, "Unhandled: #{request}"
         end
       end
     end

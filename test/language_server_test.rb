@@ -174,6 +174,12 @@ module SyntaxTree
       end
     end
 
+    def test_bogus_request
+      assert_raises(ArgumentError) do
+        run_server([{ method: "textDocument/bogus" }])
+      end
+    end
+
     private
 
     def write(content)
