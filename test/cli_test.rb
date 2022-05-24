@@ -142,11 +142,26 @@ module SyntaxTree
       end
     end
 
+    def test_plugins
+      Dir.mktmpdir do |directory|
+        Dir.mkdir(File.join(directory, "syntax_tree"))
+        $:.unshift(directory)
+
+        File.write(
+          File.join(directory, "syntax_tree", "plugin.rb"),
+          "puts 'Hello, world!'"
+        )
+        result = run_cli("format", "--plugins=plugin")
+
+        assert_equal("Hello, world!\ntest\n", result.stdio)
+      end
+    end
+
     private
 
     Result = Struct.new(:status, :stdio, :stderr, keyword_init: true)
 
-    def run_cli(command, file: nil)
+    def run_cli(command, *args, file: nil)
       if file.nil?
         file = Tempfile.new(%w[test- .rb])
         file.puts("test")
@@ -156,7 +171,7 @@ module SyntaxTree
 
       status = nil
       stdio, stderr =
-        capture_io { status = SyntaxTree::CLI.run([command, file.path]) }
+        capture_io { status = SyntaxTree::CLI.run([command, *args, file.path]) }
 
       Result.new(status: status, stdio: stdio, stderr: stderr)
     ensure
