@@ -111,8 +111,10 @@ module SyntaxTree
       ]
 
       case run_server(messages)
-      in { id: 1, result: { capabilities: Hash } },
-         { id: 2, result: [{ newText: new_text }] }
+      in [
+           { id: 1, result: { capabilities: Hash } },
+           { id: 2, result: [{ newText: new_text }] }
+         ]
         assert_equal("class Bar\nend\n", new_text)
       end
     end
@@ -131,8 +133,10 @@ module SyntaxTree
       ]
 
       case run_server(messages)
-      in { id: 1, result: { capabilities: Hash } },
-         { id: 2, result: { before:, after: } }
+      in [
+           { id: 1, result: { capabilities: Hash } },
+           { id: 2, result: { before:, after: } }
+         ]
         assert_equal(1, before.length)
         assert_equal(2, after.length)
       end
@@ -147,7 +151,7 @@ module SyntaxTree
       ]
 
       case run_server(messages)
-      in { id: 1, result: { capabilities: Hash } }, { id: 2, result: }
+      in [{ id: 1, result: { capabilities: Hash } }, { id: 2, result: }]
         assert_equal(
           "(program (statements ((binary (int \"1\") + (int \"2\")))))\n",
           result
@@ -167,8 +171,10 @@ module SyntaxTree
         ]
 
         case run_server(messages)
-        in { id: 1, result: { capabilities: Hash } },
-           { id: 2, result: [{ newText: new_text }] }
+        in [
+             { id: 1, result: { capabilities: Hash } },
+             { id: 2, result: [{ newText: new_text }] }
+           ]
           assert_equal("class Foo\nend\n", new_text)
         end
       end

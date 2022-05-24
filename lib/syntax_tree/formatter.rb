@@ -26,7 +26,12 @@ module SyntaxTree
     attr_reader :quote, :trailing_comma
     alias trailing_comma? trailing_comma
 
-    def initialize(source, *args, quote: OPTIONS[:quote], trailing_comma: OPTIONS[:trailing_comma])
+    def initialize(
+      source,
+      *args,
+      quote: OPTIONS[:quote],
+      trailing_comma: OPTIONS[:trailing_comma]
+    )
       super(*args)
 
       @source = source
