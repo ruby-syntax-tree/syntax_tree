@@ -10,3 +10,9 @@ else
 end
 %
 foo bar ? 1 : 2
+%
+foooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo ? break : baz
+-
+foooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo ?
+  break :
+  baz

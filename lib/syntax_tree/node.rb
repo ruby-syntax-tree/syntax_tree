@@ -5484,12 +5484,14 @@ module SyntaxTree
       q.format(predicate)
       q.text(" ?")
 
-      q.breakable
-      q.format(truthy)
-      q.text(" :")
+      q.indent do
+        q.breakable
+        q.format(truthy)
+        q.text(" :")
 
-      q.breakable
-      q.format(falsy)
+        q.breakable
+        q.format(falsy)
+      end
     end
   end
 

@@ -32,3 +32,5 @@ end
 foo.
   # comment
   bar baz
+%
+foo.bar baz ? qux : qaz

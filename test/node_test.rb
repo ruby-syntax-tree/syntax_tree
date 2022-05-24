@@ -1032,6 +1032,20 @@ module SyntaxTree
       assert_node(Command, source, at: at)
     end
 
+    def test_root_class_raises_not_implemented_errors
+      {
+        accept: [nil],
+        child_nodes: [],
+        deconstruct: [],
+        deconstruct_keys: [[]],
+        format: [nil]
+      }.each do |method, arguments|
+        assert_raises(NotImplementedError) do
+          Node.new.public_send(method, *arguments)
+        end
+      end
+    end
+
     private
 
     def location(lines: 1..1, chars: 0..0, columns: 0..0)
