@@ -157,6 +157,21 @@ module SyntaxTree
       end
     end
 
+    def test_language_server
+      prev_stdin = $stdin
+      prev_stdout = $stdout
+
+      request = { method: "shutdown" }.merge(jsonrpc: "2.0").to_json
+      $stdin =
+        StringIO.new("Content-Length: #{request.bytesize}\r\n\r\n#{request}")
+      $stdout = StringIO.new
+
+      assert_equal(0, SyntaxTree::CLI.run(["lsp"]))
+    ensure
+      $stdin = prev_stdin
+      $stdout = prev_stdout
+    end
+
     private
 
     Result = Struct.new(:status, :stdio, :stderr, keyword_init: true)
