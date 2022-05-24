@@ -71,3 +71,8 @@ case foo
 in bar, { baz:, **nil }
 in qux:
 end
+-
+case foo
+in [bar, { baz:, **nil }]
+in qux:
+end

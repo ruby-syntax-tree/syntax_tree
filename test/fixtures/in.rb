@@ -14,8 +14,10 @@ in fooooooooooooooooooooooooooooooooooooo, barrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr
 end
 -
 case foo
-in fooooooooooooooooooooooooooooooooooooo,
-   barrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr
+in [
+     fooooooooooooooooooooooooooooooooooooo,
+     barrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr
+   ]
   baz
 end
 %
