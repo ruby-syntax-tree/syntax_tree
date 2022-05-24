@@ -1123,38 +1123,20 @@ module SyntaxTree
     end
 
     def format(q)
-      parts = [*requireds]
-      parts << RestFormatter.new(rest) if rest
-      parts += posts
-
-      if constant
-        q.group do
-          q.format(constant)
-          q.text("[")
-          q.indent do
-            q.breakable("")
-            q.seplist(parts) { |part| q.format(part) }
-          end
-          q.breakable("")
-          q.text("]")
-        end
-
-        return
-      end
-
-      parent = q.parent
-      if parts.length == 1 || PATTERNS.include?(parent.class)
+      q.group do
+        q.format(constant) if constant
         q.text("[")
         q.indent do
           q.breakable("")
+
+          parts = [*requireds]
+          parts << RestFormatter.new(rest) if rest
+          parts += posts
+
           q.seplist(parts) { |part| q.format(part) }
         end
         q.breakable("")
         q.text("]")
-      elsif parts.empty?
-        q.text("[]")
-      else
-        q.group { q.seplist(parts) { |part| q.format(part) } }
       end
     end
   end
