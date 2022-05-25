@@ -30,5 +30,17 @@ module SyntaxTree
       # Finally, assert that we have no remaining events.
       assert_empty(events)
     end
+
+    def test_errors_on_missing_token_with_location
+      assert_raises(Parser::ParseError) { SyntaxTree.parse("\"foo") }
+    end
+
+    def test_errors_on_missing_token_without_location
+      assert_raises(Parser::ParseError) { SyntaxTree.parse(":\"foo") }
+    end
+
+    def test_handles_strings_with_non_terminated_embedded_expressions
+      assert_raises(Parser::ParseError) { SyntaxTree.parse('"#{"') }
+    end
   end
 end

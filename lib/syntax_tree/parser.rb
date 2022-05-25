@@ -548,13 +548,6 @@ module SyntaxTree
           parts[0].location.to(parts[-1].location)
         end
 
-      # If there's the optional then keyword, then we'll delete that and use it
-      # as the end bounds of the location.
-      if (token = find_token(Kw, "then", consume: false))
-        tokens.delete(token)
-        location = location.to(token.location)
-      end
-
       # If there is a plain *, then we're going to fix up the location of it
       # here because it currently doesn't have anything to use for its precise
       # location. If we hit a comma, then we've gone too far.
@@ -1696,12 +1689,6 @@ module SyntaxTree
           tokens.delete(lbrace)
           tokens.delete(rbrace)
         end
-      end
-
-      # Delete the optional then keyword
-      if (token = find_token(Kw, "then", consume: false))
-        parts << token
-        tokens.delete(token)
       end
 
       HshPtn.new(
@@ -3013,6 +3000,11 @@ module SyntaxTree
     #     (StringEmbExpr | StringDVar | TStringContent) part
     #   ) -> StringContent
     def on_string_add(string, part)
+      # Due to some eccentricities in how ripper works, you need this here in
+      # case you have a syntax error with an embedded expression that doesn't
+      # finish, as in: "#{"
+      return string if part.is_a?(String)
+
       location =
         string.parts.any? ? string.location.to(part.location) : part.location
 

@@ -64,6 +64,14 @@ in {}
 end
 %
 case foo
+in {} then
+end
+-
+case foo
+in {}
+end
+%
+case foo
 in **nil
 end
 %

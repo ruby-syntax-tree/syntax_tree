@@ -2129,11 +2129,13 @@ module SyntaxTree
           #
           #     break
           #
-        in [Paren[
-             contents: {
-               body: [ArrayLiteral[contents: { parts: [_, _, *] }] => array]
-             }
-           ]]
+        in [
+             Paren[
+               contents: {
+                 body: [ArrayLiteral[contents: { parts: [_, _, *] }] => array]
+               }
+             ]
+           ]
           # Here we have a single argument that is a set of parentheses wrapping
           # an array literal that has at least 2 elements. We're going to print
           # the contents of the array directly. This would be like if we had:
@@ -5472,12 +5474,14 @@ module SyntaxTree
       q.format(predicate)
       q.text(" ?")
 
-      q.breakable
-      q.format(truthy)
-      q.text(" :")
+      q.indent do
+        q.breakable
+        q.format(truthy)
+        q.text(" :")
 
-      q.breakable
-      q.format(falsy)
+        q.breakable
+        q.format(falsy)
+      end
     end
   end
 

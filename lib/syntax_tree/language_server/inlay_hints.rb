@@ -38,6 +38,7 @@ module SyntaxTree
       #
       def visit_assign(node)
         parentheses(node.location) if stack[-2].is_a?(Params)
+        super
       end
 
       # Adds parentheses around binary expressions to make it clear which
@@ -57,6 +58,8 @@ module SyntaxTree
           parentheses(node.location)
         else
         end
+
+        super
       end
 
       # Adds parentheses around ternary operators contained within certain
@@ -70,9 +73,13 @@ module SyntaxTree
       #     a ? b : ₍c ? d : e₎
       #
       def visit_if_op(node)
-        if stack[-2] in Assign | Binary | IfOp | OpAssign
+        case stack[-2]
+        in Assign | Binary | IfOp | OpAssign
           parentheses(node.location)
+        else
         end
+
+        super
       end
 
       # Adds the implicitly rescued StandardError into a bare rescue clause. For
@@ -92,6 +99,8 @@ module SyntaxTree
         if node.exception.nil?
           after[node.location.start_char + "rescue".length] << " StandardError"
         end
+
+        super
       end
 
       # Adds parentheses around unary statements using the - operator that are
@@ -107,6 +116,8 @@ module SyntaxTree
         if stack[-2].is_a?(Binary) && (node.operator == "-")
           parentheses(node.location)
         end
+
+        super
       end
 
       def self.find(program)

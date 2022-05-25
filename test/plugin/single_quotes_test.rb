@@ -1,0 +1,46 @@
+# frozen_string_literal: true
+
+require_relative "../test_helper"
+
+module SyntaxTree
+  class SingleQuotesTest < Minitest::Test
+    OPTIONS = Plugin.options("syntax_tree/plugin/single_quotes")
+
+    def test_empty_string_literal
+      assert_format("''\n", "\"\"")
+    end
+
+    def test_string_literal
+      assert_format("'string'\n", "\"string\"")
+    end
+
+    def test_string_literal_with_interpolation
+      assert_format("\"\#{foo}\"\n")
+    end
+
+    def test_dyna_symbol
+      assert_format(":'symbol'\n", ":\"symbol\"")
+    end
+
+    def test_single_quote_in_string
+      assert_format("\"str'ing\"\n")
+    end
+
+    def test_label
+      assert_format(
+        "{ foo => foo, :'bar' => bar }\n",
+        "{ foo => foo, \"bar\": bar }"
+      )
+    end
+
+    private
+
+    def assert_format(expected, source = expected)
+      formatter = Formatter.new(source, [], **OPTIONS)
+      SyntaxTree.parse(source).format(formatter)
+    
+      formatter.flush
+      assert_equal(expected, formatter.output.join)
+    end
+  end
+end

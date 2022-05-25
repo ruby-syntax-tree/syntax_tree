@@ -4,6 +4,18 @@ module SyntaxTree
   # A slightly enhanced PP that knows how to format recursively including
   # comments.
   class Formatter < PrettierPrint
+    # We want to minimize as much as possible the number of options that are
+    # available in syntax tree. For the most part, if users want non-default
+    # formatting, they should override the format methods on the specific nodes
+    # themselves. However, because of some history with prettier and the fact
+    # that folks have become entrenched in their ways, we decided to provide a
+    # small amount of configurability.
+    #
+    # Note that we're keeping this in a global-ish hash instead of just
+    # overriding methods on classes so that other plugins can reference this if
+    # necessary. For example, the RBS plugin references the quote style.
+    OPTIONS = { quote: "\"", trailing_comma: false }
+
     COMMENT_PRIORITY = 1
     HEREDOC_PRIORITY = 2
 
@@ -14,13 +26,20 @@ module SyntaxTree
     attr_reader :quote, :trailing_comma
     alias trailing_comma? trailing_comma
 
-    def initialize(source, ...)
-      super(...)
+    def initialize(
+      source,
+      *args,
+      quote: OPTIONS[:quote],
+      trailing_comma: OPTIONS[:trailing_comma]
+    )
+      super(*args)
 
       @source = source
       @stack = []
-      @quote = "\""
-      @trailing_comma = false
+
+      # Memoizing these values per formatter to make access faster.
+      @quote = quote
+      @trailing_comma = trailing_comma
     end
 
     def self.format(source, node)

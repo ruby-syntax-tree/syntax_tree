@@ -70,13 +70,11 @@ module SyntaxTree
              id:,
              params: { textDocument: { uri: } }
            }
-          output = []
-          PP.pp(SyntaxTree.parse(store[uri]), output)
-          write(id: id, result: output.join)
+          write(id: id, result: PP.pp(SyntaxTree.parse(store[uri]), +""))
         in method: %r{\$/.+}
           # ignored
         else
-          raise "Unhandled: #{request}"
+          raise ArgumentError, "Unhandled: #{request}"
         end
       end
     end
@@ -107,10 +105,6 @@ module SyntaxTree
         },
         newText: SyntaxTree.format(source)
       }
-    end
-
-    def log(message)
-      write(method: "window/logMessage", params: { type: 4, message: message })
     end
 
     def inlay_hints(source)
