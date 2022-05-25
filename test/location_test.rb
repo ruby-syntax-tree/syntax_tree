@@ -15,7 +15,8 @@ module SyntaxTree
       location = Location.fixed(line: 1, char: 0, column: 0)
 
       case location
-      in [1, 0, 0, *]
+      in [start_line, 0, 0, *]
+        assert_equal(1, start_line)
       end
     end
 
@@ -23,7 +24,8 @@ module SyntaxTree
       location = Location.fixed(line: 1, char: 0, column: 0)
 
       case location
-      in start_line: 1
+      in start_line:
+        assert_equal(1, start_line)
       end
     end
   end

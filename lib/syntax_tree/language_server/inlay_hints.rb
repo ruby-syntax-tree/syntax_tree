@@ -73,8 +73,10 @@ module SyntaxTree
       #     a ? b : ₍c ? d : e₎
       #
       def visit_if_op(node)
-        if stack[-2] in Assign | Binary | IfOp | OpAssign
+        case stack[-2]
+        in Assign | Binary | IfOp | OpAssign
           parentheses(node.location)
+        else
         end
 
         super

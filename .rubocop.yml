@@ -78,3 +78,6 @@ Style/PerlBackrefs:
 
 Style/SpecialGlobalVars:
   Enabled: false
+
+Style/StructInheritance:
+  Enabled: false
