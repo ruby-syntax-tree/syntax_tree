@@ -6,6 +6,19 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 
 ## [Unreleased]
 
+## [2.7.1] - 2022-05-25
+
+### Added
+
+- [#92](https://github.com/ruby-syntax-tree/syntax_tree/pull/92) - (Internal) Drastically increase test coverage, including many more tests for the language server and the CLI.
+
+### Changed
+
+- [#87](https://github.com/ruby-syntax-tree/syntax_tree/pull/87) - Don't convert quotes on strings if it would result in more escapes.
+- [#91](https://github.com/ruby-syntax-tree/syntax_tree/pull/91) - Always use `[]` with array patterns. There are just too many edge cases where you have to use them anyway. This simplifies the look and makes it more consistent.
+- [#92](https://github.com/ruby-syntax-tree/syntax_tree/pull/92) - Remodel the currently shipped plugins such that they're modifying an options hash instead of overriding methods. This should make it easier for other plugins to reference the already loaded plugins, e.g., the RBS plugin referencing the quotes.
+- [#92](https://github.com/ruby-syntax-tree/syntax_tree/pull/92) - Fix up the language server inlay hints to continue walking the tree once a pattern is found. This should increase useability.
+
 ## [2.7.0] - 2022-05-19
 
 ### Added
@@ -246,7 +259,8 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 
 - 🎉 Initial release! 🎉
 
-[unreleased]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v2.7.0...HEAD
+[unreleased]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v2.7.1...HEAD
+[2.7.1]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v2.7.0...v2.7.1
 [2.7.0]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v2.6.0...v2.7.0
 [2.6.0]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v2.5.0...v2.6.0
 [2.5.0]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v2.4.1...v2.5.0
