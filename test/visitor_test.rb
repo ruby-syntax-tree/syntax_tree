@@ -40,9 +40,18 @@ module SyntaxTree
       end
     end
 
-    def test_visit_method_correction
-      error = assert_raises { Visitor.visit_method(:visit_binar) }
-      assert_match(/visit_binary/, error.message)
+    if defined?(DidYouMean) && DidYouMean.method_defined?(:correct_error)
+      def test_visit_method_correction
+        error = assert_raises { Visitor.visit_method(:visit_binar) }
+        message =
+          if Exception.method_defined?(:detailed_message)
+            error.detailed_message
+          else
+            error.message
+          end
+
+        assert_match(/visit_binary/, message)
+      end
     end
   end
 end
