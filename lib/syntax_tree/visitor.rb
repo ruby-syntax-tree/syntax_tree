@@ -194,6 +194,9 @@ module SyntaxTree
     # Visit a HeredocBeg node.
     alias visit_heredoc_beg visit_child_nodes
 
+    # Visit a HeredocEnd node.
+    alias visit_heredoc_end visit_child_nodes
+
     # Visit a HshPtn node.
     alias visit_hshptn visit_child_nodes
 

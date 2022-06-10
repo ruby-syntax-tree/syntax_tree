@@ -497,6 +497,10 @@ module SyntaxTree
         visit_token(node, "heredoc_beg")
       end
 
+      def visit_heredoc_end(node)
+        visit_token(node, "heredoc_end")
+      end
+
       def visit_hshptn(node)
         node(node, "hshptn") do
           field("constant", node.constant) if node.constant

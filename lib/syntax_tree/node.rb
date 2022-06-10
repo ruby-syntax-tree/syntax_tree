@@ -4813,7 +4813,7 @@ module SyntaxTree
     # [HeredocBeg] the opening of the heredoc
     attr_reader :beginning
 
-    # [String] the ending of the heredoc
+    # [HeredocEnd] the ending of the heredoc
     attr_reader :ending
 
     # [Integer] how far to dedent the heredoc
@@ -4847,7 +4847,7 @@ module SyntaxTree
     end
 
     def child_nodes
-      [beginning, *parts]
+      [beginning, *parts, ending]
     end
 
     alias deconstruct child_nodes
@@ -4883,7 +4883,7 @@ module SyntaxTree
               end
             end
 
-            q.text(ending)
+            q.format(ending)
           end
         end
       end
@@ -4912,6 +4912,45 @@ module SyntaxTree
 
     def accept(visitor)
       visitor.visit_heredoc_beg(self)
+    end
+
+    def child_nodes
+      []
+    end
+
+    alias deconstruct child_nodes
+
+    def deconstruct_keys(_keys)
+      { value: value, location: location, comments: comments }
+    end
+
+    def format(q)
+      q.text(value)
+    end
+  end
+
+  # HeredocEnd represents the closing declaration of a heredoc.
+  #
+  #     <<~DOC
+  #       contents
+  #     DOC
+  #
+  # In the example above the HeredocEnd node represents the closing DOC.
+  class HeredocEnd < Node
+    # [String] the closing declaration of the heredoc
+    attr_reader :value
+
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(value:, location:, comments: [])
+      @value = value
+      @location = location
+      @comments = comments
+    end
+
+    def accept(visitor)
+      visitor.visit_heredoc_end(self)
     end
 
     def child_nodes
