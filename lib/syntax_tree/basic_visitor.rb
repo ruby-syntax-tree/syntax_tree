@@ -33,7 +33,11 @@ module SyntaxTree
           ).correct(visit_method)
       end
 
-      DidYouMean.correct_error(VisitMethodError, self)
+      # In some setups with Ruby you can turn off DidYouMean, so we're going to
+      # respect that setting here.
+      if defined?(DidYouMean) && DidYouMean.method_defined?(:correct_error)
+        DidYouMean.correct_error(VisitMethodError, self)
+      end
     end
 
     class << self
