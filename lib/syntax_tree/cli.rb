@@ -34,9 +34,41 @@ module SyntaxTree
       end
     end
 
+    # An item of work that corresponds to a file to be processed.
+    class FileItem
+      attr_reader :filepath
+
+      def initialize(filepath)
+        @filepath = filepath
+      end
+
+      def handler
+        HANDLERS[File.extname(filepath)]
+      end
+
+      def source
+        handler.read(filepath)
+      end
+    end
+
+    # An item of work that corresponds to the stdin content.
+    class STDINItem
+      def handler
+        HANDLERS[".rb"]
+      end
+
+      def filepath
+        :stdin
+      end
+
+      def source
+        $stdin.read
+      end
+    end
+
     # The parent action class for the CLI that implements the basics.
     class Action
-      def run(handler, filepath, source)
+      def run(item)
       end
 
       def success
@@ -48,8 +80,8 @@ module SyntaxTree
 
     # An action of the CLI that prints out the AST for the given source.
     class AST < Action
-      def run(handler, _filepath, source)
-        pp handler.parse(source)
+      def run(item)
+        pp item.handler.parse(item.source)
       end
     end
 
@@ -59,10 +91,11 @@ module SyntaxTree
       class UnformattedError < StandardError
       end
 
-      def run(handler, filepath, source)
-        raise UnformattedError if source != handler.format(source)
+      def run(item)
+        source = item.source
+        raise UnformattedError if source != item.handler.format(source)
       rescue StandardError
-        warn("[#{Color.yellow("warn")}] #{filepath}")
+        warn("[#{Color.yellow("warn")}] #{item.filepath}")
         raise
       end
 
@@ -81,9 +114,11 @@ module SyntaxTree
       class NonIdempotentFormatError < StandardError
       end
 
-      def run(handler, filepath, source)
-        warning = "[#{Color.yellow("warn")}] #{filepath}"
-        formatted = handler.format(source)
+      def run(item)
+        handler = item.handler
+
+        warning = "[#{Color.yellow("warn")}] #{item.filepath}"
+        formatted = handler.format(item.source)
 
         raise NonIdempotentFormatError if formatted != handler.format(formatted)
       rescue StandardError
@@ -102,25 +137,27 @@ module SyntaxTree
 
     # An action of the CLI that prints out the doc tree IR for the given source.
     class Doc < Action
-      def run(handler, _filepath, source)
+      def run(item)
+        source = item.source
+
         formatter = Formatter.new(source, [])
-        handler.parse(source).format(formatter)
+        item.handler.parse(source).format(formatter)
         pp formatter.groups.first
       end
     end
 
     # An action of the CLI that formats the input source and prints it out.
     class Format < Action
-      def run(handler, _filepath, source)
-        puts handler.format(source)
+      def run(item)
+        puts item.handler.format(item.source)
       end
     end
 
     # An action of the CLI that converts the source into its equivalent JSON
     # representation.
     class Json < Action
-      def run(handler, _filepath, source)
-        object = Visitor::JSONVisitor.new.visit(handler.parse(source))
+      def run(item)
+        object = Visitor::JSONVisitor.new.visit(item.handler.parse(item.source))
         puts JSON.pretty_generate(object)
       end
     end
@@ -128,27 +165,28 @@ module SyntaxTree
     # An action of the CLI that outputs a pattern-matching Ruby expression that
     # would match the input given.
     class Match < Action
-      def run(handler, _filepath, source)
-        puts handler.parse(source).construct_keys
+      def run(item)
+        puts item.handler.parse(item.source).construct_keys
       end
     end
 
     # An action of the CLI that formats the input source and writes the
     # formatted output back to the file.
     class Write < Action
-      def run(handler, filepath, source)
-        print filepath
+      def run(item)
+        filepath = item.filepath
         start = Time.now
 
-        formatted = handler.format(source)
+        source = item.source
+        formatted = item.handler.format(source)
         File.write(filepath, formatted) if filepath != :stdin
 
         color = source == formatted ? Color.gray(filepath) : filepath
         delta = ((Time.now - start) * 1000).round
 
-        puts "\r#{color} #{delta}ms"
+        puts "#{color} #{delta}ms"
       rescue StandardError
-        puts "\r#{filepath}"
+        puts filepath
         raise
       end
     end
@@ -258,23 +296,40 @@ module SyntaxTree
           plugins.split(",").each { |plugin| require "syntax_tree/#{plugin}" }
         end
 
-        # Track whether or not there are any errors from any of the files that
-        # we take action on so that we can properly clean up and exit.
-        errored = false
+        # We're going to build up a queue of items to process.
+        queue = Queue.new
 
-        each_file(arguments) do |handler, filepath, source|
-          action.run(handler, filepath, source)
-        rescue Parser::ParseError => error
-          warn("Error: #{error.message}")
-          highlight_error(error, source)
-          errored = true
-        rescue Check::UnformattedError, Debug::NonIdempotentFormatError
-          errored = true
-        rescue StandardError => error
-          warn(error.message)
-          warn(error.backtrace)
-          errored = true
+        # If we're reading from stdin, then we'll just add the stdin object to
+        # the queue. Otherwise, we'll add each of the filepaths to the queue.
+        if $stdin.tty? || arguments.any?
+          arguments.each do |pattern|
+            Dir
+              .glob(pattern)
+              .each do |filepath|
+                queue << FileItem.new(filepath) if File.file?(filepath)
+              end
+          end
+        else
+          queue << STDINItem.new
         end
+
+        # At the end, we're going to return whether or not this worker ever
+        # encountered an error.
+        errored =
+          with_workers(queue) do |item|
+            action.run(item)
+            false
+          rescue Parser::ParseError => error
+            warn("Error: #{error.message}")
+            highlight_error(error, item.source)
+            true
+          rescue Check::UnformattedError, Debug::NonIdempotentFormatError
+            true
+          rescue StandardError => error
+            warn(error.message)
+            warn(error.backtrace)
+            true
+          end
 
         if errored
           action.failure
@@ -287,22 +342,33 @@ module SyntaxTree
 
       private
 
-      def each_file(arguments)
-        if $stdin.tty? || arguments.any?
-          arguments.each do |pattern|
-            Dir
-              .glob(pattern)
-              .each do |filepath|
-                next unless File.file?(filepath)
+      def with_workers(queue)
+        # If the queue is just 1 item, then we're not going to bother going
+        # through the whole ceremony of parallelizing the work.
+        return yield queue.shift if queue.size == 1
 
-                handler = HANDLERS[File.extname(filepath)]
-                source = handler.read(filepath)
-                yield handler, filepath, source
-              end
+        workers =
+          Etc.nprocessors.times.map do
+            Thread.new do
+              # Propagate errors in the worker threads up to the parent thread.
+              Thread.current.abort_on_exception = true
+
+              # Track whether or not there are any errors from any of the files
+              # that we take action on so that we can properly clean up and
+              # exit.
+              errored = false
+
+              # While there is still work left to do, shift off the queue and
+              # process the item.
+              (errored ||= yield queue.shift) until queue.empty?
+
+              # At the end, we're going to return whether or not this worker
+              # ever encountered an error.
+              errored
+            end
           end
-        else
-          yield HANDLERS[".rb"], :stdin, $stdin.read
-        end
+
+        workers.inject(false) { |accum, thread| accum || thread.value }
       end
 
       # Highlights a snippet from a source and parse error.

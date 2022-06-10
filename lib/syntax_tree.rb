@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require "etc"
 require "json"
 require "pp"
 require "prettier_print"
