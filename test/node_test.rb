@@ -546,6 +546,17 @@ module SyntaxTree
       assert_node(HeredocBeg, source, at: at, &:beginning)
     end
 
+    def test_heredoc_end
+      source = <<~SOURCE
+        <<~HEREDOC
+          contents
+        HEREDOC
+      SOURCE
+
+      at = location(lines: 3..3, chars: 22..31, columns: 0..9)
+      assert_node(HeredocEnd, source, at: at, &:ending)
+    end
+
     def test_hshptn
       source = <<~SOURCE
         case value

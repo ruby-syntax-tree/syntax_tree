@@ -1640,9 +1640,19 @@ module SyntaxTree
     def on_heredoc_end(value)
       heredoc = @heredocs[-1]
 
+      location =
+      Location.token(
+        line: lineno,
+        char: char_pos,
+        column: current_column,
+        size: value.size + 1
+      )
+
+      heredoc_end = HeredocEnd.new(value: value.chomp, location: location)
+
       @heredocs[-1] = Heredoc.new(
         beginning: heredoc.beginning,
-        ending: value.chomp,
+        ending: heredoc_end,
         dedent: heredoc.dedent,
         parts: heredoc.parts,
         location:
