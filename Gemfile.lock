@@ -9,7 +9,7 @@ GEM
   specs:
     ast (2.4.2)
     docile (1.4.0)
-    minitest (5.15.0)
+    minitest (5.16.0)
     parallel (1.22.1)
     parser (3.1.2.0)
       ast (~> 2.4.1)
