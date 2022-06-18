@@ -218,7 +218,7 @@ module SyntaxTree
       #{Color.bold("stree help")}
         Display this help message
 
-      #{Color.bold("stree lsp")}
+      #{Color.bold("stree lsp [OPTIONS]")}
         Run syntax tree in language server mode
 
       #{Color.bold("stree version")}
@@ -238,6 +238,20 @@ module SyntaxTree
       # passed to the invocation.
       def run(argv)
         name, *arguments = argv
+
+        # If there are any plugins specified on the command line, then load them
+        # by requiring them here. We do this by transforming something like
+        #
+        #     stree format --plugins=haml template.haml
+        #
+        # into
+        #
+        #     require "syntax_tree/haml"
+        #
+        if arguments.first&.start_with?("--plugins=")
+          plugins = arguments.shift[/^--plugins=(.*)$/, 1]
+          plugins.split(",").each { |plugin| require "syntax_tree/#{plugin}" }
+        end
 
         case name
         when "help"
@@ -280,20 +294,6 @@ module SyntaxTree
         if $stdin.tty? && arguments.empty?
           warn(HELP)
           return 1
-        end
-
-        # If there are any plugins specified on the command line, then load them
-        # by requiring them here. We do this by transforming something like
-        #
-        #     stree format --plugins=haml template.haml
-        #
-        # into
-        #
-        #     require "syntax_tree/haml"
-        #
-        if arguments.first&.start_with?("--plugins=")
-          plugins = arguments.shift[/^--plugins=(.*)$/, 1]
-          plugins.split(",").each { |plugin| require "syntax_tree/#{plugin}" }
         end
 
         # We're going to build up a queue of items to process.
