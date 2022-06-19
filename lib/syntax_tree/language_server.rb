@@ -36,8 +36,9 @@ module SyntaxTree
           write(id: id, result: { capabilities: capabilities })
         in method: "initialized"
           # ignored
-        in method: "shutdown"
+        in method: "shutdown" # tolerate missing ID to be a good citizen
           store.clear
+          write(id: request[:id], result: {})
           return
         in {
              method: "textDocument/didChange",
