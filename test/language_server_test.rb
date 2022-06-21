@@ -11,9 +11,9 @@ module SyntaxTree
       end
     end
 
-    class Shutdown
+    class Shutdown < Struct.new(:id)
       def to_hash
-        { method: "shutdown" }
+        { method: "shutdown", id: id }
       end
     end
 
@@ -107,13 +107,14 @@ module SyntaxTree
         TextDocumentDidChange.new("file:///path/to/file.rb", "class Bar; end"),
         TextDocumentFormatting.new(2, "file:///path/to/file.rb"),
         TextDocumentDidClose.new("file:///path/to/file.rb"),
-        Shutdown.new
+        Shutdown.new(3)
       ]
 
       case run_server(messages)
       in [
            { id: 1, result: { capabilities: Hash } },
-           { id: 2, result: [{ newText: new_text }] }
+           { id: 2, result: [{ newText: new_text }] },
+           { id: 3, result: {} }
          ]
         assert_equal("class Bar\nend\n", new_text)
       end
@@ -129,13 +130,14 @@ module SyntaxTree
           end
         RUBY
         TextDocumentInlayHints.new(2, "file:///path/to/file.rb"),
-        Shutdown.new
+        Shutdown.new(3)
       ]
 
       case run_server(messages)
       in [
            { id: 1, result: { capabilities: Hash } },
-           { id: 2, result: { before:, after: } }
+           { id: 2, result: { before:, after: } },
+           { id: 3, result: {} }
          ]
         assert_equal(1, before.length)
         assert_equal(2, after.length)
@@ -147,11 +149,15 @@ module SyntaxTree
         Initialize.new(1),
         TextDocumentDidOpen.new("file:///path/to/file.rb", "1 + 2"),
         SyntaxTreeVisualizing.new(2, "file:///path/to/file.rb"),
-        Shutdown.new
+        Shutdown.new(3)
       ]
 
       case run_server(messages)
-      in [{ id: 1, result: { capabilities: Hash } }, { id: 2, result: }]
+      in [
+           { id: 1, result: { capabilities: Hash } },
+           { id: 2, result: },
+           { id: 3, result: {} }
+         ]
         assert_equal(
           "(program (statements ((binary (int \"1\") + (int \"2\")))))\n",
           result
@@ -167,13 +173,14 @@ module SyntaxTree
         messages = [
           Initialize.new(1),
           TextDocumentFormatting.new(2, "file://#{file.path}"),
-          Shutdown.new
+          Shutdown.new(3)
         ]
 
         case run_server(messages)
         in [
              { id: 1, result: { capabilities: Hash } },
-             { id: 2, result: [{ newText: new_text }] }
+             { id: 2, result: [{ newText: new_text }] },
+             { id: 3, result: {} }
            ]
           assert_equal("class Foo\nend\n", new_text)
         end
@@ -183,6 +190,15 @@ module SyntaxTree
     def test_bogus_request
       assert_raises(ArgumentError) do
         run_server([{ method: "textDocument/bogus" }])
+      end
+    end
+
+    def test_clean_shutdown
+      messages = [Initialize.new(1), Shutdown.new(2)]
+
+      case run_server(messages)
+      in [{ id: 1, result: { capabilities: Hash } }, { id: 2, result: {} }]
+        assert_equal(true, true)
       end
     end
 
