@@ -6,6 +6,19 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 
 ## [Unreleased]
 
+## [2.8.0] - 2022-06-21
+
+### Added
+
+- [#95](https://github.com/ruby-syntax-tree/syntax_tree/pull/95) - The `HeredocEnd` node has been added which effectively results in the ability to determine the location of the ending of a heredoc from source.
+- [#99](https://github.com/ruby-syntax-tree/syntax_tree/pull/99) - The LSP now allows you to pass the same configuration options as the other CLI commands which allows formatting to be modified in the VSCode extension.
+- [#100](https://github.com/ruby-syntax-tree/syntax_tree/pull/100) - The LSP now explicitly responds to the shutdown request so that VSCode never deadlocks.
+
+### Changed
+
+- [#96](https://github.com/ruby-syntax-tree/syntax_tree/pull/96) - The CLI now runs in parallel by default. There is a worker created for each processor on the running machine (as determined by `Etc.nprocessors`).
+- [#97](https://github.com/ruby-syntax-tree/syntax_tree/pull/97) - Syntax Tree now handles the case where `DidYouMean` is not available for whatever reason, as well as handles the newer `detailed_message` API for errors.
+
 ## [2.7.1] - 2022-05-25
 
 ### Added
@@ -259,7 +272,8 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 
 - 🎉 Initial release! 🎉
 
-[unreleased]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v2.7.1...HEAD
+[unreleased]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v2.8.0...HEAD
+[2.8.0]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v2.7.1...v2.8.0
 [2.7.1]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v2.7.0...v2.7.1
 [2.7.0]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v2.6.0...v2.7.0
 [2.6.0]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v2.5.0...v2.6.0
