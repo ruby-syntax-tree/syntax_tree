@@ -11,6 +11,7 @@ module SyntaxTree
 
         assert_equal(1, hints.before.length)
         assert_equal(1, hints.after.length)
+        assert_equal(2, hints.all.length)
       end
 
       def test_operators_in_binaries
@@ -18,6 +19,7 @@ module SyntaxTree
 
         assert_equal(1, hints.before.length)
         assert_equal(1, hints.after.length)
+        assert_equal(2, hints.all.length)
       end
 
       def test_binaries_in_assignments
@@ -25,6 +27,7 @@ module SyntaxTree
 
         assert_equal(1, hints.before.length)
         assert_equal(1, hints.after.length)
+        assert_equal(2, hints.all.length)
       end
 
       def test_nested_ternaries
@@ -32,12 +35,14 @@ module SyntaxTree
 
         assert_equal(1, hints.before.length)
         assert_equal(1, hints.after.length)
+        assert_equal(2, hints.all.length)
       end
 
       def test_bare_rescue
         hints = find("begin; rescue; end")
 
         assert_equal(1, hints.after.length)
+        assert_equal(1, hints.all.length)
       end
 
       def test_unary_in_binary
@@ -45,6 +50,7 @@ module SyntaxTree
 
         assert_equal(1, hints.before.length)
         assert_equal(1, hints.after.length)
+        assert_equal(2, hints.all.length)
       end
 
       private

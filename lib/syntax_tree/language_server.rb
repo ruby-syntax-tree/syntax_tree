@@ -61,11 +61,19 @@ module SyntaxTree
            }
           write(id: id, result: [format(store[uri])])
         in {
+             # official RPC in LSP spec 3.17
+             method: "textDocument/inlayHint",
+             id:,
+             params: { textDocument: { uri: } }
+           }
+          write(id: id, result: inlay_hints(store[uri], false))
+        in {
+             # proprietary RPC (deprecated) between this gem and vscode-syntax-tree
              method: "textDocument/inlayHints",
              id:,
              params: { textDocument: { uri: } }
            }
-          write(id: id, result: inlay_hints(store[uri]))
+          write(id: id, result: inlay_hints(store[uri], true))
         in {
              method: "syntaxTree/visualizing",
              id:,
@@ -85,6 +93,9 @@ module SyntaxTree
     def capabilities
       {
         documentFormattingProvider: true,
+        inlayHintProvider: {
+          resolveProvider: false
+        },
         textDocumentSync: {
           change: 1,
           openClose: true
@@ -108,14 +119,18 @@ module SyntaxTree
       }
     end
 
-    def inlay_hints(source)
+    def inlay_hints(source, proprietary)
       inlay_hints = InlayHints.find(SyntaxTree.parse(source))
       serialize = ->(position, text) { { position: position, text: text } }
 
-      {
-        before: inlay_hints.before.map(&serialize),
-        after: inlay_hints.after.map(&serialize)
-      }
+      if proprietary
+        {
+          before: inlay_hints.before.map(&serialize),
+          after: inlay_hints.after.map(&serialize)
+        }
+      else
+        inlay_hints.all
+      end
     rescue Parser::ParseError
       # If there is a parse error, then we're not going to return any inlay
       # hints for this source.
