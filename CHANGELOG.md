@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 
 ## [Unreleased]
 
+## [2.9.0] - 2022-07-04
+
+- [#106](https://github.com/ruby-syntax-tree/syntax_tree/pull/106) - Add inlay hint support to match the LSP specification.
+
 ## [2.8.0] - 2022-06-21
 
 ### Added
@@ -272,7 +276,8 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 
 - 🎉 Initial release! 🎉
 
-[unreleased]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v2.8.0...HEAD
+[unreleased]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v2.1.0...HEAD
+[2.1.0]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v2.8.0...v2.1.0
 [2.8.0]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v2.7.1...v2.8.0
 [2.7.1]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v2.7.0...v2.7.1
 [2.7.0]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v2.6.0...v2.7.0
