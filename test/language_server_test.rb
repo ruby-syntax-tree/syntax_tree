@@ -201,6 +201,23 @@ module SyntaxTree
       end
     end
 
+    def test_file_that_does_not_exist
+      messages = [
+        Initialize.new(1),
+        TextDocumentFormatting.new(2, "file:///path/to/file.rb"),
+        Shutdown.new(3)
+      ]
+
+      case run_server(messages)
+      in [
+           { id: 1, result: { capabilities: Hash } },
+           { id: 2, result: nil },
+           { id: 3, result: {} }
+         ]
+        assert_equal(true, true)
+      end
+    end
+
     private
 
     def write(content)
