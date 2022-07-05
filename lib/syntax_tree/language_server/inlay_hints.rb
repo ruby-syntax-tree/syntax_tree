@@ -2,21 +2,37 @@
 
 module SyntaxTree
   class LanguageServer
-    # This class provides inlay hints for the language server. It existed
-    # before the spec was finalized so, so it provides two result formats:
-    # aligned with the spec (`#all`) and proprietary (`#before` and `#after`).
-    #
-    # For more information, see the spec here:
+    # This class provides inlay hints for the language server. For more
+    # information, see the spec here:
     # https://github.com/microsoft/language-server-protocol/issues/956.
-    #
     class InlayHints < Visitor
-      attr_reader :stack, :all, :before, :after
+      # This represents a hint that is going to be displayed in the editor.
+      class Hint
+        attr_reader :line, :character, :label
+
+        def initialize(line:, character:, label:)
+          @line = line
+          @character = character
+          @label = label
+        end
+
+        # This is the shape that the LSP expects.
+        def to_json(*opts)
+          {
+            position: {
+              line: line,
+              character: character
+            },
+            label: label
+          }.to_json(*opts)
+        end
+      end
+
+      attr_reader :stack, :hints
 
       def initialize
         @stack = []
-        @all = []
-        @before = Hash.new { |hash, key| hash[key] = +"" }
-        @after = Hash.new { |hash, key| hash[key] = +"" }
+        @hints = []
       end
 
       def visit(node)
@@ -98,14 +114,11 @@ module SyntaxTree
       #
       def visit_rescue(node)
         if node.exception.nil?
-          after[node.location.start_char + "rescue".length] << " StandardError"
-          all << {
-            position: {
-              line: node.location.start_line - 1,
-              character: node.location.start_column + "rescue".length
-            },
+          hints << Hint.new(
+            line: node.location.start_line - 1,
+            character: node.location.start_column + "rescue".length,
             label: " StandardError"
-          }
+          )
         end
 
         super
@@ -128,31 +141,20 @@ module SyntaxTree
         super
       end
 
-      def self.find(program)
-        visitor = new
-        visitor.visit(program)
-        visitor
-      end
-
       private
 
       def parentheses(location)
-        all << {
-          position: {
-            line: location.start_line - 1,
-            character: location.start_column
-          },
+        hints << Hint.new(
+          line: location.start_line - 1,
+          character: location.start_column,
           label: "₍"
-        }
-        all << {
-          position: {
-            line: location.end_line - 1,
-            character: location.end_column
-          },
+        )
+
+        hints << Hint.new(
+          line: location.end_line - 1,
+          character: location.end_column,
           label: "₎"
-        }
-        before[location.start_char] << "₍"
-        after[location.end_char] << "₎"
+        )
       end
     end
   end

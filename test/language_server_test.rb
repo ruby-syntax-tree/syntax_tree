@@ -72,10 +72,10 @@ module SyntaxTree
       end
     end
 
-    class TextDocumentInlayHints < Struct.new(:id, :uri)
+    class TextDocumentInlayHint < Struct.new(:id, :uri)
       def to_hash
         {
-          method: "textDocument/inlayHints",
+          method: "textDocument/inlayHint",
           id: id,
           params: {
             textDocument: {
@@ -120,7 +120,7 @@ module SyntaxTree
       end
     end
 
-    def test_inlay_hints
+    def test_inlay_hint
       messages = [
         Initialize.new(1),
         TextDocumentDidOpen.new("file:///path/to/file.rb", <<~RUBY),
@@ -129,18 +129,17 @@ module SyntaxTree
           rescue
           end
         RUBY
-        TextDocumentInlayHints.new(2, "file:///path/to/file.rb"),
+        TextDocumentInlayHint.new(2, "file:///path/to/file.rb"),
         Shutdown.new(3)
       ]
 
       case run_server(messages)
       in [
            { id: 1, result: { capabilities: Hash } },
-           { id: 2, result: { before:, after: } },
+           { id: 2, result: hints },
            { id: 3, result: {} }
          ]
-        assert_equal(1, before.length)
-        assert_equal(2, after.length)
+        assert_equal(3, hints.length)
       end
     end
 

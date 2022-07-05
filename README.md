@@ -35,7 +35,7 @@ It is built with only standard library dependencies. It additionally ships with 
   - [BasicVisitor](#basicvisitor)
 - [Language server](#language-server)
   - [textDocument/formatting](#textdocumentformatting)
-  - [textDocument/inlayHints](#textdocumentinlayhints)
+  - [textDocument/inlayHint](#textdocumentinlayhint)
   - [syntaxTree/visualizing](#syntaxtreevisualizing)
 - [Plugins](#plugins)
   - [Configuration](#configuration)
@@ -402,7 +402,7 @@ By default, the language server is relatively minimal, mostly meant to provide a
 
 As mentioned above, the language server responds to formatting requests with the formatted document. It typically responds on the order of tens of milliseconds, so it should be fast enough for any IDE.
 
-### textDocument/inlayHints
+### textDocument/inlayHint
 
 The language server also responds to the relatively new inlay hints request. This request allows the language server to define additional information that should exist in the source code as helpful hints to the developer. In our case we use it to display things like implicit parentheses. For example, if you had the following code:
 
@@ -410,7 +410,7 @@ The language server also responds to the relatively new inlay hints request. Thi
 1 + 2 * 3
 ```
 
-Implicity, the `2 * 3` is going to be executed first because the `*` operator has higher precedence than the `+` operator. However, to ease mental overhead, our language server includes small parentheses to make this explicit, as in:
+Implicity, the `2 * 3` is going to be executed first because the `*` operator has higher precedence than the `+` operator. To ease mental overhead, our language server includes small parentheses to make this explicit, as in:
 
 ```ruby
 1 + ₍2 * 3₎

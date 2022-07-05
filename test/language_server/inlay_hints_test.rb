@@ -7,56 +7,36 @@ module SyntaxTree
   class LanguageServer
     class InlayHintsTest < Minitest::Test
       def test_assignments_in_parameters
-        hints = find("def foo(a = b = c); end")
-
-        assert_equal(1, hints.before.length)
-        assert_equal(1, hints.after.length)
-        assert_equal(2, hints.all.length)
+        assert_hints(2, "def foo(a = b = c); end")
       end
 
       def test_operators_in_binaries
-        hints = find("1 + 2 * 3")
-
-        assert_equal(1, hints.before.length)
-        assert_equal(1, hints.after.length)
-        assert_equal(2, hints.all.length)
+        assert_hints(2, "1 + 2 * 3")
       end
 
       def test_binaries_in_assignments
-        hints = find("a = 1 + 2")
-
-        assert_equal(1, hints.before.length)
-        assert_equal(1, hints.after.length)
-        assert_equal(2, hints.all.length)
+        assert_hints(2, "a = 1 + 2")
       end
 
       def test_nested_ternaries
-        hints = find("a ? b : c ? d : e")
-
-        assert_equal(1, hints.before.length)
-        assert_equal(1, hints.after.length)
-        assert_equal(2, hints.all.length)
+        assert_hints(2, "a ? b : c ? d : e")
       end
 
       def test_bare_rescue
-        hints = find("begin; rescue; end")
-
-        assert_equal(1, hints.after.length)
-        assert_equal(1, hints.all.length)
+        assert_hints(1, "begin; rescue; end")
       end
 
       def test_unary_in_binary
-        hints = find("-a + b")
-
-        assert_equal(1, hints.before.length)
-        assert_equal(1, hints.after.length)
-        assert_equal(2, hints.all.length)
+        assert_hints(2, "-a + b")
       end
 
       private
 
-      def find(source)
-        InlayHints.find(SyntaxTree.parse(source))
+      def assert_hints(expected, source)
+        visitor = InlayHints.new
+        SyntaxTree.parse(source).accept(visitor)
+
+        assert_equal(expected, visitor.hints.length)
       end
     end
   end
