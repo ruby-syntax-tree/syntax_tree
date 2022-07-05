@@ -1641,12 +1641,12 @@ module SyntaxTree
       heredoc = @heredocs[-1]
 
       location =
-      Location.token(
-        line: lineno,
-        char: char_pos,
-        column: current_column,
-        size: value.size + 1
-      )
+        Location.token(
+          line: lineno,
+          char: char_pos,
+          column: current_column,
+          size: value.size + 1
+        )
 
       heredoc_end = HeredocEnd.new(value: value.chomp, location: location)
 
