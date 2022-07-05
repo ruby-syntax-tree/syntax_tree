@@ -68,7 +68,9 @@ module SyntaxTree
         # going to just print out the node as it was seen in the source.
         doc =
           if leading.last&.ignore?
-            text(source[node.location.start_char...node.location.end_char])
+            range = source[node.location.start_char...node.location.end_char]
+            separator = -> { breakable(indent: false, force: true) }
+            seplist(range.split(/\r?\n/, -1), separator) { |line| text(line) }
           else
             node.format(self)
           end

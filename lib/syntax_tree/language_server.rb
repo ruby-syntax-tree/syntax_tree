@@ -20,66 +20,51 @@ module SyntaxTree
       @output = output.binmode
     end
 
+    # rubocop:disable Layout/LineLength
     def run
       store =
         Hash.new do |hash, uri|
-          hash[uri] = File.binread(CGI.unescape(URI.parse(uri).path))
+          filepath = CGI.unescape(URI.parse(uri).path)
+          File.exist?(filepath) ? (hash[uri] = File.read(filepath)) : nil
         end
 
       while (headers = input.gets("\r\n\r\n"))
         source = input.read(headers[/Content-Length: (\d+)/i, 1].to_i)
         request = JSON.parse(source, symbolize_names: true)
 
+        # stree-ignore
         case request
         in { method: "initialize", id: }
           store.clear
           write(id: id, result: { capabilities: capabilities })
-        in method: "initialized"
+        in { method: "initialized" }
           # ignored
-        in method: "shutdown" # tolerate missing ID to be a good citizen
+        in { method: "shutdown" } # tolerate missing ID to be a good citizen
           store.clear
           write(id: request[:id], result: {})
           return
-        in {
-             method: "textDocument/didChange",
-             params: { textDocument: { uri: }, contentChanges: [{ text: }, *] }
-           }
+        in { method: "textDocument/didChange", params: { textDocument: { uri: }, contentChanges: [{ text: }, *] } }
           store[uri] = text
-        in {
-             method: "textDocument/didOpen",
-             params: { textDocument: { uri:, text: } }
-           }
+        in { method: "textDocument/didOpen", params: { textDocument: { uri:, text: } } }
           store[uri] = text
-        in {
-             method: "textDocument/didClose", params: { textDocument: { uri: } }
-           }
+        in { method: "textDocument/didClose", params: { textDocument: { uri: } } }
           store.delete(uri)
-        in {
-             method: "textDocument/formatting",
-             id:,
-             params: { textDocument: { uri: } }
-           }
-          write(id: id, result: [format(store[uri])])
-        in {
-             # official RPC in LSP spec 3.17
-             method: "textDocument/inlayHint",
-             id:,
-             params: { textDocument: { uri: } }
-           }
-          write(id: id, result: inlay_hints(store[uri]))
-        in {
-             method: "syntaxTree/visualizing",
-             id:,
-             params: { textDocument: { uri: } }
-           }
+        in { method: "textDocument/formatting", id:, params: { textDocument: { uri: } } }
+          contents = store[uri]
+          write(id: id, result: contents ? [format(store[uri])] : nil)
+        in { method: "textDocument/inlayHint", id:, params: { textDocument: { uri: } } }
+          contents = store[uri]
+          write(id: id, result: contents ? inlay_hints(store[uri]) : nil)
+        in { method: "syntaxTree/visualizing", id:, params: { textDocument: { uri: } } }
           write(id: id, result: PP.pp(SyntaxTree.parse(store[uri]), +""))
-        in method: %r{\$/.+}
+        in { method: %r{\$/.+} }
           # ignored
         else
           raise ArgumentError, "Unhandled: #{request}"
         end
       end
     end
+    # rubocop:enable Layout/LineLength
 
     private
 
