@@ -6,7 +6,19 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 
 ## [Unreleased]
 
+## [3.0.0] - 2022-07-04
+
+### Changed
+
+- [#102](https://github.com/ruby-syntax-tree/syntax_tree/issues/102) - Handle requests to the language server for files that do not yet exist on disk.
+
+### Removed
+
+- [#108](https://github.com/ruby-syntax-tree/syntax_tree/pull/108) - Remove old inlay hints code.
+
 ## [2.9.0] - 2022-07-04
+
+### Added
 
 - [#106](https://github.com/ruby-syntax-tree/syntax_tree/pull/106) - Add inlay hint support to match the LSP specification.
 
