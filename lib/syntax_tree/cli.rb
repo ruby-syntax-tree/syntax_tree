@@ -68,6 +68,9 @@ module SyntaxTree
 
     # The parent action class for the CLI that implements the basics.
     class Action
+
+      MAX_LINE_WIDTH = ENV['RUBY_MAX_LINE_WIDTH'].to_i || 80
+
       def run(item)
       end
 
@@ -93,7 +96,7 @@ module SyntaxTree
 
       def run(item)
         source = item.source
-        raise UnformattedError if source != item.handler.format(source)
+        raise UnformattedError if source != item.handler.format(source, MAX_LINE_WIDTH)
       rescue StandardError
         warn("[#{Color.yellow("warn")}] #{item.filepath}")
         raise
@@ -118,9 +121,9 @@ module SyntaxTree
         handler = item.handler
 
         warning = "[#{Color.yellow("warn")}] #{item.filepath}"
-        formatted = handler.format(item.source)
+        formatted = handler.format(item.source, MAX_LINE_WIDTH)
 
-        raise NonIdempotentFormatError if formatted != handler.format(formatted)
+        raise NonIdempotentFormatError if formatted != handler.format(formatted, MAX_LINE_WIDTH)
       rescue StandardError
         warn(warning)
         raise
@@ -149,7 +152,7 @@ module SyntaxTree
     # An action of the CLI that formats the input source and prints it out.
     class Format < Action
       def run(item)
-        puts item.handler.format(item.source)
+        puts item.handler.format(item.source, MAX_LINE_WIDTH)
       end
     end
 
@@ -178,7 +181,7 @@ module SyntaxTree
         start = Time.now
 
         source = item.source
-        formatted = item.handler.format(source)
+        formatted = item.handler.format(source, MAX_LINE_WIDTH)
         File.write(filepath, formatted) if filepath != :stdin
 
         color = source == formatted ? Color.gray(filepath) : filepath
