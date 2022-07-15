@@ -315,23 +315,7 @@ module SyntaxTree
 
         # At the end, we're going to return whether or not this worker ever
         # encountered an error.
-        errored =
-          with_workers(queue) do |item|
-            action.run(item)
-            false
-          rescue Parser::ParseError => error
-            warn("Error: #{error.message}")
-            highlight_error(error, item.source)
-            true
-          rescue Check::UnformattedError, Debug::NonIdempotentFormatError
-            true
-          rescue StandardError => error
-            warn(error.message)
-            warn(error.backtrace)
-            true
-          end
-
-        if errored
+        if process_queue(queue, action)
           action.failure
           1
         else
@@ -342,13 +326,11 @@ module SyntaxTree
 
       private
 
-      def with_workers(queue)
-        # If the queue is just 1 item, then we're not going to bother going
-        # through the whole ceremony of parallelizing the work.
-        return yield queue.shift if queue.size == 1
-
+      # Processes each item in the queue with the given action. Returns whether
+      # or not any errors were encountered.
+      def process_queue(queue, action)
         workers =
-          Etc.nprocessors.times.map do
+          [Etc.nprocessors, queue.size].min.times.map do
             Thread.new do
               # Propagate errors in the worker threads up to the parent thread.
               Thread.current.abort_on_exception = true
@@ -360,7 +342,25 @@ module SyntaxTree
 
               # While there is still work left to do, shift off the queue and
               # process the item.
-              (errored ||= yield queue.shift) until queue.empty?
+              until queue.empty?
+                item = queue.shift
+                errored |=
+                  begin
+                    action.run(item)
+                    false
+                  rescue Parser::ParseError => error
+                    warn("Error: #{error.message}")
+                    highlight_error(error, item.source)
+                    true
+                  rescue Check::UnformattedError,
+                         Debug::NonIdempotentFormatError
+                    true
+                  rescue StandardError => error
+                    warn(error.message)
+                    warn(error.backtrace)
+                    true
+                  end
+              end
 
               # At the end, we're going to return whether or not this worker
               # ever encountered an error.
@@ -368,7 +368,7 @@ module SyntaxTree
             end
           end
 
-        workers.inject(false) { |accum, thread| accum || thread.value }
+        workers.map(&:value).inject(:|)
       end
 
       # Highlights a snippet from a source and parse error.
