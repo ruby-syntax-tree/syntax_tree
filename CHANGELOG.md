@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 
 ## [Unreleased]
 
+## [3.1.0] - 2022-07-19
+
+### Added
+
+- [#115](https://github.com/ruby-syntax-tree/syntax_tree/pull/115) - Support the `--print-width` option in the CLI for the actions that support it.
+
 ## [3.0.1] - 2022-07-15
 
 ### Changed
@@ -294,7 +300,8 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 
 - 🎉 Initial release! 🎉
 
-[unreleased]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v3.0.1...HEAD
+[unreleased]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v3.1.0...HEAD
+[3.1.0]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v3.0.1...v3.1.0
 [3.0.1]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v3.0.0...v3.0.1
 [3.0.0]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v2.9.0...v3.0.0
 [2.9.0]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v2.8.0...v2.9.0
