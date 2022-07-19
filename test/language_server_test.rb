@@ -120,6 +120,26 @@ module SyntaxTree
       end
     end
 
+    def test_formatting_print_width
+      contents = "#{"a" * 40} + #{"b" * 40}\n"
+      messages = [
+        Initialize.new(1),
+        TextDocumentDidOpen.new("file:///path/to/file.rb", contents),
+        TextDocumentFormatting.new(2, "file:///path/to/file.rb"),
+        TextDocumentDidClose.new("file:///path/to/file.rb"),
+        Shutdown.new(3)
+      ]
+
+      case run_server(messages, print_width: 100)
+      in [
+           { id: 1, result: { capabilities: Hash } },
+           { id: 2, result: [{ newText: new_text }] },
+           { id: 3, result: {} }
+         ]
+        assert_equal(contents, new_text)
+      end
+    end
+
     def test_inlay_hint
       messages = [
         Initialize.new(1),
@@ -234,11 +254,15 @@ module SyntaxTree
       end
     end
 
-    def run_server(messages)
+    def run_server(messages, print_width: DEFAULT_PRINT_WIDTH)
       input = StringIO.new(messages.map { |message| write(message) }.join)
       output = StringIO.new
 
-      LanguageServer.new(input: input, output: output).run
+      LanguageServer.new(
+        input: input,
+        output: output,
+        print_width: print_width
+      ).run
       read(output.tap(&:rewind))
     end
   end
