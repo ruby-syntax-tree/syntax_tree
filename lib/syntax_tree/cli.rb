@@ -246,7 +246,7 @@ module SyntaxTree
       #{Color.bold("stree help")}
         Display this help message
 
-      #{Color.bold("stree lsp [--plugins=...]")}
+      #{Color.bold("stree lsp [--plugins=...] [--print-width=NUMBER]")}
         Run syntax tree in language server mode
 
       #{Color.bold("stree version")}
@@ -300,7 +300,7 @@ module SyntaxTree
           return 0
         when "lsp"
           require "syntax_tree/language_server"
-          LanguageServer.new.run
+          LanguageServer.new(print_width: print_width).run
           return 0
         when "version"
           puts SyntaxTree::VERSION

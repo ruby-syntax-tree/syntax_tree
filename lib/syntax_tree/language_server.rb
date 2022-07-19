@@ -13,11 +13,16 @@ module SyntaxTree
   #     stree lsp
   #
   class LanguageServer
-    attr_reader :input, :output
+    attr_reader :input, :output, :print_width
 
-    def initialize(input: $stdin, output: $stdout)
+    def initialize(
+      input: $stdin,
+      output: $stdout,
+      print_width: DEFAULT_PRINT_WIDTH
+    )
       @input = input.binmode
       @output = output.binmode
+      @print_width = print_width
     end
 
     # rubocop:disable Layout/LineLength
@@ -93,7 +98,7 @@ module SyntaxTree
             character: 0
           }
         },
-        newText: SyntaxTree.format(source)
+        newText: SyntaxTree.format(source, print_width)
       }
     end
 
