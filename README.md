@@ -118,6 +118,12 @@ If there are files with unformatted code, you will receive:
 The listed files did not match the expected format.
 ```
 
+To change the print width that you are checking against, specify the `--print-width` option, as in:
+
+```sh
+stree check --print-width=100 path/to/file.rb
+```
+
 ### format
 
 This command will output the formatted version of each of the listed files. Importantly, it will not write that content back to the source files. It is meant to display the formatted version only.
@@ -130,6 +136,12 @@ For a file that contains `1 + 1`, you will receive:
 
 ```ruby
 1 + 1
+```
+
+To change the print width that you are formatting with, specify the `--print-width` option, as in:
+
+```sh
+stree format --print-width=100 path/to/file.rb
 ```
 
 ### json
@@ -211,6 +223,12 @@ This will list every file that is being formatted. It will output light gray if 
 
 ```
 path/to/file.rb 0ms
+```
+
+To change the print width that you are writing with, specify the `--print-width` option, as in:
+
+```sh
+stree write --print-width=100 path/to/file.rb
 ```
 
 ## Library

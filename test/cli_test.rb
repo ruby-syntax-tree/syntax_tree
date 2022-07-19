@@ -52,6 +52,14 @@ module SyntaxTree
       assert_includes(result.stderr, "expected")
     end
 
+    def test_check_print_width
+      file = Tempfile.new(%w[test- .rb])
+      file.write("#{"a" * 40} + #{"b" * 40}\n")
+
+      result = run_cli("check", "--print-width=100", file: file)
+      assert_includes(result.stdio, "match")
+    end
+
     def test_debug
       result = run_cli("debug")
       assert_includes(result.stdio, "idempotently")

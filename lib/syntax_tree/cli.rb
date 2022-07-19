@@ -91,9 +91,17 @@ module SyntaxTree
       class UnformattedError < StandardError
       end
 
+      attr_reader :print_width
+
+      def initialize(print_width:)
+        @print_width = print_width
+      end
+
       def run(item)
         source = item.source
-        raise UnformattedError if source != item.handler.format(source)
+        if source != item.handler.format(source, print_width)
+          raise UnformattedError
+        end
       rescue StandardError
         warn("[#{Color.yellow("warn")}] #{item.filepath}")
         raise
@@ -114,13 +122,21 @@ module SyntaxTree
       class NonIdempotentFormatError < StandardError
       end
 
+      attr_reader :print_width
+
+      def initialize(print_width:)
+        @print_width = print_width
+      end
+
       def run(item)
         handler = item.handler
 
         warning = "[#{Color.yellow("warn")}] #{item.filepath}"
-        formatted = handler.format(item.source)
+        formatted = handler.format(item.source, print_width)
 
-        raise NonIdempotentFormatError if formatted != handler.format(formatted)
+        if formatted != handler.format(formatted, print_width)
+          raise NonIdempotentFormatError
+        end
       rescue StandardError
         warn(warning)
         raise
@@ -148,8 +164,14 @@ module SyntaxTree
 
     # An action of the CLI that formats the input source and prints it out.
     class Format < Action
+      attr_reader :print_width
+
+      def initialize(print_width:)
+        @print_width = print_width
+      end
+
       def run(item)
-        puts item.handler.format(item.source)
+        puts item.handler.format(item.source, print_width)
       end
     end
 
@@ -173,12 +195,18 @@ module SyntaxTree
     # An action of the CLI that formats the input source and writes the
     # formatted output back to the file.
     class Write < Action
+      attr_reader :print_width
+
+      def initialize(print_width:)
+        @print_width = print_width
+      end
+
       def run(item)
         filepath = item.filepath
         start = Time.now
 
         source = item.source
-        formatted = item.handler.format(source)
+        formatted = item.handler.format(source, print_width)
         File.write(filepath, formatted) if filepath != :stdin
 
         color = source == formatted ? Color.gray(filepath) : filepath
@@ -194,43 +222,44 @@ module SyntaxTree
     # The help message displayed if the input arguments are not correctly
     # ordered or formatted.
     HELP = <<~HELP
-      #{Color.bold("stree ast [OPTIONS] [FILE]")}
+      #{Color.bold("stree ast [--plugins=...] [--print-width=NUMBER] FILE")}
         Print out the AST corresponding to the given files
 
-      #{Color.bold("stree check [OPTIONS] [FILE]")}
+      #{Color.bold("stree check [--plugins=...] [--print-width=NUMBER] FILE")}
         Check that the given files are formatted as syntax tree would format them
 
-      #{Color.bold("stree debug [OPTIONS] [FILE]")}
+      #{Color.bold("stree debug [--plugins=...] [--print-width=NUMBER] FILE")}
         Check that the given files can be formatted idempotently
 
-      #{Color.bold("stree doc [OPTIONS] [FILE]")}
+      #{Color.bold("stree doc [--plugins=...] FILE")}
         Print out the doc tree that would be used to format the given files
 
-      #{Color.bold("stree format [OPTIONS] [FILE]")}
+      #{Color.bold("stree format [--plugins=...] [--print-width=NUMBER] FILE")}
         Print out the formatted version of the given files
 
-      #{Color.bold("stree json [OPTIONS] [FILE]")}
+      #{Color.bold("stree json [--plugins=...] FILE")}
         Print out the JSON representation of the given files
 
-      #{Color.bold("stree match [OPTIONS] [FILE]")}
+      #{Color.bold("stree match [--plugins=...] FILE")}
         Print out a pattern-matching Ruby expression that would match the given files
 
       #{Color.bold("stree help")}
         Display this help message
 
-      #{Color.bold("stree lsp [OPTIONS]")}
+      #{Color.bold("stree lsp [--plugins=...]")}
         Run syntax tree in language server mode
 
       #{Color.bold("stree version")}
         Output the current version of syntax tree
 
-      #{Color.bold("stree write [OPTIONS] [FILE]")}
+      #{Color.bold("stree write [--plugins=...] [--print-width=NUMBER] FILE")}
         Read, format, and write back the source of the given files
-
-      [OPTIONS]
 
       --plugins=...
         A comma-separated list of plugins to load.
+
+      --print-width=NUMBER
+        The maximum line width to use when formatting.
     HELP
 
     class << self
@@ -238,19 +267,31 @@ module SyntaxTree
       # passed to the invocation.
       def run(argv)
         name, *arguments = argv
+        print_width = DEFAULT_PRINT_WIDTH
 
-        # If there are any plugins specified on the command line, then load them
-        # by requiring them here. We do this by transforming something like
-        #
-        #     stree format --plugins=haml template.haml
-        #
-        # into
-        #
-        #     require "syntax_tree/haml"
-        #
-        if arguments.first&.start_with?("--plugins=")
-          plugins = arguments.shift[/^--plugins=(.*)$/, 1]
-          plugins.split(",").each { |plugin| require "syntax_tree/#{plugin}" }
+        while arguments.first&.start_with?("--")
+          case (argument = arguments.shift)
+          when /^--plugins=(.+)$/
+            # If there are any plugins specified on the command line, then load
+            # them by requiring them here. We do this by transforming something
+            # like
+            #
+            #     stree format --plugins=haml template.haml
+            #
+            # into
+            #
+            #     require "syntax_tree/haml"
+            #
+            $1.split(",").each { |plugin| require "syntax_tree/#{plugin}" }
+          when /^--print-width=(\d+)$/
+            # If there is a print width specified on the command line, then
+            # parse that out here and use it when formatting.
+            print_width = Integer($1)
+          else
+            warn("Unknown CLI option: #{argument}")
+            warn(HELP)
+            return 1
+          end
         end
 
         case name
@@ -271,9 +312,9 @@ module SyntaxTree
           when "a", "ast"
             AST.new
           when "c", "check"
-            Check.new
+            Check.new(print_width: print_width)
           when "debug"
-            Debug.new
+            Debug.new(print_width: print_width)
           when "doc"
             Doc.new
           when "j", "json"
@@ -281,9 +322,9 @@ module SyntaxTree
           when "m", "match"
             Match.new
           when "f", "format"
-            Format.new
+            Format.new(print_width: print_width)
           when "w", "write"
-            Write.new
+            Write.new(print_width: print_width)
           else
             warn(HELP)
             return 1

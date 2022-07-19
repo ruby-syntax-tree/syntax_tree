@@ -29,6 +29,11 @@ module SyntaxTree
   HANDLERS = {}
   HANDLERS.default = SyntaxTree
 
+  # This is the default print width when formatting. It can be overridden in the
+  # CLI by passing the --print-width option or here in the API by passing the
+  # optional second argument to ::format.
+  DEFAULT_PRINT_WIDTH = 80
+
   # This is a hook provided so that plugins can register themselves as the
   # handler for a particular file type.
   def self.register_handler(extension, handler)
@@ -43,7 +48,7 @@ module SyntaxTree
   end
 
   # Parses the given source and returns the formatted source.
-  def self.format(source, maxwidth = 80)
+  def self.format(source, maxwidth = DEFAULT_PRINT_WIDTH)
     formatter = Formatter.new(source, [], maxwidth)
     parse(source).format(formatter)
 
