@@ -1978,7 +1978,7 @@ module SyntaxTree
         # If we hit a statements, then we're safe to use whatever since we
         # know for certain we're going to get split over multiple lines
         # anyway.
-        break false if parent.is_a?(Statements)
+        break false if parent.is_a?(Statements) || parent.is_a?(ArgParen)
 
         [Command, CommandCall].include?(parent.class)
       end
