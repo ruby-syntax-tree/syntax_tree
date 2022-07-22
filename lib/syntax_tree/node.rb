@@ -5173,7 +5173,7 @@ module SyntaxTree
 
       while (node = queue.shift)
         return true if [Assign, MAssign, OpAssign].include?(node.class)
-        queue += node.child_nodes
+        queue += node.child_nodes.compact
       end
 
       false
