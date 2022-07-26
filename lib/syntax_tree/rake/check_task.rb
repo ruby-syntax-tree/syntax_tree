@@ -35,14 +35,20 @@ module SyntaxTree
       # Defaults to [].
       attr_accessor :plugins
 
+      # Max line length.
+      # Defaults to 80.
+      attr_accessor :print_width
+
       def initialize(
         name = :"stree:check",
         source_files = ::Rake::FileList["lib/**/*.rb"],
-        plugins = []
+        plugins = [],
+        print_width = DEFAULT_PRINT_WIDTH
       )
         @name = name
         @source_files = source_files
         @plugins = plugins
+        @print_width = print_width
 
         yield self if block_given?
         define_task
@@ -58,6 +64,7 @@ module SyntaxTree
       def run_task
         arguments = ["check"]
         arguments << "--plugins=#{plugins.join(",")}" if plugins.any?
+        arguments << "--print-width=#{print_width}" if print_width != DEFAULT_PRINT_WIDTH
 
         SyntaxTree::CLI.run(arguments + Array(source_files))
       end
