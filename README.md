@@ -505,6 +505,16 @@ SyntaxTree::Rake::WriteTask.new do |t|
 end
 ```
 
+#### `print_width`
+
+If you want to use a different print width from the default (80), you can pass that to the `print_width` field, as in:
+
+```ruby
+SyntaxTree::Rake::WriteTask.new do |t|
+  t.print_width = 100
+end
+```
+
 #### `plugins`
 
 If you're running Syntax Tree with plugins (either your own or the pre-built ones), you can pass that to the `plugins` field, as in:
