@@ -814,6 +814,15 @@ Did you mean?  visit_binary
 <span class="ruby-keyword">end</span>
 </pre>
 
+<h4 id="label-print_width"><code>print_width</code><span><a href="#label-print_width">&para;</a> <a href="#top">&uarr;</a></span></h4>
+
+<p>If you want to use a different print width from the default (80), you can pass that to the <code>print_width</code> field, as in:</p>
+
+<pre class="ruby"><span class="ruby-constant">SyntaxTree</span><span class="ruby-operator">::</span><span class="ruby-constant">Rake</span><span class="ruby-operator">::</span><span class="ruby-constant">WriteTask</span>.<span class="ruby-identifier">new</span> <span class="ruby-keyword">do</span> <span class="ruby-operator">|</span><span class="ruby-identifier">t</span><span class="ruby-operator">|</span>
+  <span class="ruby-identifier">t</span>.<span class="ruby-identifier">print_width</span> = <span class="ruby-value">100</span>
+<span class="ruby-keyword">end</span>
+</pre>
+
 <h4 id="label-plugins"><code>plugins</code><span><a href="#label-plugins">&para;</a> <a href="#top">&uarr;</a></span></h4>
 
 <p>If you’re running Syntax Tree with plugins (either your own or the pre-built ones), you can pass that to the <code>plugins</code> field, as in:</p>

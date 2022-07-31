@@ -133,6 +133,16 @@
         <p>The set of plugins to require. Defaults to [].</p>
         </div>
       </div>
+      <div id="attribute-i-print_width" class="method-detail">
+        <div class="method-heading attribute-method-heading">
+          <span class="method-name">print_width</span><span
+            class="attribute-access-type">[RW]</span>
+        </div>
+
+        <div class="method-description">
+        <p>Max line length. Defaults to 80.</p>
+        </div>
+      </div>
       <div id="attribute-i-source_files" class="method-detail">
         <div class="method-heading attribute-method-heading">
           <span class="method-name">source_files</span><span
@@ -154,7 +164,7 @@
       <div id="method-c-new" class="method-detail ">
         <div class="method-heading">
           <span class="method-name">new</span><span
-            class="method-args">( name = :&quot;stree:check&quot;, source_files = ::Rake::FileList[&quot;lib/**/*.rb&quot;], plugins = [] ) { |self| ... }</span>
+            class="method-args">( name = :&quot;stree:check&quot;, source_files = ::Rake::FileList[&quot;lib/**/*.rb&quot;], plugins = [], print_width = DEFAULT_PRINT_WIDTH ) { |self| ... }</span>
           <span class="method-click-advice">click to toggle source</span>
         </div>
 
@@ -162,15 +172,17 @@
           
 
           <div class="method-source-code" id="new-source">
-            <pre><span class="ruby-comment"># File lib/syntax_tree/rake/check_task.rb, line 38</span>
+            <pre><span class="ruby-comment"># File lib/syntax_tree/rake/check_task.rb, line 42</span>
 <span class="ruby-keyword">def</span> <span class="ruby-identifier ruby-title">initialize</span>(
   <span class="ruby-identifier">name</span> = <span class="ruby-value">:&quot;stree:check&quot;</span>,
   <span class="ruby-identifier">source_files</span> = <span class="ruby-operator">::</span><span class="ruby-constant">Rake</span><span class="ruby-operator">::</span><span class="ruby-constant">FileList</span>[<span class="ruby-string">&quot;lib/**/*.rb&quot;</span>],
-  <span class="ruby-identifier">plugins</span> = []
+  <span class="ruby-identifier">plugins</span> = [],
+  <span class="ruby-identifier">print_width</span> = <span class="ruby-constant">DEFAULT_PRINT_WIDTH</span>
 )
   <span class="ruby-ivar">@name</span> = <span class="ruby-identifier">name</span>
   <span class="ruby-ivar">@source_files</span> = <span class="ruby-identifier">source_files</span>
   <span class="ruby-ivar">@plugins</span> = <span class="ruby-identifier">plugins</span>
+  <span class="ruby-ivar">@print_width</span> = <span class="ruby-identifier">print_width</span>
 
   <span class="ruby-keyword">yield</span> <span class="ruby-keyword">self</span> <span class="ruby-keyword">if</span> <span class="ruby-identifier">block_given?</span>
   <span class="ruby-identifier">define_task</span>

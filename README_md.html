@@ -92,6 +92,7 @@
     <li><a href="#label-Rake">Rake</a>
     <li><a href="#label-name"><code>name</code></a>
     <li><a href="#label-source_files"><code>source_files</code></a>
+    <li><a href="#label-print_width"><code>print_width</code></a>
     <li><a href="#label-plugins"><code>plugins</code></a>
     <li><a href="#label-RuboCop">RuboCop</a>
     <li><a href="#label-VSCode">VSCode</a>
@@ -621,6 +622,15 @@ Did you mean?  visit_binary
 
 <pre class="ruby"><span class="ruby-constant">SyntaxTree</span><span class="ruby-operator">::</span><span class="ruby-constant">Rake</span><span class="ruby-operator">::</span><span class="ruby-constant">WriteTask</span>.<span class="ruby-identifier">new</span> <span class="ruby-keyword">do</span> <span class="ruby-operator">|</span><span class="ruby-identifier">t</span><span class="ruby-operator">|</span>
   <span class="ruby-identifier">t</span>.<span class="ruby-identifier">source_files</span> = <span class="ruby-constant">FileList</span>[<span class="ruby-node">%w[Gemfile Rakefile lib/**/*.rb test/**/*.rb]</span>]
+<span class="ruby-keyword">end</span>
+</pre>
+
+<h4 id="label-print_width"><code>print_width</code><span><a href="#label-print_width">&para;</a> <a href="#top">&uarr;</a></span></h4>
+
+<p>If you want to use a different print width from the default (80), you can pass that to the <code>print_width</code> field, as in:</p>
+
+<pre class="ruby"><span class="ruby-constant">SyntaxTree</span><span class="ruby-operator">::</span><span class="ruby-constant">Rake</span><span class="ruby-operator">::</span><span class="ruby-constant">WriteTask</span>.<span class="ruby-identifier">new</span> <span class="ruby-keyword">do</span> <span class="ruby-operator">|</span><span class="ruby-identifier">t</span><span class="ruby-operator">|</span>
+  <span class="ruby-identifier">t</span>.<span class="ruby-identifier">print_width</span> = <span class="ruby-value">100</span>
 <span class="ruby-keyword">end</span>
 </pre>
 
