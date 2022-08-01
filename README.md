@@ -19,6 +19,7 @@ It is built with only standard library dependencies. It additionally ships with 
   - [json](#json)
   - [match](#match)
   - [write](#write)
+  - [Configuration](#configuration)
 - [Library](#library)
   - [SyntaxTree.read(filepath)](#syntaxtreereadfilepath)
   - [SyntaxTree.parse(source)](#syntaxtreeparsesource)
@@ -230,6 +231,19 @@ To change the print width that you are writing with, specify the `--print-width`
 ```sh
 stree write --print-width=100 path/to/file.rb
 ```
+
+### Configuration
+
+Any of the above CLI commands can also read configuration options from a `.streerc` file in the directory where the commands are executed.
+
+This should be a text file with each argument on a separate line.
+
+```txt
+--print-width=100
+--plugins=plugin/trailing_comma
+```
+
+If this file is present, it will _always_ be used for CLI commands. You can also pass options from the command line as in the examples above. The options in the `.streerc` file are passed to the CLI first, then the arguments from the command line. In the case of exclusive options (e.g. `--print-width`), this means that the command line options override what's in the config file. In the case of options that can take multiple inputs (e.g. `--plugins`), the effect is additive. That is, the plugins passed from the command line will be loaded _in addition to_ the plugins in the config file.
 
 ## Library
 

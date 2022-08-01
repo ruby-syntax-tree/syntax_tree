@@ -4,6 +4,8 @@ module SyntaxTree
   # Syntax Tree ships with the `stree` CLI, which can be used to inspect and
   # manipulate Ruby code. This module is responsible for powering that CLI.
   module CLI
+    CONFIG_FILE = ".streerc"
+
     # A utility wrapper around colored strings in the output.
     class Color
       attr_reader :value, :code
@@ -268,6 +270,11 @@ module SyntaxTree
       def run(argv)
         name, *arguments = argv
         print_width = DEFAULT_PRINT_WIDTH
+
+        config_file = File.join(Dir.pwd, CONFIG_FILE)
+        if File.readable?(config_file)
+          arguments.unshift(*File.readlines(config_file, chomp: true))
+        end
 
         while arguments.first&.start_with?("--")
           case (argument = arguments.shift)
