@@ -218,7 +218,7 @@ module SyntaxTree
     Result = Struct.new(:status, :stdio, :stderr, keyword_init: true)
 
     def run_cli(command, *args, contents: :default)
-      file =
+      tempfile =
         case contents
         when :default
           Tempfile.new(%w[test- .rb]).tap { |file| file.puts("test") }
@@ -228,16 +228,18 @@ module SyntaxTree
           contents
         end
 
-      file.rewind
+      tempfile.rewind
 
       status = nil
       stdio, stderr =
-        capture_io { status = SyntaxTree::CLI.run([command, *args, file.path]) }
+        capture_io do
+          status = SyntaxTree::CLI.run([command, *args, tempfile.path])
+        end
 
       Result.new(status: status, stdio: stdio, stderr: stderr)
     ensure
-      file.close
-      file.unlink
+      tempfile.close
+      tempfile.unlink
     end
 
     def with_config_file(contents)
