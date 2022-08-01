@@ -180,6 +180,77 @@ module SyntaxTree
       $stdout = prev_stdout
     end
 
+    def test_config_file
+      config_file = File.join(Dir.pwd, SyntaxTree::CLI::CONFIG_FILE)
+      config = <<~TXT
+      --print-width=100
+      --plugins=plugin
+      TXT
+      File.write(config_file, config)
+
+      Dir.mktmpdir do |directory|
+        Dir.mkdir(File.join(directory, "syntax_tree"))
+        $:.unshift(directory)
+
+        File.write(
+          File.join(directory, "syntax_tree", "plugin.rb"),
+          "puts 'Hello, world!'"
+        )
+
+        file = Tempfile.new(%w[test- .rb])
+        contents = "#{"a" * 40} + #{"b" * 40}\n"
+        file.write(contents)
+
+        result = run_cli("format", file: file)
+        assert_equal("Hello, world!\n#{contents}", result.stdio)
+      end
+    ensure
+      FileUtils.rm(config_file)
+    end
+
+    def test_print_width_args_with_config_file
+      config_file = File.join(Dir.pwd, SyntaxTree::CLI::CONFIG_FILE)
+      File.write(config_file, "--print-width=100")
+
+      contents = "#{"a" * 40} + #{"b" * 40}\n"
+
+      file = Tempfile.new(%w[test- .rb])
+      file.write(contents)
+      result = run_cli("check", file: file)
+      assert_includes(result.stdio, "match")
+
+      file = Tempfile.new(%w[test- .rb])
+      file.write(contents)
+      result = run_cli("check", "--print-width=82", file: file)
+      assert_includes(result.stderr, "expected")
+    ensure
+      FileUtils.rm(config_file)
+    end
+
+    def test_plugin_args_with_config_file
+      config_file = File.join(Dir.pwd, SyntaxTree::CLI::CONFIG_FILE)
+      File.write(config_file, "--plugins=hello_plugin")
+
+      Dir.mktmpdir do |directory|
+        Dir.mkdir(File.join(directory, "syntax_tree"))
+        $:.unshift(directory)
+
+        File.write(
+          File.join(directory, "syntax_tree", "hello_plugin.rb"),
+          "puts 'Hello, world!'"
+        )
+        File.write(
+          File.join(directory, "syntax_tree", "bye_plugin.rb"),
+          "puts 'Bye, world!'"
+        )
+
+        result = run_cli("format", "--plugins=bye_plugin")
+        assert_equal("Hello, world!\nBye, world!\ntest\n", result.stdio)
+      end
+    ensure
+      FileUtils.rm(config_file)
+    end
+
     private
 
     Result = Struct.new(:status, :stdio, :stderr, keyword_init: true)
