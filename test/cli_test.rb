@@ -20,7 +20,7 @@ module SyntaxTree
       file = Tempfile.new(%w[test- .test])
       file.puts("test")
 
-      result = run_cli("ast", file: file)
+      result = run_cli("ast", contents: file)
       assert_equal("\"test\\n\" + \"test\\n\"\n", result.stdio)
     ensure
       SyntaxTree::HANDLERS.delete(".test")
@@ -32,10 +32,7 @@ module SyntaxTree
     end
 
     def test_ast_syntax_error
-      file = Tempfile.new(%w[test- .rb])
-      file.puts("foo\n<>\nbar\n")
-
-      result = run_cli("ast", file: file)
+      result = run_cli("ast", contents: "foo\n<>\nbar\n")
       assert_includes(result.stderr, "syntax error")
     end
 
@@ -45,18 +42,13 @@ module SyntaxTree
     end
 
     def test_check_unformatted
-      file = Tempfile.new(%w[test- .rb])
-      file.write("foo")
-
-      result = run_cli("check", file: file)
+      result = run_cli("check", contents: "foo")
       assert_includes(result.stderr, "expected")
     end
 
     def test_check_print_width
-      file = Tempfile.new(%w[test- .rb])
-      file.write("#{"a" * 40} + #{"b" * 40}\n")
-
-      result = run_cli("check", "--print-width=100", file: file)
+      contents = "#{"a" * 40} + #{"b" * 40}\n"
+      result = run_cli("check", "--print-width=100", contents: contents)
       assert_includes(result.stdio, "match")
     end
 
@@ -104,15 +96,12 @@ module SyntaxTree
       file = Tempfile.new(%w[test- .test])
       filepath = file.path
 
-      result = run_cli("write", file: file)
+      result = run_cli("write", contents: file)
       assert_includes(result.stdio, filepath)
     end
 
     def test_write_syntax_tree
-      file = Tempfile.new(%w[test- .rb])
-      file.write("<>")
-
-      result = run_cli("write", file: file)
+      result = run_cli("write", contents: "<>")
       assert_includes(result.stderr, "syntax error")
     end
 
@@ -146,19 +135,15 @@ module SyntaxTree
     def test_generic_error
       SyntaxTree.stub(:format, ->(*) { raise }) do
         result = run_cli("format")
+
         refute_equal(0, result.status)
       end
     end
 
     def test_plugins
-      Dir.mktmpdir do |directory|
-        Dir.mkdir(File.join(directory, "syntax_tree"))
-        $:.unshift(directory)
+      with_plugin_directory do |directory|
+        directory.plugin("plugin", "puts 'Hello, world!'")
 
-        File.write(
-          File.join(directory, "syntax_tree", "plugin.rb"),
-          "puts 'Hello, world!'"
-        )
         result = run_cli("format", "--plugins=plugin")
 
         assert_equal("Hello, world!\ntest\n", result.stdio)
@@ -181,85 +166,67 @@ module SyntaxTree
     end
 
     def test_config_file
-      config_file = File.join(Dir.pwd, SyntaxTree::CLI::CONFIG_FILE)
       config = <<~TXT
       --print-width=100
       --plugins=plugin
       TXT
-      File.write(config_file, config)
 
-      Dir.mktmpdir do |directory|
-        Dir.mkdir(File.join(directory, "syntax_tree"))
-        $:.unshift(directory)
+      with_config_file(config) do
+        with_plugin_directory do |directory|
+          directory.plugin("plugin", "puts 'Hello, world!'")
 
-        File.write(
-          File.join(directory, "syntax_tree", "plugin.rb"),
-          "puts 'Hello, world!'"
-        )
+          contents = "#{"a" * 40} + #{"b" * 40}\n"
+          result = run_cli("format", contents: contents)
 
-        file = Tempfile.new(%w[test- .rb])
-        contents = "#{"a" * 40} + #{"b" * 40}\n"
-        file.write(contents)
-
-        result = run_cli("format", file: file)
-        assert_equal("Hello, world!\n#{contents}", result.stdio)
+          assert_equal("Hello, world!\n#{contents}", result.stdio)
+        end
       end
-    ensure
-      FileUtils.rm(config_file)
     end
 
     def test_print_width_args_with_config_file
-      config_file = File.join(Dir.pwd, SyntaxTree::CLI::CONFIG_FILE)
-      File.write(config_file, "--print-width=100")
+      with_config_file("--print-width=100") do
+        result = run_cli("check", contents: "#{"a" * 40} + #{"b" * 40}\n")
 
-      contents = "#{"a" * 40} + #{"b" * 40}\n"
+        assert_includes(result.stdio, "match")
+      end
+    end
 
-      file = Tempfile.new(%w[test- .rb])
-      file.write(contents)
-      result = run_cli("check", file: file)
-      assert_includes(result.stdio, "match")
+    def test_print_width_args_with_config_file_override
+      with_config_file("--print-width=100") do
+        contents = "#{"a" * 40} + #{"b" * 40}\n"
+        result = run_cli("check", "--print-width=82", contents: contents)
 
-      file = Tempfile.new(%w[test- .rb])
-      file.write(contents)
-      result = run_cli("check", "--print-width=82", file: file)
-      assert_includes(result.stderr, "expected")
-    ensure
-      FileUtils.rm(config_file)
+        assert_includes(result.stderr, "expected")
+      end
     end
 
     def test_plugin_args_with_config_file
-      config_file = File.join(Dir.pwd, SyntaxTree::CLI::CONFIG_FILE)
-      File.write(config_file, "--plugins=hello_plugin")
+      with_config_file("--plugins=hello") do
+        with_plugin_directory do |directory|
+          directory.plugin("hello", "puts 'Hello, world!'")
+          directory.plugin("goodbye", "puts 'Bye, world!'")
 
-      Dir.mktmpdir do |directory|
-        Dir.mkdir(File.join(directory, "syntax_tree"))
-        $:.unshift(directory)
+          result = run_cli("format", "--plugins=goodbye")
 
-        File.write(
-          File.join(directory, "syntax_tree", "hello_plugin.rb"),
-          "puts 'Hello, world!'"
-        )
-        File.write(
-          File.join(directory, "syntax_tree", "bye_plugin.rb"),
-          "puts 'Bye, world!'"
-        )
-
-        result = run_cli("format", "--plugins=bye_plugin")
-        assert_equal("Hello, world!\nBye, world!\ntest\n", result.stdio)
+          assert_equal("Hello, world!\nBye, world!\ntest\n", result.stdio)
+        end
       end
-    ensure
-      FileUtils.rm(config_file)
     end
 
     private
 
     Result = Struct.new(:status, :stdio, :stderr, keyword_init: true)
 
-    def run_cli(command, *args, file: nil)
-      if file.nil?
-        file = Tempfile.new(%w[test- .rb])
-        file.puts("test")
-      end
+    def run_cli(command, *args, contents: :default)
+      file =
+        case contents
+        when :default
+          Tempfile.new(%w[test- .rb]).tap { |file| file.puts("test") }
+        when String
+          Tempfile.new(%w[test- .rb]).tap { |file| file.write(contents) }
+        else
+          contents
+        end
 
       file.rewind
 
@@ -271,6 +238,38 @@ module SyntaxTree
     ensure
       file.close
       file.unlink
+    end
+
+    def with_config_file(contents)
+      filepath = File.join(Dir.pwd, SyntaxTree::CLI::CONFIG_FILE)
+      File.write(filepath, contents)
+
+      yield
+    ensure
+      FileUtils.rm(filepath)
+    end
+
+    class PluginDirectory
+      attr_reader :directory
+
+      def initialize(directory)
+        @directory = directory
+      end
+
+      def plugin(name, contents)
+        File.write(File.join(directory, "#{name}.rb"), contents)
+      end
+    end
+
+    def with_plugin_directory
+      Dir.mktmpdir do |directory|
+        $:.unshift(directory)
+
+        plugin_directory = File.join(directory, "syntax_tree")
+        Dir.mkdir(plugin_directory)
+
+        yield PluginDirectory.new(plugin_directory)
+      end
     end
   end
 end
