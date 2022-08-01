@@ -64,7 +64,9 @@ module SyntaxTree
       def run_task
         arguments = ["write"]
         arguments << "--plugins=#{plugins.join(",")}" if plugins.any?
-        arguments << "--print-width=#{print_width}" if print_width != DEFAULT_PRINT_WIDTH
+        if print_width != DEFAULT_PRINT_WIDTH
+          arguments << "--print-width=#{print_width}"
+        end
 
         SyntaxTree::CLI.run(arguments + Array(source_files))
       end
