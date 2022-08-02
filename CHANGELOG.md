@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 
 ## [Unreleased]
 
+## [3.3.0] - 2022-08-02
+
+### Added
+
+- [#123](https://github.com/ruby-syntax-tree/syntax_tree/pull/123) - Allow the rake tasks to configure print width.
+- [#125](https://github.com/ruby-syntax-tree/syntax_tree/pull/125) - Add support for an `.streerc` file in the current working directory to configure the CLI.
+
 ## [3.2.1] - 2022-07-22
 
 ### Changed
@@ -312,7 +319,8 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 
 - 🎉 Initial release! 🎉
 
-[unreleased]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v3.2.1...HEAD
+[unreleased]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v3.3.0...HEAD
+[3.3.0]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v3.2.1...v3.3.0
 [3.2.1]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v3.2.0...v3.2.1
 [3.2.0]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v3.1.0...v3.2.0
 [3.1.0]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v3.0.1...v3.1.0
