@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative "test_helper"
+require "securerandom"
 
 module SyntaxTree
   class CLITest < Minitest::Test
@@ -142,9 +143,8 @@ module SyntaxTree
 
     def test_plugins
       with_plugin_directory do |directory|
-        directory.plugin("plugin", "puts 'Hello, world!'")
-
-        result = run_cli("format", "--plugins=plugin")
+        plugin = directory.plugin("puts 'Hello, world!'")
+        result = run_cli("format", "--plugins=#{plugin}")
 
         assert_equal("Hello, world!\ntest\n", result.stdio)
       end
@@ -166,15 +166,14 @@ module SyntaxTree
     end
 
     def test_config_file
-      config = <<~TXT
-      --print-width=100
-      --plugins=plugin
-      TXT
+      with_plugin_directory do |directory|
+        plugin = directory.plugin("puts 'Hello, world!'")
+        config = <<~TXT
+        --print-width=100
+        --plugins=#{plugin}
+        TXT
 
-      with_config_file(config) do
-        with_plugin_directory do |directory|
-          directory.plugin("plugin", "puts 'Hello, world!'")
-
+        with_config_file(config) do
           contents = "#{"a" * 40} + #{"b" * 40}\n"
           result = run_cli("format", contents: contents)
 
@@ -201,12 +200,12 @@ module SyntaxTree
     end
 
     def test_plugin_args_with_config_file
-      with_config_file("--plugins=hello") do
-        with_plugin_directory do |directory|
-          directory.plugin("hello", "puts 'Hello, world!'")
-          directory.plugin("goodbye", "puts 'Bye, world!'")
+      with_plugin_directory do |directory|
+        plugin1 = directory.plugin("puts 'Hello, world!'")
 
-          result = run_cli("format", "--plugins=goodbye")
+        with_config_file("--plugins=#{plugin1}") do
+          plugin2 = directory.plugin("puts 'Bye, world!'")
+          result = run_cli("format", "--plugins=#{plugin2}")
 
           assert_equal("Hello, world!\nBye, world!\ntest\n", result.stdio)
         end
@@ -258,8 +257,10 @@ module SyntaxTree
         @directory = directory
       end
 
-      def plugin(name, contents)
+      def plugin(contents)
+        name = SecureRandom.hex
         File.write(File.join(directory, "#{name}.rb"), contents)
+        name
       end
     end
 
