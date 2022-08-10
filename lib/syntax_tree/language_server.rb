@@ -119,4 +119,3 @@ module SyntaxTree
     end
   end
 end
-
