@@ -98,7 +98,7 @@ module SyntaxTree
             character: 0
           }
         },
-        newText: file_extension == "haml" ? SyntaxTree::Haml.format(source, print_width) : SyntaxTree.format(source, print_width)
+        newText: SyntaxTree::HANDLERS[".#{file_extension}"].format(source, print_width)
       }
     end
 
