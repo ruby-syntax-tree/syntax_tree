@@ -86,7 +86,9 @@ module SyntaxTree
       }
     end
 
-    def format(source, file_extension)
+    def format(source, extension)
+      text = SyntaxTree::HANDLERS[".#{extension}"].format(source, print_width)
+
       {
         range: {
           start: {
@@ -98,8 +100,7 @@ module SyntaxTree
             character: 0
           }
         },
-        newText:
-          SyntaxTree::HANDLERS[".#{file_extension}"].format(source, print_width)
+        newText: text
       }
     end
 
