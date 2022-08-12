@@ -44,7 +44,7 @@ Style/ExplicitBlockArgument:
   Enabled: false
 
 Style/FormatString:
-  EnforcedStyle: percent
+  Enabled: false
 
 Style/GuardClause:
   Enabled: false
