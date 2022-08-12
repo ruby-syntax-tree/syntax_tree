@@ -56,7 +56,7 @@ module SyntaxTree
           store.delete(uri)
         in { method: "textDocument/formatting", id:, params: { textDocument: { uri: } } }
           contents = store[uri]
-          write(id: id, result: contents ? [format(store[uri])] : nil)
+          write(id: id, result: contents ? [format(store[uri], uri.split(".").last)] : nil)
         in { method: "textDocument/inlayHint", id:, params: { textDocument: { uri: } } }
           contents = store[uri]
           write(id: id, result: contents ? inlay_hints(store[uri]) : nil)
@@ -86,7 +86,7 @@ module SyntaxTree
       }
     end
 
-    def format(source)
+    def format(source, file_extension)
       {
         range: {
           start: {
@@ -98,7 +98,7 @@ module SyntaxTree
             character: 0
           }
         },
-        newText: SyntaxTree.format(source, print_width)
+        newText: SyntaxTree::HANDLERS[".#{file_extension}"].format(source, print_width)
       }
     end
 
