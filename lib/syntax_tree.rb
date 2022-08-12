@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require "delegate"
 require "etc"
 require "json"
 require "pp"
