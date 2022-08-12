@@ -98,7 +98,8 @@ module SyntaxTree
             character: 0
           }
         },
-        newText: SyntaxTree::HANDLERS[".#{file_extension}"].format(source, print_width)
+        newText:
+          SyntaxTree::HANDLERS[".#{file_extension}"].format(source, print_width)
       }
     end
 

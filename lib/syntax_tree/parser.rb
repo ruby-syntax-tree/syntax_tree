@@ -57,6 +57,26 @@ module SyntaxTree
       end
     end
 
+    # This represents all of the tokens coming back from the lexer. It is
+    # replacing a simple array because it keeps track of the last deleted token
+    # from the list for better error messages.
+    class TokenList < SimpleDelegator
+      attr_reader :last_deleted
+
+      def initialize(object)
+        super
+        @last_deleted = nil
+      end
+
+      def delete(value)
+        @last_deleted = super || @last_deleted
+      end
+
+      def delete_at(index)
+        @last_deleted = super
+      end
+    end
+
     # [String] the source being parsed
     attr_reader :source
 
@@ -124,7 +144,7 @@ module SyntaxTree
       # Most of the time, when a parser event consumes one of these events, it
       # will be deleted from the list. So ideally, this list stays pretty short
       # over the course of parsing a source string.
-      @tokens = []
+      @tokens = TokenList.new([])
 
       # Here we're going to build up a list of SingleByteString or
       # MultiByteString objects. They're each going to represent a string in the
@@ -174,6 +194,33 @@ module SyntaxTree
       line[column].to_i - line.start
     end
 
+    # Returns the current location that is being looked at for the parser for
+    # the purpose of locating the error.
+    def find_token_error(location)
+      if location
+        # If we explicitly passed a location into this find_token_error method,
+        # that means that's the source of the error, so we'll use that
+        # information for our error object.
+        lineno = location.start_line
+        [lineno, location.start_char - line_counts[lineno - 1].start]
+      elsif lineno && column
+        # If there is a line number associated with the current ripper state,
+        # then we'll use that information to generate the error.
+        [lineno, column]
+      elsif (location = tokens.last_deleted&.location)
+        # If we've already deleted a token from the list of tokens that we are
+        # consuming, then we'll fall back to that token's location.
+        lineno = location.start_line
+        [lineno, location.start_char - line_counts[lineno - 1].start]
+      else
+        # Finally, it's possible that when we hit this error the parsing thread
+        # for ripper has died. In that case, lineno and column both return nil.
+        # So we're just going to set it to line 1, column 0 in the hopes that
+        # that makes any sense.
+        [1, 0]
+      end
+    end
+
     # As we build up a list of tokens, we'll periodically need to go backwards
     # and find the ones that we've already hit in order to determine the
     # location information for nodes that use them. For example, if you have a
@@ -201,14 +248,7 @@ module SyntaxTree
         unless index
           token = value == :any ? type.name.split("::", 2).last : value
           message = "Cannot find expected #{token}"
-
-          if location
-            lineno = location.start_line
-            column = location.start_char - line_counts[lineno - 1].start
-            raise ParseError.new(message, lineno, column)
-          else
-            raise ParseError.new(message, lineno, column)
-          end
+          raise ParseError.new(message, *find_token_error(location))
         end
 
         tokens.delete_at(index)
