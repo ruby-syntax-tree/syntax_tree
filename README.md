@@ -548,9 +548,11 @@ inherit_gem:
   syntax_tree: config/rubocop.yml
 ```
 
-### VSCode
+### Editors
 
-To integrate Syntax Tree into VSCode, you should use the official VSCode extension [ruby-syntax-tree/vscode-syntax-tree](https://github.com/ruby-syntax-tree/vscode-syntax-tree).
+* Neovim - formatting via the LSP server can be configured using [nvim-lspconfig](https://github.com/neovim/nvim-lspconfig).
+* Vim - format via the CLI using [ALE (Asynchronous Lint Engine)](https://github.com/dense-analysis/ale).
+* Visual Studio Code - use the official extension [ruby-syntax-tree/vscode-syntax-tree](https://github.com/ruby-syntax-tree/vscode-syntax-tree).
 
 ## Contributing
 
