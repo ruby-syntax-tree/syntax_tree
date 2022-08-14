@@ -44,7 +44,7 @@ It is built with only standard library dependencies. It additionally ships with 
 - [Integration](#integration)
   - [Rake](#rake)
   - [RuboCop](#rubocop)
-  - [VSCode](#vscode)
+  - [Editors](#editors)
 - [Contributing](#contributing)
 - [License](#license)
 
@@ -550,9 +550,9 @@ inherit_gem:
 
 ### Editors
 
-* Neovim - formatting via the LSP server can be configured using [nvim-lspconfig](https://github.com/neovim/nvim-lspconfig).
-* Vim - format via the CLI using [ALE (Asynchronous Lint Engine)](https://github.com/dense-analysis/ale).
-* Visual Studio Code - use the official extension [ruby-syntax-tree/vscode-syntax-tree](https://github.com/ruby-syntax-tree/vscode-syntax-tree).
+* [Neovim](https://neovim.io/) - [neovim/nvim-lspconfig](https://github.com/neovim/nvim-lspconfig).
+* [Vim](https://www.vim.org/) - [dense-analysis/ale](https://github.com/dense-analysis/ale).
+* [VSCode](https://code.visualstudio.com/) - [ruby-syntax-tree/vscode-syntax-tree](https://github.com/ruby-syntax-tree/vscode-syntax-tree).
 
 ## Contributing
 
