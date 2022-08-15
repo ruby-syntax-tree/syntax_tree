@@ -717,8 +717,7 @@ module SyntaxTree
       else
         keyword = find_token(Kw, "begin")
         end_location =
-          if bodystmt.rescue_clause || bodystmt.ensure_clause ||
-               bodystmt.else_clause
+          if bodystmt.else_clause
             bodystmt.location
           else
             find_token(Kw, "end").location
