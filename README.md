@@ -20,6 +20,7 @@ It is built with only standard library dependencies. It additionally ships with 
   - [match](#match)
   - [write](#write)
   - [Configuration](#configuration)
+  - [Globbing](#globbing)
 - [Library](#library)
   - [SyntaxTree.read(filepath)](#syntaxtreereadfilepath)
   - [SyntaxTree.parse(source)](#syntaxtreeparsesource)
@@ -247,12 +248,20 @@ If this file is present, it will _always_ be used for CLI commands. You can also
 
 ### Globbing
 
-When running commands with `stree` in the CLI, the globs must follow the Ruby-specific globbing syntax as specified in the docs for [Dir](https://ruby-doc.org/core-2.6.3/Dir.html#method-c-glob). To ensure consistent file matching across environments (e.g. CI vs. local development) it's safest to enclose the glob in quotes.
+When running commands with `stree`, it's common to pass in lists of files. For example:
 
-For example, if you are in a Rails app and want to ignore the `db/schema.rb` file but check all other Ruby files and the `Gemfile`, you can use the following syntax:
+```sh
+stree write 'lib/*.rb' 'test/*.rb'
+```
+
+The commands in the CLI accept any number of arguments. This means you _could_ pass `**/*.rb` (note the lack of quotes). This would make your shell expand out the file paths listed according to its own rules. (For example, [here](https://www.gnu.org/software/bash/manual/html_node/Filename-Expansion.html) are the rules for GNU bash.)
+
+However, it's recommended to instead use quotes, which means that Ruby is responsible for performing the file path expansion instead. This ensures a consistent experience across different environments and shells. The globs must follow the Ruby-specific globbing syntax as specified in the documentation for [Dir](https://ruby-doc.org/core-3.1.1/Dir.html#method-c-glob).
+
+Baked into this syntax is the ability to provide exceptions to file name patterns as well. For example, if you are in a Rails app and want to exclude files named `schema.rb` but write all other Ruby files, you can use the following syntax:
 
 ```shell
-stree check '**/{[!schema]}*.rb' 'Gemfile'
+stree write '**/{[!schema]}*.rb'
 ```
 
 ## Library
