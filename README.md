@@ -245,6 +245,16 @@ This should be a text file with each argument on a separate line.
 
 If this file is present, it will _always_ be used for CLI commands. You can also pass options from the command line as in the examples above. The options in the `.streerc` file are passed to the CLI first, then the arguments from the command line. In the case of exclusive options (e.g. `--print-width`), this means that the command line options override what's in the config file. In the case of options that can take multiple inputs (e.g. `--plugins`), the effect is additive. That is, the plugins passed from the command line will be loaded _in addition to_ the plugins in the config file.
 
+### Globbing
+
+When running commands with `stree` in the CLI, the globs must follow the Ruby-specific globbing syntax as specified in the docs for [Dir](https://ruby-doc.org/core-2.6.3/Dir.html#method-c-glob). To ensure consistent file matching across environments (e.g. CI vs. local development) it's safest to enclose the glob in quotes.
+
+For example, if you are in a Rails app and want to ignore the `db/schema.rb` file but check all other Ruby files and the `Gemfile`, you can use the following syntax:
+
+```shell
+stree check '**/{[!schema]}*.rb' 'Gemfile'
+```
+
 ## Library
 
 Syntax Tree can be used as a library to access the syntax tree underlying Ruby source code.
