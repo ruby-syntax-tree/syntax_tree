@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require "optparse"
+
 module SyntaxTree
   # Syntax Tree ships with the `stree` CLI, which can be used to inspect and
   # manipulate Ruby code. This module is responsible for powering that CLI.
@@ -70,6 +72,12 @@ module SyntaxTree
 
     # The parent action class for the CLI that implements the basics.
     class Action
+      attr_reader :options
+
+      def initialize(options)
+        @options = options
+      end
+
       def run(item)
       end
 
@@ -93,15 +101,9 @@ module SyntaxTree
       class UnformattedError < StandardError
       end
 
-      attr_reader :print_width
-
-      def initialize(print_width:)
-        @print_width = print_width
-      end
-
       def run(item)
         source = item.source
-        if source != item.handler.format(source, print_width)
+        if source != item.handler.format(source, options.print_width)
           raise UnformattedError
         end
       rescue StandardError
@@ -124,19 +126,13 @@ module SyntaxTree
       class NonIdempotentFormatError < StandardError
       end
 
-      attr_reader :print_width
-
-      def initialize(print_width:)
-        @print_width = print_width
-      end
-
       def run(item)
         handler = item.handler
 
         warning = "[#{Color.yellow("warn")}] #{item.filepath}"
-        formatted = handler.format(item.source, print_width)
+        formatted = handler.format(item.source, options.print_width)
 
-        if formatted != handler.format(formatted, print_width)
+        if formatted != handler.format(formatted, options.print_width)
           raise NonIdempotentFormatError
         end
       rescue StandardError
@@ -166,14 +162,8 @@ module SyntaxTree
 
     # An action of the CLI that formats the input source and prints it out.
     class Format < Action
-      attr_reader :print_width
-
-      def initialize(print_width:)
-        @print_width = print_width
-      end
-
       def run(item)
-        puts item.handler.format(item.source, print_width)
+        puts item.handler.format(item.source, options.print_width)
       end
     end
 
@@ -197,18 +187,12 @@ module SyntaxTree
     # An action of the CLI that formats the input source and writes the
     # formatted output back to the file.
     class Write < Action
-      attr_reader :print_width
-
-      def initialize(print_width:)
-        @print_width = print_width
-      end
-
       def run(item)
         filepath = item.filepath
         start = Time.now
 
         source = item.source
-        formatted = item.handler.format(source, print_width)
+        formatted = item.handler.format(source, options.print_width)
         File.write(filepath, formatted) if filepath != :stdin
 
         color = source == formatted ? Color.gray(filepath) : filepath
@@ -264,74 +248,89 @@ module SyntaxTree
         The maximum line width to use when formatting.
     HELP
 
+    # This represents all of the options that can be passed to the CLI. It is
+    # responsible for parsing the list and then returning the file paths at the
+    # end.
+    class Options
+      attr_reader :print_width
+
+      def initialize(print_width: DEFAULT_PRINT_WIDTH)
+        @print_width = print_width
+      end
+
+      def parse(arguments)
+        parser.parse(arguments)
+      end
+
+      private
+
+      def parser
+        OptionParser.new do |opts|
+          # If there are any plugins specified on the command line, then load
+          # them by requiring them here. We do this by transforming something
+          # like
+          #
+          #     stree format --plugins=haml template.haml
+          #
+          # into
+          #
+          #     require "syntax_tree/haml"
+          #
+          opts.on("--plugins=PLUGINS") do |plugins|
+            plugins.split(",").each { |plugin| require "syntax_tree/#{plugin}" }
+          end
+
+          # If there is a print width specified on the command line, then
+          # parse that out here and use it when formatting.
+          opts.on("--print-width=NUMBER", Integer) do |print_width|
+            @print_width = print_width
+          end
+        end
+      end
+    end
+
     class << self
       # Run the CLI over the given array of strings that make up the arguments
       # passed to the invocation.
       def run(argv)
         name, *arguments = argv
-        print_width = DEFAULT_PRINT_WIDTH
 
         config_file = File.join(Dir.pwd, CONFIG_FILE)
         if File.readable?(config_file)
           arguments.unshift(*File.readlines(config_file, chomp: true))
         end
 
-        while arguments.first&.start_with?("--")
-          case (argument = arguments.shift)
-          when /^--plugins=(.+)$/
-            # If there are any plugins specified on the command line, then load
-            # them by requiring them here. We do this by transforming something
-            # like
-            #
-            #     stree format --plugins=haml template.haml
-            #
-            # into
-            #
-            #     require "syntax_tree/haml"
-            #
-            $1.split(",").each { |plugin| require "syntax_tree/#{plugin}" }
-          when /^--print-width=(\d+)$/
-            # If there is a print width specified on the command line, then
-            # parse that out here and use it when formatting.
-            print_width = Integer($1)
-          else
-            warn("Unknown CLI option: #{argument}")
-            warn(HELP)
-            return 1
-          end
-        end
-
-        case name
-        when "help"
-          puts HELP
-          return 0
-        when "lsp"
-          require "syntax_tree/language_server"
-          LanguageServer.new(print_width: print_width).run
-          return 0
-        when "version"
-          puts SyntaxTree::VERSION
-          return 0
-        end
+        options = Options.new
+        options.parse(arguments)
 
         action =
           case name
           when "a", "ast"
-            AST.new
+            AST.new(options)
           when "c", "check"
-            Check.new(print_width: print_width)
+            Check.new(options)
           when "debug"
-            Debug.new(print_width: print_width)
+            Debug.new(options)
           when "doc"
-            Doc.new
+            Doc.new(options)
+          when "help"
+            puts HELP
+            return 0
           when "j", "json"
-            Json.new
+            Json.new(options)
+          when "lsp"
+            require "syntax_tree/language_server"
+            LanguageServer.new(print_width: options.print_width).run
+            return 0
           when "m", "match"
-            Match.new
+            Match.new(options)
           when "f", "format"
-            Format.new(print_width: print_width)
+            Format.new(options)
+          when "version"
+            puts SyntaxTree::VERSION
+            return 0
           when "w", "write"
-            Write.new(print_width: print_width)
+            Write.new(options)
           else
             warn(HELP)
             return 1
