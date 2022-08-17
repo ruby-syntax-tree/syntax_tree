@@ -258,6 +258,12 @@ The commands in the CLI accept any number of arguments. This means you _could_ p
 
 However, it's recommended to instead use quotes, which means that Ruby is responsible for performing the file path expansion instead. This ensures a consistent experience across different environments and shells. The globs must follow the Ruby-specific globbing syntax as specified in the documentation for [Dir](https://ruby-doc.org/core-3.1.1/Dir.html#method-c-glob).
 
+Baked into this syntax is the ability to provide exceptions to file name patterns as well. For example, if you are in a Rails app and want to exclude files named `schema.rb` but write all other Ruby files, you can use the following syntax:
+
+```shell
+stree write "**/{[!schema]*,*}.rb"
+```
+
 ## Library
 
 Syntax Tree can be used as a library to access the syntax tree underlying Ruby source code.
