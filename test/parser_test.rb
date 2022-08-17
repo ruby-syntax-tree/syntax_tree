@@ -41,6 +41,13 @@ module SyntaxTree
       assert_equal(4, error.column)
     end
 
+    def test_errors_on_missing_regexp_ending
+      error =
+        assert_raises(Parser::ParseError) { SyntaxTree.parse("a =~ /foo") }
+
+      assert_equal(5, error.column)
+    end
+
     def test_errors_on_missing_token_without_location
       assert_raises(Parser::ParseError) { SyntaxTree.parse(":\"foo") }
     end

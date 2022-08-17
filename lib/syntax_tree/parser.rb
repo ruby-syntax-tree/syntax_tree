@@ -2837,14 +2837,21 @@ module SyntaxTree
     # :call-seq:
     #   on_regexp_literal: (
     #     RegexpContent regexp_content,
-    #     RegexpEnd ending
+    #     (nil | RegexpEnd) ending
     #   ) -> RegexpLiteral
     def on_regexp_literal(regexp_content, ending)
+      location = regexp_content.location
+
+      if ending.nil?
+        message = "Cannot find expected regular expression ending"
+        raise ParseError.new(message, *find_token_error(location))
+      end
+
       RegexpLiteral.new(
         beginning: regexp_content.beginning,
         ending: ending.value,
         parts: regexp_content.parts,
-        location: regexp_content.location.to(ending.location)
+        location: location.to(ending.location)
       )
     end
 
