@@ -43,10 +43,10 @@ module SyntaxTree
     end
 
     def self.format(source, node)
-      formatter = new(source, [])
-      node.format(formatter)
-      formatter.flush
-      formatter.output.join
+      q = new(source, [])
+      q.format(node)
+      q.flush
+      q.output.join
     end
 
     def format(node, stackable: true)
