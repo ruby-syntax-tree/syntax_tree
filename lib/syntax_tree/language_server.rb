@@ -119,5 +119,9 @@ module SyntaxTree
       output.print("Content-Length: #{response.bytesize}\r\n\r\n#{response}")
       output.flush
     end
+
+    def log(message)
+      write(method: "window/logMessage", params: { type: 4, message: message })
+    end
   end
 end

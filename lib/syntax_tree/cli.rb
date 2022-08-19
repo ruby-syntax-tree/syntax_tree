@@ -6,8 +6,6 @@ module SyntaxTree
   # Syntax Tree ships with the `stree` CLI, which can be used to inspect and
   # manipulate Ruby code. This module is responsible for powering that CLI.
   module CLI
-    CONFIG_FILE = ".streerc"
-
     # A utility wrapper around colored strings in the output.
     class Color
       attr_reader :value, :code
@@ -289,16 +287,41 @@ module SyntaxTree
       end
     end
 
+    # We allow a minimal configuration file to act as additional command line
+    # arguments to the CLI. Each line of the config file should be a new
+    # argument, as in:
+    #
+    #     --plugins=plugin/single_quote
+    #     --print-width=100
+    #
+    # When invoking the CLI, we will read this config file and then parse it if
+    # it exists in the current working directory.
+    class ConfigFile
+      FILENAME = ".streerc"
+
+      attr_reader :filepath
+
+      def initialize
+        @filepath = File.join(Dir.pwd, FILENAME)
+      end
+
+      def exists?
+        File.readable?(filepath)
+      end
+
+      def arguments
+        exists? ? File.readlines(filepath, chomp: true) : []
+      end
+    end
+
     class << self
       # Run the CLI over the given array of strings that make up the arguments
       # passed to the invocation.
       def run(argv)
         name, *arguments = argv
 
-        config_file = File.join(Dir.pwd, CONFIG_FILE)
-        if File.readable?(config_file)
-          arguments.unshift(*File.readlines(config_file, chomp: true))
-        end
+        config_file = ConfigFile.new
+        arguments.unshift(*config_file.arguments)
 
         options = Options.new
         options.parse(arguments)

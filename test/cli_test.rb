@@ -242,7 +242,7 @@ module SyntaxTree
     end
 
     def with_config_file(contents)
-      filepath = File.join(Dir.pwd, SyntaxTree::CLI::CONFIG_FILE)
+      filepath = File.join(Dir.pwd, SyntaxTree::CLI::ConfigFile::FILENAME)
       File.write(filepath, contents)
 
       yield
