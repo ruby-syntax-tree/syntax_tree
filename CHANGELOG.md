@@ -6,6 +6,19 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 
 ## [Unreleased]
 
+## [3.4.0] - 2022-08-19
+
+### Added
+
+- [#127](https://github.com/ruby-syntax-tree/syntax_tree/pull/127) - Allow the language server to handle other file extensions if it is activated for those extensions.
+- [#133](https://github.com/ruby-syntax-tree/syntax_tree/pull/133) - Add documentation on supporting vim and neovim.
+
+### Changed
+
+- [#132](https://github.com/ruby-syntax-tree/syntax_tree/pull/132) - Provide better error messages when end quotes and end keywords are missing from tokens.
+- [#134](https://github.com/ruby-syntax-tree/syntax_tree/pull/134) - Ensure the correct `end` keyword is getting removed by `begin..rescue` clauses.
+- [#137](https://github.com/ruby-syntax-tree/syntax_tree/pull/137) - Better support regular expressions with no ending token.
+
 ## [3.3.0] - 2022-08-02
 
 ### Added
@@ -319,7 +332,8 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 
 - 🎉 Initial release! 🎉
 
-[unreleased]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v3.3.0...HEAD
+[unreleased]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v3.4.0...HEAD
+[3.4.0]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v3.3.0...v3.4.0
 [3.3.0]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v3.2.1...v3.3.0
 [3.2.1]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v3.2.0...v3.2.1
 [3.2.0]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v3.1.0...v3.2.0
