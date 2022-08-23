@@ -20,3 +20,6 @@ foo => [
   ConstantConstantConstant,
   ConstantConstantConstant
 ]
+%
+a in Integer
+b => [Integer => c]
