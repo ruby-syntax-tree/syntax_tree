@@ -16,7 +16,7 @@ end
 %
 def foo(*rest)
 end
-%
+% # >= 2.7.3
 def foo(...)
 end
 %

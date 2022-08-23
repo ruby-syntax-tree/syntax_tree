@@ -26,7 +26,7 @@ module SyntaxTree
         @called = nil
       end
 
-      def method_missing(called, ...)
+      def method_missing(called, *, **)
         @called = called
       end
     end

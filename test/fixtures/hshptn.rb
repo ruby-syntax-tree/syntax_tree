@@ -30,7 +30,7 @@ end
 case foo
 in **bar
 end
-%
+% # >= 2.7.3
 case foo
 in {
      foo:, # comment1
