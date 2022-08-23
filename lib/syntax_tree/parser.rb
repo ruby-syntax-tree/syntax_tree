@@ -910,7 +910,12 @@ module SyntaxTree
           location: keyword.location.to(consequent.location)
         )
       else
-        operator = find_token(Kw, "in", consume: false) || find_token(Op, "=>")
+        operator =
+          if (keyword = find_token(Kw, "in", consume: false))
+            tokens.delete(keyword)
+          else
+            find_token(Op, "=>")
+          end
 
         RAssign.new(
           value: value,
