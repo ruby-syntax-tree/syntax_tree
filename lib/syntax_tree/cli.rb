@@ -53,18 +53,24 @@ module SyntaxTree
       end
     end
 
-    # An item of work that corresponds to the stdin content.
-    class STDINItem
+    # An item of work that corresponds to a script content passed via the command line.
+    class ScriptItem
+      FILEPATH = :script
+
+      def initialize(source)
+        @source = source
+      end
+
       def handler
         HANDLERS[".rb"]
       end
 
       def filepath
-        :stdin
+        FILEPATH
       end
 
       def source
-        $stdin.read
+        @source
       end
     end
 
@@ -191,7 +197,7 @@ module SyntaxTree
 
         source = item.source
         formatted = item.handler.format(source, options.print_width)
-        File.write(filepath, formatted) if filepath != :stdin
+        File.write(filepath, formatted) if FileItem === item
 
         color = source == formatted ? Color.gray(filepath) : filepath
         delta = ((Time.now - start) * 1000).round
@@ -380,7 +386,7 @@ module SyntaxTree
               end
           end
         else
-          queue << STDINItem.new
+          queue << ScriptItem.new($stdin.read)
         end
 
         # At the end, we're going to return whether or not this worker ever
