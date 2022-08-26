@@ -133,6 +133,16 @@ module SyntaxTree
       $stdin = stdin
     end
 
+    def test_inline_script
+      stdio, = capture_io { SyntaxTree::CLI.run(["format", "-e", "1+1"]) }
+      assert_equal("1 + 1\n", stdio)
+    end
+
+    def test_multiple_inline_scripts
+      stdio, = capture_io { SyntaxTree::CLI.run(["format", "-e", "1+1", "-e", "2+2"]) }
+      assert_equal("1 + 1\n2 + 2\n", stdio)
+    end
+
     def test_generic_error
       SyntaxTree.stub(:format, ->(*) { raise }) do
         result = run_cli("format")

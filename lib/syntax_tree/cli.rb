@@ -53,18 +53,24 @@ module SyntaxTree
       end
     end
 
-    # An item of work that corresponds to the stdin content.
-    class STDINItem
+    # An item of work that corresponds to a script content passed via the command line.
+    class ScriptItem
+      FILEPATH = :script
+
+      def initialize(source)
+        @source = source
+      end
+
       def handler
         HANDLERS[".rb"]
       end
 
       def filepath
-        :stdin
+        FILEPATH
       end
 
       def source
-        $stdin.read
+        @source
       end
     end
 
@@ -191,7 +197,7 @@ module SyntaxTree
 
         source = item.source
         formatted = item.handler.format(source, options.print_width)
-        File.write(filepath, formatted) if filepath != :stdin
+        File.write(filepath, formatted) if FileItem === item
 
         color = source == formatted ? Color.gray(filepath) : filepath
         delta = ((Time.now - start) * 1000).round
@@ -206,25 +212,25 @@ module SyntaxTree
     # The help message displayed if the input arguments are not correctly
     # ordered or formatted.
     HELP = <<~HELP
-      #{Color.bold("stree ast [--plugins=...] [--print-width=NUMBER] FILE")}
+      #{Color.bold("stree ast [--plugins=...] [--print-width=NUMBER] [-e SCRIPT] FILE")}
         Print out the AST corresponding to the given files
 
-      #{Color.bold("stree check [--plugins=...] [--print-width=NUMBER] FILE")}
+      #{Color.bold("stree check [--plugins=...] [--print-width=NUMBER] [-e SCRIPT] FILE")}
         Check that the given files are formatted as syntax tree would format them
 
-      #{Color.bold("stree debug [--plugins=...] [--print-width=NUMBER] FILE")}
+      #{Color.bold("stree debug [--plugins=...] [--print-width=NUMBER] [-e SCRIPT] FILE")}
         Check that the given files can be formatted idempotently
 
-      #{Color.bold("stree doc [--plugins=...] FILE")}
+      #{Color.bold("stree doc [--plugins=...] [-e SCRIPT] FILE")}
         Print out the doc tree that would be used to format the given files
 
-      #{Color.bold("stree format [--plugins=...] [--print-width=NUMBER] FILE")}
+      #{Color.bold("stree format [--plugins=...] [--print-width=NUMBER] [-e SCRIPT] FILE")}
         Print out the formatted version of the given files
 
-      #{Color.bold("stree json [--plugins=...] FILE")}
+      #{Color.bold("stree json [--plugins=...] [-e SCRIPT] FILE")}
         Print out the JSON representation of the given files
 
-      #{Color.bold("stree match [--plugins=...] FILE")}
+      #{Color.bold("stree match [--plugins=...] [-e SCRIPT] FILE")}
         Print out a pattern-matching Ruby expression that would match the given files
 
       #{Color.bold("stree help")}
@@ -236,7 +242,7 @@ module SyntaxTree
       #{Color.bold("stree version")}
         Output the current version of syntax tree
 
-      #{Color.bold("stree write [--plugins=...] [--print-width=NUMBER] FILE")}
+      #{Color.bold("stree write [--plugins=...] [--print-width=NUMBER] [-e SCRIPT] FILE")}
         Read, format, and write back the source of the given files
 
       --plugins=...
@@ -244,20 +250,24 @@ module SyntaxTree
 
       --print-width=NUMBER
         The maximum line width to use when formatting.
+
+      -e SCRIPT
+        Parse an inline Ruby string.
     HELP
 
     # This represents all of the options that can be passed to the CLI. It is
     # responsible for parsing the list and then returning the file paths at the
     # end.
     class Options
-      attr_reader :print_width
+      attr_reader :print_width, :scripts
 
       def initialize(print_width: DEFAULT_PRINT_WIDTH)
         @print_width = print_width
+        @scripts = []
       end
 
       def parse(arguments)
-        parser.parse(arguments)
+        parser.parse!(arguments)
       end
 
       private
@@ -282,6 +292,12 @@ module SyntaxTree
           # parse that out here and use it when formatting.
           opts.on("--print-width=NUMBER", Integer) do |print_width|
             @print_width = print_width
+          end
+
+          # If there is a script specified on the command line, then parse
+          # it and add it to the list of scripts to run.
+          opts.on("-e SCRIPT") do |script|
+            @scripts << script
           end
         end
       end
@@ -361,7 +377,7 @@ module SyntaxTree
 
         # If we're not reading from stdin and the user didn't supply and
         # filepaths to be read, then we exit with the usage message.
-        if $stdin.tty? && arguments.empty?
+        if $stdin.tty? && arguments.empty? && options.scripts.empty?
           warn(HELP)
           return 1
         end
@@ -371,7 +387,7 @@ module SyntaxTree
 
         # If we're reading from stdin, then we'll just add the stdin object to
         # the queue. Otherwise, we'll add each of the filepaths to the queue.
-        if $stdin.tty? || arguments.any?
+        if $stdin.tty? && (arguments.any? || options.scripts.any?)
           arguments.each do |pattern|
             Dir
               .glob(pattern)
@@ -379,8 +395,11 @@ module SyntaxTree
                 queue << FileItem.new(filepath) if File.file?(filepath)
               end
           end
+          options.scripts.each do |script|
+            queue << ScriptItem.new(script)
+          end
         else
-          queue << STDINItem.new
+          queue << ScriptItem.new($stdin.read)
         end
 
         # At the end, we're going to return whether or not this worker ever
