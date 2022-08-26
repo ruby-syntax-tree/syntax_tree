@@ -3,7 +3,7 @@ name: Deploy rdoc to GitHub Pages
 on:
   push:
     branches:
-      - $default-branch
+      - main
 
     # Allows you to run this workflow manually from the Actions tab
     workflow_dispatch:
