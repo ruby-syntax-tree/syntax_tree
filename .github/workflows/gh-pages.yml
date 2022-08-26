@@ -5,26 +5,34 @@ on:
       - main
 
 jobs:
-  build-and-deploy:
+  build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout 🛎️
+      - name: Checkout
         uses: actions/checkout@master
-
-      - name: Set up Ruby 💎
+      - name: Set up Ruby
         uses: ruby/setup-ruby@v1
         with:
           bundler-cache: true
           ruby-version: '3.1'
-
-      - name: Install rdoc and generate docs 🔧
+      - name: Generate docs
         run: |
           gem install rdoc
-          rdoc --main README.md --op rdocs --exclude={Gemfile,Rakefile,"coverage/*","vendor/*","bin/*","test/*","tmp/*"}
-          cp -r doc rdocs/doc
+          rdoc --main README.md --op _site --exclude={Gemfile,Rakefile,"coverage/*","vendor/*","bin/*","test/*","tmp/*"}
+          cp -r doc _site/doc
+      - name: Upload artifact 🚀
+        uses: actions/upload-pages-artifact@main
 
-      - name: Deploy 🚀
-        uses: peaceiris/actions-gh-pages@v3
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./rdocs
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v1
