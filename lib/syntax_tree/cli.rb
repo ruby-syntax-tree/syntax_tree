@@ -53,9 +53,12 @@ module SyntaxTree
       end
     end
 
-    # An item of work that corresponds to a script content passed via the command line.
+    # An item of work that corresponds to a script content passed via the
+    # command line.
     class ScriptItem
       FILEPATH = :script
+
+      attr_reader :source
 
       def initialize(source)
         @source = source
@@ -67,10 +70,6 @@ module SyntaxTree
 
       def filepath
         FILEPATH
-      end
-
-      def source
-        @source
       end
     end
 
@@ -197,7 +196,7 @@ module SyntaxTree
 
         source = item.source
         formatted = item.handler.format(source, options.print_width)
-        File.write(filepath, formatted) if FileItem === item
+        File.write(filepath, formatted) if item.filepath != :script
 
         color = source == formatted ? Color.gray(filepath) : filepath
         delta = ((Time.now - start) * 1000).round
@@ -259,13 +258,19 @@ module SyntaxTree
     # responsible for parsing the list and then returning the file paths at the
     # end.
     class Options
-      attr_reader :print_width, :scripts
+      attr_reader :plugins, :print_width, :scripts, :target_ruby_version
 
       def initialize(print_width: DEFAULT_PRINT_WIDTH)
+        @plugins = []
         @print_width = print_width
         @scripts = []
+        @target_ruby_version = nil
       end
 
+      # TODO: This function causes a couple of side-effects that I really don't
+      # like to have here. It mutates the global state by requiring the plugins,
+      # and mutates the global options hash by adding the target ruby version.
+      # That should be done on a config-by-config basis, not here.
       def parse(arguments)
         parser.parse!(arguments)
       end
@@ -285,7 +290,8 @@ module SyntaxTree
           #     require "syntax_tree/haml"
           #
           opts.on("--plugins=PLUGINS") do |plugins|
-            plugins.split(",").each { |plugin| require "syntax_tree/#{plugin}" }
+            @plugins = plugins.split(",")
+            @plugins.each { |plugin| require "syntax_tree/#{plugin}" }
           end
 
           # If there is a print width specified on the command line, then
@@ -296,8 +302,13 @@ module SyntaxTree
 
           # If there is a script specified on the command line, then parse
           # it and add it to the list of scripts to run.
-          opts.on("-e SCRIPT") do |script|
-            @scripts << script
+          opts.on("-e SCRIPT") { |script| @scripts << script }
+
+          # If there is a target ruby version specified on the command line,
+          # parse that out and use it when formatting.
+          opts.on("--target-ruby-version=VERSION") do |version|
+            @target_ruby_version = Gem::Version.new(version)
+            Formatter::OPTIONS[:target_ruby_version] = @target_ruby_version
           end
         end
       end
@@ -395,9 +406,7 @@ module SyntaxTree
                 queue << FileItem.new(filepath) if File.file?(filepath)
               end
           end
-          options.scripts.each do |script|
-            queue << ScriptItem.new(script)
-          end
+          options.scripts.each { |script| queue << ScriptItem.new(script) }
         else
           queue << ScriptItem.new($stdin.read)
         end

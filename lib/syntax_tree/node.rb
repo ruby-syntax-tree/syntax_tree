@@ -2132,8 +2132,7 @@ module SyntaxTree
         in [
              Paren[
                contents: {
-                 body: [ArrayLiteral[contents: { parts: [_, _, *] }] => array]
-               }
+                 body: [ArrayLiteral[contents: { parts: [_, _, *] }] => array] }
              ]
            ]
           # Here we have a single argument that is a set of parentheses wrapping
@@ -5116,8 +5115,13 @@ module SyntaxTree
           q.breakable
           contents.call
         end
-        q.breakable
-        q.text("}")
+
+        if q.target_ruby_version < Gem::Version.new("2.7.3")
+          q.text(" }")
+        else
+          q.breakable
+          q.text("}")
+        end
       end
     end
   end
@@ -5204,8 +5208,7 @@ module SyntaxTree
             false
           in {
                statements: { body: [truthy] },
-               consequent: Else[statements: { body: [falsy] }]
-             }
+               consequent: Else[statements: { body: [falsy] }] }
             ternaryable?(truthy) && ternaryable?(falsy)
           else
             false

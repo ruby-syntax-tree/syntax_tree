@@ -104,16 +104,18 @@ module SyntaxTree
       end
     end
 
-    def test_args_forward
-      source = <<~SOURCE
-        def get(...)
-          request(:GET, ...)
-        end
-      SOURCE
+    guard_version("2.7.3") do
+      def test_args_forward
+        source = <<~SOURCE
+          def get(...)
+            request(:GET, ...)
+          end
+        SOURCE
 
-      at = location(lines: 2..2, chars: 29..32)
-      assert_node(ArgsForward, source, at: at) do |node|
-        node.bodystmt.statements.body.first.arguments.arguments.parts.last
+        at = location(lines: 2..2, chars: 29..32)
+        assert_node(ArgsForward, source, at: at) do |node|
+          node.bodystmt.statements.body.first.arguments.arguments.parts.last
+        end
       end
     end
 

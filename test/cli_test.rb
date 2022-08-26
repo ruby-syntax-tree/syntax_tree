@@ -134,12 +134,12 @@ module SyntaxTree
     end
 
     def test_inline_script
-      stdio, = capture_io { SyntaxTree::CLI.run(["format", "-e", "1+1"]) }
+      stdio, = capture_io { SyntaxTree::CLI.run(%w[format -e 1+1]) }
       assert_equal("1 + 1\n", stdio)
     end
 
     def test_multiple_inline_scripts
-      stdio, = capture_io { SyntaxTree::CLI.run(["format", "-e", "1+1", "-e", "2+2"]) }
+      stdio, = capture_io { SyntaxTree::CLI.run(%w[format -e 1+1 -e 2+2]) }
       assert_equal("1 + 1\n2 + 2\n", stdio)
     end
 

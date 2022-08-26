@@ -19,7 +19,7 @@ Gem::Specification.new do |spec|
         .reject { |f| f.match(%r{^(test|spec|features)/}) }
     end
 
-  spec.required_ruby_version = ">= 2.7.3"
+  spec.required_ruby_version = ">= 2.7.0"
 
   spec.bindir = "exe"
   spec.executables = spec.files.grep(%r{^exe/}) { |f| File.basename(f) }
