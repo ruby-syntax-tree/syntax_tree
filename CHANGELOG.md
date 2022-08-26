@@ -6,6 +6,18 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 
 ## [Unreleased]
 
+## [3.5.0] - 2022-08-26
+
+### Added
+
+- [#148](https://github.com/ruby-syntax-tree/syntax_tree/pull/148) - Support Ruby 2.7.0 (previously we only supported back to 2.7.3).
+- [#152](https://github.com/ruby-syntax-tree/syntax_tree/pull/152) - Support the `-e` inline script option for the `stree` CLI.
+
+### Changed
+
+- [#141](https://github.com/ruby-syntax-tree/syntax_tree/pull/141) - Use `q.format` for `SyntaxTree.format` so that the main node gets pushed onto the stack for checking parent nodes.
+- [#147](https://github.com/ruby-syntax-tree/syntax_tree/pull/147) - Fix rightward assignment token management such that `in` and `=>` stay the same regardless of their context.
+
 ## [3.4.0] - 2022-08-19
 
 ### Added
@@ -332,7 +344,8 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 
 - 🎉 Initial release! 🎉
 
-[unreleased]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v3.4.0...HEAD
+[unreleased]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v3.5.0...HEAD
+[3.5.0]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v3.4.0...v3.5.0
 [3.4.0]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v3.3.0...v3.4.0
 [3.3.0]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v3.2.1...v3.3.0
 [3.2.1]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v3.2.0...v3.2.1
