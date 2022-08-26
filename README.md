@@ -502,9 +502,12 @@ In this case, whenever the CLI encounters a filepath that ends with the given ex
 
 Below are listed all of the "official" language plugins hosted under the same GitHub organization, which can be used as references for how to implement other plugins.
 
+* [bf](https://github.com/ruby-syntax-tree/syntax_tree-bf) for the [brainf*** language](https://esolangs.org/wiki/Brainfuck).
+* [css](https://github.com/ruby-syntax-tree/syntax_tree-css) for the [CSS stylesheet language](https://www.w3.org/Style/CSS/).
 * [haml](https://github.com/ruby-syntax-tree/syntax_tree-haml) for the [Haml template language](https://haml.info/).
-* [json](https://github.com/ruby-syntax-tree/syntax_tree-json) for JSON.
+* [json](https://github.com/ruby-syntax-tree/syntax_tree-json) for the [JSON notation language](https://www.json.org/).
 * [rbs](https://github.com/ruby-syntax-tree/syntax_tree-rbs) for the [RBS type language](https://github.com/ruby/rbs).
+* [xml](https://github.com/ruby-syntax-tree/syntax_tree-xml) for the [XML markup language](https://www.w3.org/XML/).
 
 ## Integration
 
