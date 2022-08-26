@@ -83,7 +83,9 @@ bundle exec stree version
 
 ## CLI
 
-Syntax Tree ships with the `stree` CLI, which can be used to inspect and manipulate Ruby code. Below are listed all of the commands built into the CLI that you can use. Note that for all commands that operate on files, you can also pass in content through STDIN.
+Syntax Tree ships with the `stree` CLI, which can be used to inspect and manipulate Ruby code. Below are listed all of the commands built into the CLI that you can use.
+
+For many commands, file paths are accepted after the configuration options. For all of these commands, you can alternatively pass in content through STDIN or through the `-e` option to specify an inline script.
 
 ### ast
 
