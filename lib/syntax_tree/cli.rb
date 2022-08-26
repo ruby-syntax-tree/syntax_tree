@@ -51,13 +51,15 @@ module SyntaxTree
       def source
         handler.read(filepath)
       end
+
+      def writable?
+        File.writable?(filepath)
+      end
     end
 
     # An item of work that corresponds to a script content passed via the
     # command line.
     class ScriptItem
-      FILEPATH = :script
-
       attr_reader :source
 
       def initialize(source)
@@ -69,7 +71,30 @@ module SyntaxTree
       end
 
       def filepath
-        FILEPATH
+        :script
+      end
+
+      def writable?
+        false
+      end
+    end
+
+    # An item of work that correspond to the content passed in via stdin.
+    class STDINItem
+      def handler
+        HANDLERS[".rb"]
+      end
+
+      def filepath
+        :stdin
+      end
+
+      def source
+        $stdin.read
+      end
+
+      def writable?
+        false
       end
     end
 
@@ -196,7 +221,7 @@ module SyntaxTree
 
         source = item.source
         formatted = item.handler.format(source, options.print_width)
-        File.write(filepath, formatted) if item.filepath != :script
+        File.write(filepath, formatted) if item.writable?
 
         color = source == formatted ? Color.gray(filepath) : filepath
         delta = ((Time.now - start) * 1000).round
@@ -386,7 +411,7 @@ module SyntaxTree
             return 1
           end
 
-        # If we're not reading from stdin and the user didn't supply and
+        # If we're not reading from stdin and the user didn't supply any
         # filepaths to be read, then we exit with the usage message.
         if $stdin.tty? && arguments.empty? && options.scripts.empty?
           warn(HELP)
@@ -403,12 +428,13 @@ module SyntaxTree
             Dir
               .glob(pattern)
               .each do |filepath|
-                queue << FileItem.new(filepath) if File.file?(filepath)
+                queue << FileItem.new(filepath) if File.readable?(filepath)
               end
           end
+
           options.scripts.each { |script| queue << ScriptItem.new(script) }
         else
-          queue << ScriptItem.new($stdin.read)
+          queue << STDINItem.new
         end
 
         # At the end, we're going to return whether or not this worker ever
