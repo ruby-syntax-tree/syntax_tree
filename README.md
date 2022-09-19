@@ -40,7 +40,7 @@ It is built with only standard library dependencies. It additionally ships with 
   - [textDocument/inlayHint](#textdocumentinlayhint)
   - [syntaxTree/visualizing](#syntaxtreevisualizing)
 - [Plugins](#plugins)
-  - [Configuration](#configuration)
+  - [Customization](#customization)
   - [Languages](#languages)
 - [Integration](#integration)
   - [Rake](#rake)
@@ -233,6 +233,12 @@ To change the print width that you are writing with, specify the `--print-width`
 
 ```sh
 stree write --print-width=100 path/to/file.rb
+```
+
+To ignore certain files from a glob (in order to make it easier to specify the filepaths), you can pass the `--ignore-files` option as an additional glob, as in:
+
+```sh
+stree write --ignore-files='db/**/*.rb' '**/*.rb'
 ```
 
 ### Configuration
@@ -475,11 +481,11 @@ The language server additionally includes this custom request to return a textua
 
 ## Plugins
 
-You can register additional configuration and additional languages that can flow through the same CLI with Syntax Tree's plugin system. When invoking the CLI, you pass through the list of plugins with the `--plugins` options to the commands that accept them. They should be a comma-delimited list. When the CLI first starts, it will require the files corresponding to those names.
+You can register additional customization and additional languages that can flow through the same CLI with Syntax Tree's plugin system. When invoking the CLI, you pass through the list of plugins with the `--plugins` options to the commands that accept them. They should be a comma-delimited list. When the CLI first starts, it will require the files corresponding to those names.
 
-### Configuration
+### Customization
 
-To register additional configuration, define a file somewhere in your load path named `syntax_tree/my_plugin`. Then when invoking the CLI, you will pass `--plugins=my_plugin`. To require multiple, separate them by a comma. In this way, you can modify Syntax Tree however you would like. Some plugins ship with Syntax Tree itself. They are:
+To register additional customization, define a file somewhere in your load path named `syntax_tree/my_plugin`. Then when invoking the CLI, you will pass `--plugins=my_plugin`. To require multiple, separate them by a comma. In this way, you can modify Syntax Tree however you would like. Some plugins ship with Syntax Tree itself. They are:
 
 * `plugin/single_quotes` - This will change all of your string literals to use single quotes instead of the default double quotes.
 * `plugin/trailing_comma` - This will put trailing commas into multiline array literals, hash literals, and method calls that can support trailing commas.
@@ -540,6 +546,17 @@ If you wanted to configure Syntax Tree to check or write different files than th
 ```ruby
 SyntaxTree::Rake::WriteTask.new do |t|
   t.source_files = FileList[%w[Gemfile Rakefile lib/**/*.rb test/**/*.rb]]
+end
+```
+
+#### `ignore_files`
+
+If you want to ignore certain file patterns when running the command, you can pass the `ignore_files` option. This will be checked with `File.fnmatch?` against each filepath that the command would be run against. For example:
+
+```ruby
+SyntaxTree::Rake::WriteTask.new do |t|
+  t.source_files = "**/*.rb"
+  t.ignore_files = "db/**/*.rb"
 end
 ```
 

@@ -283,9 +283,14 @@ module SyntaxTree
     # responsible for parsing the list and then returning the file paths at the
     # end.
     class Options
-      attr_reader :plugins, :print_width, :scripts, :target_ruby_version
+      attr_reader :ignore_files,
+                  :plugins,
+                  :print_width,
+                  :scripts,
+                  :target_ruby_version
 
       def initialize(print_width: DEFAULT_PRINT_WIDTH)
+        @ignore_files = ""
         @plugins = []
         @print_width = print_width
         @scripts = []
@@ -304,6 +309,13 @@ module SyntaxTree
 
       def parser
         OptionParser.new do |opts|
+          # If there is a glob specified to ignore, then we'll track that here.
+          # Any of the CLI commands that operate on filenames will then ignore
+          # this set of files.
+          opts.on("--ignore-files=GLOB") do |glob|
+            @ignore_files = glob.match(/\A'(.*)'\z/) ? $1 : glob
+          end
+
           # If there are any plugins specified on the command line, then load
           # them by requiring them here. We do this by transforming something
           # like
@@ -428,7 +440,10 @@ module SyntaxTree
             Dir
               .glob(pattern)
               .each do |filepath|
-                queue << FileItem.new(filepath) if File.readable?(filepath)
+                if File.readable?(filepath) &&
+                     !File.fnmatch?(options.ignore_files, filepath)
+                  queue << FileItem.new(filepath)
+                end
               end
           end
 
