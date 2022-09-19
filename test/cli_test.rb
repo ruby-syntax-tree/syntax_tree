@@ -32,6 +32,12 @@ module SyntaxTree
       assert_includes(result.stdio, "ident \"test\"")
     end
 
+    def test_ast_ignore
+      result = run_cli("ast", "--ignore-files='*/test*'")
+      assert_equal(0, result.status)
+      assert_empty(result.stdio)
+    end
+
     def test_ast_syntax_error
       result = run_cli("ast", contents: "foo\n<>\nbar\n")
       assert_includes(result.stderr, "syntax error")
