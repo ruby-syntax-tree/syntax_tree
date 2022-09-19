@@ -35,7 +35,7 @@ module SyntaxTree
 
       # In some setups with Ruby you can turn off DidYouMean, so we're going to
       # respect that setting here.
-      if defined?(DidYouMean) && DidYouMean.method_defined?(:correct_error)
+      if defined?(DidYouMean.correct_error)
         DidYouMean.correct_error(VisitMethodError, self)
       end
     end

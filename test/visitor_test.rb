@@ -40,7 +40,7 @@ module SyntaxTree
       end
     end
 
-    if defined?(DidYouMean) && DidYouMean.method_defined?(:correct_error)
+    if defined?(DidYouMean.correct_error)
       def test_visit_method_correction
         error = assert_raises { Visitor.visit_method(:visit_binar) }
         message =
