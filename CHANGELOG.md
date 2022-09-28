@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 
 ## [Unreleased]
 
+## [3.6.1] - 2022-09-28
+
+### Changed
+
+- [#161](https://github.com/ruby-syntax-tree/syntax_tree/pull/161) - Previously, we were checking if STDIN was a TTY to determine if there was content to be read. Instead, we now check if no filenames were passed, and in that case we attempt to read from STDIN. This should fix errors users were experiencing in non-TTY environments like CI.
+- [#162](https://github.com/ruby-syntax-tree/syntax_tree/pull/162) - Parse errors shouldn't crash the language server anymore.
+
 ## [3.6.0] - 2022-09-19
 
 ### Added
@@ -350,7 +357,8 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 
 - 🎉 Initial release! 🎉
 
-[unreleased]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v3.6.0...HEAD
+[unreleased]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v3.6.1...HEAD
+[3.6.1]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v3.6.0...v3.6.1
 [3.6.0]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v3.5.0...v3.6.0
 [3.5.0]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v3.4.0...v3.5.0
 [3.4.0]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v3.3.0...v3.4.0
