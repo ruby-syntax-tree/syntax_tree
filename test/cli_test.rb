@@ -123,13 +123,6 @@ module SyntaxTree
     end
 
     def test_no_arguments
-      with_tty do
-        *, stderr = capture_io { SyntaxTree::CLI.run(["check"]) }
-        assert_includes(stderr, "stree help")
-      end
-    end
-
-    def test_no_arguments_no_tty
       stdin = $stdin
       $stdin = StringIO.new("1+1")
 
@@ -140,17 +133,13 @@ module SyntaxTree
     end
 
     def test_inline_script
-      with_tty do
-        stdio, = capture_io { SyntaxTree::CLI.run(%w[format -e 1+1]) }
-        assert_equal("1 + 1\n", stdio)
-      end
+      stdio, = capture_io { SyntaxTree::CLI.run(%w[format -e 1+1]) }
+      assert_equal("1 + 1\n", stdio)
     end
 
     def test_multiple_inline_scripts
-      with_tty do
-        stdio, = capture_io { SyntaxTree::CLI.run(%w[format -e 1+1 -e 2+2]) }
-        assert_equal("1 + 1\n2 + 2\n", stdio)
-      end
+      stdio, = capture_io { SyntaxTree::CLI.run(%w[format -e 1+1 -e 2+2]) }
+      assert_equal("1 + 1\n2 + 2\n", stdio)
     end
 
     def test_generic_error
@@ -251,20 +240,14 @@ module SyntaxTree
 
       status = nil
       stdio, stderr =
-        with_tty do
-          capture_io do
-            status = SyntaxTree::CLI.run([command, *args, tempfile.path])
-          end
+        capture_io do
+          status = SyntaxTree::CLI.run([command, *args, tempfile.path])
         end
 
       Result.new(status: status, stdio: stdio, stderr: stderr)
     ensure
       tempfile.close
       tempfile.unlink
-    end
-
-    def with_tty(&block)
-      $stdin.stub(:tty?, true, &block)
     end
 
     def with_config_file(contents)
