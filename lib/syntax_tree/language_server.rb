@@ -56,10 +56,10 @@ module SyntaxTree
           store.delete(uri)
         in { method: "textDocument/formatting", id:, params: { textDocument: { uri: } } }
           contents = store[uri]
-          write(id: id, result: contents ? [format(store[uri], uri.split(".").last)] : nil)
+          write(id: id, result: contents ? format(contents, uri.split(".").last) : nil)
         in { method: "textDocument/inlayHint", id:, params: { textDocument: { uri: } } }
           contents = store[uri]
-          write(id: id, result: contents ? inlay_hints(store[uri]) : nil)
+          write(id: id, result: contents ? inlay_hints(contents) : nil)
         in { method: "syntaxTree/visualizing", id:, params: { textDocument: { uri: } } }
           write(id: id, result: PP.pp(SyntaxTree.parse(store[uri]), +""))
         in { method: %r{\$/.+} }
@@ -89,19 +89,25 @@ module SyntaxTree
     def format(source, extension)
       text = SyntaxTree::HANDLERS[".#{extension}"].format(source, print_width)
 
-      {
-        range: {
-          start: {
-            line: 0,
-            character: 0
+      [
+        {
+          range: {
+            start: {
+              line: 0,
+              character: 0
+            },
+            end: {
+              line: source.lines.size + 1,
+              character: 0
+            }
           },
-          end: {
-            line: source.lines.size + 1,
-            character: 0
-          }
-        },
-        newText: text
-      }
+          newText: text
+        }
+      ]
+    rescue Parser::ParseError
+      # If there is a parse error, then we're not going to return any formatting
+      # changes for this source.
+      nil
     end
 
     def inlay_hints(source)
