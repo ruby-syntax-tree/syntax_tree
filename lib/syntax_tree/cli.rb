@@ -423,19 +423,12 @@ module SyntaxTree
             return 1
           end
 
-        # If we're not reading from stdin and the user didn't supply any
-        # filepaths to be read, then we exit with the usage message.
-        if $stdin.tty? && arguments.empty? && options.scripts.empty?
-          warn(HELP)
-          return 1
-        end
-
         # We're going to build up a queue of items to process.
         queue = Queue.new
 
-        # If we're reading from stdin, then we'll just add the stdin object to
-        # the queue. Otherwise, we'll add each of the filepaths to the queue.
-        if $stdin.tty? && (arguments.any? || options.scripts.any?)
+        # If there are any arguments or scripts, then we'll add those to the
+        # queue. Otherwise we'll read the content off STDIN.
+        if arguments.any? || options.scripts.any?
           arguments.each do |pattern|
             Dir
               .glob(pattern)
