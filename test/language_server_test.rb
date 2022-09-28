@@ -120,6 +120,24 @@ module SyntaxTree
       end
     end
 
+    def test_formatting_failure
+      messages = [
+        Initialize.new(1),
+        TextDocumentDidOpen.new("file:///path/to/file.rb", "<>"),
+        TextDocumentFormatting.new(2, "file:///path/to/file.rb"),
+        Shutdown.new(3)
+      ]
+
+      case run_server(messages)
+      in [
+           { id: 1, result: { capabilities: Hash } },
+           { id: 2, result: },
+           { id: 3, result: {} }
+         ]
+        assert_nil(result)
+      end
+    end
+
     def test_formatting_print_width
       contents = "#{"a" * 40} + #{"b" * 40}\n"
       messages = [
