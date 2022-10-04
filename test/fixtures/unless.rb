@@ -32,3 +32,7 @@ end
 unless foo
   a ? b : c
 end
+%
+unless true # comment1
+  # comment2
+end

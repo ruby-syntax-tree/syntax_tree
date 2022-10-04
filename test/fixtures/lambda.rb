@@ -76,3 +76,7 @@ b
   )
 ) do
 end
+%
+-> do # comment1
+  # comment2
+end

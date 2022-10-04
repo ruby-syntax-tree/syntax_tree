@@ -63,3 +63,7 @@ not(a) ? b : c
 if (x = x + 1).to_i
   x
 end
+%
+if true # comment1
+  # comment2
+end

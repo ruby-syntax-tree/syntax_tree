@@ -23,3 +23,7 @@ end
 while (foo += 1)
   foo
 end
+%
+while true # comment1
+  # comment2
+end
