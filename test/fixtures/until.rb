@@ -23,3 +23,7 @@ end
 until (foo += 1)
   foo
 end
+%
+until true # comment1
+  # comment2
+end

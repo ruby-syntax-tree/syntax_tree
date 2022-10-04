@@ -6004,6 +6004,8 @@ module SyntaxTree
       q.group(0, "->") do
         if params.is_a?(Paren)
           q.format(params) unless params.contents.empty?
+        elsif params.empty? && params.comments.any?
+          q.format(params)
         elsif !params.empty?
           q.group do
             q.text("(")

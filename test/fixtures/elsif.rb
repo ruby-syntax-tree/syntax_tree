@@ -17,3 +17,8 @@ elsif baz
 else
   qyz
 end
+%
+if true
+elsif false # comment1
+  # comment2
+end

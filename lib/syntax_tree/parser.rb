@@ -302,8 +302,8 @@ module SyntaxTree
     def on_BEGIN(statements)
       lbrace = find_token(LBrace)
       rbrace = find_token(RBrace)
-      start_char = find_next_statement_start(lbrace.location.end_char)
 
+      start_char = find_next_statement_start(lbrace.location.end_char)
       statements.bind(
         start_char,
         start_char - line_counts[lbrace.location.start_line - 1].start,
@@ -340,8 +340,8 @@ module SyntaxTree
     def on_END(statements)
       lbrace = find_token(LBrace)
       rbrace = find_token(RBrace)
-      start_char = find_next_statement_start(lbrace.location.end_char)
 
+      start_char = find_next_statement_start(lbrace.location.end_char)
       statements.bind(
         start_char,
         start_char - line_counts[lbrace.location.start_line - 1].start,
@@ -831,8 +831,8 @@ module SyntaxTree
       lbrace = find_token(LBrace)
       rbrace = find_token(RBrace)
       location = (block_var || lbrace).location
-      start_char = find_next_statement_start(location.end_char)
 
+      start_char = find_next_statement_start(location.end_char)
       statements.bind(
         start_char,
         start_char - line_counts[location.start_line - 1].start,
@@ -1329,8 +1329,8 @@ module SyntaxTree
 
       node = tokens[index]
       ending = node.value == "end" ? tokens.delete_at(index) : node
-      start_char = find_next_statement_start(keyword.location.end_char)
 
+      start_char = find_next_statement_start(keyword.location.end_char)
       statements.bind(
         start_char,
         start_char - line_counts[keyword.location.start_line - 1].start,
@@ -1355,9 +1355,10 @@ module SyntaxTree
       beginning = find_token(Kw, "elsif")
       ending = consequent || find_token(Kw, "end")
 
+      start_char = find_next_statement_start(predicate.location.end_char)
       statements.bind(
-        predicate.location.end_char,
-        predicate.location.end_column,
+        start_char,
+        start_char - line_counts[predicate.location.start_line - 1].start,
         ending.location.start_char,
         ending.location.start_column
       )
@@ -1598,9 +1599,12 @@ module SyntaxTree
         tokens.delete(keyword)
       end
 
+      start_char =
+        find_next_statement_start((keyword || collection).location.end_char)
       statements.bind(
-        (keyword || collection).location.end_char,
-        (keyword || collection).location.end_column,
+        start_char,
+        start_char -
+          line_counts[(keyword || collection).location.end_line - 1].start,
         ending.location.start_char,
         ending.location.start_column
       )
@@ -1778,9 +1782,10 @@ module SyntaxTree
       beginning = find_token(Kw, "if")
       ending = consequent || find_token(Kw, "end")
 
+      start_char = find_next_statement_start(predicate.location.end_char)
       statements.bind(
-        predicate.location.end_char,
-        predicate.location.end_column,
+        start_char,
+        start_char - line_counts[predicate.location.end_line - 1].start,
         ending.location.start_char,
         ending.location.start_column
       )
@@ -2024,9 +2029,10 @@ module SyntaxTree
         closing = find_token(Kw, "end")
       end
 
+      start_char = find_next_statement_start(opening.location.end_char)
       statements.bind(
-        opening.location.end_char,
-        opening.location.end_column,
+        start_char,
+        start_char - line_counts[opening.location.end_line - 1].start,
         closing.location.start_char,
         closing.location.start_column
       )
@@ -3456,9 +3462,10 @@ module SyntaxTree
       beginning = find_token(Kw, "unless")
       ending = consequent || find_token(Kw, "end")
 
+      start_char = find_next_statement_start(predicate.location.end_char)
       statements.bind(
-        predicate.location.end_char,
-        predicate.location.end_column,
+        start_char,
+        start_char - line_counts[predicate.location.end_line - 1].start,
         ending.location.start_char,
         ending.location.start_column
       )
@@ -3498,9 +3505,10 @@ module SyntaxTree
       end
 
       # Update the Statements location information
+      start_char = find_next_statement_start(predicate.location.end_char)
       statements.bind(
-        predicate.location.end_char,
-        predicate.location.end_column,
+        start_char,
+        start_char - line_counts[predicate.location.end_line - 1].start,
         ending.location.start_char,
         ending.location.start_column
       )
@@ -3633,9 +3641,10 @@ module SyntaxTree
       end
 
       # Update the Statements location information
+      start_char = find_next_statement_start(predicate.location.end_char)
       statements.bind(
-        predicate.location.end_char,
-        predicate.location.end_column,
+        start_char,
+        start_char - line_counts[predicate.location.end_line - 1].start,
         ending.location.start_char,
         ending.location.start_column
       )
