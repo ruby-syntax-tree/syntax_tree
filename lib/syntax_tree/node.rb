@@ -1955,11 +1955,12 @@ module SyntaxTree
       # If the receiver of this block a Command or CommandCall node, then there
       # are no parentheses around the arguments to that command, so we need to
       # break the block.
-      receiver = q.parent.call
-      if receiver.is_a?(Command) || receiver.is_a?(CommandCall)
+      case q.parent
+      in { call: Command | CommandCall }
         q.break_parent
         format_break(q, break_opening, break_closing)
         return
+      else
       end
 
       q.group do
@@ -1978,16 +1979,26 @@ module SyntaxTree
         # If we hit a statements, then we're safe to use whatever since we
         # know for certain we're going to get split over multiple lines
         # anyway.
-        break false if parent.is_a?(Statements) || parent.is_a?(ArgParen)
-
-        [Command, CommandCall].include?(parent.class)
+        case parent
+        in Statements | ArgParen
+          break false
+        in Command | CommandCall
+          true
+        else
+          false
+        end
       end
     end
 
     # If we're a sibling of a control-flow keyword, then we're going to have to
     # use the do..end bounds.
     def forced_do_end_bounds?(q)
-      [Break, Next, Return, Super].include?(q.parent.call.class)
+      case q.parent
+      in { call: Break | Next | Return | Super }
+        true
+      else
+        false
+      end
     end
 
     # If we're the predicate of a loop or conditional, then we're going to have
@@ -2314,7 +2325,8 @@ module SyntaxTree
     end
 
     def format(q)
-      if operator == :"::" || (operator.is_a?(Op) && operator.value == "::")
+      case operator
+      in :"::" | Op[value: "::"]
         q.text(".")
       else
         operator.format(q)
