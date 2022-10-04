@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    syntax_tree (3.6.1)
+    syntax_tree (3.6.2)
       prettier_print
 
 GEM

@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 
 ## [Unreleased]
 
+## [3.6.2] - 2022-10-04
+
+### Changed
+
+- [#165](https://github.com/ruby-syntax-tree/syntax_tree/pull/165) - Conditionals (`if`/`unless`), loops (`for`/`while`/`until`) and lambdas all had issues when comments immediately succeeded the declaration of the node where the comment could potentially be dropped. That has now been fixed.
+- [#166](https://github.com/ruby-syntax-tree/syntax_tree/pull/166) - Blocks can now be formatted even if they are the top node of the tree. Previously they were looking to their parent for some additional metadata, so we now handle the case where the parent is nil.
+
 ## [3.6.1] - 2022-09-28
 
 ### Changed
@@ -357,7 +364,8 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 
 - 🎉 Initial release! 🎉
 
-[unreleased]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v3.6.1...HEAD
+[unreleased]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v3.6.2...HEAD
+[3.6.2]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v3.6.1...v3.6.2
 [3.6.1]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v3.6.0...v3.6.1
 [3.6.0]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v3.5.0...v3.6.0
 [3.5.0]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v3.4.0...v3.5.0
