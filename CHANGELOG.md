@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 
 ## [Unreleased]
 
+## [3.6.3] - 2022-10-11
+
+### Changed
+
+- [#167](https://github.com/ruby-syntax-tree/syntax_tree/pull/167) - Change the error encountered when an `else` node does not have an associated `end` token to be a parse error.
+
 ## [3.6.2] - 2022-10-04
 
 ### Changed
@@ -364,7 +370,8 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 
 - 🎉 Initial release! 🎉
 
-[unreleased]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v3.6.2...HEAD
+[unreleased]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v3.6.3...HEAD
+[3.6.3]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v3.6.2...v3.6.3
 [3.6.2]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v3.6.1...v3.6.2
 [3.6.1]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v3.6.0...v3.6.1
 [3.6.0]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v3.5.0...v3.6.0
