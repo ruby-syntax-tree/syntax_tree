@@ -1327,6 +1327,11 @@ module SyntaxTree
           token.is_a?(Kw) && %w[end ensure].include?(token.value)
         end
 
+      if index.nil?
+        message = "Cannot find expected else ending"
+        raise ParseError.new(message, *find_token_error(keyword.location))
+      end
+
       node = tokens[index]
       ending = node.value == "end" ? tokens.delete_at(index) : node
 

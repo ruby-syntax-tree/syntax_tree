@@ -55,5 +55,15 @@ module SyntaxTree
     def test_handles_strings_with_non_terminated_embedded_expressions
       assert_raises(Parser::ParseError) { SyntaxTree.parse('"#{"') }
     end
+
+    def test_errors_on_else_missing_two_ends
+      assert_raises(Parser::ParseError) { SyntaxTree.parse(<<~RUBY) }
+        def foo
+          if something
+          else
+            call do
+        end
+      RUBY
+    end
   end
 end
