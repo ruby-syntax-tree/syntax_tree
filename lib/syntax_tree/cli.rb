@@ -290,7 +290,7 @@ module SyntaxTree
                   :target_ruby_version
 
       def initialize(print_width: DEFAULT_PRINT_WIDTH)
-        @ignore_files = ""
+        @ignore_files = []
         @plugins = []
         @print_width = print_width
         @scripts = []
@@ -313,7 +313,7 @@ module SyntaxTree
           # Any of the CLI commands that operate on filenames will then ignore
           # this set of files.
           opts.on("--ignore-files=GLOB") do |glob|
-            @ignore_files = glob.match(/\A'(.*)'\z/) ? $1 : glob
+            @ignore_files << (glob.match(/\A'(.*)'\z/) ? $1 : glob)
           end
 
           # If there are any plugins specified on the command line, then load
@@ -434,7 +434,7 @@ module SyntaxTree
               .glob(pattern)
               .each do |filepath|
                 if File.readable?(filepath) &&
-                     !File.fnmatch?(options.ignore_files, filepath)
+                    options.ignore_files.none? { File.fnmatch?(_1, filepath) }
                   queue << FileItem.new(filepath)
                 end
               end
