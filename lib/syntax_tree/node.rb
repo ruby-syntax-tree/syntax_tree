@@ -606,12 +606,14 @@ module SyntaxTree
     private
 
     def trailing_comma?
-      case arguments
-      in Args[parts: [*, ArgBlock]]
+      return false unless arguments.is_a?(Args)
+      parts = arguments.parts
+
+      if parts.last&.is_a?(ArgBlock)
         # If the last argument is a block, then we can't put a trailing comma
         # after it without resulting in a syntax error.
         false
-      in Args[parts: [Command | CommandCall]]
+      elsif parts.length == 1 && (part = parts.first) && (part.is_a?(Command) || part.is_a?(CommandCall))
         # If the only argument is a command or command call, then a trailing
         # comma would be parsed as part of that expression instead of on this
         # one, so we don't want to add a trailing comma.
@@ -1668,13 +1670,11 @@ module SyntaxTree
         q.text(" ") unless power
 
         if operator == :<<
-          q.text(operator.to_s)
-          q.text(" ")
+          q.text("<< ")
           q.format(right)
         else
           q.group do
-            q.text(operator.to_s)
-
+            q.text(operator.name)
             q.indent do
               power ? q.breakable_empty : q.breakable_space
               q.format(right)
@@ -1974,12 +1974,11 @@ module SyntaxTree
       # If the receiver of this block a Command or CommandCall node, then there
       # are no parentheses around the arguments to that command, so we need to
       # break the block.
-      case q.parent
-      in { call: Command | CommandCall }
+      case q.parent.call
+      when Command, CommandCall
         q.break_parent
         format_break(q, break_opening, break_closing)
         return
-      else
       end
 
       q.group do
@@ -1999,9 +1998,9 @@ module SyntaxTree
         # know for certain we're going to get split over multiple lines
         # anyway.
         case parent
-        in Statements | ArgParen
+        when Statements, ArgParen
           break false
-        in Command | CommandCall
+        when Command, CommandCall
           true
         else
           false
@@ -2012,8 +2011,8 @@ module SyntaxTree
     # If we're a sibling of a control-flow keyword, then we're going to have to
     # use the do..end bounds.
     def forced_do_end_bounds?(q)
-      case q.parent
-      in { call: Break | Next | Return | Super }
+      case q.parent.call
+      when Break, Next, Return, Super
         true
       else
         false
@@ -2997,15 +2996,31 @@ module SyntaxTree
     private
 
     def align(q, node, &block)
-      case node.arguments
-      in Args[parts: [Def | Defs | DefEndless]]
-        q.text(" ")
-        yield
-      in Args[parts: [IfOp]]
-        q.if_flat { q.text(" ") }
-        yield
-      in Args[parts: [Command => command]]
-        align(q, command, &block)
+      arguments = node.arguments
+
+      if arguments.is_a?(Args)
+        parts = arguments.parts
+
+        if parts.size == 1
+          part = parts.first
+
+          case part
+          when Def, Defs, DefEndless
+            q.text(" ")
+            yield
+          when IfOp
+            q.if_flat { q.text(" ") }
+            yield
+          when Command
+            align(q, part, &block)
+          else
+            q.text(" ")
+            q.nest(message.value.length + 1) { yield }
+          end
+        else
+          q.text(" ")
+          q.nest(message.value.length + 1) { yield }
+        end
       else
         q.text(" ")
         q.nest(message.value.length + 1) { yield }
@@ -3092,13 +3107,16 @@ module SyntaxTree
             end
           end
 
-        case arguments
-        in Args[parts: [IfOp]]
-          q.if_flat { q.text(" ") }
-          q.format(arguments)
-        in Args
-          q.text(" ")
-          q.nest(argument_alignment(q, doc)) { q.format(arguments) }
+        if arguments
+          parts = arguments.parts
+
+          if parts.length == 1 && parts.first.is_a?(IfOp)
+            q.if_flat { q.text(" ") }
+            q.format(arguments)
+          else
+            q.text(" ")
+            q.nest(argument_alignment(q, doc)) { q.format(arguments) }
+          end
         else
           # If there are no arguments, print nothing.
         end
@@ -5861,11 +5879,15 @@ module SyntaxTree
     # [String] the value of the keyword
     attr_reader :value
 
+    # [Symbol] the symbol version of the value
+    attr_reader :name
+
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
     def initialize(value:, location:, comments: [])
       @value = value
+      @name = value.to_sym
       @location = location
       @comments = comments
     end
@@ -6645,11 +6667,15 @@ module SyntaxTree
     # [String] the operator
     attr_reader :value
 
+    # [Symbol] the symbol version of the value
+    attr_reader :name
+
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
     def initialize(value:, location:, comments: [])
       @value = value
+      @name = value.to_sym
       @location = location
       @comments = comments
     end

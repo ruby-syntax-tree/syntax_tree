@@ -20,6 +20,16 @@ require_relative "syntax_tree/visitor/pretty_print_visitor"
 
 require_relative "syntax_tree/parser"
 
+# We rely on Symbol#name being available, which is only available in Ruby 3.0+.
+# In case we're running on an older Ruby version, we polyfill it here.
+unless :+.respond_to?(:name)
+  class Symbol
+    def name
+      to_s.freeze
+    end
+  end
+end
+
 # Syntax Tree is a suite of tools built on top of the internal CRuby parser. It
 # provides the ability to generate a syntax tree from source, as well as the
 # tools necessary to inspect and manipulate that syntax tree. It can be used to
