@@ -244,28 +244,49 @@ module SyntaxTree
     # "module" (which would happen to be the innermost keyword). Then the outer
     # one would only be able to grab the first one. In this way all of the
     # tokens act as their own stack.
-    def find_token(type, value = :any, consume: true, location: nil)
+    #
+    # If we're expecting to be able to find a token and consume it, but can't
+    # actually find it, then we need to raise an error. This is _usually_ caused
+    # by a syntax error in the source that we're printing. It could also be
+    # caused by accidentally attempting to consume a token twice by two
+    # different parser event handlers.
+    def find_token(type)
+      index = tokens.rindex { |token| token.is_a?(type) }
+      tokens[index] if index
+    end
+
+    def find_token_value(type, value)
       index =
         tokens.rindex do |token|
-          token.is_a?(type) && (value == :any || (token.value == value))
+          token.is_a?(type) && (token.value == value)
         end
 
-      if consume
-        # If we're expecting to be able to find a token and consume it, but
-        # can't actually find it, then we need to raise an error. This is
-        # _usually_ caused by a syntax error in the source that we're printing.
-        # It could also be caused by accidentally attempting to consume a token
-        # twice by two different parser event handlers.
-        unless index
-          token = value == :any ? type.name.split("::", 2).last : value
-          message = "Cannot find expected #{token}"
-          raise ParseError.new(message, *find_token_error(location))
-        end
+      tokens[index] if index
+    end
 
-        tokens.delete_at(index)
-      elsif index
-        tokens[index]
+    def consume_token(type, location: nil)
+      index = tokens.rindex { |token| token.is_a?(type) }
+
+      unless index
+        message = "Cannot find expected #{type.name.split("::", 2).last}"
+        raise ParseError.new(message, *find_token_error(location))
       end
+
+      tokens.delete_at(index)
+    end
+
+    def consume_token_value(type, value)
+      index =
+        tokens.rindex do |token|
+          token.is_a?(type) && (token.value == value)
+        end
+
+      unless index
+        message = "Cannot find expected #{value}"
+        raise ParseError.new(message, *find_token_error(nil))
+      end
+
+      tokens.delete_at(index)
     end
 
     # A helper function to find a :: operator. We do special handling instead of
@@ -316,8 +337,8 @@ module SyntaxTree
     # :call-seq:
     #   on_BEGIN: (Statements statements) -> BEGINBlock
     def on_BEGIN(statements)
-      lbrace = find_token(LBrace)
-      rbrace = find_token(RBrace)
+      lbrace = consume_token(LBrace)
+      rbrace = consume_token(RBrace)
 
       start_char = find_next_statement_start(lbrace.location.end_char)
       statements.bind(
@@ -327,7 +348,7 @@ module SyntaxTree
         rbrace.location.start_column
       )
 
-      keyword = find_token(Kw, "BEGIN")
+      keyword = consume_token_value(Kw, "BEGIN")
 
       BEGINBlock.new(
         lbrace: lbrace,
@@ -354,8 +375,8 @@ module SyntaxTree
     # :call-seq:
     #   on_END: (Statements statements) -> ENDBlock
     def on_END(statements)
-      lbrace = find_token(LBrace)
-      rbrace = find_token(RBrace)
+      lbrace = consume_token(LBrace)
+      rbrace = consume_token(RBrace)
 
       start_char = find_next_statement_start(lbrace.location.end_char)
       statements.bind(
@@ -365,7 +386,7 @@ module SyntaxTree
         rbrace.location.start_column
       )
 
-      keyword = find_token(Kw, "END")
+      keyword = consume_token_value(Kw, "END")
 
       ENDBlock.new(
         lbrace: lbrace,
@@ -396,7 +417,7 @@ module SyntaxTree
     #     (DynaSymbol | SymbolLiteral) right
     #   ) -> Alias
     def on_alias(left, right)
-      keyword = find_token(Kw, "alias")
+      keyword = consume_token_value(Kw, "alias")
 
       Alias.new(
         left: left,
@@ -408,8 +429,8 @@ module SyntaxTree
     # :call-seq:
     #   on_aref: (untyped collection, (nil | Args) index) -> ARef
     def on_aref(collection, index)
-      find_token(LBracket)
-      rbracket = find_token(RBracket)
+      consume_token(LBracket)
+      rbracket = consume_token(RBracket)
 
       ARef.new(
         collection: collection,
@@ -424,8 +445,8 @@ module SyntaxTree
     #     (nil | Args) index
     #   ) -> ARefField
     def on_aref_field(collection, index)
-      find_token(LBracket)
-      rbracket = find_token(RBracket)
+      consume_token(LBracket)
+      rbracket = consume_token(RBracket)
 
       ARefField.new(
         collection: collection,
@@ -443,8 +464,8 @@ module SyntaxTree
     #     (nil | Args | ArgsForward) arguments
     #   ) -> ArgParen
     def on_arg_paren(arguments)
-      lparen = find_token(LParen)
-      rparen = find_token(RParen)
+      lparen = consume_token(LParen)
+      rparen = consume_token(RParen)
 
       # If the arguments exceed the ending of the parentheses, then we know we
       # have a heredoc in the arguments, and we need to use the bounds of the
@@ -489,7 +510,7 @@ module SyntaxTree
       # First, see if there is an & operator that could potentially be
       # associated with the block part of this args_add_block. If there is not,
       # then just return the arguments.
-      operator = find_token(Op, "&", consume: false)
+      operator = find_token_value(Op, "&")
       return arguments unless operator
 
       # If there are any arguments and the operator we found from the list is
@@ -521,7 +542,7 @@ module SyntaxTree
     # :call-seq:
     #   on_args_add_star: (Args arguments, untyped star) -> Args
     def on_args_add_star(arguments, argument)
-      beginning = find_token(Op, "*")
+      beginning = consume_token_value(Op, "*")
       ending = argument || beginning
 
       location =
@@ -543,7 +564,7 @@ module SyntaxTree
     # :call-seq:
     #   on_args_forward: () -> ArgsForward
     def on_args_forward
-      op = find_token(Op, "...")
+      op = consume_token_value(Op, "...")
 
       ArgsForward.new(value: op.value, location: op.location)
     end
@@ -563,8 +584,8 @@ module SyntaxTree
     #     ArrayLiteral | QSymbols | QWords | Symbols | Words
     def on_array(contents)
       if !contents || contents.is_a?(Args)
-        lbracket = find_token(LBracket)
-        rbracket = find_token(RBracket)
+        lbracket = consume_token(LBracket)
+        rbracket = consume_token(RBracket)
 
         ArrayLiteral.new(
           lbracket: lbracket,
@@ -573,7 +594,7 @@ module SyntaxTree
         )
       else
         tstring_end =
-          find_token(TStringEnd, location: contents.beginning.location)
+          consume_token(TStringEnd, location: contents.beginning.location)
 
         contents.class.new(
           beginning: contents.beginning,
@@ -649,7 +670,7 @@ module SyntaxTree
       # of the various parts.
       location =
         if parts.empty?
-          find_token(LBracket).location.to(find_token(RBracket).location)
+          consume_token(LBracket).location.to(consume_token(RBracket).location)
         else
           parts[0].location.to(parts[-1].location)
         end
@@ -710,7 +731,7 @@ module SyntaxTree
     # :call-seq:
     #   on_assoc_splat: (untyped value) -> AssocSplat
     def on_assoc_splat(value)
-      operator = find_token(Op, "**")
+      operator = consume_token_value(Op, "**")
 
       AssocSplat.new(
         value: value,
@@ -770,23 +791,23 @@ module SyntaxTree
     # :call-seq:
     #   on_begin: (untyped bodystmt) -> Begin | PinnedBegin
     def on_begin(bodystmt)
-      pin = find_token(Op, "^", consume: false)
+      pin = find_token_value(Op, "^")
 
       if pin && pin.location.start_char < bodystmt.location.start_char
         tokens.delete(pin)
-        find_token(LParen)
+        consume_token(LParen)
 
-        rparen = find_token(RParen)
+        rparen = consume_token(RParen)
         location = pin.location.to(rparen.location)
 
         PinnedBegin.new(statement: bodystmt, location: location)
       else
-        keyword = find_token(Kw, "begin")
+        keyword = consume_token_value(Kw, "begin")
         end_location =
           if bodystmt.else_clause
             bodystmt.location
           else
-            find_token(Kw, "end").location
+            consume_token_value(Kw, "end").location
           end
 
         bodystmt.bind(
@@ -861,7 +882,7 @@ module SyntaxTree
     # :call-seq:
     #   on_blockarg: (Ident name) -> BlockArg
     def on_blockarg(name)
-      operator = find_token(Op, "&")
+      operator = consume_token_value(Op, "&")
 
       location = operator.location
       location = location.to(name.location) if name
@@ -880,7 +901,7 @@ module SyntaxTree
       BodyStmt.new(
         statements: statements,
         rescue_clause: rescue_clause,
-        else_keyword: else_clause && find_token(Kw, "else"),
+        else_keyword: else_clause && consume_token_value(Kw, "else"),
         else_clause: else_clause,
         ensure_clause: ensure_clause,
         location:
@@ -894,8 +915,8 @@ module SyntaxTree
     #     Statements statements
     #   ) -> BraceBlock
     def on_brace_block(block_var, statements)
-      lbrace = find_token(LBrace)
-      rbrace = find_token(RBrace)
+      lbrace = consume_token(LBrace)
+      rbrace = consume_token(RBrace)
       location = (block_var || lbrace).location
 
       start_char = find_next_statement_start(location.end_char)
@@ -930,7 +951,7 @@ module SyntaxTree
     # :call-seq:
     #   on_break: (Args arguments) -> Break
     def on_break(arguments)
-      keyword = find_token(Kw, "break")
+      keyword = consume_token_value(Kw, "break")
 
       location = keyword.location
       location = location.to(arguments.location) if arguments.parts.any?
@@ -966,7 +987,7 @@ module SyntaxTree
     # :call-seq:
     #   on_case: (untyped value, untyped consequent) -> Case | RAssign
     def on_case(value, consequent)
-      if (keyword = find_token(Kw, "case", consume: false))
+      if (keyword = find_token_value(Kw, "case"))
         tokens.delete(keyword)
 
         Case.new(
@@ -977,10 +998,10 @@ module SyntaxTree
         )
       else
         operator =
-          if (keyword = find_token(Kw, "in", consume: false))
+          if (keyword = find_token_value(Kw, "in"))
             tokens.delete(keyword)
           else
-            find_token(Op, "=>")
+            consume_token_value(Op, "=>")
           end
 
         node = RAssign.new(
@@ -1002,8 +1023,8 @@ module SyntaxTree
     #     BodyStmt bodystmt
     #   ) -> ClassDeclaration
     def on_class(constant, superclass, bodystmt)
-      beginning = find_token(Kw, "class")
-      ending = find_token(Kw, "end")
+      beginning = consume_token_value(Kw, "class")
+      ending = consume_token_value(Kw, "end")
       location = (superclass || constant).location
       start_char = find_next_statement_start(location.end_char)
 
@@ -1161,7 +1182,7 @@ module SyntaxTree
 
       # Find the beginning of the method definition, which works for single-line
       # and normal method definitions.
-      beginning = find_token(Kw, "def")
+      beginning = consume_token_value(Kw, "def")
 
       # If there aren't any params then we need to correct the params node
       # location information
@@ -1181,7 +1202,7 @@ module SyntaxTree
         params = Params.new(location: location)
       end
 
-      ending = find_token(Kw, "end", consume: false)
+      ending = find_token_value(Kw, "end")
 
       if ending
         tokens.delete(ending)
@@ -1219,13 +1240,13 @@ module SyntaxTree
     # :call-seq:
     #   on_defined: (untyped value) -> Defined
     def on_defined(value)
-      beginning = find_token(Kw, "defined?")
+      beginning = consume_token_value(Kw, "defined?")
       ending = value
 
       range = beginning.location.end_char...value.location.start_char
       if source[range].include?("(")
-        find_token(LParen)
-        ending = find_token(RParen)
+        consume_token(LParen)
+        ending = consume_token(RParen)
       end
 
       Defined.new(
@@ -1266,8 +1287,8 @@ module SyntaxTree
         params = Params.new(location: location)
       end
 
-      beginning = find_token(Kw, "def")
-      ending = find_token(Kw, "end", consume: false)
+      beginning = consume_token_value(Kw, "def")
+      ending = find_token_value(Kw, "end")
 
       if ending
         tokens.delete(ending)
@@ -1307,8 +1328,8 @@ module SyntaxTree
     # :call-seq:
     #   on_do_block: (BlockVar block_var, BodyStmt bodystmt) -> DoBlock
     def on_do_block(block_var, bodystmt)
-      beginning = find_token(Kw, "do")
-      ending = find_token(Kw, "end")
+      beginning = consume_token_value(Kw, "do")
+      ending = consume_token_value(Kw, "end")
       location = (block_var || beginning).location
       start_char = find_next_statement_start(location.end_char)
 
@@ -1330,7 +1351,7 @@ module SyntaxTree
     # :call-seq:
     #   on_dot2: ((nil | untyped) left, (nil | untyped) right) -> Dot2
     def on_dot2(left, right)
-      operator = find_token(Op, "..")
+      operator = consume_token_value(Op, "..")
 
       beginning = left || operator
       ending = right || operator
@@ -1345,7 +1366,7 @@ module SyntaxTree
     # :call-seq:
     #   on_dot3: ((nil | untyped) left, (nil | untyped) right) -> Dot3
     def on_dot3(left, right)
-      operator = find_token(Op, "...")
+      operator = consume_token_value(Op, "...")
 
       beginning = left || operator
       ending = right || operator
@@ -1360,10 +1381,10 @@ module SyntaxTree
     # :call-seq:
     #   on_dyna_symbol: (StringContent string_content) -> DynaSymbol
     def on_dyna_symbol(string_content)
-      if find_token(SymBeg, consume: false)
+      if symbeg = find_token(SymBeg)
         # A normal dynamic symbol
-        symbeg = find_token(SymBeg)
-        tstring_end = find_token(TStringEnd, location: symbeg.location)
+        tokens.delete(symbeg)
+        tstring_end = consume_token(TStringEnd, location: symbeg.location)
 
         DynaSymbol.new(
           quote: symbeg.value,
@@ -1372,8 +1393,8 @@ module SyntaxTree
         )
       else
         # A dynamic symbol as a hash key
-        tstring_beg = find_token(TStringBeg)
-        label_end = find_token(LabelEnd)
+        tstring_beg = consume_token(TStringBeg)
+        label_end = consume_token(LabelEnd)
 
         DynaSymbol.new(
           parts: string_content.parts,
@@ -1386,7 +1407,7 @@ module SyntaxTree
     # :call-seq:
     #   on_else: (Statements statements) -> Else
     def on_else(statements)
-      keyword = find_token(Kw, "else")
+      keyword = consume_token_value(Kw, "else")
 
       # else can either end with an end keyword (in which case we'll want to
       # consume that event) or it can end with an ensure keyword (in which case
@@ -1426,8 +1447,8 @@ module SyntaxTree
     #     (nil | Elsif | Else) consequent
     #   ) -> Elsif
     def on_elsif(predicate, statements, consequent)
-      beginning = find_token(Kw, "elsif")
-      ending = consequent || find_token(Kw, "end")
+      beginning = consume_token_value(Kw, "elsif")
+      ending = consequent || consume_token_value(Kw, "end")
 
       start_char = find_next_statement_start(predicate.location.end_char)
       statements.bind(
@@ -1547,11 +1568,11 @@ module SyntaxTree
     # :call-seq:
     #   on_ensure: (Statements statements) -> Ensure
     def on_ensure(statements)
-      keyword = find_token(Kw, "ensure")
+      keyword = consume_token_value(Kw, "ensure")
 
       # We don't want to consume the :@kw event, because that would break
       # def..ensure..end chains.
-      ending = find_token(Kw, "end", consume: false)
+      ending = find_token_value(Kw, "end")
       start_char = find_next_statement_start(keyword.location.end_char)
       statements.bind(
         start_char,
@@ -1573,7 +1594,7 @@ module SyntaxTree
     # :call-seq:
     #   on_excessed_comma: () -> ExcessedComma
     def on_excessed_comma(*)
-      comma = find_token(Comma)
+      comma = consume_token(Comma)
 
       ExcessedComma.new(value: comma.value, location: comma.location)
     end
@@ -1626,9 +1647,7 @@ module SyntaxTree
       # right left parenthesis, or the left splat. We're going to use this to
       # determine how to find the closing of the pattern, as well as determining
       # the location of the node.
-      opening =
-        find_token(LBracket, consume: false) ||
-          find_token(LParen, consume: false) || left
+      opening = find_token(LBracket) || find_token(LParen) || left
 
       # The closing is based on the opening, which is either the matched
       # punctuation or the right splat.
@@ -1636,10 +1655,10 @@ module SyntaxTree
         case opening
         in LBracket
           tokens.delete(opening)
-          find_token(RBracket)
+          consume_token(RBracket)
         in LParen
           tokens.delete(opening)
-          find_token(RParen)
+          consume_token(RParen)
         else
           right
         end
@@ -1660,13 +1679,13 @@ module SyntaxTree
     #     Statements statements
     #   ) -> For
     def on_for(index, collection, statements)
-      beginning = find_token(Kw, "for")
-      in_keyword = find_token(Kw, "in")
-      ending = find_token(Kw, "end")
+      beginning = consume_token_value(Kw, "for")
+      in_keyword = consume_token_value(Kw, "in")
+      ending = consume_token_value(Kw, "end")
 
       # Consume the do keyword if it exists so that it doesn't get confused for
       # some other block
-      keyword = find_token(Kw, "do", consume: false)
+      keyword = find_token_value(Kw, "do")
       if keyword &&
            keyword.location.start_char > collection.location.end_char &&
            keyword.location.end_char < ending.location.start_char
@@ -1714,8 +1733,8 @@ module SyntaxTree
     # :call-seq:
     #   on_hash: ((nil | Array[AssocNew | AssocSplat]) assocs) -> HashLiteral
     def on_hash(assocs)
-      lbrace = find_token(LBrace)
-      rbrace = find_token(RBrace)
+      lbrace = consume_token(LBrace)
+      rbrace = consume_token(RBrace)
 
       HashLiteral.new(
         lbrace: lbrace,
@@ -1799,8 +1818,8 @@ module SyntaxTree
       if keyword_rest
         # We're doing this to delete the token from the list so that it doesn't
         # confuse future patterns by thinking they have an extra ** on the end.
-        find_token(Op, "**")
-      elsif (token = find_token(Op, "**", consume: false))
+        consume_token_value(Op, "**")
+      elsif (token = find_token_value(Op, "**"))
         tokens.delete(token)
 
         # Create an artificial VarField if we find an extra ** on the end. This
@@ -1813,8 +1832,8 @@ module SyntaxTree
       # If there's no constant, there may be braces, so we're going to look for
       # those to get our bounds.
       unless constant
-        lbrace = find_token(LBrace, consume: false)
-        rbrace = find_token(RBrace, consume: false)
+        lbrace = find_token(LBrace)
+        rbrace = find_token(RBrace)
 
         if lbrace && rbrace
           parts = [lbrace, *parts, rbrace]
@@ -1853,8 +1872,8 @@ module SyntaxTree
     #     (nil | Elsif | Else) consequent
     #   ) -> If
     def on_if(predicate, statements, consequent)
-      beginning = find_token(Kw, "if")
-      ending = consequent || find_token(Kw, "end")
+      beginning = consume_token_value(Kw, "if")
+      ending = consequent || consume_token_value(Kw, "end")
 
       start_char = find_next_statement_start(predicate.location.end_char)
       statements.bind(
@@ -1886,7 +1905,7 @@ module SyntaxTree
     # :call-seq:
     #   on_if_mod: (untyped predicate, untyped statement) -> IfMod
     def on_if_mod(predicate, statement)
-      find_token(Kw, "if")
+      consume_token_value(Kw, "if")
 
       IfMod.new(
         statement: statement,
@@ -1929,11 +1948,11 @@ module SyntaxTree
       # Here we have a rightward assignment
       return pattern unless statements
 
-      beginning = find_token(Kw, "in")
-      ending = consequent || find_token(Kw, "end")
+      beginning = consume_token_value(Kw, "in")
+      ending = consequent || consume_token_value(Kw, "end")
 
       statements_start = pattern
-      if (token = find_token(Kw, "then", consume: false))
+      if (token = find_token_value(Kw, "then"))
         tokens.delete(token)
         statements_start = token
       end
@@ -2010,7 +2029,7 @@ module SyntaxTree
     # :call-seq:
     #   on_kwrest_param: ((nil | Ident) name) -> KwRestParam
     def on_kwrest_param(name)
-      location = find_token(Op, "**").location
+      location = consume_token_value(Op, "**").location
       location = location.to(name.location) if name
 
       KwRestParam.new(name: name, location: location)
@@ -2056,7 +2075,7 @@ module SyntaxTree
     #     (BodyStmt | Statements) statements
     #   ) -> Lambda
     def on_lambda(params, statements)
-      beginning = find_token(TLambda)
+      beginning = consume_token(TLambda)
       braces =
         tokens.any? do |token|
           token.is_a?(TLamBeg) &&
@@ -2099,11 +2118,11 @@ module SyntaxTree
         end
 
       if braces
-        opening = find_token(TLamBeg)
-        closing = find_token(RBrace)
+        opening = consume_token(TLamBeg)
+        closing = consume_token(RBrace)
       else
-        opening = find_token(Kw, "do")
-        closing = find_token(Kw, "end")
+        opening = consume_token_value(Kw, "do")
+        closing = consume_token_value(Kw, "end")
       end
 
       start_char = find_next_statement_start(opening.location.end_char)
@@ -2334,7 +2353,7 @@ module SyntaxTree
     #     (nil | ARefField | Field | Ident | VarField) part
     #   ) -> MLHS
     def on_mlhs_add_star(mlhs, part)
-      beginning = find_token(Op, "*")
+      beginning = consume_token_value(Op, "*")
       ending = part || beginning
 
       location = beginning.location.to(ending.location)
@@ -2357,8 +2376,8 @@ module SyntaxTree
     # :call-seq:
     #   on_mlhs_paren: ((MLHS | MLHSParen) contents) -> MLHSParen
     def on_mlhs_paren(contents)
-      lparen = find_token(LParen)
-      rparen = find_token(RParen)
+      lparen = consume_token(LParen)
+      rparen = consume_token(RParen)
 
       comma_range = lparen.location.end_char...rparen.location.start_char
       contents.comma = true if source[comma_range].strip.end_with?(",")
@@ -2375,8 +2394,8 @@ module SyntaxTree
     #     BodyStmt bodystmt
     #   ) -> ModuleDeclaration
     def on_module(constant, bodystmt)
-      beginning = find_token(Kw, "module")
-      ending = find_token(Kw, "end")
+      beginning = consume_token_value(Kw, "module")
+      ending = consume_token_value(Kw, "end")
       start_char = find_next_statement_start(constant.location.end_char)
 
       bodystmt.bind(
@@ -2415,7 +2434,7 @@ module SyntaxTree
     # :call-seq:
     #   on_mrhs_add_star: (MRHS mrhs, untyped value) -> MRHS
     def on_mrhs_add_star(mrhs, value)
-      beginning = find_token(Op, "*")
+      beginning = consume_token_value(Op, "*")
       ending = value || beginning
 
       arg_star =
@@ -2443,7 +2462,7 @@ module SyntaxTree
     # :call-seq:
     #   on_next: (Args arguments) -> Next
     def on_next(arguments)
-      keyword = find_token(Kw, "next")
+      keyword = consume_token_value(Kw, "next")
 
       location = keyword.location
       location = location.to(arguments.location) if arguments.parts.any?
@@ -2558,8 +2577,8 @@ module SyntaxTree
     # :call-seq:
     #   on_paren: (untyped contents) -> Paren
     def on_paren(contents)
-      lparen = find_token(LParen)
-      rparen = find_token(RParen)
+      lparen = consume_token(LParen)
+      rparen = consume_token(RParen)
 
       if contents.is_a?(Params)
         location = contents.location
@@ -2764,7 +2783,7 @@ module SyntaxTree
     # :call-seq:
     #   on_qsymbols_new: () -> QSymbols
     def on_qsymbols_new
-      beginning = find_token(QSymbolsBeg)
+      beginning = consume_token(QSymbolsBeg)
 
       QSymbols.new(
         beginning: beginning,
@@ -2805,7 +2824,7 @@ module SyntaxTree
     # :call-seq:
     #   on_qwords_new: () -> QWords
     def on_qwords_new
-      beginning = find_token(QWordsBeg)
+      beginning = consume_token(QWordsBeg)
 
       QWords.new(
         beginning: beginning,
@@ -2870,7 +2889,7 @@ module SyntaxTree
     # :call-seq:
     #   on_redo: () -> Redo
     def on_redo
-      keyword = find_token(Kw, "redo")
+      keyword = consume_token_value(Kw, "redo")
 
       Redo.new(value: keyword.value, location: keyword.location)
     end
@@ -2946,7 +2965,7 @@ module SyntaxTree
     # :call-seq:
     #   on_regexp_new: () -> RegexpContent
     def on_regexp_new
-      regexp_beg = find_token(RegexpBeg)
+      regexp_beg = consume_token(RegexpBeg)
 
       RegexpContent.new(
         beginning: regexp_beg.value,
@@ -2963,7 +2982,7 @@ module SyntaxTree
     #     (nil | Rescue) consequent
     #   ) -> Rescue
     def on_rescue(exceptions, variable, statements, consequent)
-      keyword = find_token(Kw, "rescue")
+      keyword = consume_token_value(Kw, "rescue")
       exceptions = exceptions[0] if exceptions.is_a?(Array)
 
       last_node = variable || exceptions || keyword
@@ -3015,7 +3034,7 @@ module SyntaxTree
     # :call-seq:
     #   on_rescue_mod: (untyped statement, untyped value) -> RescueMod
     def on_rescue_mod(statement, value)
-      find_token(Kw, "rescue")
+      consume_token_value(Kw, "rescue")
 
       RescueMod.new(
         statement: statement,
@@ -3027,7 +3046,7 @@ module SyntaxTree
     # :call-seq:
     #   on_rest_param: ((nil | Ident) name) -> RestParam
     def on_rest_param(name)
-      location = find_token(Op, "*").location
+      location = consume_token_value(Op, "*").location
       location = location.to(name.location) if name
 
       RestParam.new(name: name, location: location)
@@ -3036,7 +3055,7 @@ module SyntaxTree
     # :call-seq:
     #   on_retry: () -> Retry
     def on_retry
-      keyword = find_token(Kw, "retry")
+      keyword = consume_token_value(Kw, "retry")
 
       Retry.new(value: keyword.value, location: keyword.location)
     end
@@ -3044,7 +3063,7 @@ module SyntaxTree
     # :call-seq:
     #   on_return: (Args arguments) -> Return
     def on_return(arguments)
-      keyword = find_token(Kw, "return")
+      keyword = consume_token_value(Kw, "return")
 
       Return.new(
         arguments: arguments,
@@ -3055,7 +3074,7 @@ module SyntaxTree
     # :call-seq:
     #   on_return0: () -> Return0
     def on_return0
-      keyword = find_token(Kw, "return")
+      keyword = consume_token_value(Kw, "return")
 
       Return0.new(value: keyword.value, location: keyword.location)
     end
@@ -3082,8 +3101,8 @@ module SyntaxTree
     # :call-seq:
     #   on_sclass: (untyped target, BodyStmt bodystmt) -> SClass
     def on_sclass(target, bodystmt)
-      beginning = find_token(Kw, "class")
-      ending = find_token(Kw, "end")
+      beginning = consume_token_value(Kw, "class")
+      ending = consume_token_value(Kw, "end")
       start_char = find_next_statement_start(target.location.end_char)
 
       bodystmt.bind(
@@ -3181,7 +3200,7 @@ module SyntaxTree
     # :call-seq:
     #   on_string_dvar: ((Backref | VarRef) variable) -> StringDVar
     def on_string_dvar(variable)
-      embvar = find_token(EmbVar)
+      embvar = consume_token(EmbVar)
 
       StringDVar.new(
         variable: variable,
@@ -3192,8 +3211,8 @@ module SyntaxTree
     # :call-seq:
     #   on_string_embexpr: (Statements statements) -> StringEmbExpr
     def on_string_embexpr(statements)
-      embexpr_beg = find_token(EmbExprBeg)
-      embexpr_end = find_token(EmbExprEnd)
+      embexpr_beg = consume_token(EmbExprBeg)
+      embexpr_end = consume_token(EmbExprEnd)
 
       statements.bind(
         embexpr_beg.location.end_char,
@@ -3234,8 +3253,8 @@ module SyntaxTree
           location: heredoc.location
         )
       else
-        tstring_beg = find_token(TStringBeg)
-        tstring_end = find_token(TStringEnd, location: tstring_beg.location)
+        tstring_beg = consume_token(TStringBeg)
+        tstring_end = consume_token(TStringEnd, location: tstring_beg.location)
 
         location =
           Location.new(
@@ -3261,7 +3280,7 @@ module SyntaxTree
     # :call-seq:
     #   on_super: ((ArgParen | Args) arguments) -> Super
     def on_super(arguments)
-      keyword = find_token(Kw, "super")
+      keyword = consume_token_value(Kw, "super")
 
       Super.new(
         arguments: arguments,
@@ -3308,7 +3327,7 @@ module SyntaxTree
     #   ) -> SymbolLiteral
     def on_symbol_literal(value)
       if value.is_a?(SymbolContent)
-        symbeg = find_token(SymBeg)
+        symbeg = consume_token(SymBeg)
 
         SymbolLiteral.new(
           value: value.value,
@@ -3352,7 +3371,7 @@ module SyntaxTree
     # :call-seq:
     #   on_symbols_new: () -> Symbols
     def on_symbols_new
-      beginning = find_token(SymbolsBeg)
+      beginning = consume_token(SymbolsBeg)
 
       Symbols.new(
         beginning: beginning,
@@ -3482,13 +3501,13 @@ module SyntaxTree
         # We have somewhat special handling of the not operator since if it has
         # parentheses they don't get reported as a paren node for some reason.
 
-        beginning = find_token(Kw, "not")
+        beginning = consume_token_value(Kw, "not")
         ending = statement || beginning
         parentheses = source[beginning.location.end_char] == "("
 
         if parentheses
-          find_token(LParen)
-          ending = find_token(RParen)
+          consume_token(LParen)
+          ending = consume_token(RParen)
         end
 
         Not.new(
@@ -3521,7 +3540,7 @@ module SyntaxTree
     # :call-seq:
     #   on_undef: (Array[DynaSymbol | SymbolLiteral] symbols) -> Undef
     def on_undef(symbols)
-      keyword = find_token(Kw, "undef")
+      keyword = consume_token_value(Kw, "undef")
 
       Undef.new(
         symbols: symbols,
@@ -3536,8 +3555,8 @@ module SyntaxTree
     #     ((nil | Elsif | Else) consequent)
     #   ) -> Unless
     def on_unless(predicate, statements, consequent)
-      beginning = find_token(Kw, "unless")
-      ending = consequent || find_token(Kw, "end")
+      beginning = consume_token_value(Kw, "unless")
+      ending = consequent || consume_token_value(Kw, "end")
 
       start_char = find_next_statement_start(predicate.location.end_char)
       statements.bind(
@@ -3558,7 +3577,7 @@ module SyntaxTree
     # :call-seq:
     #   on_unless_mod: (untyped predicate, untyped statement) -> UnlessMod
     def on_unless_mod(predicate, statement)
-      find_token(Kw, "unless")
+      consume_token_value(Kw, "unless")
 
       UnlessMod.new(
         statement: statement,
@@ -3570,12 +3589,12 @@ module SyntaxTree
     # :call-seq:
     #   on_until: (untyped predicate, Statements statements) -> Until
     def on_until(predicate, statements)
-      beginning = find_token(Kw, "until")
-      ending = find_token(Kw, "end")
+      beginning = consume_token_value(Kw, "until")
+      ending = consume_token_value(Kw, "end")
 
       # Consume the do keyword if it exists so that it doesn't get confused for
       # some other block
-      keyword = find_token(Kw, "do", consume: false)
+      keyword = find_token_value(Kw, "do")
       if keyword && keyword.location.start_char > predicate.location.end_char &&
            keyword.location.end_char < ending.location.start_char
         tokens.delete(keyword)
@@ -3600,7 +3619,7 @@ module SyntaxTree
     # :call-seq:
     #   on_until_mod: (untyped predicate, untyped statement) -> UntilMod
     def on_until_mod(predicate, statement)
-      find_token(Kw, "until")
+      consume_token_value(Kw, "until")
 
       UntilMod.new(
         statement: statement,
@@ -3612,7 +3631,7 @@ module SyntaxTree
     # :call-seq:
     #   on_var_alias: (GVar left, (Backref | GVar) right) -> VarAlias
     def on_var_alias(left, right)
-      keyword = find_token(Kw, "alias")
+      keyword = consume_token_value(Kw, "alias")
 
       VarAlias.new(
         left: left,
@@ -3666,11 +3685,11 @@ module SyntaxTree
     #     (nil | Else | When) consequent
     #   ) -> When
     def on_when(arguments, statements, consequent)
-      beginning = find_token(Kw, "when")
-      ending = consequent || find_token(Kw, "end")
+      beginning = consume_token_value(Kw, "when")
+      ending = consequent || consume_token_value(Kw, "end")
 
       statements_start = arguments
-      if (token = find_token(Kw, "then", consume: false))
+      if (token = find_token_value(Kw, "then"))
         tokens.delete(token)
         statements_start = token
       end
@@ -3696,12 +3715,12 @@ module SyntaxTree
     # :call-seq:
     #   on_while: (untyped predicate, Statements statements) -> While
     def on_while(predicate, statements)
-      beginning = find_token(Kw, "while")
-      ending = find_token(Kw, "end")
+      beginning = consume_token_value(Kw, "while")
+      ending = consume_token_value(Kw, "end")
 
       # Consume the do keyword if it exists so that it doesn't get confused for
       # some other block
-      keyword = find_token(Kw, "do", consume: false)
+      keyword = find_token_value(Kw, "do")
       if keyword && keyword.location.start_char > predicate.location.end_char &&
            keyword.location.end_char < ending.location.start_char
         tokens.delete(keyword)
@@ -3726,7 +3745,7 @@ module SyntaxTree
     # :call-seq:
     #   on_while_mod: (untyped predicate, untyped statement) -> WhileMod
     def on_while_mod(predicate, statement)
-      find_token(Kw, "while")
+      consume_token_value(Kw, "while")
 
       WhileMod.new(
         statement: statement,
@@ -3789,7 +3808,7 @@ module SyntaxTree
     # :call-seq:
     #   on_words_new: () -> Words
     def on_words_new
-      beginning = find_token(WordsBeg)
+      beginning = consume_token(WordsBeg)
 
       Words.new(
         beginning: beginning,
@@ -3823,7 +3842,7 @@ module SyntaxTree
         if heredoc && heredoc.beginning.value.include?("`")
           heredoc.location
         else
-          find_token(Backtick).location
+          consume_token(Backtick).location
         end
 
       XString.new(parts: [], location: location)
@@ -3843,7 +3862,7 @@ module SyntaxTree
           location: heredoc.location
         )
       else
-        ending = find_token(TStringEnd, location: xstring.location)
+        ending = consume_token(TStringEnd, location: xstring.location)
 
         XStringLiteral.new(
           parts: xstring.parts,
@@ -3855,7 +3874,7 @@ module SyntaxTree
     # :call-seq:
     #   on_yield: ((Args | Paren) arguments) -> Yield
     def on_yield(arguments)
-      keyword = find_token(Kw, "yield")
+      keyword = consume_token_value(Kw, "yield")
 
       Yield.new(
         arguments: arguments,
@@ -3866,7 +3885,7 @@ module SyntaxTree
     # :call-seq:
     #   on_yield0: () -> Yield0
     def on_yield0
-      keyword = find_token(Kw, "yield")
+      keyword = consume_token_value(Kw, "yield")
 
       Yield0.new(value: keyword.value, location: keyword.location)
     end
@@ -3874,7 +3893,7 @@ module SyntaxTree
     # :call-seq:
     #   on_zsuper: () -> ZSuper
     def on_zsuper
-      keyword = find_token(Kw, "super")
+      keyword = consume_token_value(Kw, "super")
 
       ZSuper.new(value: keyword.value, location: keyword.location)
     end
