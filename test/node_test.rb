@@ -951,7 +951,7 @@ module SyntaxTree
     guard_version("3.1.0") do
       def test_pinned_var_ref
         source = "foo in ^bar"
-        at = location(chars: 7..11)
+        at = location(chars: 8..11)
 
         assert_node(PinnedVarRef, source, at: at, &:pattern)
       end

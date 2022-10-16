@@ -60,28 +60,45 @@ module SyntaxTree
     # This represents all of the tokens coming back from the lexer. It is
     # replacing a simple array because it keeps track of the last deleted token
     # from the list for better error messages.
-    class TokenList < SimpleDelegator
-      attr_reader :last_deleted
+    class TokenList
+      attr_reader :tokens, :last_deleted
 
-      def initialize(object)
-        super
+      def initialize
+        @tokens = []
         @last_deleted = nil
       end
 
+      def <<(token)
+        tokens << token
+      end
+
+      def [](index)
+        tokens[index]
+      end
+
+      def any?(&block)
+        tokens.any?(&block)
+      end
+
+      def reverse_each(&block)
+        tokens.reverse_each(&block)
+      end
+
+      def rindex(&block)
+        tokens.rindex(&block)
+      end
+
       def delete(value)
-        @last_deleted = super || @last_deleted
+        @last_deleted = tokens.delete(value) || @last_deleted
       end
 
       def delete_at(index)
-        @last_deleted = super
+        @last_deleted = tokens.delete_at(index)
       end
     end
 
     # [String] the source being parsed
     attr_reader :source
-
-    # [Array[ String ]] the list of lines in the source
-    attr_reader :lines
 
     # [Array[ SingleByteString | MultiByteString ]] the list of objects that
     # represent the start of each line in character offsets
@@ -104,12 +121,6 @@ module SyntaxTree
       # string when you want to check if it contains a certain character, for
       # example.
       @source = source
-
-      # Similarly, we keep the lines of the source string around to be able to
-      # check if certain lines contain certain characters. For example, we'll
-      # use this to generate the content that goes after the __END__ keyword.
-      # Or we'll use this to check if a comment has other content on its line.
-      @lines = source.split(/\r?\n/)
 
       # This is the full set of comments that have been found by the parser.
       # It's a running list. At the end of every block of statements, they will
@@ -144,7 +155,7 @@ module SyntaxTree
       # Most of the time, when a parser event consumes one of these events, it
       # will be deleted from the list. So ideally, this list stays pretty short
       # over the course of parsing a source string.
-      @tokens = TokenList.new([])
+      @tokens = TokenList.new
 
       # Here we're going to build up a list of SingleByteString or
       # MultiByteString objects. They're each going to represent a string in the
@@ -283,13 +294,18 @@ module SyntaxTree
     # By finding the next non-space character, we can make sure that the bounds
     # of the statement list are correct.
     def find_next_statement_start(position)
-      remaining = source[position..]
+      maximum = source.length
 
-      if remaining.sub(/\A +/, "")[0] == "#"
-        return position + remaining.index("\n")
+      position.upto(maximum) do |pound_index|
+        case source[pound_index]
+        when "#"
+          return source.index("\n", pound_index + 1) || maximum
+        when " "
+          # continue
+        else
+          return position
+        end
       end
-
-      position
     end
 
     # --------------------------------------------------------------------------
@@ -564,6 +580,56 @@ module SyntaxTree
           elements: contents.elements,
           location: contents.location.to(tstring_end.location)
         )
+      end
+    end
+
+    # Ugh... I really do not like this class. Basically, ripper doesn't provide
+    # enough information about where pins are located in the tree. It only gives
+    # events for ^ ops and var_ref nodes. You have to piece it together
+    # yourself.
+    #
+    # Note that there are edge cases here that we straight up do not address,
+    # because I honestly think it's going to be faster to write a new parser
+    # than to address them. For example, this will not work properly:
+    #
+    #     foo in ^((bar = 0; bar; baz))
+    #
+    # If someone actually does something like that, we'll have to find another
+    # way to make this work.
+    class PinVisitor < Visitor
+      attr_reader :pins, :stack
+
+      def initialize(pins)
+        @pins = pins
+        @stack = []
+      end
+
+      def visit(node)
+        return if pins.empty?
+        stack << node
+        super
+        stack.pop
+      end
+
+      def visit_var_ref(node)
+        pins.shift
+        node.pin(stack[-2])
+      end
+
+      def self.visit(node, tokens)
+        start_char = node.location.start_char
+        allocated = []
+
+        tokens.reverse_each do |token|
+          char = token.location.start_char
+          break if char <= start_char
+
+          if token.is_a?(Op) && token.value == "^"
+            allocated.unshift(tokens.delete(token))
+          end
+        end
+
+        new(allocated).visit(node) if allocated.any?
       end
     end
 
@@ -917,12 +983,15 @@ module SyntaxTree
             find_token(Op, "=>")
           end
 
-        RAssign.new(
+        node = RAssign.new(
           value: value,
           operator: operator,
           pattern: consequent,
           location: value.location.to(consequent.location)
         )
+
+        PinVisitor.visit(node, tokens)
+        node
       end
     end
 
@@ -1004,19 +1073,19 @@ module SyntaxTree
     # :call-seq:
     #   on_comment: (String value) -> Comment
     def on_comment(value)
-      line = lineno
-      comment =
-        Comment.new(
-          value: value.chomp,
-          inline: value.strip != lines[line - 1].strip,
-          location:
-            Location.token(
-              line: line,
-              char: char_pos,
-              column: current_column,
-              size: value.size - 1
-            )
+      char = char_pos
+      location =
+        Location.token(
+          line: lineno,
+          char: char,
+          column: current_column,
+          size: value.size - 1
         )
+
+      index = source.rindex(/[^\t ]/, char - 1) if char != 0
+      inline = index && (source[index] != "\n")
+      comment =
+        Comment.new(value: value.chomp, inline: inline, location: location)
 
       @comments << comment
       comment
@@ -1878,12 +1947,15 @@ module SyntaxTree
         ending.location.start_column
       )
 
-      In.new(
+      node = In.new(
         pattern: pattern,
         statements: statements,
         consequent: consequent,
         location: beginning.location.to(ending.location)
       )
+
+      PinVisitor.visit(node, tokens)
+      node
     end
 
     # :call-seq:
@@ -2551,13 +2623,13 @@ module SyntaxTree
     # :call-seq:
     #   on_program: (Statements statements) -> Program
     def on_program(statements)
-      last_column = source.length - line_counts[lines.length - 1].start
+      last_column = source.length - line_counts.last.start
       location =
         Location.new(
           start_line: 1,
           start_char: 0,
           start_column: 0,
-          end_line: lines.length,
+          end_line: line_counts.length - 1,
           end_char: source.length,
           end_column: last_column
         )
@@ -3569,17 +3641,7 @@ module SyntaxTree
     # :call-seq:
     #   on_var_ref: ((Const | CVar | GVar | Ident | IVar | Kw) value) -> VarRef
     def on_var_ref(value)
-      pin = find_token(Op, "^", consume: false)
-
-      if pin && pin.location.start_char == value.location.start_char - 1
-        tokens.delete(pin)
-        PinnedVarRef.new(
-          value: value,
-          location: pin.location.to(value.location)
-        )
-      else
-        VarRef.new(value: value, location: value.location)
-      end
+      VarRef.new(value: value, location: value.location)
     end
 
     # :call-seq:

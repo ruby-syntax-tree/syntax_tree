@@ -177,10 +177,10 @@ module SyntaxTree
         q.text("BEGIN ")
         q.format(lbrace)
         q.indent do
-          q.breakable
+          q.breakable_space
           q.format(statements)
         end
-        q.breakable
+        q.breakable_space
         q.text("}")
       end
     end
@@ -280,10 +280,10 @@ module SyntaxTree
         q.text("END ")
         q.format(lbrace)
         q.indent do
-          q.breakable
+          q.breakable_space
           q.format(statements)
         end
-        q.breakable
+        q.breakable_space
         q.text("}")
       end
     end
@@ -327,10 +327,8 @@ module SyntaxTree
 
     def format(q)
       q.text("__END__")
-      q.breakable(force: true)
-
-      separator = -> { q.breakable(indent: false, force: true) }
-      q.seplist(value.split(/\r?\n/, -1), separator) { |line| q.text(line) }
+      q.breakable_force
+      q.seplist(value.split(/\r?\n/, -1), Formatter::BREAKABLE_RETURN_SEPARATOR) { |line| q.text(line) }
     end
   end
 
@@ -412,7 +410,7 @@ module SyntaxTree
         q.format(left_argument, stackable: false)
         q.group do
           q.nest(keyword.length) do
-            q.breakable(force: left_argument.comments.any?)
+            left_argument.comments.any? ? q.breakable_force : q.breakable_space
             q.format(AliasArgumentFormatter.new(right), stackable: false)
           end
         end
@@ -476,10 +474,10 @@ module SyntaxTree
 
         if index
           q.indent do
-            q.breakable("")
+            q.breakable_empty
             q.format(index)
           end
-          q.breakable("")
+          q.breakable_empty
         end
 
         q.text("]")
@@ -537,10 +535,10 @@ module SyntaxTree
 
         if index
           q.indent do
-            q.breakable("")
+            q.breakable_empty
             q.format(index)
           end
-          q.breakable("")
+          q.breakable_empty
         end
 
         q.text("]")
@@ -593,14 +591,16 @@ module SyntaxTree
         return
       end
 
-      q.group(0, "(", ")") do
+      q.text("(")
+      q.group do
         q.indent do
-          q.breakable("")
+          q.breakable_empty
           q.format(arguments)
           q.if_break { q.text(",") } if q.trailing_comma? && trailing_comma?
         end
-        q.breakable("")
+        q.breakable_empty
       end
+      q.text(")")
     end
 
     private
@@ -800,10 +800,11 @@ module SyntaxTree
       end
 
       def format(q)
-        q.group(0, "%w[", "]") do
+        q.text("%w[")
+        q.group do
           q.indent do
-            q.breakable("")
-            q.seplist(contents.parts, -> { q.breakable }) do |part|
+            q.breakable_empty
+            q.seplist(contents.parts, Formatter::BREAKABLE_SPACE_SEPARATOR) do |part|
               if part.is_a?(StringLiteral)
                 q.format(part.parts.first)
               else
@@ -811,8 +812,9 @@ module SyntaxTree
               end
             end
           end
-          q.breakable("")
+          q.breakable_empty
         end
+        q.text("]")
       end
     end
 
@@ -826,15 +828,17 @@ module SyntaxTree
       end
 
       def format(q)
-        q.group(0, "%i[", "]") do
+        q.text("%i[")
+        q.group do
           q.indent do
-            q.breakable("")
-            q.seplist(contents.parts, -> { q.breakable }) do |part|
+            q.breakable_empty
+            q.seplist(contents.parts, Formatter::BREAKABLE_SPACE_SEPARATOR) do |part|
               q.format(part.value)
             end
           end
-          q.breakable("")
+          q.breakable_empty
         end
+        q.text("]")
       end
     end
 
@@ -861,6 +865,13 @@ module SyntaxTree
     #
     # provided the line length was hit between `bar` and `baz`.
     class VarRefsFormatter
+      class Separator
+        def call(q)
+          q.text(",")
+          q.fill_breakable
+        end
+      end
+
       # [Args] the contents of the array
       attr_reader :contents
 
@@ -869,20 +880,16 @@ module SyntaxTree
       end
 
       def format(q)
-        q.group(0, "[", "]") do
+        q.text("[")
+        q.group do
           q.indent do
-            q.breakable("")
-
-            separator = -> do
-              q.text(",")
-              q.fill_breakable
-            end
-
-            q.seplist(contents.parts, separator) { |part| q.format(part) }
+            q.breakable_empty
+            q.seplist(contents.parts, Separator.new) { |part| q.format(part) }
             q.if_break { q.text(",") } if q.trailing_comma?
           end
-          q.breakable("")
+          q.breakable_empty
         end
+        q.text("]")
       end
     end
 
@@ -902,11 +909,11 @@ module SyntaxTree
           q.text("[")
           q.indent do
             lbracket.comments.each do |comment|
-              q.breakable(force: true)
+              q.breakable_force
               comment.format(q)
             end
           end
-          q.breakable(force: true)
+          q.breakable_force
           q.text("]")
         end
       end
@@ -973,13 +980,13 @@ module SyntaxTree
 
         if contents
           q.indent do
-            q.breakable("")
+            q.breakable_empty
             q.format(contents)
             q.if_break { q.text(",") } if q.trailing_comma?
           end
         end
 
-        q.breakable("")
+        q.breakable_empty
         q.text("]")
       end
     end
@@ -1127,7 +1134,7 @@ module SyntaxTree
         q.format(constant) if constant
         q.text("[")
         q.indent do
-          q.breakable("")
+          q.breakable_empty
 
           parts = [*requireds]
           parts << RestFormatter.new(rest) if rest
@@ -1135,7 +1142,7 @@ module SyntaxTree
 
           q.seplist(parts) { |part| q.format(part) }
         end
-        q.breakable("")
+        q.breakable_empty
         q.text("]")
       end
     end
@@ -1145,13 +1152,13 @@ module SyntaxTree
   module AssignFormatting
     def self.skip_indent?(value)
       case value
-      in ArrayLiteral | HashLiteral | Heredoc | Lambda | QSymbols | QWords |
-           Symbols | Words
+      when ArrayLiteral, HashLiteral, Heredoc, Lambda, QSymbols, QWords,
+           Symbols, Words
         true
-      in Call[receiver:]
-        skip_indent?(receiver)
-      in DynaSymbol[quote:]
-        quote.start_with?("%s")
+      when Call
+        skip_indent?(value.receiver)
+      when DynaSymbol
+        value.quote.start_with?("%s")
       else
         false
       end
@@ -1206,7 +1213,7 @@ module SyntaxTree
           q.format(value)
         else
           q.indent do
-            q.breakable
+            q.breakable_space
             q.format(value)
           end
         end
@@ -1277,7 +1284,7 @@ module SyntaxTree
         q.format(value)
       else
         q.indent do
-          q.breakable
+          q.breakable_space
           q.format(value)
         end
       end
@@ -1544,12 +1551,12 @@ module SyntaxTree
 
       unless bodystmt.empty?
         q.indent do
-          q.breakable(force: true) unless bodystmt.statements.empty?
+          q.breakable_force unless bodystmt.statements.empty?
           q.format(bodystmt)
         end
       end
 
-      q.breakable(force: true)
+      q.breakable_force
       q.text("end")
     end
   end
@@ -1592,10 +1599,10 @@ module SyntaxTree
         q.text("^(")
         q.nest(1) do
           q.indent do
-            q.breakable("")
+            q.breakable_empty
             q.format(statement)
           end
-          q.breakable("")
+          q.breakable_empty
           q.text(")")
         end
       end
@@ -1669,7 +1676,7 @@ module SyntaxTree
             q.text(operator.to_s)
 
             q.indent do
-              q.breakable(power ? "" : " ")
+              power ? q.breakable_empty : q.breakable_space
               q.format(right)
             end
           end
@@ -1716,15 +1723,29 @@ module SyntaxTree
       { params: params, locals: locals, location: location, comments: comments }
     end
 
+    # Within the pipes of the block declaration, we don't want any spaces. So
+    # we'll separate the parameters with a comma and space but no breakables.
+    class Separator
+      def call(q)
+        q.text(", ")
+      end
+    end
+
+    # We'll keep a single instance of this separator around for all block vars
+    # to cut down on allocations.
+    SEPARATOR = Separator.new
+
     def format(q)
-      q.group(0, "|", "|") do
+      q.text("|")
+      q.group do
         q.remove_breaks(q.format(params))
 
         if locals.any?
           q.text("; ")
-          q.seplist(locals, -> { q.text(", ") }) { |local| q.format(local) }
+          q.seplist(locals, SEPARATOR) { |local| q.format(local) }
         end
       end
+      q.text("|")
     end
   end
 
@@ -1816,10 +1837,8 @@ module SyntaxTree
           end_column: end_column
         )
 
-      parts = [rescue_clause, else_clause, ensure_clause]
-
       # Here we're going to determine the bounds for the statements
-      consequent = parts.compact.first
+      consequent = rescue_clause || else_clause || ensure_clause
       statements.bind(
         start_char,
         start_column,
@@ -1829,7 +1848,7 @@ module SyntaxTree
 
       # Next we're going to determine the rescue clause if there is one
       if rescue_clause
-        consequent = parts.drop(1).compact.first
+        consequent = else_clause || ensure_clause
         rescue_clause.bind_end(
           consequent ? consequent.location.start_char : end_char,
           consequent ? consequent.location.start_column : end_column
@@ -1868,26 +1887,26 @@ module SyntaxTree
 
         if rescue_clause
           q.nest(-2) do
-            q.breakable(force: true)
+            q.breakable_force
             q.format(rescue_clause)
           end
         end
 
         if else_clause
           q.nest(-2) do
-            q.breakable(force: true)
+            q.breakable_force
             q.format(else_keyword)
           end
 
           unless else_clause.empty?
-            q.breakable(force: true)
+            q.breakable_force
             q.format(else_clause)
           end
         end
 
         if ensure_clause
           q.nest(-2) do
-            q.breakable(force: true)
+            q.breakable_force
             q.format(ensure_clause)
           end
         end
@@ -2004,22 +2023,16 @@ module SyntaxTree
     # If we're the predicate of a loop or conditional, then we're going to have
     # to go with the {..} bounds.
     def forced_brace_bounds?(q)
-      parents = q.parents.to_a
-      parents.each_with_index.any? do |parent, index|
-        # If we hit certain breakpoints then we know we're safe.
-        break false if [Paren, Statements].include?(parent.class)
-
-        [
-          If,
-          IfMod,
-          IfOp,
-          Unless,
-          UnlessMod,
-          While,
-          WhileMod,
-          Until,
-          UntilMod
-        ].include?(parent.class) && parent.predicate == parents[index - 1]
+      previous = nil
+      q.parents.any? do |parent|
+        case parent
+        when Paren, Statements
+          # If we hit certain breakpoints then we know we're safe.
+          return false
+        when If, IfMod, IfOp, Unless, UnlessMod, While, WhileMod, Until, UntilMod
+          return true if parent.predicate == previous
+          previous = parent
+        end
       end
     end
 
@@ -2034,12 +2047,12 @@ module SyntaxTree
 
       unless statements.empty?
         q.indent do
-          q.breakable
+          q.breakable_space
           q.format(statements)
         end
       end
 
-      q.breakable
+      q.breakable_space
       q.text(closing)
     end
 
@@ -2048,17 +2061,17 @@ module SyntaxTree
       q.format(BlockOpenFormatter.new(opening, block_open), stackable: false)
 
       if node.block_var
-        q.breakable
+        q.breakable_space
         q.format(node.block_var)
-        q.breakable
+        q.breakable_space
       end
 
       if statements.empty?
         q.text(" ") if opening == "do"
       else
-        q.breakable unless node.block_var
+        q.breakable_space unless node.block_var
         q.format(statements)
-        q.breakable
+        q.breakable_space
       end
 
       q.text(closing)
@@ -2241,20 +2254,20 @@ module SyntaxTree
     def format_array_contents(q, array)
       q.if_break { q.text("[") }
       q.indent do
-        q.breakable("")
+        q.breakable_empty
         q.format(array.contents)
       end
-      q.breakable("")
+      q.breakable_empty
       q.if_break { q.text("]") }
     end
 
     def format_arguments(q, opening, closing)
       q.if_break { q.text(opening) }
       q.indent do
-        q.breakable(" ")
+        q.breakable_space
         q.format(node.arguments)
       end
-      q.breakable("")
+      q.breakable_empty
       q.if_break { q.text(closing) }
     end
 
@@ -2446,7 +2459,7 @@ module SyntaxTree
             in Call
               # If we're at a Call node and not a MethodAddBlock node in the
               # chain then we're going to add a newline so it indents properly.
-              q.breakable("")
+              q.breakable_empty
             else
             end
 
@@ -2530,7 +2543,7 @@ module SyntaxTree
       # them out here since we're bypassing the normal comment printing.
       if child.comments.any? && !skip_comments
         child.comments.each do |comment|
-          comment.inline? ? q.text(" ") : q.breakable
+          comment.inline? ? q.text(" ") : q.breakable_space
           comment.format(q)
         end
 
@@ -2605,7 +2618,8 @@ module SyntaxTree
       # If we're at the top of a call chain, then we're going to do some
       # specialized printing in case we can print it nicely. We _only_ do this
       # at the top of the chain to avoid weird recursion issues.
-      if !CallChainFormatter.chained?(q.parent) &&
+      if !ENV["STREE_SKIP_CALL_CHAIN"] &&
+           !CallChainFormatter.chained?(q.parent) &&
            CallChainFormatter.chained?(receiver)
         q.group do
           q
@@ -2642,7 +2656,7 @@ module SyntaxTree
         q.group do
           q.indent do
             if receiver.comments.any? || call_operator.comments.any?
-              q.breakable(force: true)
+              q.breakable_force
             end
 
             if call_operator.comments.empty?
@@ -2719,9 +2733,9 @@ module SyntaxTree
           q.format(value)
         end
 
-        q.breakable(force: true)
+        q.breakable_force
         q.format(consequent)
-        q.breakable(force: true)
+        q.breakable_force
 
         q.text("end")
       end
@@ -2788,7 +2802,7 @@ module SyntaxTree
         else
           q.group do
             q.indent do
-              q.breakable
+              q.breakable_space
               q.format(pattern)
             end
           end
@@ -2887,7 +2901,7 @@ module SyntaxTree
       if bodystmt.empty?
         q.group do
           declaration.call
-          q.breakable(force: true)
+          q.breakable_force
           q.text("end")
         end
       else
@@ -2895,11 +2909,11 @@ module SyntaxTree
           declaration.call
 
           q.indent do
-            q.breakable(force: true)
+            q.breakable_force
             q.format(bodystmt)
           end
 
-          q.breakable(force: true)
+          q.breakable_force
           q.text("end")
         end
       end
@@ -3069,7 +3083,7 @@ module SyntaxTree
             if message.comments.any?(&:leading?)
               q.format(CallOperatorFormatter.new(operator), stackable: false)
               q.indent do
-                q.breakable("")
+                q.breakable_empty
                 q.format(message)
               end
             else
@@ -3155,7 +3169,7 @@ module SyntaxTree
     end
 
     def ignore?
-      value[1..].strip == "stree-ignore"
+      value.match?(/\A#\s*stree-ignore\s*\z/)
     end
 
     def comments
@@ -3455,12 +3469,12 @@ module SyntaxTree
 
         unless bodystmt.empty?
           q.indent do
-            q.breakable(force: true)
+            q.breakable_force
             q.format(bodystmt)
           end
         end
 
-        q.breakable(force: true)
+        q.breakable_force
         q.text("end")
       end
     end
@@ -3549,7 +3563,7 @@ module SyntaxTree
         q.text(" =")
         q.group do
           q.indent do
-            q.breakable
+            q.breakable_space
             q.format(statement)
           end
         end
@@ -3590,13 +3604,15 @@ module SyntaxTree
     end
 
     def format(q)
-      q.group(0, "defined?(", ")") do
+      q.text("defined?(")
+      q.group do
         q.indent do
-          q.breakable("")
+          q.breakable_empty
           q.format(value)
         end
-        q.breakable("")
+        q.breakable_empty
       end
+      q.text(")")
     end
   end
 
@@ -3678,12 +3694,12 @@ module SyntaxTree
 
         unless bodystmt.empty?
           q.indent do
-            q.breakable(force: true)
+            q.breakable_force
             q.format(bodystmt)
           end
         end
 
-        q.breakable(force: true)
+        q.breakable_force
         q.text("end")
       end
     end
@@ -3948,12 +3964,12 @@ module SyntaxTree
     def format(q)
       opening_quote, closing_quote = quotes(q)
 
-      q.group(0, opening_quote, closing_quote) do
+      q.text(opening_quote)
+      q.group do
         parts.each do |part|
           if part.is_a?(TStringContent)
             value = Quotes.normalize(part.value, closing_quote)
-            separator = -> { q.breakable(force: true, indent: false) }
-            q.seplist(value.split(/\r?\n/, -1), separator) do |text|
+            q.seplist(value.split(/\r?\n/, -1), Formatter::BREAKABLE_RETURN_SEPARATOR) do |text|
               q.text(text)
             end
           else
@@ -3961,6 +3977,7 @@ module SyntaxTree
           end
         end
       end
+      q.text(closing_quote)
     end
 
     private
@@ -4056,7 +4073,7 @@ module SyntaxTree
 
         unless statements.empty?
           q.indent do
-            q.breakable(force: true)
+            q.breakable_force
             q.format(statements)
           end
         end
@@ -4126,14 +4143,14 @@ module SyntaxTree
 
         unless statements.empty?
           q.indent do
-            q.breakable(force: true)
+            q.breakable_force
             q.format(statements)
           end
         end
 
         if consequent
           q.group do
-            q.breakable(force: true)
+            q.breakable_force
             q.format(consequent)
           end
         end
@@ -4329,7 +4346,7 @@ module SyntaxTree
 
       unless statements.empty?
         q.indent do
-          q.breakable(force: true)
+          q.breakable_force
           q.format(statements)
         end
       end
@@ -4588,7 +4605,7 @@ module SyntaxTree
         q.text("[")
 
         q.indent do
-          q.breakable("")
+          q.breakable_empty
 
           q.text("*")
           q.format(left)
@@ -4601,7 +4618,7 @@ module SyntaxTree
           q.format(right)
         end
 
-        q.breakable("")
+        q.breakable_empty
         q.text("]")
       end
     end
@@ -4663,12 +4680,12 @@ module SyntaxTree
 
         unless statements.empty?
           q.indent do
-            q.breakable(force: true)
+            q.breakable_force
             q.format(statements)
           end
         end
 
-        q.breakable(force: true)
+        q.breakable_force
         q.text("end")
       end
     end
@@ -4731,11 +4748,11 @@ module SyntaxTree
           q.text("{")
           q.indent do
             lbrace.comments.each do |comment|
-              q.breakable(force: true)
+              q.breakable_force
               comment.format(q)
             end
           end
-          q.breakable(force: true)
+          q.breakable_force
           q.text("}")
         end
       end
@@ -4800,14 +4817,14 @@ module SyntaxTree
       q.format(lbrace)
 
       if assocs.empty?
-        q.breakable("")
+        q.breakable_empty
       else
         q.indent do
-          q.breakable
+          q.breakable_space
           q.seplist(assocs) { |assoc| q.format(assoc) }
           q.if_break { q.text(",") } if q.trailing_comma?
         end
-        q.breakable
+        q.breakable_space
       end
 
       q.text("}")
@@ -4873,22 +4890,32 @@ module SyntaxTree
       }
     end
 
-    def format(q)
-      # This is a very specific behavior where you want to force a newline, but
-      # don't want to force the break parent.
-      breakable = -> { q.breakable(indent: false, force: :skip_break_parent) }
+    # This is a very specific behavior where you want to force a newline, but
+    # don't want to force the break parent.
+    class Separator
+      DOC = PrettierPrint::Breakable.new(" ", 1, indent: false, force: true)
 
+      def call(q)
+        q.target << DOC
+      end
+    end
+
+    # We're going to keep an instance around so we don't have to allocate a new
+    # one every time we format a heredoc.
+    SEPARATOR = Separator.new
+
+    def format(q)
       q.group do
         q.format(beginning)
 
         q.line_suffix(priority: Formatter::HEREDOC_PRIORITY) do
           q.group do
-            breakable.call
+            SEPARATOR.call(q)
 
             parts.each do |part|
               if part.is_a?(TStringContent)
                 texts = part.value.split(/\r?\n/, -1)
-                q.seplist(texts, breakable) { |text| q.text(text) }
+                q.seplist(texts, SEPARATOR) { |text| q.text(text) }
               else
                 q.format(part)
               end
@@ -5097,10 +5124,10 @@ module SyntaxTree
           q.format(constant)
           q.text("[")
           q.indent do
-            q.breakable("")
+            q.breakable_empty
             contents.call
           end
-          q.breakable("")
+          q.breakable_empty
           q.text("]")
         end
         return
@@ -5124,14 +5151,14 @@ module SyntaxTree
       q.group do
         q.text("{")
         q.indent do
-          q.breakable
+          q.breakable_space
           contents.call
         end
 
         if q.target_ruby_version < Gem::Version.new("2.7.3")
           q.text(" }")
         else
-          q.breakable
+          q.breakable_space
           q.text("}")
         end
       end
@@ -5188,8 +5215,12 @@ module SyntaxTree
       queue = [parent]
 
       while (node = queue.shift)
-        return true if [Assign, MAssign, OpAssign].include?(node.class)
-        queue += node.child_nodes.compact
+        case node
+        when Assign, MAssign, OpAssign
+          return true
+        else
+          node.child_nodes.each { |child| queue << child if child }
+        end
       end
 
       false
@@ -5311,17 +5342,17 @@ module SyntaxTree
 
       unless node.statements.empty?
         q.indent do
-          q.breakable(force: force)
+          force ? q.breakable_force : q.breakable_space
           q.format(node.statements)
         end
       end
 
       if node.consequent
-        q.breakable(force: force)
+        force ? q.breakable_force : q.breakable_space
         q.format(node.consequent)
       end
 
-      q.breakable(force: force)
+      force ? q.breakable_force : q.breakable_space
       q.text("end")
     end
 
@@ -5333,11 +5364,11 @@ module SyntaxTree
             q.nest(keyword.length + 1) { q.format(node.predicate) }
 
             q.indent do
-              q.breakable
+              q.breakable_space
               q.format(node.statements)
             end
 
-            q.breakable
+            q.breakable_space
             q.group do
               q.format(node.consequent.keyword)
               q.indent do
@@ -5351,7 +5382,7 @@ module SyntaxTree
               end
             end
 
-            q.breakable
+            q.breakable_space
             q.text("end")
           end
           .if_flat do
@@ -5507,19 +5538,19 @@ module SyntaxTree
         q.nest("if ".length) { q.format(predicate) }
 
         q.indent do
-          q.breakable
+          q.breakable_space
           q.format(truthy)
         end
 
-        q.breakable
+        q.breakable_space
         q.text("else")
 
         q.indent do
-          q.breakable
+          q.breakable_space
           q.format(falsy)
         end
 
-        q.breakable
+        q.breakable_space
         q.text("end")
       end
     end
@@ -5529,11 +5560,11 @@ module SyntaxTree
       q.text(" ?")
 
       q.indent do
-        q.breakable
+        q.breakable_space
         q.format(truthy)
         q.text(" :")
 
-        q.breakable
+        q.breakable_space
         q.format(falsy)
       end
     end
@@ -5566,10 +5597,10 @@ module SyntaxTree
       q.text("#{keyword} ")
       q.nest(keyword.length + 1) { q.format(node.predicate) }
       q.indent do
-        q.breakable
+        q.breakable_space
         q.format(node.statement)
       end
-      q.breakable
+      q.breakable_space
       q.text("end")
     end
 
@@ -5720,13 +5751,13 @@ module SyntaxTree
 
         unless statements.empty?
           q.indent do
-            q.breakable(force: true)
+            q.breakable_force
             q.format(statements)
           end
         end
 
         if consequent
-          q.breakable(force: true)
+          q.breakable_force
           q.format(consequent)
         end
       end
@@ -6013,7 +6044,8 @@ module SyntaxTree
     end
 
     def format(q)
-      q.group(0, "->") do
+      q.text("->")
+      q.group do
         if params.is_a?(Paren)
           q.format(params) unless params.contents.empty?
         elsif params.empty? && params.comments.any?
@@ -6039,10 +6071,10 @@ module SyntaxTree
 
               unless statements.empty?
                 q.indent do
-                  q.breakable
+                  q.breakable_space
                   q.format(statements)
                 end
-                q.breakable
+                q.breakable_space
               end
 
               q.text("}")
@@ -6051,12 +6083,12 @@ module SyntaxTree
 
               unless statements.empty?
                 q.indent do
-                  q.breakable
+                  q.breakable_space
                   q.format(statements)
                 end
               end
 
-              q.breakable
+              q.breakable_space
               q.text("end")
             end
           end
@@ -6123,7 +6155,7 @@ module SyntaxTree
 
       if locals.any?
         q.text("; ")
-        q.seplist(locals, -> { q.text(", ") }) { |local| q.format(local) }
+        q.seplist(locals, BlockVar::SEPARATOR) { |local| q.format(local) }
       end
     end
   end
@@ -6277,7 +6309,7 @@ module SyntaxTree
         q.group { q.format(target) }
         q.text(" =")
         q.indent do
-          q.breakable
+          q.breakable_space
           q.format(value)
         end
       end
@@ -6323,7 +6355,8 @@ module SyntaxTree
       # If we're at the top of a call chain, then we're going to do some
       # specialized printing in case we can print it nicely. We _only_ do this
       # at the top of the chain to avoid weird recursion issues.
-      if !CallChainFormatter.chained?(q.parent) &&
+      if !ENV["STREE_SKIP_CALL_CHAIN"] &&
+          !CallChainFormatter.chained?(q.parent) &&
            CallChainFormatter.chained?(call)
         q.group do
           q
@@ -6431,15 +6464,17 @@ module SyntaxTree
         q.format(contents)
         q.text(",") if comma
       else
-        q.group(0, "(", ")") do
+        q.text("(")
+        q.group do
           q.indent do
-            q.breakable("")
+            q.breakable_empty
             q.format(contents)
           end
 
           q.text(",") if comma
-          q.breakable("")
+          q.breakable_empty
         end
+        q.text(")")
       end
     end
   end
@@ -6496,7 +6531,7 @@ module SyntaxTree
       if bodystmt.empty?
         q.group do
           declaration.call
-          q.breakable(force: true)
+          q.breakable_force
           q.text("end")
         end
       else
@@ -6504,11 +6539,11 @@ module SyntaxTree
           declaration.call
 
           q.indent do
-            q.breakable(force: true)
+            q.breakable_force
             q.format(bodystmt)
           end
 
-          q.breakable(force: true)
+          q.breakable_force
           q.text("end")
         end
       end
@@ -6696,7 +6731,7 @@ module SyntaxTree
           q.format(value)
         else
           q.indent do
-            q.breakable
+            q.breakable_space
             q.format(value)
           end
         end
@@ -6767,10 +6802,10 @@ module SyntaxTree
 
       q.text("(")
       q.indent do
-        q.breakable("")
+        q.breakable_empty
         yield
       end
-      q.breakable("")
+      q.breakable_empty
       q.text(")")
     end
   end
@@ -6970,12 +7005,16 @@ module SyntaxTree
       if ![Def, Defs, DefEndless].include?(q.parent.class) || parts.empty?
         q.nest(0, &contents)
       else
-        q.group(0, "(", ")") do
-          q.indent do
-            q.breakable("")
-            contents.call
+        q.nest(0) do
+          q.text("(")
+          q.group do
+            q.indent do
+              q.breakable_empty
+              contents.call
+            end
+            q.breakable_empty
           end
-          q.breakable("")
+          q.text(")")
         end
       end
     end
@@ -7029,12 +7068,12 @@ module SyntaxTree
 
         if contents && (!contents.is_a?(Params) || !contents.empty?)
           q.indent do
-            q.breakable("")
+            q.breakable_empty
             q.format(contents)
           end
         end
 
-        q.breakable("")
+        q.breakable_empty
         q.text(")")
       end
     end
@@ -7108,7 +7147,7 @@ module SyntaxTree
       # We're going to put a newline on the end so that it always has one unless
       # it ends with the special __END__ syntax. In that case we want to
       # replicate the text exactly so we will just let it be.
-      q.breakable(force: true) unless statements.body.last.is_a?(EndContent)
+      q.breakable_force unless statements.body.last.is_a?(EndContent)
     end
   end
 
@@ -7160,15 +7199,17 @@ module SyntaxTree
         closing = Quotes.matching(opening[2])
       end
 
-      q.group(0, opening, closing) do
+      q.text(opening)
+      q.group do
         q.indent do
-          q.breakable("")
-          q.seplist(elements, -> { q.breakable }) do |element|
+          q.breakable_empty
+          q.seplist(elements, Formatter::BREAKABLE_SPACE_SEPARATOR) do |element|
             q.format(element)
           end
         end
-        q.breakable("")
+        q.breakable_empty
       end
+      q.text(closing)
     end
   end
 
@@ -7251,15 +7292,17 @@ module SyntaxTree
         closing = Quotes.matching(opening[2])
       end
 
-      q.group(0, opening, closing) do
+      q.text(opening)
+      q.group do
         q.indent do
-          q.breakable("")
-          q.seplist(elements, -> { q.breakable }) do |element|
+          q.breakable_empty
+          q.seplist(elements, Formatter::BREAKABLE_SPACE_SEPARATOR) do |element|
             q.format(element)
           end
         end
-        q.breakable("")
+        q.breakable_empty
       end
+      q.text(closing)
     end
   end
 
@@ -7781,13 +7824,13 @@ module SyntaxTree
 
         unless statements.empty?
           q.indent do
-            q.breakable(force: true)
+            q.breakable_force
             q.format(statements)
           end
         end
 
         if consequent
-          q.breakable(force: true)
+          q.breakable_force
           q.format(consequent)
         end
       end
@@ -7835,19 +7878,21 @@ module SyntaxTree
     end
 
     def format(q)
-      q.group(0, "begin", "end") do
+      q.text("begin")
+      q.group do
         q.indent do
-          q.breakable(force: true)
+          q.breakable_force
           q.format(statement)
         end
-        q.breakable(force: true)
+        q.breakable_force
         q.text("rescue StandardError")
         q.indent do
-          q.breakable(force: true)
+          q.breakable_force
           q.format(value)
         end
-        q.breakable(force: true)
+        q.breakable_force
       end
+      q.text("end")
     end
   end
 
@@ -8066,14 +8111,16 @@ module SyntaxTree
     end
 
     def format(q)
-      q.group(0, "class << ", "end") do
+      q.text("class << ")
+      q.group do
         q.format(target)
         q.indent do
-          q.breakable(force: true)
+          q.breakable_force
           q.format(bodystmt)
         end
-        q.breakable(force: true)
+        q.breakable_force
       end
+      q.text("end")
     end
   end
 
@@ -8179,37 +8226,34 @@ module SyntaxTree
         end
       end
 
-      access_controls =
-        Hash.new do |hash, node|
-          hash[node] = node.is_a?(VCall) &&
-            %w[private protected public].include?(node.value.value)
-        end
-
-      body.each_with_index do |statement, index|
+      previous = nil
+      body.each do |statement|
         next if statement.is_a?(VoidStmt)
 
         if line.nil?
           q.format(statement)
         elsif (statement.location.start_line - line) > 1
-          q.breakable(force: true)
-          q.breakable(force: true)
+          q.breakable_force
+          q.breakable_force
           q.format(statement)
-        elsif access_controls[statement] || access_controls[body[index - 1]]
-          q.breakable(force: true)
-          q.breakable(force: true)
+        elsif (statement.is_a?(VCall) && statement.access_control?) ||
+              (previous.is_a?(VCall) && previous.access_control?)
+          q.breakable_force
+          q.breakable_force
           q.format(statement)
         elsif statement.location.start_line != line
-          q.breakable(force: true)
+          q.breakable_force
           q.format(statement)
         elsif !q.parent.is_a?(StringEmbExpr)
-          q.breakable(force: true)
+          q.breakable_force
           q.format(statement)
         else
           q.text("; ")
           q.format(statement)
         end
-
+        
         line = statement.location.end_line
+        previous = statement
       end
     end
 
@@ -8327,7 +8371,7 @@ module SyntaxTree
         q.format(left)
         q.text(" \\")
         q.indent do
-          q.breakable(force: true)
+          q.breakable_force
           q.format(right)
         end
       end
@@ -8413,15 +8457,21 @@ module SyntaxTree
         # same line in the source, then we're going to leave them in place and
         # assume that's the way the developer wanted this expression
         # represented.
-        q.remove_breaks(q.group(0, '#{', "}") { q.format(statements) })
+        q.remove_breaks(
+          q.group do
+            q.text('#{')
+            q.format(statements)
+            q.text("}")
+          end
+        )
       else
         q.group do
           q.text('#{')
           q.indent do
-            q.breakable("")
+            q.breakable_empty
             q.format(statements)
           end
-          q.breakable("")
+          q.breakable_empty
           q.text("}")
         end
       end
@@ -8479,12 +8529,12 @@ module SyntaxTree
           [quote, quote]
         end
 
-      q.group(0, opening_quote, closing_quote) do
+      q.text(opening_quote)
+      q.group do
         parts.each do |part|
           if part.is_a?(TStringContent)
             value = Quotes.normalize(part.value, closing_quote)
-            separator = -> { q.breakable(force: true, indent: false) }
-            q.seplist(value.split(/\r?\n/, -1), separator) do |text|
+            q.seplist(value.split(/\r?\n/, -1), Formatter::BREAKABLE_RETURN_SEPARATOR) do |text|
               q.text(text)
             end
           else
@@ -8492,6 +8542,7 @@ module SyntaxTree
           end
         end
       end
+      q.text(closing_quote)
     end
   end
 
@@ -8698,15 +8749,17 @@ module SyntaxTree
         closing = Quotes.matching(opening[2])
       end
 
-      q.group(0, opening, closing) do
+      q.text(opening)
+      q.group do
         q.indent do
-          q.breakable("")
-          q.seplist(elements, -> { q.breakable }) do |element|
+          q.breakable_empty
+          q.seplist(elements, Formatter::BREAKABLE_SPACE_SEPARATOR) do |element|
             q.format(element)
           end
         end
-        q.breakable("")
+        q.breakable_empty
       end
+      q.text(closing)
     end
   end
 
@@ -9031,27 +9084,26 @@ module SyntaxTree
     end
 
     def format(q)
-      parent = q.parents.take(2)[1]
-      ternary =
-        (parent.is_a?(If) || parent.is_a?(Unless)) &&
-          Ternaryable.call(q, parent)
-
       q.text("not")
 
       if parentheses
         q.text("(")
-      elsif ternary
-        q.if_break { q.text(" ") }.if_flat { q.text("(") }
-      else
-        q.text(" ")
-      end
-
-      q.format(statement) if statement
-
-      if parentheses
+        q.format(statement) if statement
         q.text(")")
-      elsif ternary
-        q.if_flat { q.text(")") }
+      else
+        parent = q.parents.take(2)[1]
+        ternary =
+          (parent.is_a?(If) || parent.is_a?(Unless)) &&
+            Ternaryable.call(q, parent)
+
+        if ternary
+          q.if_break { q.text(" ") }.if_flat { q.text("(") }
+          q.format(statement) if statement
+          q.if_flat { q.text(")") } if ternary
+        else
+          q.text(" ")
+          q.format(statement) if statement
+        end
       end
     end
   end
@@ -9316,10 +9368,10 @@ module SyntaxTree
       q.text("#{keyword} ")
       q.nest(keyword.length + 1) { q.format(node.predicate) }
       q.indent do
-        q.breakable("")
+        q.breakable_empty
         q.format(statements)
       end
-      q.breakable("")
+      q.breakable_empty
       q.text("end")
     end
   end
@@ -9372,7 +9424,7 @@ module SyntaxTree
         q.group do
           q.text(keyword)
           q.nest(keyword.length) { q.format(predicate) }
-          q.breakable(force: true)
+          q.breakable_force
           q.text("end")
         end
       else
@@ -9572,6 +9624,27 @@ module SyntaxTree
     def format(q)
       q.format(value)
     end
+
+    # Oh man I hate this so much. Basically, ripper doesn't provide enough
+    # functionality to actually know where pins are within an expression. So we
+    # have to walk the tree ourselves and insert more information. In doing so,
+    # we have to replace this node by a pinned node when necessary.
+    #
+    # To be clear, this method should just not exist. It's not good. It's a
+    # place of shame. But it's necessary for now, so I'm keeping it.
+    def pin(parent)
+      replace = PinnedVarRef.new(value: value, location: location)
+
+      parent.deconstruct_keys([]).each do |key, value|
+        if value == self
+          parent.instance_variable_set(:"@#{key}", replace)
+          break
+        elsif value.is_a?(Array) && (index = value.index(self))
+          parent.public_send(key)[index] = replace
+          break
+        end
+      end
+    end
   end
 
   # PinnedVarRef represents a pinned variable reference within a pattern
@@ -9652,6 +9725,10 @@ module SyntaxTree
 
     def format(q)
       q.format(value)
+    end
+
+    def access_control?
+      @access_control ||= %w[private protected public].include?(value.value)
     end
   end
 
@@ -9742,6 +9819,22 @@ module SyntaxTree
       }
     end
 
+    # We have a special separator here for when clauses which causes them to
+    # fill as much of the line as possible as opposed to everything breaking
+    # into its own line as soon as you hit the print limit.
+    class Separator
+      def call(q)
+        q.group do
+          q.text(",")
+          q.breakable_space
+        end
+      end
+    end
+
+    # We're going to keep a single instance of this separator around so we don't
+    # have to allocate a new one every time we format a when clause.
+    SEPARATOR = Separator.new
+
     def format(q)
       keyword = "when "
 
@@ -9752,8 +9845,7 @@ module SyntaxTree
             if arguments.comments.any?
               q.format(arguments)
             else
-              separator = -> { q.group { q.comma_breakable } }
-              q.seplist(arguments.parts, separator) { |part| q.format(part) }
+              q.seplist(arguments.parts, SEPARATOR) { |part| q.format(part) }
             end
 
             # Very special case here. If you're inside of a when clause and the
@@ -9768,13 +9860,13 @@ module SyntaxTree
 
         unless statements.empty?
           q.indent do
-            q.breakable(force: true)
+            q.breakable_force
             q.format(statements)
           end
         end
 
         if consequent
-          q.breakable(force: true)
+          q.breakable_force
           q.format(consequent)
         end
       end
@@ -9829,7 +9921,7 @@ module SyntaxTree
         q.group do
           q.text(keyword)
           q.nest(keyword.length) { q.format(predicate) }
-          q.breakable(force: true)
+          q.breakable_force
           q.text("end")
         end
       else
@@ -9995,15 +10087,17 @@ module SyntaxTree
         closing = Quotes.matching(opening[2])
       end
 
-      q.group(0, opening, closing) do
+      q.text(opening)
+      q.group do
         q.indent do
-          q.breakable("")
-          q.seplist(elements, -> { q.breakable }) do |element|
+          q.breakable_empty
+          q.seplist(elements, Formatter::BREAKABLE_SPACE_SEPARATOR) do |element|
             q.format(element)
           end
         end
-        q.breakable("")
+        q.breakable_empty
       end
+      q.text(closing)
     end
   end
 
@@ -10147,10 +10241,10 @@ module SyntaxTree
         else
           q.if_break { q.text("(") }.if_flat { q.text(" ") }
           q.indent do
-            q.breakable("")
+            q.breakable_empty
             q.format(arguments)
           end
-          q.breakable("")
+          q.breakable_empty
           q.if_break { q.text(")") }
         end
       end

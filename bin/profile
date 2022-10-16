@@ -6,22 +6,21 @@ require "bundler/inline"
 gemfile do
   source "https://rubygems.org"
   gem "stackprof"
+  gem "prettier_print"
 end
 
 $:.unshift(File.expand_path("../lib", __dir__))
 require "syntax_tree"
 
-GC.disable
-
 StackProf.run(mode: :cpu, out: "tmp/profile.dump", raw: true) do
-  filepath = File.expand_path("../lib/syntax_tree/node.rb", __dir__)
-  SyntaxTree.format(File.read(filepath))
+  Dir[File.join(RbConfig::CONFIG["libdir"], "**/*.rb")].each do |filepath|
+    SyntaxTree.format(SyntaxTree.read(filepath))
+  end
 end
-
-GC.enable
 
 File.open("tmp/flamegraph.html", "w") do |file|
   report = Marshal.load(IO.binread("tmp/profile.dump"))
+  StackProf::Report.new(report).print_text
   StackProf::Report.new(report).print_d3_flamegraph(file)
 end
 

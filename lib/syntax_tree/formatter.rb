@@ -4,6 +4,26 @@ module SyntaxTree
   # A slightly enhanced PP that knows how to format recursively including
   # comments.
   class Formatter < PrettierPrint
+    # It's very common to use seplist with ->(q) { q.breakable_return }. We wrap
+    # that pattern into an object to cut down on having to create a bunch of
+    # lambdas all over the place.
+    class BreakableReturnSeparator
+      def call(q)
+        q.breakable_return
+      end
+    end
+
+    # Similar to the previous, it's common to ->(q) { q.breakable_space }. We
+    # also wrap that pattern into an object to cut down on lambdas.
+    class BreakableSpaceSeparator
+      def call(q)
+        q.breakable_space
+      end
+    end
+
+    BREAKABLE_RETURN_SEPARATOR = BreakableReturnSeparator.new
+    BREAKABLE_SPACE_SEPARATOR = BreakableSpaceSeparator.new
+
     # We want to minimize as much as possible the number of options that are
     # available in syntax tree. For the most part, if users want non-default
     # formatting, they should override the format methods on the specific nodes
@@ -75,8 +95,7 @@ module SyntaxTree
         doc =
           if leading.last&.ignore?
             range = source[node.location.start_char...node.location.end_char]
-            separator = -> { breakable(indent: false, force: true) }
-            seplist(range.split(/\r?\n/, -1), separator) { |line| text(line) }
+            seplist(range.split(/\r?\n/, -1), Formatter::BREAKABLE_RETURN_SEPARATOR) { |line| text(line) }
           else
             node.format(self)
           end
@@ -107,6 +126,43 @@ module SyntaxTree
 
     def parents
       stack[0...-1].reverse_each
+    end
+
+    # This is a simplified version of prettyprint's group. It doesn't provide
+    # any of the more advanced options because we don't need them and they take
+    # up expensive computation time.
+    def group
+      contents = []
+      doc = Group.new(0, contents: contents)
+
+      groups << doc
+      target << doc
+
+      with_target(contents) { yield }
+      groups.pop
+      doc
+    end
+
+    # A similar version to the super, except that it calls back into the
+    # separator proc with the instance of `self`.
+    def seplist(list, sep = nil, iter_method = :each) # :yield: element
+      first = true
+      list.__send__(iter_method) do |*v|
+        if first
+          first = false
+        elsif sep
+          sep.call(self)
+        else
+          comma_breakable
+        end
+        yield(*v)
+      end
+    end
+
+    # This is a much simplified version of prettyprint's text. It avoids
+    # calculating width by pushing the string directly onto the target.
+    def text(string)
+      target << string
     end
   end
 end
