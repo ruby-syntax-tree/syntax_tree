@@ -2885,27 +2885,15 @@ module SyntaxTree
     end
 
     def format(q)
-      declaration = -> do
-        q.group do
-          q.text("class ")
-          q.format(constant)
-
-          if superclass
-            q.text(" < ")
-            q.format(superclass)
-          end
-        end
-      end
-
       if bodystmt.empty?
         q.group do
-          declaration.call
+          format_declaration(q)
           q.breakable_force
           q.text("end")
         end
       else
         q.group do
-          declaration.call
+          format_declaration(q)
 
           q.indent do
             q.breakable_force
@@ -2914,6 +2902,20 @@ module SyntaxTree
 
           q.breakable_force
           q.text("end")
+        end
+      end
+    end
+
+    private
+
+    def format_declaration(q)
+      q.group do
+        q.text("class ")
+        q.format(constant)
+
+        if superclass
+          q.text(" < ")
+          q.format(superclass)
         end
       end
     end
@@ -5122,18 +5124,7 @@ module SyntaxTree
     def format(q)
       parts = keywords.map { |(key, value)| KeywordFormatter.new(key, value) }
       parts << KeywordRestFormatter.new(keyword_rest) if keyword_rest
-
       nested = PATTERNS.include?(q.parent.class)
-      contents = -> do
-        q.group { q.seplist(parts) { |part| q.format(part, stackable: false) } }
-
-        # If there isn't a constant, and there's a blank keyword_rest, then we
-        # have an plain ** that needs to have a `then` after it in order to
-        # parse correctly on the next parse.
-        if !constant && keyword_rest && keyword_rest.value.nil? && !nested
-          q.text(" then")
-        end
-      end
 
       # If there is a constant, we're going to format to have the constant name
       # first and then use brackets.
@@ -5143,7 +5134,7 @@ module SyntaxTree
           q.text("[")
           q.indent do
             q.breakable_empty
-            contents.call
+            format_contents(q, parts, nested)
           end
           q.breakable_empty
           q.text("]")
@@ -5160,7 +5151,7 @@ module SyntaxTree
       # If there's only one pair, then we'll just print the contents provided
       # we're not inside another pattern.
       if !nested && parts.size == 1
-        contents.call
+        format_contents(q, parts, nested)
         return
       end
 
@@ -5170,7 +5161,7 @@ module SyntaxTree
         q.text("{")
         q.indent do
           q.breakable_space
-          contents.call
+          format_contents(q, parts, nested)
         end
 
         if q.target_ruby_version < Gem::Version.new("2.7.3")
@@ -5179,6 +5170,19 @@ module SyntaxTree
           q.breakable_space
           q.text("}")
         end
+      end
+    end
+
+    private
+
+    def format_contents(q, parts, nested)
+      q.group { q.seplist(parts) { |part| q.format(part, stackable: false) } }
+
+      # If there isn't a constant, and there's a blank keyword_rest, then we
+      # have an plain ** that needs to have a `then` after it in order to
+      # parse correctly on the next parse.
+      if !constant && keyword_rest && keyword_rest.value.nil? && !nested
+        q.text(" then")
       end
     end
   end
@@ -6543,22 +6547,15 @@ module SyntaxTree
     end
 
     def format(q)
-      declaration = -> do
-        q.group do
-          q.text("module ")
-          q.format(constant)
-        end
-      end
-
       if bodystmt.empty?
         q.group do
-          declaration.call
+          format_declaration(q)
           q.breakable_force
           q.text("end")
         end
       else
         q.group do
-          declaration.call
+          format_declaration(q)
 
           q.indent do
             q.breakable_force
@@ -6568,6 +6565,15 @@ module SyntaxTree
           q.breakable_force
           q.text("end")
         end
+      end
+    end
+
+    private
+
+    def format_declaration(q)
+      q.group do
+        q.text("module ")
+        q.format(constant)
       end
     end
   end
@@ -7023,26 +7029,34 @@ module SyntaxTree
       parts << KeywordRestFormatter.new(keyword_rest) if keyword_rest
       parts << block if block
 
-      contents = -> do
-        q.seplist(parts) { |part| q.format(part) }
-        q.format(rest) if rest.is_a?(ExcessedComma)
+      if parts.empty?
+        q.nest(0) { format_contents(q, parts) }
+        return
       end
 
-      if ![Def, Defs, DefEndless].include?(q.parent.class) || parts.empty?
-        q.nest(0, &contents)
-      else
+      case q.parent
+      when Def, Defs, DefEndless
         q.nest(0) do
           q.text("(")
           q.group do
             q.indent do
               q.breakable_empty
-              contents.call
+              format_contents(q, parts)
             end
             q.breakable_empty
           end
           q.text(")")
         end
+      else
+        q.nest(0) { format_contents(q, parts) }
       end
+    end
+
+    private
+
+    def format_contents(q, parts)
+      q.seplist(parts) { |part| q.format(part) }
+      q.format(rest) if rest.is_a?(ExcessedComma)
     end
   end
 

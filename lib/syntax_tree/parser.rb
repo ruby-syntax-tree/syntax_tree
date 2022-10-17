@@ -513,23 +513,26 @@ module SyntaxTree
     #     (false | untyped) block
     #   ) -> Args
     def on_args_add_block(arguments, block)
+      end_char = arguments.parts.any? && arguments.location.end_char
+
       # First, see if there is an & operator that could potentially be
       # associated with the block part of this args_add_block. If there is not,
       # then just return the arguments.
-      operator = find_operator(:&)
-      return arguments unless operator
+      index =
+        tokens.rindex do |token|
+          # If there are any arguments and the operator we found from the list
+          # is not after them, then we're going to return the arguments as-is
+          # because we're looking at an & that occurs before the arguments are
+          # done.
+          return arguments if end_char && token.location.start_char < end_char
+          token.is_a?(Op) && (token.name == :&)
+        end
 
-      # If there are any arguments and the operator we found from the list is
-      # not after them, then we're going to return the arguments as-is because
-      # we're looking at an & that occurs before the arguments are done.
-      if arguments.parts.any? &&
-           operator.location.start_char < arguments.location.end_char
-        return arguments
-      end
+      return arguments unless index
 
       # Now we know we have an & operator, so we're going to delete it from the
       # list of tokens to make sure it doesn't get confused with anything else.
-      tokens.delete(operator)
+      operator = tokens.delete_at(index)
 
       # Construct the location that represents the block argument.
       location = operator.location
