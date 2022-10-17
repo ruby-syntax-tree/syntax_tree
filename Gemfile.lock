@@ -2,7 +2,7 @@ PATH
   remote: .
   specs:
     syntax_tree (3.6.3)
-      prettier_print
+      prettier_print (>= 1.0.0)
 
 GEM
   remote: https://rubygems.org/
@@ -14,10 +14,10 @@ GEM
     parallel (1.22.1)
     parser (3.1.2.1)
       ast (~> 2.4.1)
-    prettier_print (0.1.0)
+    prettier_print (1.0.0)
     rainbow (3.1.1)
     rake (13.0.6)
-    regexp_parser (2.5.0)
+    regexp_parser (2.6.0)
     rexml (3.2.5)
     rubocop (1.36.0)
       json (~> 2.3)
@@ -38,7 +38,7 @@ GEM
       simplecov_json_formatter (~> 0.1)
     simplecov-html (0.12.3)
     simplecov_json_formatter (0.1.4)
-    unicode-display_width (2.2.0)
+    unicode-display_width (2.3.0)
 
 PLATFORMS
   arm64-darwin-21
