@@ -1413,17 +1413,21 @@ module SyntaxTree
 
       def format_key(q, key)
         case key
-        in Label
+        when Label
           q.format(key)
-        in SymbolLiteral
+        when SymbolLiteral
           q.format(key.value)
           q.text(":")
-        in DynaSymbol[parts: [TStringContent[value: LABEL] => part]]
-          q.format(part)
-          q.text(":")
-        in DynaSymbol
-          q.format(key)
-          q.text(":")
+        when DynaSymbol
+          parts = key.parts
+
+          if parts.length == 1 && (part = parts.first) && part.is_a?(TStringContent) && part.value.match?(LABEL)
+            q.format(part)
+            q.text(":")
+          else
+            q.format(key)
+            q.text(":")
+          end
         end
       end
     end
@@ -1433,8 +1437,7 @@ module SyntaxTree
       def format_key(q, key)
         case key
         when Label
-          q.text(":")
-          q.text(key.value.chomp(":"))
+          q.text(":#{key.value.chomp(":")}")
         when DynaSymbol
           q.text(":")
           q.format(key)
@@ -2145,105 +2148,128 @@ module SyntaxTree
       q.group do
         q.text(keyword)
 
-        case node.arguments.parts
-        in []
+        parts = node.arguments.parts
+        length = parts.length
+
+        if length == 0
           # Here there are no arguments at all, so we're not going to print
           # anything. This would be like if we had:
           #
           #     break
           #
-        in [
-             Paren[
-               contents: {
-                 body: [ArrayLiteral[contents: { parts: [_, _, *] }] => array] }
-             ]
-           ]
-          # Here we have a single argument that is a set of parentheses wrapping
-          # an array literal that has at least 2 elements. We're going to print
-          # the contents of the array directly. This would be like if we had:
-          #
-          #     break([1, 2, 3])
-          #
-          # which we will print as:
-          #
-          #     break 1, 2, 3
-          #
-          q.text(" ")
-          format_array_contents(q, array)
-        in [Paren[contents: { body: [ArrayLiteral => statement] }]]
-          # Here we have a single argument that is a set of parentheses wrapping
-          # an array literal that has 0 or 1 elements. We're going to skip the
-          # parentheses but print the array itself. This would be like if we
-          # had:
-          #
-          #     break([1])
-          #
-          # which we will print as:
-          #
-          #     break [1]
-          #
-          q.text(" ")
-          q.format(statement)
-        in [Paren[contents: { body: [statement] }]] if skip_parens?(statement)
-          # Here we have a single argument that is a set of parentheses that
-          # themselves contain a single statement. That statement is a simple
-          # value that we can skip the parentheses for. This would be like if we
-          # had:
-          #
-          #     break(1)
-          #
-          # which we will print as:
-          #
-          #     break 1
-          #
-          q.text(" ")
-          q.format(statement)
-        in [Paren => part]
-          # Here we have a single argument that is a set of parentheses. We're
-          # going to print the parentheses themselves as if they were the set of
-          # arguments. This would be like if we had:
-          #
-          #     break(foo.bar)
-          #
-          q.format(part)
-        in [ArrayLiteral[contents: { parts: [_, _, *] }] => array]
-          # Here there is a single argument that is an array literal with at
-          # least two elements. We skip directly into the array literal's
-          # elements in order to print the contents. This would be like if we
-          # had:
-          #
-          #     break [1, 2, 3]
-          #
-          # which we will print as:
-          #
-          #     break 1, 2, 3
-          #
-          q.text(" ")
-          format_array_contents(q, array)
-        in [ArrayLiteral => part]
-          # Here there is a single argument that is an array literal with 0 or 1
-          # elements. In this case we're going to print the array as it is
-          # because skipping the brackets would change the remaining. This would
-          # be like if we had:
-          #
-          #     break []
-          #     break [1]
-          #
-          q.text(" ")
-          q.format(part)
-        in [_]
-          # Here there is a single argument that hasn't matched one of our
-          # previous cases. We're going to print the argument as it is. This
-          # would be like if we had:
-          #
-          #     break foo
-          #
-          format_arguments(q, "(", ")")
-        else
+        elsif length >= 2
           # If there are multiple arguments, format them all. If the line is
           # going to break into multiple, then use brackets to start and end the
           # expression.
           format_arguments(q, " [", "]")
+        else
+          # If we get here, then we're formatting a single argument to the flow
+          # control keyword.
+          part = parts.first
+
+          case part
+          when Paren
+            statements = part.contents.body
+
+            if statements.length == 1
+              statement = statements.first
+
+              if statement.is_a?(ArrayLiteral)
+                contents = statement.contents
+
+                if contents && contents.parts.length >= 2
+                  # Here we have a single argument that is a set of parentheses
+                  # wrapping an array literal that has at least 2 elements.
+                  # We're going to print the contents of the array directly.
+                  # This would be like if we had:
+                  #
+                  #     break([1, 2, 3])
+                  #
+                  # which we will print as:
+                  #
+                  #     break 1, 2, 3
+                  #
+                  q.text(" ")
+                  format_array_contents(q, statement)
+                else
+                  # Here we have a single argument that is a set of parentheses
+                  # wrapping an array literal that has 0 or 1 elements. We're
+                  # going to skip the parentheses but print the array itself.
+                  # This would be like if we had:
+                  #
+                  #     break([1])
+                  #
+                  # which we will print as:
+                  #
+                  #     break [1]
+                  #
+                  q.text(" ")
+                  q.format(statement)
+                end
+              elsif skip_parens?(statement)
+                # Here we have a single argument that is a set of parentheses
+                # that themselves contain a single statement. That statement is
+                # a simple value that we can skip the parentheses for. This
+                # would be like if we had:
+                #
+                #     break(1)
+                #
+                # which we will print as:
+                #
+                #     break 1
+                #
+                q.text(" ")
+                q.format(statement)
+              else
+                # Here we have a single argument that is a set of parentheses.
+                # We're going to print the parentheses themselves as if they
+                # were the set of arguments. This would be like if we had:
+                #
+                #     break(foo.bar)
+                #
+                q.format(part)
+              end
+            else
+              q.format(part)
+            end
+          when ArrayLiteral
+            contents = part.contents
+
+            if contents && contents.parts.length >= 2
+              # Here there is a single argument that is an array literal with at
+              # least two elements. We skip directly into the array literal's
+              # elements in order to print the contents. This would be like if
+              # we had:
+              #
+              #     break [1, 2, 3]
+              #
+              # which we will print as:
+              #
+              #     break 1, 2, 3
+              #
+              q.text(" ")
+              format_array_contents(q, part)
+            else
+              # Here there is a single argument that is an array literal with 0
+              # or 1 elements. In this case we're going to print the array as it
+              # is because skipping the brackets would change the remaining.
+              # This would be like if we had:
+              #
+              #     break []
+              #     break [1]
+              #
+              q.text(" ")
+              q.format(part)
+            end
+          else
+            # Here there is a single argument that hasn't matched one of our
+            # previous cases. We're going to print the argument as it is. This
+            # would be like if we had:
+            #
+            #     break foo
+            #
+            format_arguments(q, "(", ")")
+          end
         end
       end
     end
@@ -3791,15 +3817,18 @@ module SyntaxTree
     end
 
     def format(q)
-      space = [If, IfMod, Unless, UnlessMod].include?(q.parent.class)
-
       left = node.left
       right = node.right
 
       q.format(left) if left
-      q.text(" ") if space
-      q.text(operator)
-      q.text(" ") if space
+
+      case q.parent
+      when If, IfMod, Unless, UnlessMod
+        q.text(" #{operator} ")
+      else
+        q.text(operator)
+      end
+
       q.format(right) if right
     end
   end
