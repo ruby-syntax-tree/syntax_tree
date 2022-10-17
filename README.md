@@ -368,16 +368,16 @@ program = SyntaxTree.parse("1 + 1")
 puts program.construct_keys
 
 # SyntaxTree::Program[
-#   statements: SyntaxTree::Statements[            
-#     body: [                                      
-#       SyntaxTree::Binary[                        
-#         left: SyntaxTree::Int[value: "1"],       
-#         operator: :+,                            
-#         right: SyntaxTree::Int[value: "1"]       
-#       ]                                          
-#     ]                                            
-#   ]                                              
-# ] 
+#   statements: SyntaxTree::Statements[
+#     body: [
+#       SyntaxTree::Binary[
+#         left: SyntaxTree::Int[value: "1"],
+#         operator: :+,
+#         right: SyntaxTree::Int[value: "1"]
+#       ]
+#     ]
+#   ]
+# ]
 ```
 
 ## Visitor
@@ -446,6 +446,28 @@ end
 ```
 
 The visitor defined above will error out unless it's only visiting a `SyntaxTree::Int` node. This is useful in a couple of ways, e.g., if you're trying to define a visitor to handle the whole tree but it's currently a work-in-progress.
+
+### WithEnvironment
+
+The `WithEnvironment` module can be included in visitors to automatically keep track of local variables and arguments
+defined inside each environment. A `current_environment` accessor is made availble to the request, allowing it to find
+all usages and definitions of a local.
+
+```ruby
+class MyVisitor < Visitor
+  include WithEnvironment
+
+  def visit_ident(node)
+    # find_local will return a Local for any local variables or arguments present in the current environment or nil if
+    # the identifier is not a local
+    local = current_environment.find_local(node)
+
+    puts local.type # print the type of the local (:variable or :argument)
+    puts local.definitions # print the array of locations where this local is defined
+    puts local.usages # print the array of locations where this local occurs
+  end
+end
+```
 
 ## Language server
 
