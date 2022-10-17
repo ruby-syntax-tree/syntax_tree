@@ -6,6 +6,18 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 
 ## [Unreleased]
 
+## [4.0.0] - 2022-10-17
+
+### Added
+
+- [#169](https://github.com/ruby-syntax-tree/syntax_tree/pull/169) - You can now pass `--ignore-files` multiple times.
+- [#157](https://github.com/ruby-syntax-tree/syntax_tree/pull/157) - We now support tracking local variable definitions throughout the visitor. This allows you to access scope information while visiting the tree.
+- [#170](https://github.com/ruby-syntax-tree/syntax_tree/pull/170) - There is now an undocumented `STREE_FAST_FORMAT` environment variable checked when formatting. It has the effect of turning _off_ formatting call chains and ternaries in special ways. This improves performance quite a bit. I'm leaving it undocumented because ideally we just improve the performance as a whole. This is meant as a stopgap until we get there.
+
+### Changed
+
+- [#170](https://github.com/ruby-syntax-tree/syntax_tree/pull/170) - We now require at least version `1.0.0` of `prettier_print`. This is to take advantage of the first-class string support in the doc tree.
+
 ## [3.6.3] - 2022-10-11
 
 ### Changed
@@ -370,7 +382,8 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 
 - 🎉 Initial release! 🎉
 
-[unreleased]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v3.6.3...HEAD
+[unreleased]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v4.0.0...HEAD
+[4.0.0]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v3.6.3...v4.0.0
 [3.6.3]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v3.6.2...v3.6.3
 [3.6.2]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v3.6.1...v3.6.2
 [3.6.1]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v3.6.0...v3.6.1
