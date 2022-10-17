@@ -12,6 +12,7 @@ jobs:
         - '3.0'
         - '3.1'
         - head
+        - truffleruby
     name: CI
     runs-on: ubuntu-latest
     env:
