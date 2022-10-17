@@ -139,7 +139,7 @@ module SyntaxTree
 
     def test_multiple_inline_scripts
       stdio, = capture_io { SyntaxTree::CLI.run(%w[format -e 1+1 -e 2+2]) }
-      assert_equal("1 + 1\n2 + 2\n", stdio)
+      assert_equal(["1 + 1", "2 + 2"], stdio.split("\n").sort)
     end
 
     def test_generic_error

@@ -1,6 +1,5 @@
 # frozen_string_literal: true
 
-require "delegate"
 require "etc"
 require "json"
 require "pp"
@@ -10,7 +9,6 @@ require "stringio"
 
 require_relative "syntax_tree/formatter"
 require_relative "syntax_tree/node"
-require_relative "syntax_tree/parser"
 require_relative "syntax_tree/version"
 
 require_relative "syntax_tree/basic_visitor"
@@ -19,6 +17,18 @@ require_relative "syntax_tree/visitor/field_visitor"
 require_relative "syntax_tree/visitor/json_visitor"
 require_relative "syntax_tree/visitor/match_visitor"
 require_relative "syntax_tree/visitor/pretty_print_visitor"
+
+require_relative "syntax_tree/parser"
+
+# We rely on Symbol#name being available, which is only available in Ruby 3.0+.
+# In case we're running on an older Ruby version, we polyfill it here.
+unless :+.respond_to?(:name)
+  class Symbol # rubocop:disable Style/Documentation
+    def name
+      to_s.freeze
+    end
+  end
+end
 
 # Syntax Tree is a suite of tools built on top of the internal CRuby parser. It
 # provides the ability to generate a syntax tree from source, as well as the

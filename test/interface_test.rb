@@ -54,8 +54,12 @@ module SyntaxTree
       case klass.name
       when "SyntaxTree::Binary"
         klass.new(**params, operator: :+)
+      when "SyntaxTree::Kw"
+        klass.new(**params, value: "kw")
       when "SyntaxTree::Label"
         klass.new(**params, value: "label:")
+      when "SyntaxTree::Op"
+        klass.new(**params, value: "+")
       when "SyntaxTree::RegexpLiteral"
         klass.new(**params, ending: "/")
       when "SyntaxTree::Statements"

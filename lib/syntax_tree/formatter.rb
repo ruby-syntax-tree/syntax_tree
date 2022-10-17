@@ -62,21 +62,39 @@ module SyntaxTree
       # If there are comments, then we're going to format them around the node
       # so that they get printed properly.
       if node.comments.any?
-        leading, trailing = node.comments.partition(&:leading?)
+        trailing = []
+        last_leading = nil
 
-        # Print all comments that were found before the node.
-        leading.each do |comment|
-          comment.format(self)
-          breakable(force: true)
+        # First, we're going to print all of the comments that were found before
+        # the node. We'll also gather up any trailing comments that we find.
+        node.comments.each do |comment|
+          if comment.leading?
+            comment.format(self)
+            breakable(force: true)
+            last_leading = comment
+          else
+            trailing << comment
+          end
         end
 
         # If the node has a stree-ignore comment right before it, then we're
         # going to just print out the node as it was seen in the source.
         doc =
-          if leading.last&.ignore?
+          if last_leading&.ignore?
             range = source[node.location.start_char...node.location.end_char]
-            separator = -> { breakable(indent: false, force: true) }
-            seplist(range.split(/\r?\n/, -1), separator) { |line| text(line) }
+            first = true
+
+            range.each_line(chomp: true) do |line|
+              if first
+                first = false
+              else
+                breakable_return
+              end
+
+              text(line)
+            end
+
+            breakable_return if range.end_with?("\n")
           else
             node.format(self)
           end
@@ -101,12 +119,53 @@ module SyntaxTree
       nodes.each { |node| format(node) }
     end
 
+    def grandparent
+      stack[-3]
+    end
+
     def parent
       stack[-2]
     end
 
     def parents
       stack[0...-1].reverse_each
+    end
+
+    # This is a simplified version of prettyprint's group. It doesn't provide
+    # any of the more advanced options because we don't need them and they take
+    # up expensive computation time.
+    def group
+      contents = []
+      doc = Group.new(0, contents: contents)
+
+      groups << doc
+      target << doc
+
+      with_target(contents) { yield }
+      groups.pop
+      doc
+    end
+
+    # A similar version to the super, except that it calls back into the
+    # separator proc with the instance of `self`.
+    def seplist(list, sep = nil, iter_method = :each)
+      first = true
+      list.__send__(iter_method) do |*v|
+        if first
+          first = false
+        elsif sep
+          sep.call(self)
+        else
+          comma_breakable
+        end
+        yield(*v)
+      end
+    end
+
+    # This is a much simplified version of prettyprint's text. It avoids
+    # calculating width by pushing the string directly onto the target.
+    def text(string)
+      target << string
     end
   end
 end
