@@ -2059,8 +2059,10 @@ module SyntaxTree
         when If, IfMod, IfOp, Unless, UnlessMod, While, WhileMod, Until,
              UntilMod
           return true if parent.predicate == previous
-          previous = parent
         end
+
+        previous = parent
+        false
       end
     end
 
