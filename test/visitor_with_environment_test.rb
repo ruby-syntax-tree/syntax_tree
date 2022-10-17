@@ -406,5 +406,25 @@ module SyntaxTree
       assert_equal(2, argument.usages[0].start_line)
       assert_equal(4, argument.usages[1].start_line)
     end
+
+    def test_variables_in_the_top_level
+      tree = SyntaxTree.parse(<<~RUBY)
+        a = 123
+        a
+      RUBY
+
+      visitor = Collector.new
+      visitor.visit(tree)
+
+      assert_equal(0, visitor.arguments.length)
+      assert_equal(1, visitor.variables.length)
+
+      variable = visitor.variables["a"]
+      assert_equal(1, variable.definitions.length)
+      assert_equal(1, variable.usages.length)
+
+      assert_equal(1, variable.definitions[0].start_line)
+      assert_equal(2, variable.usages[0].start_line)
+    end
   end
 end

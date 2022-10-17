@@ -64,19 +64,19 @@ module SyntaxTree
     # arguments
     def visit_params(node)
       node.requireds.each do |param|
-        @current_environment.add_local_definition(param, :argument)
+        current_environment.add_local_definition(param, :argument)
       end
 
       node.posts.each do |param|
-        @current_environment.add_local_definition(param, :argument)
+        current_environment.add_local_definition(param, :argument)
       end
 
       node.keywords.each do |param|
-        @current_environment.add_local_definition(param.first, :argument)
+        current_environment.add_local_definition(param.first, :argument)
       end
 
       node.optionals.each do |param|
-        @current_environment.add_local_definition(param.first, :argument)
+        current_environment.add_local_definition(param.first, :argument)
       end
 
       super
@@ -84,21 +84,21 @@ module SyntaxTree
 
     def visit_rest_param(node)
       name = node.name
-      @current_environment.add_local_definition(name, :argument) if name
+      current_environment.add_local_definition(name, :argument) if name
 
       super
     end
 
     def visit_kwrest_param(node)
       name = node.name
-      @current_environment.add_local_definition(name, :argument) if name
+      current_environment.add_local_definition(name, :argument) if name
 
       super
     end
 
     def visit_blockarg(node)
       name = node.name
-      @current_environment.add_local_definition(name, :argument) if name
+      current_environment.add_local_definition(name, :argument) if name
 
       super
     end
@@ -108,7 +108,7 @@ module SyntaxTree
       value = node.value
 
       if value.is_a?(SyntaxTree::Ident)
-        @current_environment.add_local_definition(value, :variable)
+        current_environment.add_local_definition(value, :variable)
       end
 
       super
@@ -119,7 +119,7 @@ module SyntaxTree
     # Visits for keeping track of variable and argument usages
     def visit_aref_field(node)
       name = node.collection.value
-      @current_environment.add_local_usage(name, :variable) if name
+      current_environment.add_local_usage(name, :variable) if name
 
       super
     end
@@ -128,10 +128,10 @@ module SyntaxTree
       value = node.value
 
       if value.is_a?(SyntaxTree::Ident)
-        definition = @current_environment.find_local(value.value)
+        definition = current_environment.find_local(value.value)
 
         if definition
-          @current_environment.add_local_usage(value, definition.type)
+          current_environment.add_local_usage(value, definition.type)
         end
       end
 
