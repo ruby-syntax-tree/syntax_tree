@@ -689,12 +689,13 @@ module SyntaxTree
       if rest.is_a?(VarField) && rest.value.nil?
         tokens.rindex do |rtoken|
           case rtoken
-          in Op[value: "*"]
-            rest = VarField.new(value: nil, location: rtoken.location)
+          when Comma
             break
-          in Comma
-            break
-          else
+          when Op
+            if rtoken.value == "*"
+              rest = VarField.new(value: nil, location: rtoken.location)
+              break
+            end
           end
         end
       end
@@ -1659,10 +1660,10 @@ module SyntaxTree
       # punctuation or the right splat.
       closing =
         case opening
-        in LBracket
+        when LBracket
           tokens.delete(opening)
           consume_token(RBracket)
-        in LParen
+        when LParen
           tokens.delete(opening)
           consume_token(RParen)
         else
@@ -2092,7 +2093,7 @@ module SyntaxTree
       # capturing lambda var until 3.2, we need to normalize all of that here.
       params =
         case params
-        in Paren[contents: Params]
+        when Paren
           # In this case we've gotten to the <3.2 parentheses wrapping a set of
           # parameters case. Here we need to manually scan for lambda locals.
           range = (params.location.start_char + 1)...params.location.end_char
@@ -2112,12 +2113,12 @@ module SyntaxTree
             location: params.location,
             comments: params.comments
           )
-        in Params
+        when Params
           # In this case we've gotten to the <3.2 plain set of parameters. In
           # this case there cannot be lambda locals, so we will wrap the
           # parameters into a lambda var that has no locals.
           LambdaVar.new(params: params, locals: [], location: params.location)
-        in LambdaVar
+        when LambdaVar
           # In this case we've gotten to 3.2+ lambda var. In this case we don't
           # need to do anything and can just the value as given.
           params

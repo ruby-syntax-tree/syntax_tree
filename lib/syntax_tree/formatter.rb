@@ -120,6 +120,10 @@ module SyntaxTree
       nodes.each { |node| format(node) }
     end
 
+    def grandparent
+      stack[-3]
+    end
+
     def parent
       stack[-2]
     end

@@ -2298,10 +2298,15 @@ module SyntaxTree
 
     def skip_parens?(node)
       case node
-      in FloatLiteral | Imaginary | Int | RationalLiteral
+      when FloatLiteral, Imaginary, Int, RationalLiteral
         true
-      in VarRef[value: Const | CVar | GVar | IVar | Kw]
-        true
+      when VarRef
+        case node.value
+        when Const, CVar, GVar, IVar, Kw
+          true
+        else
+          false
+        end
       else
         false
       end
@@ -2364,8 +2369,14 @@ module SyntaxTree
 
     def format(q)
       case operator
-      in :"::" | Op[value: "::"]
+      when :"::"
         q.text(".")
+      when Op
+        if operator.value == "::"
+          q.text(".")
+        else
+          operator.format(q)
+        end
       else
         operator.format(q)
       end
@@ -2401,13 +2412,18 @@ module SyntaxTree
       # First, walk down the chain until we get to the point where we're not
       # longer at a chainable node.
       loop do
-        case children.last
-        in Call[receiver: Call]
-          children << children.last.receiver
-        in Call[receiver: MethodAddBlock[call: Call]]
-          children << children.last.receiver
-        in MethodAddBlock[call: Call]
-          children << children.last.call
+        case (child = children.last)
+        when Call
+          case (receiver = child.receiver)
+          when Call
+            children << receiver
+          when MethodAddBlock
+            receiver.call.is_a?(Call) ? children << receiver : break
+          else
+            break
+          end
+        when MethodAddBlock
+          child.call.is_a?(Call) ? children << child.call : break
         else
           break
         end
@@ -2426,10 +2442,8 @@ module SyntaxTree
         # nodes.
         parent = parents[3] if parent.is_a?(DoBlock)
 
-        case parent
-        in MethodAddBlock[call: FCall[value: { value: "sig" }]]
+        if parent.is_a?(MethodAddBlock) && parent.call.is_a?(FCall) && parent.call.value.value == "sig"
           threshold = 2
-        else
         end
       end
 
@@ -2472,20 +2486,17 @@ module SyntaxTree
           skip_operator = false
 
           while (child = children.pop)
-            case child
-            in Call[
-                 receiver: Call[message: { value: "where" }],
-                 message: { value: "not" }
-               ]
-              # This is very specialized behavior wherein we group
-              # .where.not calls together because it looks better. For more
-              # information, see
-              # https://github.com/prettier/plugin-ruby/issues/862.
-            in Call
-              # If we're at a Call node and not a MethodAddBlock node in the
-              # chain then we're going to add a newline so it indents properly.
-              q.breakable_empty
-            else
+            if child.is_a?(Call)
+              if child.receiver.is_a?(Call) && child.receiver.message.value == "where" && child.message.value == "not"
+                # This is very specialized behavior wherein we group
+                # .where.not calls together because it looks better. For more
+                # information, see
+                # https://github.com/prettier/plugin-ruby/issues/862.
+              else
+                # If we're at a Call node and not a MethodAddBlock node in the
+                # chain then we're going to add a newline so it indents properly.
+                q.breakable_empty
+              end
             end
 
             format_child(
@@ -2498,9 +2509,9 @@ module SyntaxTree
 
             # If the parent call node has a comment on the message then we need
             # to print the operator trailing in order to keep it working.
-            case children.last
-            in Call[message: { comments: [_, *] }, operator:]
-              q.format(CallOperatorFormatter.new(operator))
+            last_child = children.last
+            if last_child.is_a?(Call) && last_child.message.comments.any?
+              q.format(CallOperatorFormatter.new(last_child.operator))
               skip_operator = true
             else
               skip_operator = false
@@ -2515,18 +2526,22 @@ module SyntaxTree
 
       if empty_except_last
         case node
-        in Call
+        when Call
           node.format_arguments(q)
-        in MethodAddBlock[block:]
-          q.format(block)
+        when MethodAddBlock
+          q.format(node.block)
         end
       end
     end
 
     def self.chained?(node)
+      return false if ENV["STREE_FAST_FORMAT"]
+
       case node
-      in Call | MethodAddBlock[call: Call]
+      when Call
         true
+      when MethodAddBlock
+        node.call.is_a?(Call)
       else
         false
       end
@@ -2538,9 +2553,12 @@ module SyntaxTree
     # want to indent the first call. So we'll pop off the first children and
     # format it separately here.
     def attach_directly?(node)
-      [ArrayLiteral, HashLiteral, Heredoc, If, Unless, XStringLiteral].include?(
-        node.receiver.class
-      )
+      case node.receiver
+      when ArrayLiteral, HashLiteral, Heredoc, If, Unless, XStringLiteral
+        true
+      else
+        false
+      end
     end
 
     def format_child(
@@ -2552,7 +2570,7 @@ module SyntaxTree
     )
       # First, format the actual contents of the child.
       case child
-      in Call
+      when Call
         q.group do
           unless skip_operator
             q.format(CallOperatorFormatter.new(child.operator))
@@ -2560,7 +2578,7 @@ module SyntaxTree
           q.format(child.message) if child.message != :call
           child.format_arguments(q) unless skip_attached
         end
-      in MethodAddBlock
+      when MethodAddBlock
         q.format(child.block) unless skip_attached
       end
 
@@ -2643,9 +2661,7 @@ module SyntaxTree
       # If we're at the top of a call chain, then we're going to do some
       # specialized printing in case we can print it nicely. We _only_ do this
       # at the top of the chain to avoid weird recursion issues.
-      if !ENV["STREE_SKIP_CALL_CHAIN"] &&
-           !CallChainFormatter.chained?(q.parent) &&
-           CallChainFormatter.chained?(receiver)
+      if CallChainFormatter.chained?(receiver) && !CallChainFormatter.chained?(q.parent)
         q.group do
           q
             .if_break { CallChainFormatter.new(self).format(q) }
@@ -2658,9 +2674,9 @@ module SyntaxTree
 
     def format_arguments(q)
       case arguments
-      in ArgParen
+      when ArgParen
         q.format(arguments)
-      in Args
+      when Args
         q.text(" ")
         q.format(arguments)
       else
@@ -2821,7 +2837,7 @@ module SyntaxTree
         q.format(operator)
 
         case pattern
-        in AryPtn | FndPtn | HshPtn
+        when AryPtn, FndPtn, HshPtn
           q.text(" ")
           q.format(pattern)
         else
@@ -5286,28 +5302,35 @@ module SyntaxTree
   module Ternaryable
     class << self
       def call(q, node)
-        case q.parents.take(2)[1]
-        in Paren[contents: Statements[body: [node]]]
-          # If this is a conditional inside of a parentheses as the only
-          # content, then we don't want to transform it into a ternary.
-          # Presumably the user wanted it to be an explicit conditional because
-          # there are parentheses around it. So we'll just leave it in place.
-          false
-        else
-          # Otherwise, we're going to check the conditional for certain cases.
-          case node
-          in predicate: Assign | Command | CommandCall | MAssign | OpAssign
-            false
-          in predicate: Not[parentheses: false]
-            false
-          in {
-               statements: { body: [truthy] },
-               consequent: Else[statements: { body: [falsy] }] }
-            ternaryable?(truthy) && ternaryable?(falsy)
-          else
-            false
-          end
+        return false if ENV["STREE_FAST_FORMAT"]
+
+        # If this is a conditional inside of a parentheses as the only content,
+        # then we don't want to transform it into a ternary. Presumably the user
+        # wanted it to be an explicit conditional because there are parentheses
+        # around it. So we'll just leave it in place.
+        grandparent = q.grandparent
+        if grandparent.is_a?(Paren) && (body = grandparent.contents.body) && body.length == 1 && body.first == node
+          return false
         end
+
+        # Otherwise, we'll check the type of predicate. For certain nodes we
+        # want to force it to not be a ternary, like if the predicate is an
+        # assignment because it's hard to read.
+        case node.predicate
+        when Assign, Command, CommandCall, MAssign, OpAssign
+          return false
+        when Not
+          return false unless node.predicate.parentheses?
+        end
+
+        # If there's no Else, then this can't be represented as a ternary.
+        return false unless node.consequent.is_a?(Else)
+
+        truthy_body = node.statements.body
+        falsy_body = node.consequent.statements.body
+
+        (truthy_body.length == 1) && ternaryable?(truthy_body.first) &&
+          (falsy_body.length == 1) && ternaryable?(falsy_body.first)
       end
 
       private
@@ -5316,24 +5339,23 @@ module SyntaxTree
       # parentheses around them. In this case we say they cannot be ternaried
       # and default instead to breaking them into multiple lines.
       def ternaryable?(statement)
-        # This is a list of nodes that should not be allowed to be a part of a
-        # ternary clause.
-        no_ternary = [
-          Alias, Assign, Break, Command, CommandCall, Heredoc, If, IfMod, IfOp,
+        case statement
+        when Alias, Assign, Break, Command, CommandCall, Heredoc, If, IfMod, IfOp,
           Lambda, MAssign, Next, OpAssign, RescueMod, Return, Return0, Super,
           Undef, Unless, UnlessMod, Until, UntilMod, VarAlias, VoidStmt, While,
           WhileMod, Yield, Yield0, ZSuper
-        ]
-
-        # Here we're going to check that the only statement inside the
-        # statements node is no a part of our denied list of nodes that can be
-        # ternaries.
-        #
-        # If the user is using one of the lower precedence "and" or "or"
-        # operators, then we can't use a ternary expression as it would break
-        # the flow control.
-        !no_ternary.include?(statement.class) &&
-          !(statement.is_a?(Binary) && %i[and or].include?(statement.operator))
+          # This is a list of nodes that should not be allowed to be a part of a
+          # ternary clause.
+          false
+        when Binary
+          # If the user is using one of the lower precedence "and" or "or"
+          # operators, then we can't use a ternary expression as it would break
+          # the flow control.
+          operator = statement.operator
+          operator != "and" && operator != "or"
+        else
+          true
+        end
       end
     end
   end
@@ -5453,8 +5475,11 @@ module SyntaxTree
     end
 
     def contains_conditional?
-      case node
-      in statements: { body: [If | IfMod | IfOp | Unless | UnlessMod] }
+      statements = node.statements.body
+      return false if statements.length != 1
+
+      case statements.first
+      when If, IfMod, IfOp, Unless, UnlessMod
         true
       else
         false
@@ -6410,9 +6435,7 @@ module SyntaxTree
       # If we're at the top of a call chain, then we're going to do some
       # specialized printing in case we can print it nicely. We _only_ do this
       # at the top of the chain to avoid weird recursion issues.
-      if !ENV["STREE_SKIP_CALL_CHAIN"] &&
-          !CallChainFormatter.chained?(q.parent) &&
-           CallChainFormatter.chained?(call)
+      if CallChainFormatter.chained?(call) && !CallChainFormatter.chained?(q.parent)
         q.group do
           q
             .if_break { CallChainFormatter.new(self).format(q) }
@@ -9122,6 +9145,7 @@ module SyntaxTree
 
     # [boolean] whether or not parentheses were used
     attr_reader :parentheses
+    alias parentheses? parentheses
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
@@ -9160,10 +9184,10 @@ module SyntaxTree
         q.format(statement) if statement
         q.text(")")
       else
-        parent = q.parents.take(2)[1]
+        grandparent = q.grandparent
         ternary =
-          (parent.is_a?(If) || parent.is_a?(Unless)) &&
-            Ternaryable.call(q, parent)
+          (grandparent.is_a?(If) || grandparent.is_a?(Unless)) &&
+            Ternaryable.call(q, grandparent)
 
         if ternary
           q.if_break { q.text(" ") }.if_flat { q.text("(") }
