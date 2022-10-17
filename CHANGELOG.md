@@ -17,6 +17,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 ### Changed
 
 - [#170](https://github.com/ruby-syntax-tree/syntax_tree/pull/170) - We now require at least version `1.0.0` of `prettier_print`. This is to take advantage of the first-class string support in the doc tree.
+- [#170](https://github.com/ruby-syntax-tree/syntax_tree/pull/170) - Pattern matching has been removed from usage internal to this library (excluding the language server). This should hopefully enable runtimes that don't have pattern matching fully implemented yet (e.g., TruffleRuby) to run this gem.
 
 ## [3.6.3] - 2022-10-11
 
