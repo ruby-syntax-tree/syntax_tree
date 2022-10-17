@@ -621,11 +621,11 @@ module SyntaxTree
       return false unless arguments.is_a?(Args)
       parts = arguments.parts
 
-      if parts.last&.is_a?(ArgBlock)
+      if parts.last.is_a?(ArgBlock)
         # If the last argument is a block, then we can't put a trailing comma
         # after it without resulting in a syntax error.
         false
-      elsif parts.length == 1 && (part = parts.first) &&
+      elsif (parts.length == 1) && (part = parts.first) &&
             (part.is_a?(Command) || part.is_a?(CommandCall))
         # If the only argument is a command or command call, then a trailing
         # comma would be parsed as part of that expression instead of on this
@@ -891,6 +891,7 @@ module SyntaxTree
     #
     # provided the line length was hit between `bar` and `baz`.
     class VarRefsFormatter
+      # The separator for the fill algorithm.
       class Separator
         def call(q)
           q.text(",")
@@ -2522,7 +2523,8 @@ module SyntaxTree
                 # https://github.com/prettier/plugin-ruby/issues/862.
               else
                 # If we're at a Call node and not a MethodAddBlock node in the
-                # chain then we're going to add a newline so it indents properly.
+                # chain then we're going to add a newline so it indents
+                # properly.
                 q.breakable_empty
               end
             end
@@ -2701,6 +2703,8 @@ module SyntaxTree
       end
     end
 
+    # Print out the arguments to this call. If there are no arguments, then do
+    #nothing.
     def format_arguments(q)
       case arguments
       when ArgParen
@@ -2708,8 +2712,6 @@ module SyntaxTree
       when Args
         q.text(" ")
         q.format(arguments)
-      else
-        # Do nothing if there are no arguments.
       end
     end
 
@@ -3180,6 +3182,8 @@ module SyntaxTree
             end
           end
 
+        # Format the arguments for this command call here. If there are no
+        # arguments, then print nothing.
         if arguments
           parts = arguments.parts
 
@@ -3190,8 +3194,6 @@ module SyntaxTree
             q.text(" ")
             q.nest(argument_alignment(q, doc)) { q.format(arguments) }
           end
-        else
-          # If there are no arguments, print nothing.
         end
       end
     end

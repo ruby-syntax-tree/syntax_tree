@@ -148,7 +148,7 @@ module SyntaxTree
 
     # A similar version to the super, except that it calls back into the
     # separator proc with the instance of `self`.
-    def seplist(list, sep = nil, iter_method = :each) # :yield: element
+    def seplist(list, sep = nil, iter_method = :each)
       first = true
       list.__send__(iter_method) do |*v|
         if first

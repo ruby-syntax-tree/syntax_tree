@@ -23,7 +23,7 @@ require_relative "syntax_tree/parser"
 # We rely on Symbol#name being available, which is only available in Ruby 3.0+.
 # In case we're running on an older Ruby version, we polyfill it here.
 unless :+.respond_to?(:name)
-  class Symbol
+  class Symbol # rubocop:disable Style/Documentation
     def name
       to_s.freeze
     end

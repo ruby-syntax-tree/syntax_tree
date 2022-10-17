@@ -1389,7 +1389,7 @@ module SyntaxTree
     # :call-seq:
     #   on_dyna_symbol: (StringContent string_content) -> DynaSymbol
     def on_dyna_symbol(string_content)
-      if symbeg = find_token(SymBeg)
+      if (symbeg = find_token(SymBeg))
         # A normal dynamic symbol
         tokens.delete(symbeg)
         tstring_end = consume_tstring_end(symbeg.location)
