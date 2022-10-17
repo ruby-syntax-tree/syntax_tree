@@ -4,26 +4,6 @@ module SyntaxTree
   # A slightly enhanced PP that knows how to format recursively including
   # comments.
   class Formatter < PrettierPrint
-    # It's very common to use seplist with ->(q) { q.breakable_return }. We wrap
-    # that pattern into an object to cut down on having to create a bunch of
-    # lambdas all over the place.
-    class BreakableReturnSeparator
-      def call(q)
-        q.breakable_return
-      end
-    end
-
-    # Similar to the previous, it's common to ->(q) { q.breakable_space }. We
-    # also wrap that pattern into an object to cut down on lambdas.
-    class BreakableSpaceSeparator
-      def call(q)
-        q.breakable_space
-      end
-    end
-
-    BREAKABLE_RETURN_SEPARATOR = BreakableReturnSeparator.new
-    BREAKABLE_SPACE_SEPARATOR = BreakableSpaceSeparator.new
-
     # We want to minimize as much as possible the number of options that are
     # available in syntax tree. For the most part, if users want non-default
     # formatting, they should override the format methods on the specific nodes
@@ -82,20 +62,39 @@ module SyntaxTree
       # If there are comments, then we're going to format them around the node
       # so that they get printed properly.
       if node.comments.any?
-        leading, trailing = node.comments.partition(&:leading?)
+        trailing = []
+        last_leading = nil
 
-        # Print all comments that were found before the node.
-        leading.each do |comment|
-          comment.format(self)
-          breakable(force: true)
+        # First, we're going to print all of the comments that were found before
+        # the node. We'll also gather up any trailing comments that we find.
+        node.comments.each do |comment|
+          if comment.leading?
+            comment.format(self)
+            breakable(force: true)
+            last_leading = comment
+          else
+            trailing << comment
+          end
         end
 
         # If the node has a stree-ignore comment right before it, then we're
         # going to just print out the node as it was seen in the source.
         doc =
-          if leading.last&.ignore?
+          if last_leading&.ignore?
             range = source[node.location.start_char...node.location.end_char]
-            seplist(range.split(/\r?\n/, -1), Formatter::BREAKABLE_RETURN_SEPARATOR) { |line| text(line) }
+            first = true
+
+            range.each_line(chomp: true) do |line|
+              if first
+                first = false
+              else
+                breakable_return
+              end
+
+              text(line)
+            end
+
+            breakable_return if range.end_with?("\n")
           else
             node.format(self)
           end

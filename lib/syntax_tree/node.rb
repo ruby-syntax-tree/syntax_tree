@@ -328,7 +328,19 @@ module SyntaxTree
     def format(q)
       q.text("__END__")
       q.breakable_force
-      q.seplist(value.split(/\r?\n/, -1), Formatter::BREAKABLE_RETURN_SEPARATOR) { |line| q.text(line) }
+
+      first = true
+      value.each_line(chomp: true) do |line|
+        if first
+          first = false
+        else
+          q.breakable_return
+        end
+
+        q.text(line)
+      end
+
+      q.breakable_return if value.end_with?("\n")
     end
   end
 
@@ -792,6 +804,17 @@ module SyntaxTree
   #     [one, two, three]
   #
   class ArrayLiteral < Node
+    # It's very common to use seplist with ->(q) { q.breakable_space }. We wrap
+    # that pattern into an object to cut down on having to create a bunch of
+    # lambdas all over the place.
+    class BreakableSpaceSeparator
+      def call(q)
+        q.breakable_space
+      end
+    end
+
+    BREAKABLE_SPACE_SEPARATOR = BreakableSpaceSeparator.new
+
     # Formats an array of multiple simple string literals into the %w syntax.
     class QWordsFormatter
       # [Args] the contents of the array
@@ -806,7 +829,7 @@ module SyntaxTree
         q.group do
           q.indent do
             q.breakable_empty
-            q.seplist(contents.parts, Formatter::BREAKABLE_SPACE_SEPARATOR) do |part|
+            q.seplist(contents.parts, BREAKABLE_SPACE_SEPARATOR) do |part|
               if part.is_a?(StringLiteral)
                 q.format(part.parts.first)
               else
@@ -834,7 +857,7 @@ module SyntaxTree
         q.group do
           q.indent do
             q.breakable_empty
-            q.seplist(contents.parts, Formatter::BREAKABLE_SPACE_SEPARATOR) do |part|
+            q.seplist(contents.parts, BREAKABLE_SPACE_SEPARATOR) do |part|
               q.format(part.value)
             end
           end
@@ -4034,9 +4057,19 @@ module SyntaxTree
         parts.each do |part|
           if part.is_a?(TStringContent)
             value = Quotes.normalize(part.value, closing_quote)
-            q.seplist(value.split(/\r?\n/, -1), Formatter::BREAKABLE_RETURN_SEPARATOR) do |text|
-              q.text(text)
+            first = true
+
+            value.each_line(chomp: true) do |line|
+              if first
+                first = false
+              else
+                q.breakable_return
+              end
+
+              q.text(line)
             end
+
+            q.breakable_return if value.end_with?("\n")
           else
             q.format(part)
           end
@@ -4957,17 +4990,7 @@ module SyntaxTree
 
     # This is a very specific behavior where you want to force a newline, but
     # don't want to force the break parent.
-    class Separator
-      DOC = PrettierPrint::Breakable.new(" ", 1, indent: false, force: true)
-
-      def call(q)
-        q.target << DOC
-      end
-    end
-
-    # We're going to keep an instance around so we don't have to allocate a new
-    # one every time we format a heredoc.
-    SEPARATOR = Separator.new
+    SEPARATOR = PrettierPrint::Breakable.new(" ", 1, indent: false, force: true)
 
     def format(q)
       q.group do
@@ -4975,12 +4998,24 @@ module SyntaxTree
 
         q.line_suffix(priority: Formatter::HEREDOC_PRIORITY) do
           q.group do
-            SEPARATOR.call(q)
+            q.target << SEPARATOR
 
             parts.each do |part|
               if part.is_a?(TStringContent)
-                texts = part.value.split(/\r?\n/, -1)
-                q.seplist(texts, SEPARATOR) { |text| q.text(text) }
+                value = part.value
+                first = true
+
+                value.each_line(chomp: true) do |line|
+                  if first
+                    first = false
+                  else
+                    q.target << SEPARATOR
+                  end
+
+                  q.text(line)
+                end
+
+                q.target << SEPARATOR if value.end_with?("\n")
               else
                 q.format(part)
               end
@@ -7295,7 +7330,7 @@ module SyntaxTree
       q.group do
         q.indent do
           q.breakable_empty
-          q.seplist(elements, Formatter::BREAKABLE_SPACE_SEPARATOR) do |element|
+          q.seplist(elements, ArrayLiteral::BREAKABLE_SPACE_SEPARATOR) do |element|
             q.format(element)
           end
         end
@@ -7388,7 +7423,7 @@ module SyntaxTree
       q.group do
         q.indent do
           q.breakable_empty
-          q.seplist(elements, Formatter::BREAKABLE_SPACE_SEPARATOR) do |element|
+          q.seplist(elements, ArrayLiteral::BREAKABLE_SPACE_SEPARATOR) do |element|
             q.format(element)
           end
         end
@@ -8626,9 +8661,19 @@ module SyntaxTree
         parts.each do |part|
           if part.is_a?(TStringContent)
             value = Quotes.normalize(part.value, closing_quote)
-            q.seplist(value.split(/\r?\n/, -1), Formatter::BREAKABLE_RETURN_SEPARATOR) do |text|
-              q.text(text)
+            first = true
+
+            value.each_line(chomp: true) do |line|
+              if first
+                first = false
+              else
+                q.breakable_return
+              end
+
+              q.text(line)
             end
+
+            q.breakable_return if value.end_with?("\n")
           else
             q.format(part)
           end
@@ -8845,7 +8890,7 @@ module SyntaxTree
       q.group do
         q.indent do
           q.breakable_empty
-          q.seplist(elements, Formatter::BREAKABLE_SPACE_SEPARATOR) do |element|
+          q.seplist(elements, ArrayLiteral::BREAKABLE_SPACE_SEPARATOR) do |element|
             q.format(element)
           end
         end
@@ -10184,7 +10229,7 @@ module SyntaxTree
       q.group do
         q.indent do
           q.breakable_empty
-          q.seplist(elements, Formatter::BREAKABLE_SPACE_SEPARATOR) do |element|
+          q.seplist(elements, ArrayLiteral::BREAKABLE_SPACE_SEPARATOR) do |element|
             q.format(element)
           end
         end
