@@ -19,6 +19,8 @@ require_relative "syntax_tree/visitor/field_visitor"
 require_relative "syntax_tree/visitor/json_visitor"
 require_relative "syntax_tree/visitor/match_visitor"
 require_relative "syntax_tree/visitor/pretty_print_visitor"
+require_relative "syntax_tree/visitor/environment"
+require_relative "syntax_tree/visitor/with_environment"
 
 # Syntax Tree is a suite of tools built on top of the internal CRuby parser. It
 # provides the ability to generate a syntax tree from source, as well as the
