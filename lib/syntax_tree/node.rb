@@ -625,7 +625,8 @@ module SyntaxTree
         # If the last argument is a block, then we can't put a trailing comma
         # after it without resulting in a syntax error.
         false
-      elsif parts.length == 1 && (part = parts.first) && (part.is_a?(Command) || part.is_a?(CommandCall))
+      elsif parts.length == 1 && (part = parts.first) &&
+            (part.is_a?(Command) || part.is_a?(CommandCall))
         # If the only argument is a command or command call, then a trailing
         # comma would be parsed as part of that expression instead of on this
         # one, so we don't want to add a trailing comma.
@@ -1444,7 +1445,8 @@ module SyntaxTree
         when DynaSymbol
           parts = key.parts
 
-          if parts.length == 1 && (part = parts.first) && part.is_a?(TStringContent) && part.value.match?(LABEL)
+          if parts.length == 1 && (part = parts.first) &&
+               part.is_a?(TStringContent) && part.value.match?(LABEL)
             q.format(part)
             q.text(":")
           else
@@ -2054,7 +2056,8 @@ module SyntaxTree
         when Paren, Statements
           # If we hit certain breakpoints then we know we're safe.
           return false
-        when If, IfMod, IfOp, Unless, UnlessMod, While, WhileMod, Until, UntilMod
+        when If, IfMod, IfOp, Unless, UnlessMod, While, WhileMod, Until,
+             UntilMod
           return true if parent.predicate == previous
           previous = parent
         end
@@ -2395,11 +2398,7 @@ module SyntaxTree
       when :"::"
         q.text(".")
       when Op
-        if operator.value == "::"
-          q.text(".")
-        else
-          operator.format(q)
-        end
+        operator.value == "::" ? q.text(".") : operator.format(q)
       else
         operator.format(q)
       end
@@ -2465,7 +2464,8 @@ module SyntaxTree
         # nodes.
         parent = parents[3] if parent.is_a?(DoBlock)
 
-        if parent.is_a?(MethodAddBlock) && parent.call.is_a?(FCall) && parent.call.value.value == "sig"
+        if parent.is_a?(MethodAddBlock) && parent.call.is_a?(FCall) &&
+             parent.call.value.value == "sig"
           threshold = 2
         end
       end
@@ -2510,7 +2510,10 @@ module SyntaxTree
 
           while (child = children.pop)
             if child.is_a?(Call)
-              if child.receiver.is_a?(Call) && (child.receiver.message != :call) && (child.receiver.message.value == "where") && (child.message.value == "not")
+              if child.receiver.is_a?(Call) &&
+                   (child.receiver.message != :call) &&
+                   (child.receiver.message.value == "where") &&
+                   (child.message.value == "not")
                 # This is very specialized behavior wherein we group
                 # .where.not calls together because it looks better. For more
                 # information, see
@@ -2684,7 +2687,8 @@ module SyntaxTree
       # If we're at the top of a call chain, then we're going to do some
       # specialized printing in case we can print it nicely. We _only_ do this
       # at the top of the chain to avoid weird recursion issues.
-      if CallChainFormatter.chained?(receiver) && !CallChainFormatter.chained?(q.parent)
+      if CallChainFormatter.chained?(receiver) &&
+           !CallChainFormatter.chained?(q.parent)
         q.group do
           q
             .if_break { CallChainFormatter.new(self).format(q) }
@@ -5344,7 +5348,8 @@ module SyntaxTree
         # wanted it to be an explicit conditional because there are parentheses
         # around it. So we'll just leave it in place.
         grandparent = q.grandparent
-        if grandparent.is_a?(Paren) && (body = grandparent.contents.body) && body.length == 1 && body.first == node
+        if grandparent.is_a?(Paren) && (body = grandparent.contents.body) &&
+             body.length == 1 && body.first == node
           return false
         end
 
@@ -5375,10 +5380,10 @@ module SyntaxTree
       # and default instead to breaking them into multiple lines.
       def ternaryable?(statement)
         case statement
-        when Alias, Assign, Break, Command, CommandCall, Heredoc, If, IfMod, IfOp,
-          Lambda, MAssign, Next, OpAssign, RescueMod, Return, Return0, Super,
-          Undef, Unless, UnlessMod, Until, UntilMod, VarAlias, VoidStmt, While,
-          WhileMod, Yield, Yield0, ZSuper
+        when Alias, Assign, Break, Command, CommandCall, Heredoc, If, IfMod,
+             IfOp, Lambda, MAssign, Next, OpAssign, RescueMod, Return, Return0,
+             Super, Undef, Unless, UnlessMod, Until, UntilMod, VarAlias,
+             VoidStmt, While, WhileMod, Yield, Yield0, ZSuper
           # This is a list of nodes that should not be allowed to be a part of a
           # ternary clause.
           false
@@ -6470,7 +6475,8 @@ module SyntaxTree
       # If we're at the top of a call chain, then we're going to do some
       # specialized printing in case we can print it nicely. We _only_ do this
       # at the top of the chain to avoid weird recursion issues.
-      if CallChainFormatter.chained?(call) && !CallChainFormatter.chained?(q.parent)
+      if CallChainFormatter.chained?(call) &&
+           !CallChainFormatter.chained?(q.parent)
         q.group do
           q
             .if_break { CallChainFormatter.new(self).format(q) }
@@ -7330,9 +7336,10 @@ module SyntaxTree
       q.group do
         q.indent do
           q.breakable_empty
-          q.seplist(elements, ArrayLiteral::BREAKABLE_SPACE_SEPARATOR) do |element|
-            q.format(element)
-          end
+          q.seplist(
+            elements,
+            ArrayLiteral::BREAKABLE_SPACE_SEPARATOR
+          ) { |element| q.format(element) }
         end
         q.breakable_empty
       end
@@ -7423,9 +7430,10 @@ module SyntaxTree
       q.group do
         q.indent do
           q.breakable_empty
-          q.seplist(elements, ArrayLiteral::BREAKABLE_SPACE_SEPARATOR) do |element|
-            q.format(element)
-          end
+          q.seplist(
+            elements,
+            ArrayLiteral::BREAKABLE_SPACE_SEPARATOR
+          ) { |element| q.format(element) }
         end
         q.breakable_empty
       end
@@ -8378,7 +8386,7 @@ module SyntaxTree
           q.text("; ")
           q.format(statement)
         end
-        
+
         line = statement.location.end_line
         previous = statement
       end
@@ -8890,9 +8898,10 @@ module SyntaxTree
       q.group do
         q.indent do
           q.breakable_empty
-          q.seplist(elements, ArrayLiteral::BREAKABLE_SPACE_SEPARATOR) do |element|
-            q.format(element)
-          end
+          q.seplist(
+            elements,
+            ArrayLiteral::BREAKABLE_SPACE_SEPARATOR
+          ) { |element| q.format(element) }
         end
         q.breakable_empty
       end
@@ -9773,15 +9782,17 @@ module SyntaxTree
     def pin(parent)
       replace = PinnedVarRef.new(value: value, location: location)
 
-      parent.deconstruct_keys([]).each do |key, value|
-        if value == self
-          parent.instance_variable_set(:"@#{key}", replace)
-          break
-        elsif value.is_a?(Array) && (index = value.index(self))
-          parent.public_send(key)[index] = replace
-          break
+      parent
+        .deconstruct_keys([])
+        .each do |key, value|
+          if value == self
+            parent.instance_variable_set(:"@#{key}", replace)
+            break
+          elsif value.is_a?(Array) && (index = value.index(self))
+            parent.public_send(key)[index] = replace
+            break
+          end
         end
-      end
     end
   end
 
@@ -10229,9 +10240,10 @@ module SyntaxTree
       q.group do
         q.indent do
           q.breakable_empty
-          q.seplist(elements, ArrayLiteral::BREAKABLE_SPACE_SEPARATOR) do |element|
-            q.format(element)
-          end
+          q.seplist(
+            elements,
+            ArrayLiteral::BREAKABLE_SPACE_SEPARATOR
+          ) { |element| q.format(element) }
         end
         q.breakable_empty
       end

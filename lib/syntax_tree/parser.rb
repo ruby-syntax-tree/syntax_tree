@@ -1011,12 +1011,13 @@ module SyntaxTree
             consume_operator(:"=>")
           end
 
-        node = RAssign.new(
-          value: value,
-          operator: operator,
-          pattern: consequent,
-          location: value.location.to(consequent.location)
-        )
+        node =
+          RAssign.new(
+            value: value,
+            operator: operator,
+            pattern: consequent,
+            location: value.location.to(consequent.location)
+          )
 
         PinVisitor.visit(node, tokens)
         node
@@ -1973,12 +1974,13 @@ module SyntaxTree
         ending.location.start_column
       )
 
-      node = In.new(
-        pattern: pattern,
-        statements: statements,
-        consequent: consequent,
-        location: beginning.location.to(ending.location)
-      )
+      node =
+        In.new(
+          pattern: pattern,
+          statements: statements,
+          consequent: consequent,
+          location: beginning.location.to(ending.location)
+        )
 
       PinVisitor.visit(node, tokens)
       node
