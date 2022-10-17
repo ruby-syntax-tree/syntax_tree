@@ -2510,7 +2510,7 @@ module SyntaxTree
 
           while (child = children.pop)
             if child.is_a?(Call)
-              if child.receiver.is_a?(Call) && child.receiver.message.value == "where" && child.message.value == "not"
+              if child.receiver.is_a?(Call) && (child.receiver.message != :call) && (child.receiver.message.value == "where") && (child.message.value == "not")
                 # This is very specialized behavior wherein we group
                 # .where.not calls together because it looks better. For more
                 # information, see
