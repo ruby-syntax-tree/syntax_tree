@@ -5396,7 +5396,7 @@ module SyntaxTree
           # operators, then we can't use a ternary expression as it would break
           # the flow control.
           operator = statement.operator
-          operator != "and" && operator != "or"
+          operator != :and && operator != :or
         else
           true
         end
