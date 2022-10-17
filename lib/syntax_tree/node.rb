@@ -1651,6 +1651,20 @@ module SyntaxTree
   #     array << value
   #
   class Binary < Node
+    # Since Binary's operator is a symbol, it's better to use the `name` method
+    # than to allocate a new string every time. This is a tiny performance
+    # optimization, but enough that it shows up in the profiler. Adding this in
+    # for older Ruby versions.
+    unless :+.respond_to?(:name)
+      using Module.new {
+        refine Symbol do
+          def name
+            to_s.freeze
+          end
+        end
+      }
+    end
+
     # [untyped] the left-hand side of the expression
     attr_reader :left
 
