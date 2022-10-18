@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 
 ## [Unreleased]
 
+## [4.0.1] - 2022-10-18
+
+### Changed
+
+- [#172](https://github.com/ruby-syntax-tree/syntax_tree/pull/172) - Use a refinement for `Symbol#name` addition so that other runtimes or tools don't get confused by its availability.
+- [#173](https://github.com/ruby-syntax-tree/syntax_tree/pull/173) - Fix the `current_environment` usage to use the method instead of the instance variable.
+- [#175](https://github.com/ruby-syntax-tree/syntax_tree/pull/175) - Update `prettier_print` requirement since v1.0.0 had a bug with `#breakable_return`.
+
 ## [4.0.0] - 2022-10-17
 
 ### Added
