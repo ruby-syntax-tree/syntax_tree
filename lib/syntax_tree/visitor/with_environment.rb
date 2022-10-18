@@ -44,8 +44,12 @@ module SyntaxTree
       with_new_environment { super }
     end
 
+    # When we find a method invocation with a block, only the code that happens
+    # inside of the block needs a fresh environment. The method invocation
+    # itself happens in the same environment
     def visit_method_add_block(node)
-      with_new_environment { super }
+      visit(node.call)
+      with_new_environment { visit(node.block) }
     end
 
     def visit_def(node)

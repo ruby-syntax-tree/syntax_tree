@@ -506,5 +506,32 @@ module SyntaxTree
       assert_equal(1, variable.definitions[0].start_line)
       assert_equal(2, variable.usages[0].start_line)
     end
+
+    def test_double_aref_on_method_call
+      tree = SyntaxTree.parse(<<~RUBY)
+        object = MyObject.new
+        object["attributes"].find { |a| a["field"] == "expected" }["value"] = "changed"
+      RUBY
+
+      visitor = Collector.new
+      visitor.visit(tree)
+
+      assert_equal(1, visitor.arguments.length)
+      assert_equal(1, visitor.variables.length)
+
+      variable = visitor.variables["object"]
+      assert_equal(1, variable.definitions.length)
+      assert_equal(1, variable.usages.length)
+
+      assert_equal(1, variable.definitions[0].start_line)
+      assert_equal(2, variable.usages[0].start_line)
+
+      argument = visitor.arguments["a"]
+      assert_equal(1, argument.definitions.length)
+      assert_equal(1, argument.usages.length)
+
+      assert_equal(2, argument.definitions[0].start_line)
+      assert_equal(2, argument.usages[0].start_line)
+    end
   end
 end
