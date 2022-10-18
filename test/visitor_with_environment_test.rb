@@ -533,5 +533,87 @@ module SyntaxTree
       assert_equal(2, argument.definitions[0].start_line)
       assert_equal(2, argument.usages[0].start_line)
     end
+
+    def test_nested_arguments
+      tree = SyntaxTree.parse(<<~RUBY)
+        [[1, [2, 3]]].each do |one, (two, three)|
+          one
+          two
+          three
+        end
+      RUBY
+
+      visitor = Collector.new
+      visitor.visit(tree)
+
+      assert_equal(3, visitor.arguments.length)
+      assert_equal(0, visitor.variables.length)
+
+      argument = visitor.arguments["one"]
+      assert_equal(1, argument.definitions.length)
+      assert_equal(1, argument.usages.length)
+
+      assert_equal(1, argument.definitions[0].start_line)
+      assert_equal(2, argument.usages[0].start_line)
+
+      argument = visitor.arguments["two"]
+      assert_equal(1, argument.definitions.length)
+      assert_equal(1, argument.usages.length)
+
+      assert_equal(1, argument.definitions[0].start_line)
+      assert_equal(3, argument.usages[0].start_line)
+
+      argument = visitor.arguments["three"]
+      assert_equal(1, argument.definitions.length)
+      assert_equal(1, argument.usages.length)
+
+      assert_equal(1, argument.definitions[0].start_line)
+      assert_equal(4, argument.usages[0].start_line)
+    end
+
+    def test_double_nested_arguments
+      tree = SyntaxTree.parse(<<~RUBY)
+        [[1, [2, 3]]].each do |one, (two, (three, four))|
+          one
+          two
+          three
+          four
+        end
+      RUBY
+
+      visitor = Collector.new
+      visitor.visit(tree)
+
+      assert_equal(4, visitor.arguments.length)
+      assert_equal(0, visitor.variables.length)
+
+      argument = visitor.arguments["one"]
+      assert_equal(1, argument.definitions.length)
+      assert_equal(1, argument.usages.length)
+
+      assert_equal(1, argument.definitions[0].start_line)
+      assert_equal(2, argument.usages[0].start_line)
+
+      argument = visitor.arguments["two"]
+      assert_equal(1, argument.definitions.length)
+      assert_equal(1, argument.usages.length)
+
+      assert_equal(1, argument.definitions[0].start_line)
+      assert_equal(3, argument.usages[0].start_line)
+
+      argument = visitor.arguments["three"]
+      assert_equal(1, argument.definitions.length)
+      assert_equal(1, argument.usages.length)
+
+      assert_equal(1, argument.definitions[0].start_line)
+      assert_equal(4, argument.usages[0].start_line)
+
+      argument = visitor.arguments["four"]
+      assert_equal(1, argument.definitions.length)
+      assert_equal(1, argument.usages.length)
+
+      assert_equal(1, argument.definitions[0].start_line)
+      assert_equal(5, argument.usages[0].start_line)
+    end
   end
 end

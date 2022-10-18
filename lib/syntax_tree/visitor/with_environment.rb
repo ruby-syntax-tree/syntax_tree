@@ -67,9 +67,7 @@ module SyntaxTree
     # Visit for keeping track of local arguments, such as method and block
     # arguments
     def visit_params(node)
-      node.requireds.each do |param|
-        current_environment.add_local_definition(param, :argument)
-      end
+      add_argument_definitions(node.requireds)
 
       node.posts.each do |param|
         current_environment.add_local_definition(param, :argument)
@@ -133,6 +131,18 @@ module SyntaxTree
       end
 
       super
+    end
+
+    private
+
+    def add_argument_definitions(list)
+      list.each do |param|
+        if param.is_a?(SyntaxTree::MLHSParen)
+          add_argument_definitions(param.contents.parts)
+        else
+          current_environment.add_local_definition(param, :argument)
+        end
+      end
     end
   end
 end
