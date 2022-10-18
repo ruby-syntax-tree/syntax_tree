@@ -117,13 +117,6 @@ module SyntaxTree
     alias visit_pinned_var_ref visit_var_field
 
     # Visits for keeping track of variable and argument usages
-    def visit_aref_field(node)
-      name = node.collection.value
-      current_environment.add_local_usage(name, :variable) if name
-
-      super
-    end
-
     def visit_var_ref(node)
       value = node.value
 

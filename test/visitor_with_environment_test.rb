@@ -426,5 +426,85 @@ module SyntaxTree
       assert_equal(1, variable.definitions[0].start_line)
       assert_equal(2, variable.usages[0].start_line)
     end
+
+    def test_aref_field
+      tree = SyntaxTree.parse(<<~RUBY)
+        object = {}
+        object["name"] = "something"
+      RUBY
+
+      visitor = Collector.new
+      visitor.visit(tree)
+
+      assert_equal(0, visitor.arguments.length)
+      assert_equal(1, visitor.variables.length)
+
+      variable = visitor.variables["object"]
+      assert_equal(1, variable.definitions.length)
+      assert_equal(1, variable.usages.length)
+
+      assert_equal(1, variable.definitions[0].start_line)
+      assert_equal(2, variable.usages[0].start_line)
+    end
+
+    def test_aref_on_a_method_call
+      tree = SyntaxTree.parse(<<~RUBY)
+        object = MyObject.new
+        object.attributes["name"] = "something"
+      RUBY
+
+      visitor = Collector.new
+      visitor.visit(tree)
+
+      assert_equal(0, visitor.arguments.length)
+      assert_equal(1, visitor.variables.length)
+
+      variable = visitor.variables["object"]
+      assert_equal(1, variable.definitions.length)
+      assert_equal(1, variable.usages.length)
+
+      assert_equal(1, variable.definitions[0].start_line)
+      assert_equal(2, variable.usages[0].start_line)
+    end
+
+    def test_aref_with_two_accesses
+      tree = SyntaxTree.parse(<<~RUBY)
+        object = MyObject.new
+        object["first"]["second"] ||= []
+      RUBY
+
+      visitor = Collector.new
+      visitor.visit(tree)
+
+      assert_equal(0, visitor.arguments.length)
+      assert_equal(1, visitor.variables.length)
+
+      variable = visitor.variables["object"]
+      assert_equal(1, variable.definitions.length)
+      assert_equal(1, variable.usages.length)
+
+      assert_equal(1, variable.definitions[0].start_line)
+      assert_equal(2, variable.usages[0].start_line)
+    end
+
+    def test_aref_on_a_method_call_with_arguments
+      tree = SyntaxTree.parse(<<~RUBY)
+        object = MyObject.new
+        object.instance_variable_get(:@attributes)[:something] = :other_thing
+      RUBY
+
+      visitor = Collector.new
+      visitor.visit(tree)
+
+      assert_equal(0, visitor.arguments.length)
+      assert_equal(1, visitor.variables.length)
+
+      variable = visitor.variables["object"]
+      assert_equal(1, variable.definitions.length)
+      assert_equal(1, variable.usages.length)
+
+      assert_equal(1, variable.definitions[0].start_line)
+      assert_equal(2, variable.usages[0].start_line)
+    end
   end
 end
