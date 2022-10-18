@@ -426,5 +426,194 @@ module SyntaxTree
       assert_equal(1, variable.definitions[0].start_line)
       assert_equal(2, variable.usages[0].start_line)
     end
+
+    def test_aref_field
+      tree = SyntaxTree.parse(<<~RUBY)
+        object = {}
+        object["name"] = "something"
+      RUBY
+
+      visitor = Collector.new
+      visitor.visit(tree)
+
+      assert_equal(0, visitor.arguments.length)
+      assert_equal(1, visitor.variables.length)
+
+      variable = visitor.variables["object"]
+      assert_equal(1, variable.definitions.length)
+      assert_equal(1, variable.usages.length)
+
+      assert_equal(1, variable.definitions[0].start_line)
+      assert_equal(2, variable.usages[0].start_line)
+    end
+
+    def test_aref_on_a_method_call
+      tree = SyntaxTree.parse(<<~RUBY)
+        object = MyObject.new
+        object.attributes["name"] = "something"
+      RUBY
+
+      visitor = Collector.new
+      visitor.visit(tree)
+
+      assert_equal(0, visitor.arguments.length)
+      assert_equal(1, visitor.variables.length)
+
+      variable = visitor.variables["object"]
+      assert_equal(1, variable.definitions.length)
+      assert_equal(1, variable.usages.length)
+
+      assert_equal(1, variable.definitions[0].start_line)
+      assert_equal(2, variable.usages[0].start_line)
+    end
+
+    def test_aref_with_two_accesses
+      tree = SyntaxTree.parse(<<~RUBY)
+        object = MyObject.new
+        object["first"]["second"] ||= []
+      RUBY
+
+      visitor = Collector.new
+      visitor.visit(tree)
+
+      assert_equal(0, visitor.arguments.length)
+      assert_equal(1, visitor.variables.length)
+
+      variable = visitor.variables["object"]
+      assert_equal(1, variable.definitions.length)
+      assert_equal(1, variable.usages.length)
+
+      assert_equal(1, variable.definitions[0].start_line)
+      assert_equal(2, variable.usages[0].start_line)
+    end
+
+    def test_aref_on_a_method_call_with_arguments
+      tree = SyntaxTree.parse(<<~RUBY)
+        object = MyObject.new
+        object.instance_variable_get(:@attributes)[:something] = :other_thing
+      RUBY
+
+      visitor = Collector.new
+      visitor.visit(tree)
+
+      assert_equal(0, visitor.arguments.length)
+      assert_equal(1, visitor.variables.length)
+
+      variable = visitor.variables["object"]
+      assert_equal(1, variable.definitions.length)
+      assert_equal(1, variable.usages.length)
+
+      assert_equal(1, variable.definitions[0].start_line)
+      assert_equal(2, variable.usages[0].start_line)
+    end
+
+    def test_double_aref_on_method_call
+      tree = SyntaxTree.parse(<<~RUBY)
+        object = MyObject.new
+        object["attributes"].find { |a| a["field"] == "expected" }["value"] = "changed"
+      RUBY
+
+      visitor = Collector.new
+      visitor.visit(tree)
+
+      assert_equal(1, visitor.arguments.length)
+      assert_equal(1, visitor.variables.length)
+
+      variable = visitor.variables["object"]
+      assert_equal(1, variable.definitions.length)
+      assert_equal(1, variable.usages.length)
+
+      assert_equal(1, variable.definitions[0].start_line)
+      assert_equal(2, variable.usages[0].start_line)
+
+      argument = visitor.arguments["a"]
+      assert_equal(1, argument.definitions.length)
+      assert_equal(1, argument.usages.length)
+
+      assert_equal(2, argument.definitions[0].start_line)
+      assert_equal(2, argument.usages[0].start_line)
+    end
+
+    def test_nested_arguments
+      tree = SyntaxTree.parse(<<~RUBY)
+        [[1, [2, 3]]].each do |one, (two, three)|
+          one
+          two
+          three
+        end
+      RUBY
+
+      visitor = Collector.new
+      visitor.visit(tree)
+
+      assert_equal(3, visitor.arguments.length)
+      assert_equal(0, visitor.variables.length)
+
+      argument = visitor.arguments["one"]
+      assert_equal(1, argument.definitions.length)
+      assert_equal(1, argument.usages.length)
+
+      assert_equal(1, argument.definitions[0].start_line)
+      assert_equal(2, argument.usages[0].start_line)
+
+      argument = visitor.arguments["two"]
+      assert_equal(1, argument.definitions.length)
+      assert_equal(1, argument.usages.length)
+
+      assert_equal(1, argument.definitions[0].start_line)
+      assert_equal(3, argument.usages[0].start_line)
+
+      argument = visitor.arguments["three"]
+      assert_equal(1, argument.definitions.length)
+      assert_equal(1, argument.usages.length)
+
+      assert_equal(1, argument.definitions[0].start_line)
+      assert_equal(4, argument.usages[0].start_line)
+    end
+
+    def test_double_nested_arguments
+      tree = SyntaxTree.parse(<<~RUBY)
+        [[1, [2, 3]]].each do |one, (two, (three, four))|
+          one
+          two
+          three
+          four
+        end
+      RUBY
+
+      visitor = Collector.new
+      visitor.visit(tree)
+
+      assert_equal(4, visitor.arguments.length)
+      assert_equal(0, visitor.variables.length)
+
+      argument = visitor.arguments["one"]
+      assert_equal(1, argument.definitions.length)
+      assert_equal(1, argument.usages.length)
+
+      assert_equal(1, argument.definitions[0].start_line)
+      assert_equal(2, argument.usages[0].start_line)
+
+      argument = visitor.arguments["two"]
+      assert_equal(1, argument.definitions.length)
+      assert_equal(1, argument.usages.length)
+
+      assert_equal(1, argument.definitions[0].start_line)
+      assert_equal(3, argument.usages[0].start_line)
+
+      argument = visitor.arguments["three"]
+      assert_equal(1, argument.definitions.length)
+      assert_equal(1, argument.usages.length)
+
+      assert_equal(1, argument.definitions[0].start_line)
+      assert_equal(4, argument.usages[0].start_line)
+
+      argument = visitor.arguments["four"]
+      assert_equal(1, argument.definitions.length)
+      assert_equal(1, argument.usages.length)
+
+      assert_equal(1, argument.definitions[0].start_line)
+      assert_equal(5, argument.usages[0].start_line)
+    end
   end
 end

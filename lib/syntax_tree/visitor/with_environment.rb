@@ -44,8 +44,12 @@ module SyntaxTree
       with_new_environment { super }
     end
 
+    # When we find a method invocation with a block, only the code that happens
+    # inside of the block needs a fresh environment. The method invocation
+    # itself happens in the same environment
     def visit_method_add_block(node)
-      with_new_environment { super }
+      visit(node.call)
+      with_new_environment { visit(node.block) }
     end
 
     def visit_def(node)
@@ -63,9 +67,7 @@ module SyntaxTree
     # Visit for keeping track of local arguments, such as method and block
     # arguments
     def visit_params(node)
-      node.requireds.each do |param|
-        current_environment.add_local_definition(param, :argument)
-      end
+      add_argument_definitions(node.requireds)
 
       node.posts.each do |param|
         current_environment.add_local_definition(param, :argument)
@@ -117,13 +119,6 @@ module SyntaxTree
     alias visit_pinned_var_ref visit_var_field
 
     # Visits for keeping track of variable and argument usages
-    def visit_aref_field(node)
-      name = node.collection.value
-      current_environment.add_local_usage(name, :variable) if name
-
-      super
-    end
-
     def visit_var_ref(node)
       value = node.value
 
@@ -136,6 +131,18 @@ module SyntaxTree
       end
 
       super
+    end
+
+    private
+
+    def add_argument_definitions(list)
+      list.each do |param|
+        if param.is_a?(SyntaxTree::MLHSParen)
+          add_argument_definitions(param.contents.parts)
+        else
+          current_environment.add_local_definition(param, :argument)
+        end
+      end
     end
   end
 end
