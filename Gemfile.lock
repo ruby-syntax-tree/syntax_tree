@@ -1,8 +1,8 @@
 PATH
   remote: .
   specs:
-    syntax_tree (4.0.1)
-      prettier_print (>= 1.0.1)
+    syntax_tree (4.0.2)
+      prettier_print (>= 1.0.2)
 
 GEM
   remote: https://rubygems.org/

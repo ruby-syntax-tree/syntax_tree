@@ -25,7 +25,7 @@ Gem::Specification.new do |spec|
   spec.executables = spec.files.grep(%r{^exe/}) { |f| File.basename(f) }
   spec.require_paths = %w[lib]
 
-  spec.add_dependency "prettier_print", ">= 1.0.1"
+  spec.add_dependency "prettier_print", ">= 1.0.2"
 
   spec.add_development_dependency "bundler"
   spec.add_development_dependency "minitest"

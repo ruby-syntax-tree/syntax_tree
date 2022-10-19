@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 
 ## [Unreleased]
 
+## [4.0.2] - 2022-10-19
+
+### Changed
+
+- [#177](https://github.com/ruby-syntax-tree/syntax_tree/pull/177) - Fix up various other issues with the environment visitor addition.
+
 ## [4.0.1] - 2022-10-18
 
 ### Changed
@@ -391,7 +397,9 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 
 - 🎉 Initial release! 🎉
 
-[unreleased]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v4.0.0...HEAD
+[unreleased]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v4.0.2...HEAD
+[4.0.2]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v4.0.1...v4.0.2
+[4.0.1]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v4.0.0...v4.0.1
 [4.0.0]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v3.6.3...v4.0.0
 [3.6.3]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v3.6.2...v3.6.3
 [3.6.2]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v3.6.1...v3.6.2
