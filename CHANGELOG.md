@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 
 ## [Unreleased]
 
+## [4.1.0] - 2022-10-24
+
+### Added
+
+- [#180](https://github.com/ruby-syntax-tree/syntax_tree/pull/180) - The new `stree search` CLI command and the corresponding `SyntaxTree::Search` class for searching for a pattern against a given syntax tree.
+
 ## [4.0.2] - 2022-10-19
 
 ### Changed
@@ -397,7 +403,8 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 
 - 🎉 Initial release! 🎉
 
-[unreleased]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v4.0.2...HEAD
+[unreleased]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v4.1.0...HEAD
+[4.1.0]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v4.0.2...v4.1.0
 [4.0.2]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v4.0.1...v4.0.2
 [4.0.1]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v4.0.0...v4.0.1
 [4.0.0]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v3.6.3...v4.0.0
