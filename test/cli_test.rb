@@ -94,6 +94,11 @@ module SyntaxTree
       assert_includes(result.stdio, "SyntaxTree::Program")
     end
 
+    def test_search
+      result = run_cli("search", "VarRef", contents: "Foo + Bar")
+      assert_equal(2, result.stdio.lines.length)
+    end
+
     def test_version
       result = run_cli("version")
       assert_includes(result.stdio, SyntaxTree::VERSION.to_s)
