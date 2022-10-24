@@ -18,6 +18,7 @@ It is built with only standard library dependencies. It additionally ships with 
   - [format](#format)
   - [json](#json)
   - [match](#match)
+  - [search](#search)
   - [write](#write)
   - [Configuration](#configuration)
   - [Globbing](#globbing)
@@ -214,6 +215,29 @@ SyntaxTree::Program[
   ]
 ]
 ```
+
+### search
+
+This command will search the given filepaths against the specified pattern to find nodes that match. The pattern is a Ruby pattern-matching expression that is matched against each node in the tree. It can optionally be loaded from a file if you specify a filepath as the pattern argument.
+
+```sh
+stree search VarRef path/to/file.rb
+```
+
+For a file that contains `Foo + Bar` you will receive:
+
+```ruby
+path/to/file.rb:1:0: Foo + Bar
+path/to/file.rb:1:6: Foo + Bar
+```
+
+If you put `VarRef` into a file instead (for example, `query.txt`), you would instead run:
+
+```sh
+stree search query.txt path/to/file.rb
+```
+
+Note that the output of the `match` CLI command creates a valid pattern that can be used as the input for this command.
 
 ### write
 

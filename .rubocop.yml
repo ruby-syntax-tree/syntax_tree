@@ -28,6 +28,9 @@ Lint/InterpolationCheck:
 Lint/MissingSuper:
   Enabled: false
 
+Lint/RedundantRequireStatement:
+  Enabled: false
+
 Lint/UnusedMethodArgument:
   AllowUnusedKeywordArguments: true
 

@@ -212,6 +212,39 @@ module SyntaxTree
       end
     end
 
+    # An action of the CLI that searches for the given pattern matching pattern
+    # in the given files.
+    class Search < Action
+      attr_reader :search
+
+      def initialize(query)
+        query = File.read(query) if File.readable?(query)
+        @search = SyntaxTree::Search.new(query)
+      rescue SyntaxTree::Search::UncompilableError => error
+        warn(error.message)
+        exit(1)
+      end
+
+      def run(item)
+        search.scan(item.handler.parse(item.source)) do |node|
+          location = node.location
+          line = location.start_line
+
+          bold_range =
+            if line == location.end_line
+              location.start_column...location.end_column
+            else
+              location.start_column..
+            end
+
+          source = item.source.lines[line - 1].chomp
+          source[bold_range] = Color.bold(source[bold_range]).to_s
+
+          puts("#{item.filepath}:#{line}:#{location.start_column}: #{source}")
+        end
+      end
+    end
+
     # An action of the CLI that formats the input source and writes the
     # formatted output back to the file.
     class Write < Action
@@ -262,6 +295,9 @@ module SyntaxTree
 
       #{Color.bold("stree lsp [--plugins=...] [--print-width=NUMBER]")}
         Run syntax tree in language server mode
+
+      #{Color.bold("stree search PATTERN [-e SCRIPT] FILE")}
+        Search for the given pattern in the given files
 
       #{Color.bold("stree version")}
         Output the current version of syntax tree
@@ -400,6 +436,8 @@ module SyntaxTree
             Debug.new(options)
           when "doc"
             Doc.new(options)
+          when "f", "format"
+            Format.new(options)
           when "help"
             puts HELP
             return 0
@@ -411,8 +449,8 @@ module SyntaxTree
             return 0
           when "m", "match"
             Match.new(options)
-          when "f", "format"
-            Format.new(options)
+          when "s", "search"
+            Search.new(arguments.shift)
           when "version"
             puts SyntaxTree::VERSION
             return 0
@@ -434,7 +472,7 @@ module SyntaxTree
               .glob(pattern)
               .each do |filepath|
                 if File.readable?(filepath) &&
-                    options.ignore_files.none? { File.fnmatch?(_1, filepath) }
+                     options.ignore_files.none? { File.fnmatch?(_1, filepath) }
                   queue << FileItem.new(filepath)
                 end
               end

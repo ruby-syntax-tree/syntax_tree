@@ -1657,12 +1657,12 @@ module SyntaxTree
     # for older Ruby versions.
     unless :+.respond_to?(:name)
       using Module.new {
-        refine Symbol do
-          def name
-            to_s.freeze
-          end
-        end
-      }
+              refine Symbol do
+                def name
+                  to_s.freeze
+                end
+              end
+            }
     end
 
     # [untyped] the left-hand side of the expression
