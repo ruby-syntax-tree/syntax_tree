@@ -226,7 +226,7 @@ stree search VarRef path/to/file.rb
 
 For a file that contains `Foo + Bar` you will receive:
 
-```ruby
+```
 path/to/file.rb:1:0: Foo + Bar
 path/to/file.rb:1:6: Foo + Bar
 ```
