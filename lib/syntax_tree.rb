@@ -75,4 +75,10 @@ module SyntaxTree
 
     File.read(filepath, encoding: encoding)
   end
+
+  # Searches through the given source using the given pattern and yields each
+  # node in the tree that matches the pattern to the given block.
+  def self.search(source, query, &block)
+    Search.new(Pattern.new(query).compile).scan(parse(source), &block)
+  end
 end

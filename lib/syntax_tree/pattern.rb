@@ -37,6 +37,8 @@ module SyntaxTree
   # do not yet support) then a SyntaxTree::Pattern::CompilationError will be
   # raised.
   class Pattern
+    # Raised when the query given to a pattern is either invalid Ruby syntax or
+    # is using syntax that we don't yet support.
     class CompilationError < StandardError
       def initialize(repr)
         super(<<~ERROR)
@@ -76,27 +78,27 @@ module SyntaxTree
     def combine_and(left, right)
       ->(node) { left.call(node) && right.call(node) }
     end
-  
+
     def combine_or(left, right)
       ->(node) { left.call(node) || right.call(node) }
     end
 
-    def compile_node(node)
-      case node
+    def compile_node(root)
+      case root
       in AryPtn[constant:, requireds:, rest: nil, posts: []]
         compiled_constant = compile_node(constant) if constant
-  
+
         preprocessed = requireds.map { |required| compile_node(required) }
-  
+
         compiled_requireds = ->(node) do
           deconstructed = node.deconstruct
-  
+
           deconstructed.length == preprocessed.length &&
-            preprocessed.zip(deconstructed).all? do |(matcher, value)|
-              matcher.call(value)
-            end
+            preprocessed
+              .zip(deconstructed)
+              .all? { |(matcher, value)| matcher.call(value) }
         end
-  
+
         if compiled_constant
           combine_and(compiled_constant, compiled_requireds)
         else
@@ -106,39 +108,41 @@ module SyntaxTree
         combine_or(compile_node(left), compile_node(right))
       in Const[value:] if SyntaxTree.const_defined?(value)
         clazz = SyntaxTree.const_get(value)
-  
+
         ->(node) { node.is_a?(clazz) }
       in Const[value:] if Object.const_defined?(value)
         clazz = Object.const_get(value)
-  
+
         ->(node) { node.is_a?(clazz) }
-      in ConstPathRef[parent: VarRef[value: Const[value: "SyntaxTree"]], constant:]
+      in ConstPathRef[
+           parent: VarRef[value: Const[value: "SyntaxTree"]], constant:
+         ]
         compile_node(constant)
       in DynaSymbol[parts: []]
-        symbol = "".to_sym
+        symbol = :""
 
         ->(node) { node == symbol }
       in DynaSymbol[parts: [TStringContent[value:]]]
         symbol = value.to_sym
-  
+
         ->(attribute) { attribute == value }
       in HshPtn[constant:, keywords:, keyword_rest: nil]
         compiled_constant = compile_node(constant)
-  
+
         preprocessed =
           keywords.to_h do |keyword, value|
             raise NoMatchingPatternError unless keyword.is_a?(Label)
             [keyword.value.chomp(":").to_sym, compile_node(value)]
           end
-  
+
         compiled_keywords = ->(node) do
           deconstructed = node.deconstruct_keys(preprocessed.keys)
-  
+
           preprocessed.all? do |keyword, matcher|
             matcher.call(deconstructed[keyword])
           end
         end
-  
+
         if compiled_constant
           combine_and(compiled_constant, compiled_keywords)
         else
@@ -146,7 +150,7 @@ module SyntaxTree
         end
       in RegexpLiteral[parts: [TStringContent[value:]]]
         regexp = /#{value}/
-  
+
         ->(attribute) { regexp.match?(attribute) }
       in StringLiteral[parts: []]
         ->(attribute) { attribute == "" }
@@ -154,7 +158,7 @@ module SyntaxTree
         ->(attribute) { attribute == value }
       in SymbolLiteral[value:]
         symbol = value.value.to_sym
-  
+
         ->(attribute) { attribute == symbol }
       in VarRef[value: Const => value]
         compile_node(value)
@@ -162,7 +166,7 @@ module SyntaxTree
         ->(attribute) { attribute.nil? }
       end
     rescue NoMatchingPatternError
-      raise CompilationError, PP.pp(node, +"").chomp
+      raise CompilationError, PP.pp(root, +"").chomp
     end
   end
 end
