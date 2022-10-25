@@ -67,3 +67,24 @@ end
 if true # comment1
   # comment2
 end
+%
+if foooooooooooooooooooooo || barrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr.any? { |bar| bazzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz }
+  something
+end
+-
+if foooooooooooooooooooooo ||
+     barrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr.any? do |bar|
+       bazzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+     end
+  something
+end
+%
+if barrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr.any? { |bar| bazzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz }
+  something
+end
+-
+if barrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr.any? { |bar|
+     bazzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+   }
+  something
+end

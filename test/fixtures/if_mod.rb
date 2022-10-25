@@ -13,3 +13,24 @@ foo = barrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr if fo
 -
 foo =
   barrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr if foo
+%
+foo = barrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr if foooooooooooooooooooooo || barrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr.any? { |bar| bazzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz }
+-
+foo =
+  barrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr if foooooooooooooooooooooo ||
+  barrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr.any? do |bar|
+    bazzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+  end
+%
+foo = bar if foooooooooooooooooooooo || barrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr.any? { |bar| bazzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz }
+-
+foo = bar if foooooooooooooooooooooo ||
+  barrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr.any? do |bar|
+    bazzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+  end
+%
+foo = bar if barrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr.any? { |bar| bazzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz }
+-
+foo = bar if barrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr.any? { |bar|
+  bazzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+}
