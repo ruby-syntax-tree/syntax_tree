@@ -29,13 +29,37 @@ module SyntaxTree
 
     private
 
+    def combine_and(left, right)
+      ->(node) { left.call(node) && right.call(node) }
+    end
+
+    def combine_or(left, right)
+      ->(node) { left.call(node) || right.call(node) }
+    end
+
     def compile(pattern)
       case pattern
-      in Binary[left:, operator: :|, right:]
-        compiled_left = compile(left)
-        compiled_right = compile(right)
+      in AryPtn[constant:, requireds:, rest: nil, posts: []]
+        compiled_constant = compile(constant) if constant
 
-        ->(node) { compiled_left.call(node) || compiled_right.call(node) }
+        preprocessed = requireds.map { |required| compile(required) }
+
+        compiled_requireds = ->(node) do
+          deconstructed = node.deconstruct
+
+          deconstructed.length == preprocessed.length &&
+            preprocessed.zip(deconstructed).all? do |(matcher, value)|
+              matcher.call(value)
+            end
+        end
+
+        if compiled_constant
+          combine_and(compiled_constant, compiled_requireds)
+        else
+          compiled_requireds
+        end
+      in Binary[left:, operator: :|, right:]
+        combine_or(compile(left), compile_right)
       in Const[value:] if SyntaxTree.const_defined?(value)
         clazz = SyntaxTree.const_get(value)
 
@@ -46,33 +70,48 @@ module SyntaxTree
         ->(node) { node.is_a?(clazz) }
       in ConstPathRef[parent: VarRef[value: Const[value: "SyntaxTree"]]]
         compile(pattern.constant)
+      in DynaSymbol[parts: [TStringContent[value:]]]
+        symbol = value.to_sym
+
+        ->(attribute) { attribute == value }
       in HshPtn[constant:, keywords:, keyword_rest: nil]
         compiled_constant = compile(constant)
 
-        preprocessed_keywords =
+        preprocessed =
           keywords.to_h do |keyword, value|
             raise NoMatchingPatternError unless keyword.is_a?(Label)
             [keyword.value.chomp(":").to_sym, compile(value)]
           end
 
         compiled_keywords = ->(node) do
-          deconstructed = node.deconstruct_keys(preprocessed_keywords.keys)
-          preprocessed_keywords.all? do |keyword, matcher|
+          deconstructed = node.deconstruct_keys(preprocessed.keys)
+
+          preprocessed.all? do |keyword, matcher|
             matcher.call(deconstructed[keyword])
           end
         end
 
-        ->(node) do
-          compiled_constant.call(node) && compiled_keywords.call(node)
+        if compiled_constant
+          combine_and(compiled_constant, compiled_keywords)
+        else
+          compiled_keywords
         end
       in RegexpLiteral[parts: [TStringContent[value:]]]
         regexp = /#{value}/
 
         ->(attribute) { regexp.match?(attribute) }
+      in StringLiteral[parts: []]
+        ->(attribute) { attribute == "" }
       in StringLiteral[parts: [TStringContent[value:]]]
         ->(attribute) { attribute == value }
+      in SymbolLiteral[value:]
+        symbol = value.value.to_sym
+
+        ->(attribute) { attribute == symbol }
       in VarRef[value: Const => value]
         compile(value)
+      in VarRef[value: Kw[value: "nil"]]
+        ->(attribute) { attribute.nil? }
       end
     rescue NoMatchingPatternError
       raise UncompilableError, <<~ERROR
