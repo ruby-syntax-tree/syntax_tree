@@ -21,6 +21,7 @@ require_relative "syntax_tree/visitor/environment"
 require_relative "syntax_tree/visitor/with_environment"
 
 require_relative "syntax_tree/parser"
+require_relative "syntax_tree/pattern"
 require_relative "syntax_tree/search"
 
 # Syntax Tree is a suite of tools built on top of the internal CRuby parser. It
