@@ -27,3 +27,24 @@ end
 until true # comment1
   # comment2
 end
+%
+until foooooooooooooooooooooo || barrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr.any? { |bar| bazzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz }
+  something
+end
+-
+until foooooooooooooooooooooo ||
+        barrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr.any? do |bar|
+          bazzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+        end
+  something
+end
+%
+until barrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr.any? { |bar| bazzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz }
+  something
+end
+-
+until barrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr.any? { |bar|
+        bazzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+      }
+  something
+end

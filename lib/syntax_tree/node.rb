@@ -2068,7 +2068,7 @@ module SyntaxTree
       previous = nil
       q.parents.any? do |parent|
         case parent
-        when Paren, Statements
+        when Paren, Statements, Binary
           # If we hit certain breakpoints then we know we're safe.
           return false
         when If, IfMod, IfOp, Unless, UnlessMod, While, WhileMod, Until,

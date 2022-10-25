@@ -27,3 +27,24 @@ end
 while true # comment1
   # comment2
 end
+%
+while foooooooooooooooooooooo || barrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr.any? { |bar| bazzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz }
+  something
+end
+-
+while foooooooooooooooooooooo ||
+        barrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr.any? do |bar|
+          bazzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+        end
+  something
+end
+%
+while barrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr.any? { |bar| bazzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz }
+  something
+end
+-
+while barrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr.any? { |bar|
+        bazzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz
+      }
+  something
+end

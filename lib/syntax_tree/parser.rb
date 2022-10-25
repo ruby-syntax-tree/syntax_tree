@@ -2625,7 +2625,7 @@ module SyntaxTree
 
     # If we encounter a parse error, just immediately bail out so that our
     # runner can catch it.
-    def on_parse_error(error, *)
+    def on_parse_error(error)
       raise ParseError.new(error, lineno, column)
     end
     alias on_alias_error on_parse_error
