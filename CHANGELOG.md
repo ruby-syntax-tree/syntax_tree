@@ -6,6 +6,17 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 
 ## [Unreleased]
 
+## [4.2.0] - 2022-10-25
+
+### Added
+
+- [#182](https://github.com/ruby-syntax-tree/syntax_tree/pull/182) - The new `stree expr` CLI command will function similarly to the `stree match` CLI command except that it only outputs the first expression of the program.
+- [#182](https://github.com/ruby-syntax-tree/syntax_tree/pull/182) - Added the `SyntaxTree::Pattern` class for compiling `in` expressions into procs.
+
+### Changed
+
+- [#182](https://github.com/ruby-syntax-tree/syntax_tree/pull/182) - Much more syntax is now supported by the search command.
+
 ## [4.1.0] - 2022-10-24
 
 ### Added
@@ -403,7 +414,8 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 
 - 🎉 Initial release! 🎉
 
-[unreleased]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v4.1.0...HEAD
+[unreleased]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v4.2.0...HEAD
+[4.2.0]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v4.1.0...v4.2.0
 [4.1.0]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v4.0.2...v4.1.0
 [4.0.2]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v4.0.1...v4.0.2
 [4.0.1]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v4.0.0...v4.0.1
