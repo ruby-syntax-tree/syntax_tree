@@ -21,6 +21,7 @@ require_relative "syntax_tree/visitor/environment"
 require_relative "syntax_tree/visitor/with_environment"
 
 require_relative "syntax_tree/parser"
+require_relative "syntax_tree/pattern"
 require_relative "syntax_tree/search"
 
 # Syntax Tree is a suite of tools built on top of the internal CRuby parser. It
@@ -73,5 +74,11 @@ module SyntaxTree
       end
 
     File.read(filepath, encoding: encoding)
+  end
+
+  # Searches through the given source using the given pattern and yields each
+  # node in the tree that matches the pattern to the given block.
+  def self.search(source, query, &block)
+    Search.new(Pattern.new(query).compile).scan(parse(source), &block)
   end
 end

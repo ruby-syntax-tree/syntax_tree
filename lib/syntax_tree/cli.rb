@@ -188,6 +188,20 @@ module SyntaxTree
       end
     end
 
+    # An action of the CLI that outputs a pattern-matching Ruby expression that
+    # would match the first expression of the input given.
+    class Expr < Action
+      def run(item)
+        case item.handler.parse(item.source)
+        in Program[statements: Statements[body: [expression]]]
+          puts expression.construct_keys
+        else
+          warn("The input to `stree expr` must be a single expression.")
+          exit(1)
+        end
+      end
+    end
+
     # An action of the CLI that formats the input source and prints it out.
     class Format < Action
       def run(item)
@@ -219,10 +233,15 @@ module SyntaxTree
 
       def initialize(query)
         query = File.read(query) if File.readable?(query)
-        @search = SyntaxTree::Search.new(query)
-      rescue SyntaxTree::Search::UncompilableError => error
-        warn(error.message)
-        exit(1)
+        pattern =
+          begin
+            Pattern.new(query).compile
+          rescue Pattern::CompilationError => error
+            warn(error.message)
+            exit(1)
+          end
+
+        @search = SyntaxTree::Search.new(pattern)
       end
 
       def run(item)
@@ -280,6 +299,10 @@ module SyntaxTree
 
       #{Color.bold("stree doc [--plugins=...] [-e SCRIPT] FILE")}
         Print out the doc tree that would be used to format the given files
+
+      #{Color.bold("stree expr [-e SCRIPT] FILE")}
+        Print out a pattern-matching Ruby expression that would match the first
+        expression of the given files
 
       #{Color.bold("stree format [--plugins=...] [--print-width=NUMBER] [-e SCRIPT] FILE")}
         Print out the formatted version of the given files
@@ -436,6 +459,8 @@ module SyntaxTree
             Debug.new(options)
           when "doc"
             Doc.new(options)
+          when "e", "expr"
+            Expr.new(options)
           when "f", "format"
             Format.new(options)
           when "help"

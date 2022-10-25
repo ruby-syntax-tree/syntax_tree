@@ -79,6 +79,11 @@ module SyntaxTree
       assert_includes(result.stdio, "test")
     end
 
+    def test_expr
+      result = run_cli("expr")
+      assert_includes(result.stdio, "SyntaxTree::Ident")
+    end
+
     def test_format
       result = run_cli("format")
       assert_equal("test\n", result.stdio)

@@ -15,6 +15,7 @@ It is built with only standard library dependencies. It additionally ships with 
 - [CLI](#cli)
   - [ast](#ast)
   - [check](#check)
+  - [expr](#expr)
   - [format](#format)
   - [json](#json)
   - [match](#match)
@@ -26,6 +27,7 @@ It is built with only standard library dependencies. It additionally ships with 
   - [SyntaxTree.read(filepath)](#syntaxtreereadfilepath)
   - [SyntaxTree.parse(source)](#syntaxtreeparsesource)
   - [SyntaxTree.format(source)](#syntaxtreeformatsource)
+  - [SyntaxTree.search(source, query, &block)](#syntaxtreesearchsource-query-block)
 - [Nodes](#nodes)
   - [child_nodes](#child_nodes)
   - [Pattern matching](#pattern-matching)
@@ -127,6 +129,24 @@ To change the print width that you are checking against, specify the `--print-wi
 
 ```sh
 stree check --print-width=100 path/to/file.rb
+```
+
+### expr
+
+This command will output a Ruby case-match expression that would match correctly against the first expression of the input.
+
+```sh
+stree expr path/to/file.rb
+```
+
+For a file that contains `1 + 1`, you will receive:
+
+```ruby
+SyntaxTree::Binary[
+  left: SyntaxTree::Int[value: "1"],
+  operator: :+,
+  right: SyntaxTree::Int[value: "1"]
+]
 ```
 
 ### format
@@ -311,6 +331,10 @@ This function takes an input string containing Ruby code and returns the syntax 
 ### SyntaxTree.format(source)
 
 This function takes an input string containing Ruby code, parses it into its underlying syntax tree, and formats it back out to a string. You can optionally pass a second argument to this method as well that is the maximum width to print. It defaults to `80`.
+
+### SyntaxTree.search(source, query, &block)
+
+This function takes an input string containing Ruby code, an input string containing a valid Ruby `in` clause expression that can be used to match against nodes in the tree (can be generated using `stree expr`, `stree match`, or `Node#construct_keys`), and a block. Each node that matches the given query will be yielded to the block. The block will receive the node as its only argument.
 
 ## Nodes
 
