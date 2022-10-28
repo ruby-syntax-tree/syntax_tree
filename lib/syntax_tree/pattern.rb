@@ -114,13 +114,16 @@ module SyntaxTree
         clazz = Object.const_get(root.value)
 
         ->(node) { node.is_a?(clazz) }
-      elsif ConstPathRef === root and VarRef === root.parent and Const === root.parent.value and root.parent.value.value == "SyntaxTree"
+      elsif ConstPathRef === root and VarRef === root.parent and
+            Const === root.parent.value and
+            root.parent.value.value == "SyntaxTree"
         compile_node(root.constant)
       elsif DynaSymbol === root and root.parts.empty?
         symbol = :""
 
         ->(node) { node == symbol }
-      elsif DynaSymbol === root and parts = root.parts and parts.size == 1 and TStringContent === parts[0]
+      elsif DynaSymbol === root and parts = root.parts and parts.size == 1 and
+            TStringContent === parts[0]
         symbol = parts[0].value.to_sym
 
         ->(node) { node == symbol }
@@ -129,7 +132,9 @@ module SyntaxTree
 
         preprocessed =
           root.keywords.to_h do |keyword, value|
-            raise CompilationError, PP.pp(root, +"").chomp unless keyword.is_a?(Label)
+            unless keyword.is_a?(Label)
+              raise CompilationError, PP.pp(root, +"").chomp
+            end
             [keyword.value.chomp(":").to_sym, compile_node(value)]
           end
 
@@ -146,13 +151,15 @@ module SyntaxTree
         else
           compiled_keywords
         end
-      elsif RegexpLiteral === root and parts = root.parts and parts.size == 1 and TStringContent === parts[0]
+      elsif RegexpLiteral === root and parts = root.parts and
+            parts.size == 1 and TStringContent === parts[0]
         regexp = /#{parts[0].value}/
 
         ->(attribute) { regexp.match?(attribute) }
       elsif StringLiteral === root and root.parts.empty?
         ->(attribute) { attribute == "" }
-      elsif StringLiteral === root and parts = root.parts and parts.size == 1 and TStringContent === parts[0]
+      elsif StringLiteral === root and parts = root.parts and
+            parts.size == 1 and TStringContent === parts[0]
         value = parts[0].value
         ->(attribute) { attribute == value }
       elsif SymbolLiteral === root
