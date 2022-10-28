@@ -69,11 +69,10 @@ module SyntaxTree
       #
       def visit_binary(node)
         case stack[-2]
-        in Assign | OpAssign
+        when Assign, OpAssign
           parentheses(node.location)
-        in Binary[operator: operator] if operator != node.operator
-          parentheses(node.location)
-        else
+        when Binary
+          parentheses(node.location) if stack[-2].operator != node.operator
         end
 
         super
@@ -91,9 +90,8 @@ module SyntaxTree
       #
       def visit_if_op(node)
         case stack[-2]
-        in Assign | Binary | IfOp | OpAssign
+        when Assign, Binary, IfOp, OpAssign
           parentheses(node.location)
-        else
         end
 
         super
