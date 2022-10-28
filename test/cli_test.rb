@@ -148,6 +148,7 @@ module SyntaxTree
     end
 
     def test_multiple_inline_scripts
+      skip if RUBY_ENGINE == "truffleruby" # Relies on a thread-safe StringIO
       stdio, = capture_io { SyntaxTree::CLI.run(%w[format -e 1+1 -e 2+2]) }
       assert_equal(["1 + 1", "2 + 2"], stdio.split("\n").sort)
     end
@@ -172,6 +173,7 @@ module SyntaxTree
     def test_language_server
       prev_stdin = $stdin
       prev_stdout = $stdout
+      skip unless SUPPORTS_PATTERN_MATCHING
 
       request = { method: "shutdown" }.merge(jsonrpc: "2.0").to_json
       $stdin =
