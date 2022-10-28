@@ -6,6 +6,18 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 
 ## [Unreleased]
 
+## [4.3.0] - 2022-10-28
+
+### Added
+
+- [#183](https://github.com/ruby-syntax-tree/syntax_tree/pull/183) - Support TruffleRuby by eliminating internal pattern matching in some places and stopping some tests from running in other places.
+- [#184](https://github.com/ruby-syntax-tree/syntax_tree/pull/184) - Remove internal pattern matching entirely.
+
+### Changed
+
+- [#183](https://github.com/ruby-syntax-tree/syntax_tree/pull/183) - Pattern matching works against dynamic symbols now.
+- [#184](https://github.com/ruby-syntax-tree/syntax_tree/pull/184) - Exit with the correct exit status within the rake tasks.
+
 ## [4.2.0] - 2022-10-25
 
 ### Added
@@ -414,7 +426,8 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 
 - 🎉 Initial release! 🎉
 
-[unreleased]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v4.2.0...HEAD
+[unreleased]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v4.3.0...HEAD
+[4.3.0]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v4.2.0...v4.3.0
 [4.2.0]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v4.1.0...v4.2.0
 [4.1.0]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v4.0.2...v4.1.0
 [4.0.2]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v4.0.1...v4.0.2
