@@ -75,103 +75,212 @@ module SyntaxTree
 
     private
 
+    # Shortcut for combining two procs into one that returns true if both return
+    # true.
     def combine_and(left, right)
-      ->(node) { left.call(node) && right.call(node) }
+      ->(other) { left.call(other) && right.call(other) }
     end
 
+    # Shortcut for combining two procs into one that returns true if either
+    # returns true.
     def combine_or(left, right)
-      ->(node) { left.call(node) || right.call(node) }
+      ->(other) { left.call(other) || right.call(other) }
     end
 
-    def compile_node(root)
-      if AryPtn === root and root.rest.nil? and root.posts.empty?
-        constant = root.constant
-        compiled_constant = compile_node(constant) if constant
+    # Raise an error because the given node is not supported.
+    def compile_error(node)
+      raise CompilationError, PP.pp(node, +"").chomp
+    end
 
-        preprocessed = root.requireds.map { |required| compile_node(required) }
+    # There are a couple of nodes (string literals, dynamic symbols, and regexp)
+    # that contain list of parts. This can include plain string content,
+    # interpolated expressions, and interpolated variables. We only support
+    # plain string content, so this method will extract out the plain string
+    # content if it is the only element in the list.
+    def extract_string(node)
+      parts = node.parts
 
-        compiled_requireds = ->(node) do
-          deconstructed = node.deconstruct
+      if parts.length == 1 && (part = parts.first) && part.is_a?(TStringContent)
+        part.value
+      end
+    end
 
-          deconstructed.length == preprocessed.length &&
-            preprocessed
-              .zip(deconstructed)
-              .all? { |(matcher, value)| matcher.call(value) }
-        end
+    # in [foo, bar, baz]
+    def compile_aryptn(node)
+      compile_error(node) if !node.rest.nil? || node.posts.any?
 
-        if compiled_constant
-          combine_and(compiled_constant, compiled_requireds)
-        else
-          compiled_requireds
-        end
-      elsif Binary === root and root.operator == :|
-        combine_or(compile_node(root.left), compile_node(root.right))
-      elsif Const === root and SyntaxTree.const_defined?(root.value)
-        clazz = SyntaxTree.const_get(root.value)
+      constant = node.constant
+      compiled_constant = compile_node(constant) if constant
 
-        ->(node) { node.is_a?(clazz) }
-      elsif Const === root and Object.const_defined?(root.value)
-        clazz = Object.const_get(root.value)
+      preprocessed = node.requireds.map { |required| compile_node(required) }
 
-        ->(node) { node.is_a?(clazz) }
-      elsif ConstPathRef === root and VarRef === root.parent and
-            Const === root.parent.value and
-            root.parent.value.value == "SyntaxTree"
-        compile_node(root.constant)
-      elsif DynaSymbol === root and root.parts.empty?
+      compiled_requireds = ->(other) do
+        deconstructed = other.deconstruct
+
+        deconstructed.length == preprocessed.length &&
+          preprocessed
+            .zip(deconstructed)
+            .all? { |(matcher, value)| matcher.call(value) }
+      end
+
+      if compiled_constant
+        combine_and(compiled_constant, compiled_requireds)
+      else
+        compiled_requireds
+      end
+    end
+
+    # in foo | bar
+    def compile_binary(node)
+      compile_error(node) if node.operator != :|
+
+      combine_or(compile_node(node.left), compile_node(node.right))
+    end
+
+    # in Ident
+    # in String
+    def compile_const(node)
+      value = node.value
+
+      if SyntaxTree.const_defined?(value)
+        clazz = SyntaxTree.const_get(value)
+
+        ->(other) { clazz === other }
+      elsif Object.const_defined?(value)
+        clazz = Object.const_get(value)
+
+        ->(other) { clazz === other }
+      else
+        compile_error(node)
+      end
+    end
+
+    # in SyntaxTree::Ident
+    def compile_const_path_ref(node)
+      parent = node.parent
+      compile_error(node) if !parent.is_a?(VarRef) || !parent.value.is_a?(Const)
+
+      if parent.value.value == "SyntaxTree"
+        compile_node(node.constant)
+      else
+        compile_error(node)
+      end
+    end
+
+    # in :""
+    # in :"foo"
+    def compile_dyna_symbol(node)
+      if node.parts.empty?
         symbol = :""
 
-        ->(node) { node == symbol }
-      elsif DynaSymbol === root and parts = root.parts and parts.size == 1 and
-            TStringContent === parts[0]
-        symbol = parts[0].value.to_sym
+        ->(other) { symbol === other }
+      elsif (value = extract_string(node))
+        symbol = value.to_sym
 
-        ->(node) { node == symbol }
-      elsif HshPtn === root and root.keyword_rest.nil?
-        compiled_constant = compile_node(root.constant)
-
-        preprocessed =
-          root.keywords.to_h do |keyword, value|
-            unless keyword.is_a?(Label)
-              raise CompilationError, PP.pp(root, +"").chomp
-            end
-            [keyword.value.chomp(":").to_sym, compile_node(value)]
-          end
-
-        compiled_keywords = ->(node) do
-          deconstructed = node.deconstruct_keys(preprocessed.keys)
-
-          preprocessed.all? do |keyword, matcher|
-            matcher.call(deconstructed[keyword])
-          end
-        end
-
-        if compiled_constant
-          combine_and(compiled_constant, compiled_keywords)
-        else
-          compiled_keywords
-        end
-      elsif RegexpLiteral === root and parts = root.parts and
-            parts.size == 1 and TStringContent === parts[0]
-        regexp = /#{parts[0].value}/
-
-        ->(attribute) { regexp.match?(attribute) }
-      elsif StringLiteral === root and root.parts.empty?
-        ->(attribute) { attribute == "" }
-      elsif StringLiteral === root and parts = root.parts and
-            parts.size == 1 and TStringContent === parts[0]
-        value = parts[0].value
-        ->(attribute) { attribute == value }
-      elsif SymbolLiteral === root
-        symbol = root.value.value.to_sym
-
-        ->(attribute) { attribute == symbol }
-      elsif VarRef === root and Const === root.value
-        compile_node(root.value)
-      elsif VarRef === root and Kw === root.value and root.value.value.nil?
-        ->(attribute) { attribute.nil? }
+        ->(other) { symbol === other }
       else
-        raise CompilationError, PP.pp(root, +"").chomp
+        compile_error(root)
+      end
+    end
+
+    # in Ident[value: String]
+    # in { value: String }
+    def compile_hshptn(node)
+      compile_error(node) unless node.keyword_rest.nil?
+      compiled_constant = compile_node(node.constant) if node.constant
+
+      preprocessed =
+        node.keywords.to_h do |keyword, value|
+          compile_error(node) unless keyword.is_a?(Label)
+          [keyword.value.chomp(":").to_sym, compile_node(value)]
+        end
+
+      compiled_keywords = ->(other) do
+        deconstructed = other.deconstruct_keys(preprocessed.keys)
+
+        preprocessed.all? do |keyword, matcher|
+          matcher.call(deconstructed[keyword])
+        end
+      end
+
+      if compiled_constant
+        combine_and(compiled_constant, compiled_keywords)
+      else
+        compiled_keywords
+      end
+    end
+
+    # in /foo/
+    def compile_regexp_literal(node)
+      if (value = extract_string(node))
+        regexp = /#{value}/
+
+        ->(attribute) { regexp === attribute }
+      else
+        compile_error(node)
+      end
+    end
+
+    # in ""
+    # in "foo"
+    def compile_string_literal(node)
+      if node.parts.empty?
+        ->(attribute) { "" === attribute }
+      elsif (value = extract_string(node))
+        ->(attribute) { value === attribute }
+      else
+        compile_error(node)
+      end
+    end
+
+    # in :+
+    # in :foo
+    def compile_symbol_literal(node)
+      symbol = node.value.value.to_sym
+
+      ->(attribute) { symbol === attribute }
+    end
+
+    # in Foo
+    # in nil
+    def compile_var_ref(node)
+      value = node.value
+
+      if value.is_a?(Const)
+        compile_node(value)
+      elsif value.is_a?(Kw) && value.value.nil?
+        ->(attribute) { nil === attribute }
+      else
+        compile_error(node)
+      end
+    end
+
+    # Compile any kind of node. Dispatch out to the individual compilation
+    # methods based on the type of node.
+    def compile_node(node)
+      case node
+      when AryPtn
+        compile_aryptn(node)
+      when Binary
+        compile_binary(node)
+      when Const
+        compile_const(node)
+      when ConstPathRef
+        compile_const_path_ref(node)
+      when DynaSymbol
+        compile_dyna_symbol(node)
+      when HshPtn
+        compile_hshptn(node)
+      when RegexpLiteral
+        compile_regexp_literal(node)
+      when StringLiteral
+        compile_string_literal(node)
+      when SymbolLiteral
+        compile_symbol_literal(node)
+      when VarRef
+        compile_var_ref(node)
+      else
+        compile_error(node)
       end
     end
   end
