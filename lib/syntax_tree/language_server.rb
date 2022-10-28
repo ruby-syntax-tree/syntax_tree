@@ -13,6 +13,50 @@ module SyntaxTree
   #     stree lsp
   #
   class LanguageServer
+    # This is a small module that effectively mirrors pattern matching. We're
+    # using it so that we can support truffleruby without having to ignore the
+    # language server.
+    module Request
+      # Represents a hash pattern.
+      class Shape
+        attr_reader :values
+
+        def initialize(values)
+          @values = values
+        end
+
+        def ===(other)
+          values.all? do |key, value|
+            value == :any ? other.key?(key) : value === other[key]
+          end
+        end
+      end
+
+      # Represents an array pattern.
+      class Tuple
+        attr_reader :values
+
+        def initialize(values)
+          @values = values
+        end
+
+        def ===(other)
+          values.each_with_index.all? { |value, index| value === other[index] }
+        end
+      end
+
+      def self.[](value)
+        case value
+        when Array
+          Tuple.new(value.map { |child| self[child] })
+        when Hash
+          Shape.new(value.transform_values { |child| self[child] })
+        else
+          value
+        end
+      end
+    end
+
     attr_reader :input, :output, :print_width
 
     def initialize(
@@ -39,30 +83,33 @@ module SyntaxTree
 
         # stree-ignore
         case request
-        in { method: "initialize", id: }
+        when Request[method: "initialize", id: :any]
           store.clear
-          write(id: id, result: { capabilities: capabilities })
-        in { method: "initialized" }
+          write(id: request[:id], result: { capabilities: capabilities })
+        when Request[method: "initialized"]
           # ignored
-        in { method: "shutdown" } # tolerate missing ID to be a good citizen
+        when Request[method: "shutdown"] # tolerate missing ID to be a good citizen
           store.clear
           write(id: request[:id], result: {})
           return
-        in { method: "textDocument/didChange", params: { textDocument: { uri: }, contentChanges: [{ text: }, *] } }
-          store[uri] = text
-        in { method: "textDocument/didOpen", params: { textDocument: { uri:, text: } } }
-          store[uri] = text
-        in { method: "textDocument/didClose", params: { textDocument: { uri: } } }
-          store.delete(uri)
-        in { method: "textDocument/formatting", id:, params: { textDocument: { uri: } } }
+        when Request[method: "textDocument/didChange", params: { textDocument: { uri: :any }, contentChanges: [{ text: :any }] }]
+          store[request.dig(:params, :textDocument, :uri)] = request.dig(:params, :contentChanges, 0, :text)
+        when Request[method: "textDocument/didOpen", params: { textDocument: { uri: :any, text: :any } }]
+          store[request.dig(:params, :textDocument, :uri)] = request.dig(:params, :textDocument, :text)
+        when Request[method: "textDocument/didClose", params: { textDocument: { uri: :any } }]
+          store.delete(request.dig(:params, :textDocument, :uri))
+        when Request[method: "textDocument/formatting", id: :any, params: { textDocument: { uri: :any } }]
+          uri = request.dig(:params, :textDocument, :uri)
           contents = store[uri]
-          write(id: id, result: contents ? format(contents, uri.split(".").last) : nil)
-        in { method: "textDocument/inlayHint", id:, params: { textDocument: { uri: } } }
+          write(id: request[:id], result: contents ? format(contents, uri.split(".").last) : nil)
+        when Request[method: "textDocument/inlayHint", id: :any, params: { textDocument: { uri: :any } }]
+          uri = request.dig(:params, :textDocument, :uri)
           contents = store[uri]
-          write(id: id, result: contents ? inlay_hints(contents) : nil)
-        in { method: "syntaxTree/visualizing", id:, params: { textDocument: { uri: } } }
-          write(id: id, result: PP.pp(SyntaxTree.parse(store[uri]), +""))
-        in { method: %r{\$/.+} }
+          write(id: request[:id], result: contents ? inlay_hints(contents) : nil)
+        when Request[method: "syntaxTree/visualizing", id: :any, params: { textDocument: { uri: :any } }]
+          uri = request.dig(:params, :textDocument, :uri)
+          write(id: request[:id], result: PP.pp(SyntaxTree.parse(store[uri]), +""))
+        when Request[method: %r{\$/.+}]
           # ignored
         else
           raise ArgumentError, "Unhandled: #{request}"

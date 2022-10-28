@@ -173,7 +173,6 @@ module SyntaxTree
     def test_language_server
       prev_stdin = $stdin
       prev_stdout = $stdout
-      skip unless SUPPORTS_PATTERN_MATCHING
 
       request = { method: "shutdown" }.merge(jsonrpc: "2.0").to_json
       $stdin =

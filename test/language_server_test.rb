@@ -4,6 +4,7 @@ require_relative "test_helper"
 require "syntax_tree/language_server"
 
 module SyntaxTree
+  # stree-ignore
   class LanguageServerTest < Minitest::Test
     class Initialize < Struct.new(:id)
       def to_hash
@@ -21,12 +22,7 @@ module SyntaxTree
       def to_hash
         {
           method: "textDocument/didOpen",
-          params: {
-            textDocument: {
-              uri: uri,
-              text: text
-            }
-          }
+          params: { textDocument: { uri: uri, text: text } }
         }
       end
     end
@@ -36,9 +32,7 @@ module SyntaxTree
         {
           method: "textDocument/didChange",
           params: {
-            textDocument: {
-              uri: uri
-            },
+            textDocument: { uri: uri },
             contentChanges: [{ text: text }]
           }
         }
@@ -49,11 +43,7 @@ module SyntaxTree
       def to_hash
         {
           method: "textDocument/didClose",
-          params: {
-            textDocument: {
-              uri: uri
-            }
-          }
+          params: { textDocument: { uri: uri } }
         }
       end
     end
@@ -63,11 +53,7 @@ module SyntaxTree
         {
           method: "textDocument/formatting",
           id: id,
-          params: {
-            textDocument: {
-              uri: uri
-            }
-          }
+          params: { textDocument: { uri: uri } }
         }
       end
     end
@@ -77,11 +63,7 @@ module SyntaxTree
         {
           method: "textDocument/inlayHint",
           id: id,
-          params: {
-            textDocument: {
-              uri: uri
-            }
-          }
+          params: { textDocument: { uri: uri } }
         }
       end
     end
@@ -91,75 +73,71 @@ module SyntaxTree
         {
           method: "syntaxTree/visualizing",
           id: id,
-          params: {
-            textDocument: {
-              uri: uri
-            }
-          }
+          params: { textDocument: { uri: uri } }
         }
       end
     end
 
     def test_formatting
-      messages = [
+      responses = run_server([
         Initialize.new(1),
         TextDocumentDidOpen.new("file:///path/to/file.rb", "class Foo; end"),
         TextDocumentDidChange.new("file:///path/to/file.rb", "class Bar; end"),
         TextDocumentFormatting.new(2, "file:///path/to/file.rb"),
         TextDocumentDidClose.new("file:///path/to/file.rb"),
         Shutdown.new(3)
-      ]
+      ])
 
-      case run_server(messages)
-      in [
-           { id: 1, result: { capabilities: Hash } },
-           { id: 2, result: [{ newText: new_text }] },
-           { id: 3, result: {} }
-         ]
-        assert_equal("class Bar\nend\n", new_text)
-      end
+      shape = LanguageServer::Request[[
+        { id: 1, result: { capabilities: Hash } },
+        { id: 2, result: [{ newText: :any }] },
+        { id: 3, result: {} }
+      ]]
+
+      assert_operator(shape, :===, responses)
+      assert_equal("class Bar\nend\n", responses.dig(1, :result, 0, :newText))
     end
 
     def test_formatting_failure
-      messages = [
+      responses = run_server([
         Initialize.new(1),
         TextDocumentDidOpen.new("file:///path/to/file.rb", "<>"),
         TextDocumentFormatting.new(2, "file:///path/to/file.rb"),
         Shutdown.new(3)
-      ]
+      ])
 
-      case run_server(messages)
-      in [
-           { id: 1, result: { capabilities: Hash } },
-           { id: 2, result: },
-           { id: 3, result: {} }
-         ]
-        assert_nil(result)
-      end
+      shape = LanguageServer::Request[[
+        { id: 1, result: { capabilities: Hash } },
+        { id: 2, result: :any },
+        { id: 3, result: {} }
+      ]]
+
+      assert_operator(shape, :===, responses)
+      assert_nil(responses.dig(1, :result))
     end
 
     def test_formatting_print_width
       contents = "#{"a" * 40} + #{"b" * 40}\n"
-      messages = [
+      responses = run_server([
         Initialize.new(1),
         TextDocumentDidOpen.new("file:///path/to/file.rb", contents),
         TextDocumentFormatting.new(2, "file:///path/to/file.rb"),
         TextDocumentDidClose.new("file:///path/to/file.rb"),
         Shutdown.new(3)
-      ]
+      ], print_width: 100)
 
-      case run_server(messages, print_width: 100)
-      in [
-           { id: 1, result: { capabilities: Hash } },
-           { id: 2, result: [{ newText: new_text }] },
-           { id: 3, result: {} }
-         ]
-        assert_equal(contents, new_text)
-      end
+      shape = LanguageServer::Request[[
+        { id: 1, result: { capabilities: Hash } },
+        { id: 2, result: [{ newText: :any }] },
+        { id: 3, result: {} }
+      ]]
+
+      assert_operator(shape, :===, responses)
+      assert_equal(contents, responses.dig(1, :result, 0, :newText))
     end
 
     def test_inlay_hint
-      messages = [
+      responses = run_server([
         Initialize.new(1),
         TextDocumentDidOpen.new("file:///path/to/file.rb", <<~RUBY),
           begin
@@ -169,37 +147,37 @@ module SyntaxTree
         RUBY
         TextDocumentInlayHint.new(2, "file:///path/to/file.rb"),
         Shutdown.new(3)
-      ]
+      ])
 
-      case run_server(messages)
-      in [
-           { id: 1, result: { capabilities: Hash } },
-           { id: 2, result: hints },
-           { id: 3, result: {} }
-         ]
-        assert_equal(3, hints.length)
-      end
+      shape = LanguageServer::Request[[
+        { id: 1, result: { capabilities: Hash } },
+        { id: 2, result: :any },
+        { id: 3, result: {} }
+      ]]
+
+      assert_operator(shape, :===, responses)
+      assert_equal(3, responses.dig(1, :result).size)
     end
 
     def test_visualizing
-      messages = [
+      responses = run_server([
         Initialize.new(1),
         TextDocumentDidOpen.new("file:///path/to/file.rb", "1 + 2"),
         SyntaxTreeVisualizing.new(2, "file:///path/to/file.rb"),
         Shutdown.new(3)
-      ]
+      ])
 
-      case run_server(messages)
-      in [
-           { id: 1, result: { capabilities: Hash } },
-           { id: 2, result: },
-           { id: 3, result: {} }
-         ]
-        assert_equal(
-          "(program (statements ((binary (int \"1\") + (int \"2\")))))\n",
-          result
-        )
-      end
+      shape = LanguageServer::Request[[
+        { id: 1, result: { capabilities: Hash } },
+        { id: 2, result: :any },
+        { id: 3, result: {} }
+      ]]
+
+      assert_operator(shape, :===, responses)
+      assert_equal(
+        "(program (statements ((binary (int \"1\") + (int \"2\")))))\n",
+        responses.dig(1, :result)
+      )
     end
 
     def test_reading_file
@@ -207,20 +185,20 @@ module SyntaxTree
         file.write("class Foo; end")
         file.rewind
 
-        messages = [
+        responses = run_server([
           Initialize.new(1),
           TextDocumentFormatting.new(2, "file://#{file.path}"),
           Shutdown.new(3)
-        ]
+        ])
 
-        case run_server(messages)
-        in [
-             { id: 1, result: { capabilities: Hash } },
-             { id: 2, result: [{ newText: new_text }] },
-             { id: 3, result: {} }
-           ]
-          assert_equal("class Foo\nend\n", new_text)
-        end
+        shape = LanguageServer::Request[[
+          { id: 1, result: { capabilities: Hash } },
+          { id: 2, result: [{ newText: :any }] },
+          { id: 3, result: {} }
+        ]]
+
+        assert_operator(shape, :===, responses)
+        assert_equal("class Foo\nend\n", responses.dig(1, :result, 0, :newText))
       end
     end
 
@@ -231,29 +209,30 @@ module SyntaxTree
     end
 
     def test_clean_shutdown
-      messages = [Initialize.new(1), Shutdown.new(2)]
+      responses = run_server([Initialize.new(1), Shutdown.new(2)])
 
-      case run_server(messages)
-      in [{ id: 1, result: { capabilities: Hash } }, { id: 2, result: {} }]
-        assert_equal(true, true)
-      end
+      shape = LanguageServer::Request[[
+        { id: 1, result: { capabilities: Hash } },
+        { id: 2, result: {} }
+      ]]
+
+      assert_operator(shape, :===, responses)
     end
 
     def test_file_that_does_not_exist
-      messages = [
+      responses = run_server([
         Initialize.new(1),
         TextDocumentFormatting.new(2, "file:///path/to/file.rb"),
         Shutdown.new(3)
-      ]
+      ])
 
-      case run_server(messages)
-      in [
-           { id: 1, result: { capabilities: Hash } },
-           { id: 2, result: nil },
-           { id: 3, result: {} }
-         ]
-        assert_equal(true, true)
-      end
+      shape = LanguageServer::Request[[
+        { id: 1, result: { capabilities: Hash } },
+        { id: 2, result: :any },
+        { id: 3, result: {} }
+      ]]
+
+      assert_operator(shape, :===, responses)
     end
 
     private
@@ -281,6 +260,7 @@ module SyntaxTree
         output: output,
         print_width: print_width
       ).run
+
       read(output.tap(&:rewind))
     end
   end

@@ -7,13 +7,7 @@ require "syntax_tree/rake_tasks"
 Rake::TestTask.new(:test) do |t|
   t.libs << "test"
   t.libs << "lib"
-  test_files = FileList["test/**/*_test.rb"]
-  if RUBY_ENGINE == "truffleruby"
-    # language_server.rb uses pattern matching
-    test_files -= FileList["test/language_server/*_test.rb"]
-    test_files -= FileList["test/language_server_test.rb"]
-  end
-  t.test_files = test_files
+  t.test_files = FileList["test/**/*_test.rb"]
 end
 
 task default: :test
