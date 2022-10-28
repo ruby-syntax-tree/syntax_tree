@@ -123,7 +123,7 @@ module SyntaxTree
       elsif DynaSymbol === root and parts = root.parts and parts.size == 1 and TStringContent === parts[0]
         symbol = parts[0].value.to_sym
 
-        ->(attribute) { attribute == value }
+        ->(node) { node == symbol }
       elsif HshPtn === root and root.keyword_rest.nil?
         compiled_constant = compile_node(root.constant)
 
