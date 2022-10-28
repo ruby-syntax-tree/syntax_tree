@@ -6,30 +6,36 @@ require "syntax_tree/rake_tasks"
 module SyntaxTree
   module Rake
     class CheckTaskTest < Minitest::Test
-      Invoke = Struct.new(:args)
+      Invocation = Struct.new(:args)
 
       def test_check_task
         source_files = "{app,config,lib}/**/*.rb"
         CheckTask.new { |t| t.source_files = source_files }
 
-        invoke = nil
-        SyntaxTree::CLI.stub(:run, ->(args) { invoke = Invoke.new(args) }) do
-          ::Rake::Task["stree:check"].invoke
-        end
-
-        assert_equal(["check", source_files], invoke.args)
+        invocation = invoke("stree:check")
+        assert_equal(["check", source_files], invocation.args)
       end
 
       def test_write_task
         source_files = "{app,config,lib}/**/*.rb"
         WriteTask.new { |t| t.source_files = source_files }
 
-        invoke = nil
-        SyntaxTree::CLI.stub(:run, ->(args) { invoke = Invoke.new(args) }) do
-          ::Rake::Task["stree:write"].invoke
-        end
+        invocation = invoke("stree:write")
+        assert_equal(["write", source_files], invocation.args)
+      end
 
-        assert_equal(["write", source_files], invoke.args)
+      private
+
+      def invoke(task_name)
+        invocation = nil
+        stub = ->(args) { invocation = Invocation.new(args) }
+
+        begin
+          SyntaxTree::CLI.stub(:run, stub) { ::Rake::Task[task_name].invoke }
+          flunk
+        rescue SystemExit
+          invocation
+        end
       end
     end
   end
