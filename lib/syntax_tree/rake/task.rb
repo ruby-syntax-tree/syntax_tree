@@ -78,7 +78,7 @@ module SyntaxTree
 
         arguments << "--ignore-files=#{ignore_files}" if ignore_files != ""
 
-        SyntaxTree::CLI.run(arguments + Array(source_files))
+        abort if SyntaxTree::CLI.run(arguments + Array(source_files)) != 0
       end
     end
   end

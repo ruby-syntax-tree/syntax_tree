@@ -193,8 +193,8 @@ module SyntaxTree
     class Expr < Action
       def run(item)
         program = item.handler.parse(item.source)
-        if Program === program and expressions = program.statements.body and
-             expressions.size == 1
+
+        if (expressions = program.statements.body) && expressions.size == 1
           puts expressions.first.construct_keys
         else
           warn("The input to `stree expr` must be a single expression.")

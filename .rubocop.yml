@@ -46,6 +46,9 @@ Naming/MethodParameterName:
 Naming/RescuedExceptionsVariableName:
   PreferredName: error
 
+Style/CaseEquality:
+  Enabled: false
+
 Style/ExplicitBlockArgument:
   Enabled: false
 

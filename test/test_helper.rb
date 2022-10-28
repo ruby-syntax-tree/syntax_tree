@@ -17,8 +17,6 @@ require "tempfile"
 require "pp"
 require "minitest/autorun"
 
-SUPPORTS_PATTERN_MATCHING = RUBY_ENGINE != "truffleruby"
-
 module SyntaxTree
   module Assertions
     class Recorder
@@ -69,7 +67,7 @@ module SyntaxTree
       refute_includes(json, "#<")
       assert_equal(type, JSON.parse(json)["type"])
 
-      if SUPPORTS_PATTERN_MATCHING
+      if RUBY_ENGINE != "truffleruby"
         # Get a match expression from the node, then assert that it can in fact
         # match the node.
         # rubocop:disable all
