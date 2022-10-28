@@ -192,9 +192,10 @@ module SyntaxTree
     # would match the first expression of the input given.
     class Expr < Action
       def run(item)
-        case item.handler.parse(item.source)
-        in Program[statements: Statements[body: [expression]]]
-          puts expression.construct_keys
+        program = item.handler.parse(item.source)
+        if Program === program and expressions = program.statements.body and
+             expressions.size == 1
+          puts expressions.first.construct_keys
         else
           warn("The input to `stree expr` must be a single expression.")
           exit(1)

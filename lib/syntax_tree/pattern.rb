@@ -84,11 +84,11 @@ module SyntaxTree
     end
 
     def compile_node(root)
-      case root
-      in AryPtn[constant:, requireds:, rest: nil, posts: []]
+      if AryPtn === root and root.rest.nil? and root.posts.empty?
+        constant = root.constant
         compiled_constant = compile_node(constant) if constant
 
-        preprocessed = requireds.map { |required| compile_node(required) }
+        preprocessed = root.requireds.map { |required| compile_node(required) }
 
         compiled_requireds = ->(node) do
           deconstructed = node.deconstruct
@@ -104,34 +104,37 @@ module SyntaxTree
         else
           compiled_requireds
         end
-      in Binary[left:, operator: :|, right:]
-        combine_or(compile_node(left), compile_node(right))
-      in Const[value:] if SyntaxTree.const_defined?(value)
-        clazz = SyntaxTree.const_get(value)
+      elsif Binary === root and root.operator == :|
+        combine_or(compile_node(root.left), compile_node(root.right))
+      elsif Const === root and SyntaxTree.const_defined?(root.value)
+        clazz = SyntaxTree.const_get(root.value)
 
         ->(node) { node.is_a?(clazz) }
-      in Const[value:] if Object.const_defined?(value)
-        clazz = Object.const_get(value)
+      elsif Const === root and Object.const_defined?(root.value)
+        clazz = Object.const_get(root.value)
 
         ->(node) { node.is_a?(clazz) }
-      in ConstPathRef[
-           parent: VarRef[value: Const[value: "SyntaxTree"]], constant:
-         ]
-        compile_node(constant)
-      in DynaSymbol[parts: []]
+      elsif ConstPathRef === root and VarRef === root.parent and
+            Const === root.parent.value and
+            root.parent.value.value == "SyntaxTree"
+        compile_node(root.constant)
+      elsif DynaSymbol === root and root.parts.empty?
         symbol = :""
 
         ->(node) { node == symbol }
-      in DynaSymbol[parts: [TStringContent[value:]]]
-        symbol = value.to_sym
+      elsif DynaSymbol === root and parts = root.parts and parts.size == 1 and
+            TStringContent === parts[0]
+        symbol = parts[0].value.to_sym
 
-        ->(attribute) { attribute == value }
-      in HshPtn[constant:, keywords:, keyword_rest: nil]
-        compiled_constant = compile_node(constant)
+        ->(node) { node == symbol }
+      elsif HshPtn === root and root.keyword_rest.nil?
+        compiled_constant = compile_node(root.constant)
 
         preprocessed =
-          keywords.to_h do |keyword, value|
-            raise NoMatchingPatternError unless keyword.is_a?(Label)
+          root.keywords.to_h do |keyword, value|
+            unless keyword.is_a?(Label)
+              raise CompilationError, PP.pp(root, +"").chomp
+            end
             [keyword.value.chomp(":").to_sym, compile_node(value)]
           end
 
@@ -148,25 +151,28 @@ module SyntaxTree
         else
           compiled_keywords
         end
-      in RegexpLiteral[parts: [TStringContent[value:]]]
-        regexp = /#{value}/
+      elsif RegexpLiteral === root and parts = root.parts and
+            parts.size == 1 and TStringContent === parts[0]
+        regexp = /#{parts[0].value}/
 
         ->(attribute) { regexp.match?(attribute) }
-      in StringLiteral[parts: []]
+      elsif StringLiteral === root and root.parts.empty?
         ->(attribute) { attribute == "" }
-      in StringLiteral[parts: [TStringContent[value:]]]
+      elsif StringLiteral === root and parts = root.parts and
+            parts.size == 1 and TStringContent === parts[0]
+        value = parts[0].value
         ->(attribute) { attribute == value }
-      in SymbolLiteral[value:]
-        symbol = value.value.to_sym
+      elsif SymbolLiteral === root
+        symbol = root.value.value.to_sym
 
         ->(attribute) { attribute == symbol }
-      in VarRef[value: Const => value]
-        compile_node(value)
-      in VarRef[value: Kw[value: "nil"]]
+      elsif VarRef === root and Const === root.value
+        compile_node(root.value)
+      elsif VarRef === root and Kw === root.value and root.value.value.nil?
         ->(attribute) { attribute.nil? }
+      else
+        raise CompilationError, PP.pp(root, +"").chomp
       end
-    rescue NoMatchingPatternError
-      raise CompilationError, PP.pp(root, +"").chomp
     end
   end
 end

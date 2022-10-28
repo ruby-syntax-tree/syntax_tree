@@ -12,10 +12,12 @@ jobs:
         - '3.0'
         - '3.1'
         - head
+        - truffleruby-head
     name: CI
     runs-on: ubuntu-latest
     env:
       CI: true
+      TESTOPTS: --verbose
     steps:
     - uses: actions/checkout@master
     - uses: ruby/setup-ruby@v1

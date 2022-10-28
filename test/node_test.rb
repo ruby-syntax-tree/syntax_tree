@@ -759,10 +759,9 @@ module SyntaxTree
       program = parser.parse
       refute(parser.error?)
 
-      case program
-      in statements: { body: [statement] }
-        assert_kind_of(VCall, statement)
-      end
+      statements = program.statements.body
+      assert_equal 1, statements.size
+      assert_kind_of(VCall, statements.first)
 
       json = JSON.parse(program.to_json)
       io = StringIO.new

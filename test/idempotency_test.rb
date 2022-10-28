@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-return unless ENV["CI"]
+return unless ENV["CI"] and RUBY_ENGINE != "truffleruby"
 require_relative "test_helper"
 
 module SyntaxTree
