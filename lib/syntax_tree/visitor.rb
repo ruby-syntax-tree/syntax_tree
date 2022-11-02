@@ -122,9 +122,6 @@ module SyntaxTree
     # Visit a Defined node.
     alias visit_defined visit_child_nodes
 
-    # Visit a Defs node.
-    alias visit_defs visit_child_nodes
-
     # Visit a DoBlock node.
     alias visit_do_block visit_child_nodes
 

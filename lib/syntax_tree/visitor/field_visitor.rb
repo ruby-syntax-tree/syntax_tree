@@ -315,6 +315,8 @@ module SyntaxTree
 
       def visit_def(node)
         node(node, "def") do
+          field("target", node.target)
+          field("operator", node.operator)
           field("name", node.name)
           field("params", node.params)
           field("bodystmt", node.bodystmt)
@@ -325,17 +327,6 @@ module SyntaxTree
       def visit_defined(node)
         node(node, "defined") do
           field("value", node.value)
-          comments(node)
-        end
-      end
-
-      def visit_defs(node)
-        node(node, "defs") do
-          field("target", node.target)
-          field("operator", node.operator)
-          field("name", node.name)
-          field("params", node.params)
-          field("bodystmt", node.bodystmt)
           comments(node)
         end
       end

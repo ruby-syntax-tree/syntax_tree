@@ -3108,7 +3108,7 @@ module SyntaxTree
           part = parts.first
 
           case part
-          when Def, Defs
+          when Def
             q.text(" ")
             yield
           when IfOp
@@ -3535,8 +3535,15 @@ module SyntaxTree
   # Def represents defining a regular method on the current self object.
   #
   #     def method(param) result end
+  #     def object.method(param) result end
   #
   class Def < Node
+    # [nil | untyped] the target where the method is being defined
+    attr_reader :target
+
+    # [nil | Op | Period] the operator being used to declare the method
+    attr_reader :operator
+
     # [Backtick | Const | Ident | Kw | Op] the name of the method
     attr_reader :name
 
@@ -3549,7 +3556,9 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(name:, params:, bodystmt:, location:)
+    def initialize(target:, operator:, name:, params:, bodystmt:, location:)
+      @target = target
+      @operator = operator
       @name = name
       @params = params
       @bodystmt = bodystmt
@@ -3562,13 +3571,15 @@ module SyntaxTree
     end
 
     def child_nodes
-      [name, params, bodystmt]
+      [target, operator, name, params, bodystmt]
     end
 
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
       {
+        target: target,
+        operator: operator,
         name: name,
         params: params,
         bodystmt: bodystmt,
@@ -3581,6 +3592,12 @@ module SyntaxTree
       q.group do
         q.group do
           q.text("def ")
+
+          if target
+            q.format(target)
+            q.format(CallOperatorFormatter.new(operator), stackable: false)
+          end
+
           q.format(name)
 
           case params
@@ -3663,115 +3680,6 @@ module SyntaxTree
         q.breakable_empty
       end
       q.text(")")
-    end
-  end
-
-  # Defs represents defining a singleton method on an object.
-  #
-  #     def object.method(param) result end
-  #
-  class Defs < Node
-    # [untyped] the target where the method is being defined
-    attr_reader :target
-
-    # [Op | Period] the operator being used to declare the method
-    attr_reader :operator
-
-    # [Backtick | Const | Ident | Kw | Op] the name of the method
-    attr_reader :name
-
-    # [nil | Params | Paren] the parameter declaration for the method
-    attr_reader :params
-
-    # [BodyStmt | untyped] the expressions to be executed by the method
-    attr_reader :bodystmt
-
-    # [Array[ Comment | EmbDoc ]] the comments attached to this node
-    attr_reader :comments
-
-    def initialize(
-      target:,
-      operator:,
-      name:,
-      params:,
-      bodystmt:,
-      location:,
-      comments: []
-    )
-      @target = target
-      @operator = operator
-      @name = name
-      @params = params
-      @bodystmt = bodystmt
-      @location = location
-      @comments = []
-    end
-
-    def accept(visitor)
-      visitor.visit_defs(self)
-    end
-
-    def child_nodes
-      [target, operator, name, params, bodystmt]
-    end
-
-    alias deconstruct child_nodes
-
-    def deconstruct_keys(_keys)
-      {
-        target: target,
-        operator: operator,
-        name: name,
-        params: params,
-        bodystmt: bodystmt,
-        location: location,
-        comments: comments
-      }
-    end
-
-    def format(q)
-      q.group do
-        q.group do
-          q.text("def ")
-          q.format(target)
-          q.format(CallOperatorFormatter.new(operator), stackable: false)
-          q.format(name)
-
-          case params
-          when Paren
-            q.format(params)
-          when Params
-            q.format(params) if !params.empty? || params.comments.any?
-          end
-        end
-
-        if endless?
-          q.text(" =")
-          q.group do
-            q.indent do
-              q.breakable_space
-              q.format(bodystmt)
-            end
-          end
-        else
-          unless bodystmt.empty?
-            q.indent do
-              q.breakable_force
-              q.format(bodystmt)
-            end
-          end
-
-          q.breakable_force
-          q.text("end")
-        end
-      end
-    end
-
-    # Returns true if the method was found in the source in the "endless" form,
-    # i.e. where the method body is defined using the `=` operator after the
-    # method name and parameters.
-    def endless?
-      !bodystmt.is_a?(BodyStmt)
     end
   end
 
@@ -6919,8 +6827,7 @@ module SyntaxTree
         return
       end
 
-      case q.parent
-      when Def, Defs
+      if q.parent.is_a?(Def)
         q.nest(0) do
           q.text("(")
           q.group do

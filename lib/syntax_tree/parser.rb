@@ -1224,6 +1224,8 @@ module SyntaxTree
         )
 
         Def.new(
+          target: nil,
+          operator: nil,
           name: name,
           params: params,
           bodystmt: bodystmt,
@@ -1235,6 +1237,8 @@ module SyntaxTree
         statement = bodystmt.is_a?(BodyStmt) ? bodystmt.statements : bodystmt
 
         Def.new(
+          target: nil,
+          operator: nil,
           name: name,
           params: params,
           bodystmt: statement,
@@ -1268,7 +1272,7 @@ module SyntaxTree
     #     (Backtick | Const | Ident | Kw | Op) name,
     #     (Params | Paren) params,
     #     BodyStmt bodystmt
-    #   ) -> Defs
+    #   ) -> Def
     def on_defs(target, operator, name, params, bodystmt)
       # Make sure to delete this token in case you're defining something
       # like def class which would lead to this being a kw and causing all kinds
@@ -1307,7 +1311,7 @@ module SyntaxTree
           ending.location.start_column
         )
 
-        Defs.new(
+        Def.new(
           target: target,
           operator: operator,
           name: name,
@@ -1320,7 +1324,7 @@ module SyntaxTree
         # the statements list. Before, it was just the individual statement.
         statement = bodystmt.is_a?(BodyStmt) ? bodystmt.statements : bodystmt
 
-        Defs.new(
+        Def.new(
           target: target,
           operator: operator,
           name: name,

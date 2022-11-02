@@ -394,7 +394,7 @@ module SyntaxTree
     end
 
     def test_defs
-      assert_node(Defs, "def object.method(param) result end")
+      assert_node(Def, "def object.method(param) result end")
     end
 
     def test_defs_paramless
@@ -403,7 +403,7 @@ module SyntaxTree
         end
       SOURCE
 
-      assert_node(Defs, source)
+      assert_node(Def, source)
     end
 
     def test_do_block
