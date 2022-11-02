@@ -2071,7 +2071,7 @@ module SyntaxTree
         when Paren, Statements
           # If we hit certain breakpoints then we know we're safe.
           return false
-        when If, IfOp, Unless, While, WhileMod, Until, UntilMod
+        when If, IfOp, Unless, While, Until
           return true if parent.predicate == previous
         end
 
@@ -5399,8 +5399,8 @@ module SyntaxTree
         case statement
         when Alias, Assign, Break, Command, CommandCall, Heredoc, If, IfOp,
              Lambda, MAssign, Next, OpAssign, RescueMod, Return, Return0, Super,
-             Undef, Unless, Until, UntilMod, VarAlias, VoidStmt, While,
-             WhileMod, Yield, Yield0, ZSuper
+             Undef, Unless, Until, VarAlias, VoidStmt, While, Yield, Yield0,
+             ZSuper
           # This is a list of nodes that should not be allowed to be a part of a
           # ternary clause.
           false
@@ -5674,7 +5674,7 @@ module SyntaxTree
       force_flat = [
         Alias, Assign, Break, Command, CommandCall, Heredoc, If, IfOp, Lambda,
         MAssign, Next, OpAssign, RescueMod, Return, Return0, Super, Undef,
-        Unless, UntilMod, VarAlias, VoidStmt, WhileMod, Yield, Yield0, ZSuper
+        Unless, VarAlias, VoidStmt, Yield, Yield0, ZSuper
       ]
 
       if q.parent.is_a?(Paren) || force_flat.include?(truthy.class) ||
@@ -9384,40 +9384,60 @@ module SyntaxTree
     end
   end
 
-  # Formats an Until, UntilMod, While, or WhileMod node.
+  # Formats an Until or While node.
   class LoopFormatter
     # [String] the name of the keyword used for this loop
     attr_reader :keyword
 
-    # [Until | UntilMod | While | WhileMod] the node that is being formatted
+    # [Until | While] the node that is being formatted
     attr_reader :node
 
-    # [untyped] the statements associated with the node
-    attr_reader :statements
-
-    def initialize(keyword, node, statements)
+    def initialize(keyword, node)
       @keyword = keyword
       @node = node
-      @statements = statements
     end
 
     def format(q)
-      if ContainsAssignment.call(node.predicate)
+      # If we're in the modifier form and we're modifying a `begin`, then this
+      # is a special case where we need to explicitly use the modifier form
+      # because otherwise the semantic meaning changes. This looks like:
+      #
+      #     begin
+      #       foo
+      #     end while bar
+      #
+      # Also, if the statement of the modifier includes an assignment, then we
+      # can't know for certain that it won't impact the predicate, so we need to
+      # force it to stay as it is. This looks like:
+      #
+      #     foo = bar while foo
+      #
+      if node.modifier? && (statement = node.statements.body.first) && (statement.is_a?(Begin) || ContainsAssignment.call(statement))
+        q.format(statement)
+        q.text(" #{keyword} ")
+        q.format(node.predicate)
+      elsif node.statements.empty?
+        q.group do
+          q.text("#{keyword} ")
+          q.nest(keyword.length + 1) { q.format(node.predicate) }
+          q.breakable_force
+          q.text("end")
+        end
+      elsif ContainsAssignment.call(node.predicate)
         format_break(q)
         q.break_parent
-        return
-      end
-
-      q.group do
-        q
-          .if_break { format_break(q) }
-          .if_flat do
-            Parentheses.flat(q) do
-              q.format(statements)
-              q.text(" #{keyword} ")
-              q.format(node.predicate)
+      else
+        q.group do
+          q
+            .if_break { format_break(q) }
+            .if_flat do
+              Parentheses.flat(q) do
+                q.format(node.statements)
+                q.text(" #{keyword} ")
+                q.format(node.predicate)
+              end
             end
-          end
+        end
       end
     end
 
@@ -9428,7 +9448,7 @@ module SyntaxTree
       q.nest(keyword.length + 1) { q.format(node.predicate) }
       q.indent do
         q.breakable_empty
-        q.format(statements)
+        q.format(node.statements)
       end
       q.breakable_empty
       q.text("end")
@@ -9477,83 +9497,11 @@ module SyntaxTree
     end
 
     def format(q)
-      if statements.empty?
-        keyword = "until "
-
-        q.group do
-          q.text(keyword)
-          q.nest(keyword.length) { q.format(predicate) }
-          q.breakable_force
-          q.text("end")
-        end
-      else
-        LoopFormatter.new("until", self, statements).format(q)
-      end
-    end
-  end
-
-  # UntilMod represents the modifier form of a +until+ loop.
-  #
-  #     expression until predicate
-  #
-  class UntilMod < Node
-    # [untyped] the expression to be executed
-    attr_reader :statement
-
-    # [untyped] the expression to be checked
-    attr_reader :predicate
-
-    # [Array[ Comment | EmbDoc ]] the comments attached to this node
-    attr_reader :comments
-
-    def initialize(statement:, predicate:, location:)
-      @statement = statement
-      @predicate = predicate
-      @location = location
-      @comments = []
+      LoopFormatter.new("until", self).format(q)
     end
 
-    def accept(visitor)
-      visitor.visit_until_mod(self)
-    end
-
-    def child_nodes
-      [statement, predicate]
-    end
-
-    alias deconstruct child_nodes
-
-    def deconstruct_keys(_keys)
-      {
-        statement: statement,
-        predicate: predicate,
-        location: location,
-        comments: comments
-      }
-    end
-
-    def format(q)
-      # If we're in the modifier form and we're modifying a `begin`, then this
-      # is a special case where we need to explicitly use the modifier form
-      # because otherwise the semantic meaning changes. This looks like:
-      #
-      #     begin
-      #       foo
-      #     end until bar
-      #
-      # Also, if the statement of the modifier includes an assignment, then we
-      # can't know for certain that it won't impact the predicate, so we need to
-      # force it to stay as it is. This looks like:
-      #
-      #     foo = bar until foo
-      #
-      if statement.is_a?(Begin) || ContainsAssignment.call(statement)
-        q.format(statement)
-        q.text(" until ")
-        q.format(predicate)
-      else
-        LoopFormatter.new("until", self, statement).format(q)
-      end
+    def modifier?
+      predicate.location.start_char > statements.location.start_char
     end
   end
 
@@ -9976,83 +9924,11 @@ module SyntaxTree
     end
 
     def format(q)
-      if statements.empty?
-        keyword = "while "
-
-        q.group do
-          q.text(keyword)
-          q.nest(keyword.length) { q.format(predicate) }
-          q.breakable_force
-          q.text("end")
-        end
-      else
-        LoopFormatter.new("while", self, statements).format(q)
-      end
-    end
-  end
-
-  # WhileMod represents the modifier form of a +while+ loop.
-  #
-  #     expression while predicate
-  #
-  class WhileMod < Node
-    # [untyped] the expression to be executed
-    attr_reader :statement
-
-    # [untyped] the expression to be checked
-    attr_reader :predicate
-
-    # [Array[ Comment | EmbDoc ]] the comments attached to this node
-    attr_reader :comments
-
-    def initialize(statement:, predicate:, location:)
-      @statement = statement
-      @predicate = predicate
-      @location = location
-      @comments = []
+      LoopFormatter.new("while", self).format(q)
     end
 
-    def accept(visitor)
-      visitor.visit_while_mod(self)
-    end
-
-    def child_nodes
-      [statement, predicate]
-    end
-
-    alias deconstruct child_nodes
-
-    def deconstruct_keys(_keys)
-      {
-        statement: statement,
-        predicate: predicate,
-        location: location,
-        comments: comments
-      }
-    end
-
-    def format(q)
-      # If we're in the modifier form and we're modifying a `begin`, then this
-      # is a special case where we need to explicitly use the modifier form
-      # because otherwise the semantic meaning changes. This looks like:
-      #
-      #     begin
-      #       foo
-      #     end while bar
-      #
-      # Also, if the statement of the modifier includes an assignment, then we
-      # can't know for certain that it won't impact the predicate, so we need to
-      # force it to stay as it is. This looks like:
-      #
-      #     foo = bar while foo
-      #
-      if statement.is_a?(Begin) || ContainsAssignment.call(statement)
-        q.format(statement)
-        q.text(" while ")
-        q.format(predicate)
-      else
-        LoopFormatter.new("while", self, statement).format(q)
-      end
+    def modifier?
+      predicate.location.start_char > statements.location.start_char
     end
   end
 

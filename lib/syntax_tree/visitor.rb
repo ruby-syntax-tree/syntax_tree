@@ -431,9 +431,6 @@ module SyntaxTree
     # Visit an Until node.
     alias visit_until visit_child_nodes
 
-    # Visit an UntilMod node.
-    alias visit_until_mod visit_child_nodes
-
     # Visit a VarAlias node.
     alias visit_var_alias visit_child_nodes
 
@@ -454,9 +451,6 @@ module SyntaxTree
 
     # Visit a While node.
     alias visit_while visit_child_nodes
-
-    # Visit a WhileMod node.
-    alias visit_while_mod visit_child_nodes
 
     # Visit a Word node.
     alias visit_word visit_child_nodes

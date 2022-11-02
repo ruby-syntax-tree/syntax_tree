@@ -982,14 +982,6 @@ module SyntaxTree
         end
       end
 
-      def visit_until_mod(node)
-        node(node, "until_mod") do
-          field("statement", node.statement)
-          field("predicate", node.predicate)
-          comments(node)
-        end
-      end
-
       def visit_var_alias(node)
         node(node, "var_alias") do
           field("left", node.left)
@@ -1036,14 +1028,6 @@ module SyntaxTree
         node(node, "while") do
           field("predicate", node.predicate)
           field("statements", node.statements)
-          comments(node)
-        end
-      end
-
-      def visit_while_mod(node)
-        node(node, "while_mod") do
-          field("statement", node.statement)
-          field("predicate", node.predicate)
           comments(node)
         end
       end

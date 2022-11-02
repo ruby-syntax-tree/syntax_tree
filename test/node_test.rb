@@ -931,7 +931,7 @@ module SyntaxTree
     end
 
     def test_until_mod
-      assert_node(UntilMod, "expression until predicate")
+      assert_node(Until, "expression until predicate")
     end
 
     def test_var_alias
@@ -981,7 +981,7 @@ module SyntaxTree
     end
 
     def test_while_mod
-      assert_node(WhileMod, "expression while predicate")
+      assert_node(While, "expression while predicate")
     end
 
     def test_word

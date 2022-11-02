@@ -3630,13 +3630,13 @@ module SyntaxTree
     end
 
     # :call-seq:
-    #   on_until_mod: (untyped predicate, untyped statement) -> UntilMod
+    #   on_until_mod: (untyped predicate, untyped statement) -> Until
     def on_until_mod(predicate, statement)
       consume_keyword(:until)
 
-      UntilMod.new(
-        statement: statement,
+      Until.new(
         predicate: predicate,
+        statements: Statements.new(self, body: [statement], location: statement.location),
         location: statement.location.to(predicate.location)
       )
     end
@@ -3756,13 +3756,13 @@ module SyntaxTree
     end
 
     # :call-seq:
-    #   on_while_mod: (untyped predicate, untyped statement) -> WhileMod
+    #   on_while_mod: (untyped predicate, untyped statement) -> While
     def on_while_mod(predicate, statement)
       consume_keyword(:while)
 
-      WhileMod.new(
-        statement: statement,
+      While.new(
         predicate: predicate,
+        statements: Statements.new(self, body: [statement], location: statement.location),
         location: statement.location.to(predicate.location)
       )
     end
