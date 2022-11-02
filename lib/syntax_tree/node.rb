@@ -9830,14 +9830,10 @@ module SyntaxTree
   #     super
   #
   class ZSuper < Node
-    # [String] the value of the keyword
-    attr_reader :value
-
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(value:, location:)
-      @value = value
+    def initialize(location:)
       @location = location
       @comments = []
     end
@@ -9853,11 +9849,11 @@ module SyntaxTree
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
-      { value: value, location: location, comments: comments }
+      { location: location, comments: comments }
     end
 
     def format(q)
-      q.text(value)
+      q.text("super")
     end
   end
 end

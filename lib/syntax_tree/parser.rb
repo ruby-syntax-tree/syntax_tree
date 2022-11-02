@@ -3908,7 +3908,7 @@ module SyntaxTree
     def on_zsuper
       keyword = consume_keyword(:super)
 
-      ZSuper.new(value: keyword.value, location: keyword.location)
+      ZSuper.new(location: keyword.location)
     end
   end
 end

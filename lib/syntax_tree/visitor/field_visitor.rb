@@ -1023,7 +1023,9 @@ module SyntaxTree
       end
 
       def visit_zsuper(node)
-        visit_token(node, "zsuper")
+        node(node, "zsuper") do
+          comments(node)
+        end
       end
 
       def visit___end__(node)
