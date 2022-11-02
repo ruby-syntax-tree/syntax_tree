@@ -414,11 +414,11 @@ module SyntaxTree
     end
 
     def test_dot2
-      assert_node(Dot2, "1..3")
+      assert_node(RangeLiteral, "1..3")
     end
 
     def test_dot3
-      assert_node(Dot3, "1...3")
+      assert_node(RangeLiteral, "1...3")
     end
 
     def test_dyna_symbol

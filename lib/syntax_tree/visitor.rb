@@ -131,12 +131,6 @@ module SyntaxTree
     # Visit a DoBlock node.
     alias visit_do_block visit_child_nodes
 
-    # Visit a Dot2 node.
-    alias visit_dot2 visit_child_nodes
-
-    # Visit a Dot3 node.
-    alias visit_dot3 visit_child_nodes
-
     # Visit a DynaSymbol node.
     alias visit_dyna_symbol visit_child_nodes
 
@@ -304,6 +298,9 @@ module SyntaxTree
 
     # Visit a QWordsBeg node.
     alias visit_qwords_beg visit_child_nodes
+
+    # Visit a RangeLiteral node
+    alias visit_range_literal visit_child_nodes
 
     # Visit a RAssign node.
     alias visit_rassign visit_child_nodes

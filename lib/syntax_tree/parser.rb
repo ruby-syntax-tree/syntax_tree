@@ -1357,30 +1357,32 @@ module SyntaxTree
     end
 
     # :call-seq:
-    #   on_dot2: ((nil | untyped) left, (nil | untyped) right) -> Dot2
+    #   on_dot2: ((nil | untyped) left, (nil | untyped) right) -> RangeLiteral
     def on_dot2(left, right)
       operator = consume_operator(:"..")
 
       beginning = left || operator
       ending = right || operator
 
-      Dot2.new(
+      RangeLiteral.new(
         left: left,
+        operator: operator,
         right: right,
         location: beginning.location.to(ending.location)
       )
     end
 
     # :call-seq:
-    #   on_dot3: ((nil | untyped) left, (nil | untyped) right) -> Dot3
+    #   on_dot3: ((nil | untyped) left, (nil | untyped) right) -> RangeLiteral
     def on_dot3(left, right)
       operator = consume_operator(:"...")
 
       beginning = left || operator
       ending = right || operator
 
-      Dot3.new(
+      RangeLiteral.new(
         left: left,
+        operator: operator,
         right: right,
         location: beginning.location.to(ending.location)
       )

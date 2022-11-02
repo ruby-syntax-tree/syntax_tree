@@ -3878,38 +3878,8 @@ module SyntaxTree
     end
   end
 
-  # Responsible for formatting Dot2 and Dot3 nodes.
-  class DotFormatter
-    # [String] the operator to display
-    attr_reader :operator
-
-    # [Dot2 | Dot3] the node that is being formatter
-    attr_reader :node
-
-    def initialize(operator, node)
-      @operator = operator
-      @node = node
-    end
-
-    def format(q)
-      left = node.left
-      right = node.right
-
-      q.format(left) if left
-
-      case q.parent
-      when If, Unless
-        q.text(" #{operator} ")
-      else
-        q.text(operator)
-      end
-
-      q.format(right) if right
-    end
-  end
-
-  # Dot2 represents using the .. operator between two expressions. Usually this
-  # is to create a range object.
+  # RangeLiteral represents using the .. or the ... operator between two
+  # expressions. Usually this is to create a range object.
   #
   #     1..2
   #
@@ -3919,9 +3889,12 @@ module SyntaxTree
   #     end
   #
   # One of the sides of the expression may be nil, but not both.
-  class Dot2 < Node
+  class RangeLiteral < Node
     # [nil | untyped] the left side of the expression
     attr_reader :left
+
+    # [Op] the operator used for this range
+    attr_reader :operator
 
     # [nil | untyped] the right side of the expression
     attr_reader :right
@@ -3929,15 +3902,16 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(left:, right:, location:)
+    def initialize(left:, operator:, right:, location:)
       @left = left
+      @operator = operator
       @right = right
       @location = location
       @comments = []
     end
 
     def accept(visitor)
-      visitor.visit_dot2(self)
+      visitor.visit_range_literal(self)
     end
 
     def child_nodes
@@ -3947,59 +3921,20 @@ module SyntaxTree
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
-      { left: left, right: right, location: location, comments: comments }
+      { left: left, operator: operator, right: right, location: location, comments: comments }
     end
 
     def format(q)
-      DotFormatter.new("..", self).format(q)
-    end
-  end
+      q.format(left) if left
 
-  # Dot3 represents using the ... operator between two expressions. Usually this
-  # is to create a range object. It's effectively the same event as the Dot2
-  # node but with this operator you're asking Ruby to omit the final value.
-  #
-  #     1...2
-  #
-  # Like Dot2 it can also be used to create a flip-flop.
-  #
-  #     if value == 5 ... value == 10
-  #     end
-  #
-  # One of the sides of the expression may be nil, but not both.
-  class Dot3 < Node
-    # [nil | untyped] the left side of the expression
-    attr_reader :left
+      case q.parent
+      when If, Unless
+        q.text(" #{operator.value} ")
+      else
+        q.text(operator.value)
+      end
 
-    # [nil | untyped] the right side of the expression
-    attr_reader :right
-
-    # [Array[ Comment | EmbDoc ]] the comments attached to this node
-    attr_reader :comments
-
-    def initialize(left:, right:, location:)
-      @left = left
-      @right = right
-      @location = location
-      @comments = []
-    end
-
-    def accept(visitor)
-      visitor.visit_dot3(self)
-    end
-
-    def child_nodes
-      [left, right]
-    end
-
-    alias deconstruct child_nodes
-
-    def deconstruct_keys(_keys)
-      { left: left, right: right, location: location, comments: comments }
-    end
-
-    def format(q)
-      DotFormatter.new("...", self).format(q)
+      q.format(right) if right
     end
   end
 
@@ -9771,7 +9706,7 @@ module SyntaxTree
             # last argument to the predicate is and endless range, then you are
             # forced to use the "then" keyword to make it parse properly.
             last = arguments.parts.last
-            if (last.is_a?(Dot2) || last.is_a?(Dot3)) && !last.right
+            if last.is_a?(RangeLiteral) && !last.right
               q.text(" then")
             end
           end

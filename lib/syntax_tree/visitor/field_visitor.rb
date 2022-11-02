@@ -362,22 +362,6 @@ module SyntaxTree
         end
       end
 
-      def visit_dot2(node)
-        node(node, "dot2") do
-          field("left", node.left) if node.left
-          field("right", node.right) if node.right
-          comments(node)
-        end
-      end
-
-      def visit_dot3(node)
-        node(node, "dot3") do
-          field("left", node.left) if node.left
-          field("right", node.right) if node.right
-          comments(node)
-        end
-      end
-
       def visit_dyna_symbol(node)
         node(node, "dyna_symbol") do
           list("parts", node.parts)
@@ -737,6 +721,15 @@ module SyntaxTree
 
       def visit_qwords_beg(node)
         node(node, "qwords_beg") { field("value", node.value) }
+      end
+
+      def visit_range_literal(node)
+        node(node, "range_literal") do
+          field("left", node.left) if node.left
+          field("operator", node.operator)
+          field("right", node.right) if node.right
+          comments(node)
+        end
       end
 
       def visit_rassign(node)
