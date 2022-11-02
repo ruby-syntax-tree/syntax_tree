@@ -3084,11 +3084,11 @@ module SyntaxTree
     end
 
     # :call-seq:
-    #   on_return0: () -> Return0
+    #   on_return0: () -> Return
     def on_return0
       keyword = consume_keyword(:return)
 
-      Return0.new(value: keyword.value, location: keyword.location)
+      Return.new(arguments: nil, location: keyword.location)
     end
 
     # :call-seq:

@@ -338,9 +338,6 @@ module SyntaxTree
     # Visit a Return node.
     alias visit_return visit_child_nodes
 
-    # Visit a Return0 node.
-    alias visit_return0 visit_child_nodes
-
     # Visit a RParen node.
     alias visit_rparen visit_child_nodes
 

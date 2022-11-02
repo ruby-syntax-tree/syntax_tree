@@ -789,10 +789,6 @@ module SyntaxTree
         end
       end
 
-      def visit_return0(node)
-        visit_token(node, "return0")
-      end
-
       def visit_rparen(node)
         node(node, "rparen") { field("value", node.value) }
       end

@@ -841,7 +841,7 @@ module SyntaxTree
     end
 
     def test_return0
-      assert_node(Return0, "return")
+      assert_node(Return, "return")
     end
 
     def test_sclass

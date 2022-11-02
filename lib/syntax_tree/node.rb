@@ -1975,6 +1975,13 @@ module SyntaxTree
     end
 
     def format(q)
+      # If there are no arguments associated with this flow control, then we can
+      # safely just print the keyword and return.
+      if node.arguments.nil?
+        q.text(keyword)
+        return
+      end
+
       q.group do
         q.text(keyword)
 
@@ -5077,8 +5084,8 @@ module SyntaxTree
       def ternaryable?(statement)
         case statement
         when Alias, Assign, Break, Command, CommandCall, Heredoc, If, IfOp,
-             Lambda, MAssign, Next, OpAssign, RescueMod, Return, Return0, Super,
-             Undef, Unless, Until, VoidStmt, While, Yield, ZSuper
+             Lambda, MAssign, Next, OpAssign, RescueMod, Return, Super, Undef,
+             Unless, Until, VoidStmt, While, Yield, ZSuper
           # This is a list of nodes that should not be allowed to be a part of a
           # ternary clause.
           false
@@ -5351,8 +5358,8 @@ module SyntaxTree
     def format(q)
       force_flat = [
         Alias, Assign, Break, Command, CommandCall, Heredoc, If, IfOp, Lambda,
-        MAssign, Next, OpAssign, RescueMod, Return, Return0, Super, Undef,
-        Unless, VoidStmt, Yield, ZSuper
+        MAssign, Next, OpAssign, RescueMod, Return, Super, Undef, Unless,
+        VoidStmt, Yield, ZSuper
       ]
 
       if q.parent.is_a?(Paren) || force_flat.include?(truthy.class) ||
@@ -7739,7 +7746,7 @@ module SyntaxTree
   #     return value
   #
   class Return < Node
-    # [Args] the arguments being passed to the keyword
+    # [nil | Args] the arguments being passed to the keyword
     attr_reader :arguments
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
@@ -7767,42 +7774,6 @@ module SyntaxTree
 
     def format(q)
       FlowControlFormatter.new("return", self).format(q)
-    end
-  end
-
-  # Return0 represents the bare +return+ keyword with no arguments.
-  #
-  #     return
-  #
-  class Return0 < Node
-    # [String] the value of the keyword
-    attr_reader :value
-
-    # [Array[ Comment | EmbDoc ]] the comments attached to this node
-    attr_reader :comments
-
-    def initialize(value:, location:)
-      @value = value
-      @location = location
-      @comments = []
-    end
-
-    def accept(visitor)
-      visitor.visit_return0(self)
-    end
-
-    def child_nodes
-      []
-    end
-
-    alias deconstruct child_nodes
-
-    def deconstruct_keys(_keys)
-      { value: value, location: location, comments: comments }
-    end
-
-    def format(q)
-      q.text(value)
     end
   end
 
