@@ -359,7 +359,7 @@ module SyntaxTree
     # Formats an argument to the alias keyword. For symbol literals it uses the
     # value of the symbol directly to look like bare words.
     class AliasArgumentFormatter
-      # [DynaSymbol | SymbolLiteral] the argument being passed to alias
+      # [Backref | DynaSymbol | GVar | SymbolLiteral] the argument being passed to alias
       attr_reader :argument
 
       def initialize(argument)
@@ -383,10 +383,10 @@ module SyntaxTree
       end
     end
 
-    # [DynaSymbol | SymbolLiteral] the new name of the method
+    # [DynaSymbol | GVar | SymbolLiteral] the new name of the method
     attr_reader :left
 
-    # [DynaSymbol | SymbolLiteral] the old name of the method
+    # [Backref | DynaSymbol | GVar | SymbolLiteral] the old name of the method
     attr_reader :right
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
@@ -427,6 +427,10 @@ module SyntaxTree
           end
         end
       end
+    end
+
+    def var_alias?
+      left.is_a?(GVar)
     end
   end
 
@@ -5399,8 +5403,7 @@ module SyntaxTree
         case statement
         when Alias, Assign, Break, Command, CommandCall, Heredoc, If, IfOp,
              Lambda, MAssign, Next, OpAssign, RescueMod, Return, Return0, Super,
-             Undef, Unless, Until, VarAlias, VoidStmt, While, Yield, Yield0,
-             ZSuper
+             Undef, Unless, Until, VoidStmt, While, Yield, Yield0, ZSuper
           # This is a list of nodes that should not be allowed to be a part of a
           # ternary clause.
           false
@@ -5674,7 +5677,7 @@ module SyntaxTree
       force_flat = [
         Alias, Assign, Break, Command, CommandCall, Heredoc, If, IfOp, Lambda,
         MAssign, Next, OpAssign, RescueMod, Return, Return0, Super, Undef,
-        Unless, VarAlias, VoidStmt, Yield, Yield0, ZSuper
+        Unless, VoidStmt, Yield, Yield0, ZSuper
       ]
 
       if q.parent.is_a?(Paren) || force_flat.include?(truthy.class) ||
@@ -9502,52 +9505,6 @@ module SyntaxTree
 
     def modifier?
       predicate.location.start_char > statements.location.start_char
-    end
-  end
-
-  # VarAlias represents when you're using the +alias+ keyword with global
-  # variable arguments.
-  #
-  #     alias $new $old
-  #
-  class VarAlias < Node
-    # [GVar] the new alias of the variable
-    attr_reader :left
-
-    # [Backref | GVar] the current name of the variable to be aliased
-    attr_reader :right
-
-    # [Array[ Comment | EmbDoc ]] the comments attached to this node
-    attr_reader :comments
-
-    def initialize(left:, right:, location:)
-      @left = left
-      @right = right
-      @location = location
-      @comments = []
-    end
-
-    def accept(visitor)
-      visitor.visit_var_alias(self)
-    end
-
-    def child_nodes
-      [left, right]
-    end
-
-    alias deconstruct child_nodes
-
-    def deconstruct_keys(_keys)
-      { left: left, right: right, location: location, comments: comments }
-    end
-
-    def format(q)
-      keyword = "alias "
-
-      q.text(keyword)
-      q.format(left)
-      q.text(" ")
-      q.format(right)
     end
   end
 

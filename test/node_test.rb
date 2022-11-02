@@ -935,7 +935,7 @@ module SyntaxTree
     end
 
     def test_var_alias
-      assert_node(VarAlias, "alias $new $old")
+      assert_node(Alias, "alias $new $old")
     end
 
     def test_var_field

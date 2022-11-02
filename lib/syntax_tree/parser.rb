@@ -3642,11 +3642,11 @@ module SyntaxTree
     end
 
     # :call-seq:
-    #   on_var_alias: (GVar left, (Backref | GVar) right) -> VarAlias
+    #   on_var_alias: (GVar left, (Backref | GVar) right) -> Alias
     def on_var_alias(left, right)
       keyword = consume_keyword(:alias)
 
-      VarAlias.new(
+      Alias.new(
         left: left,
         right: right,
         location: keyword.location.to(right.location)

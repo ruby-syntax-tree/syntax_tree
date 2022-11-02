@@ -982,14 +982,6 @@ module SyntaxTree
         end
       end
 
-      def visit_var_alias(node)
-        node(node, "var_alias") do
-          field("left", node.left)
-          field("right", node.right)
-          comments(node)
-        end
-      end
-
       def visit_var_field(node)
         node(node, "var_field") do
           field("value", node.value)

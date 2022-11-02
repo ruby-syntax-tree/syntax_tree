@@ -431,9 +431,6 @@ module SyntaxTree
     # Visit an Until node.
     alias visit_until visit_child_nodes
 
-    # Visit a VarAlias node.
-    alias visit_var_alias visit_child_nodes
-
     # Visit a VarField node.
     alias visit_var_field visit_child_nodes
 
