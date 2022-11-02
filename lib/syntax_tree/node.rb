@@ -146,11 +146,11 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(lbrace:, statements:, location:, comments: [])
+    def initialize(lbrace:, statements:, location:)
       @lbrace = lbrace
       @statements = statements
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -199,10 +199,10 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(value:, location:, comments: [])
+    def initialize(value:, location:)
       @value = value
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -249,11 +249,11 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(lbrace:, statements:, location:, comments: [])
+    def initialize(lbrace:, statements:, location:)
       @lbrace = lbrace
       @statements = statements
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -305,10 +305,10 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(value:, location:, comments: [])
+    def initialize(value:, location:)
       @value = value
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -392,11 +392,11 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(left:, right:, location:, comments: [])
+    def initialize(left:, right:, location:)
       @left = left
       @right = right
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -453,11 +453,11 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(collection:, index:, location:, comments: [])
+    def initialize(collection:, index:, location:)
       @collection = collection
       @index = index
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -514,11 +514,11 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(collection:, index:, location:, comments: [])
+    def initialize(collection:, index:, location:)
       @collection = collection
       @index = index
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -577,10 +577,10 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(arguments:, location:, comments: [])
+    def initialize(arguments:, location:)
       @arguments = arguments
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -650,10 +650,10 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(parts:, location:, comments: [])
+    def initialize(parts:, location:)
       @parts = parts
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -686,10 +686,10 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(value:, location:, comments: [])
+    def initialize(value:, location:)
       @value = value
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -723,10 +723,10 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(value:, location:, comments: [])
+    def initialize(value:, location:)
       @value = value
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -773,10 +773,10 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(value:, location:, comments: [])
+    def initialize(value:, location:)
       @value = value
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -955,11 +955,11 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(lbracket:, contents:, location:, comments: [])
+    def initialize(lbracket:, contents:, location:)
       @lbracket = lbracket
       @contents = contents
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -1132,7 +1132,7 @@ module SyntaxTree
       @rest = rest
       @posts = posts
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -1209,11 +1209,11 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(target:, value:, location:, comments: [])
+    def initialize(target:, value:, location:)
       @target = target
       @value = value
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -1271,11 +1271,11 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(key:, value:, location:, comments: [])
+    def initialize(key:, value:, location:)
       @key = key
       @value = value
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -1330,10 +1330,10 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(value:, location:, comments: [])
+    def initialize(value:, location:)
       @value = value
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -1368,10 +1368,10 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(value:, location:, comments: [])
+    def initialize(value:, location:)
       @value = value
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -1403,10 +1403,10 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(value:, location:, comments: [])
+    def initialize(value:, location:)
       @value = value
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -1515,10 +1515,10 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(assocs:, location:, comments: [])
+    def initialize(assocs:, location:)
       @assocs = assocs
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -1557,10 +1557,10 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(bodystmt:, location:, comments: [])
+    def initialize(bodystmt:, location:)
       @bodystmt = bodystmt
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -1605,10 +1605,10 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(statement:, location:, comments: [])
+    def initialize(statement:, location:)
       @statement = statement
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -1677,12 +1677,12 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(left:, operator:, right:, location:, comments: [])
+    def initialize(left:, operator:, right:, location:)
       @left = left
       @operator = operator
       @right = right
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -1745,11 +1745,11 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(params:, locals:, location:, comments: [])
+    def initialize(params:, locals:, location:)
       @params = params
       @locals = locals
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -1803,10 +1803,10 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(name:, location:, comments: [])
+    def initialize(name:, location:)
       @name = name
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -1866,7 +1866,7 @@ module SyntaxTree
       @else_clause = else_clause
       @ensure_clause = ensure_clause
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def bind(start_char, start_column, end_char, end_column)
@@ -2141,12 +2141,12 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(lbrace:, block_var:, statements:, location:, comments: [])
+    def initialize(lbrace:, block_var:, statements:, location:)
       @lbrace = lbrace
       @block_var = block_var
       @statements = statements
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -2371,10 +2371,10 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(arguments:, location:, comments: [])
+    def initialize(arguments:, location:)
       @arguments = arguments
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -2672,7 +2672,7 @@ module SyntaxTree
       @message = message
       @arguments = arguments
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -2782,12 +2782,12 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(keyword:, value:, consequent:, location:, comments: [])
+    def initialize(keyword:, value:, consequent:, location:)
       @keyword = keyword
       @value = value
       @consequent = consequent
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -2847,12 +2847,12 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(value:, operator:, pattern:, location:, comments: [])
+    def initialize(value:, operator:, pattern:, location:)
       @value = value
       @operator = operator
       @pattern = pattern
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -2943,12 +2943,12 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(constant:, superclass:, bodystmt:, location:, comments: [])
+    def initialize(constant:, superclass:, bodystmt:, location:)
       @constant = constant
       @superclass = superclass
       @bodystmt = bodystmt
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -3049,11 +3049,11 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(message:, arguments:, location:, comments: [])
+    def initialize(message:, arguments:, location:)
       @message = message
       @arguments = arguments
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -3151,7 +3151,7 @@ module SyntaxTree
       @message = message
       @arguments = arguments
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -3323,10 +3323,10 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(value:, location:, comments: [])
+    def initialize(value:, location:)
       @value = value
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -3364,11 +3364,11 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(parent:, constant:, location:, comments: [])
+    def initialize(parent:, constant:, location:)
       @parent = parent
       @constant = constant
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -3411,11 +3411,11 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(parent:, constant:, location:, comments: [])
+    def initialize(parent:, constant:, location:)
       @parent = parent
       @constant = constant
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -3457,10 +3457,10 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(constant:, location:, comments: [])
+    def initialize(constant:, location:)
       @constant = constant
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -3493,10 +3493,10 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(value:, location:, comments: [])
+    def initialize(value:, location:)
       @value = value
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -3535,12 +3535,12 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(name:, params:, bodystmt:, location:, comments: [])
+    def initialize(name:, params:, bodystmt:, location:)
       @name = name
       @params = params
       @bodystmt = bodystmt
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -3625,7 +3625,7 @@ module SyntaxTree
       @paren = paren
       @statement = statement
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -3690,10 +3690,10 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(value:, location:, comments: [])
+    def initialize(value:, location:)
       @value = value
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -3761,7 +3761,7 @@ module SyntaxTree
       @params = params
       @bodystmt = bodystmt
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -3831,12 +3831,12 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(keyword:, block_var:, bodystmt:, location:, comments: [])
+    def initialize(keyword:, block_var:, bodystmt:, location:)
       @keyword = keyword
       @block_var = block_var
       @bodystmt = bodystmt
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -3915,11 +3915,11 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(left:, right:, location:, comments: [])
+    def initialize(left:, right:, location:)
       @left = left
       @right = right
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -3963,11 +3963,11 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(left:, right:, location:, comments: [])
+    def initialize(left:, right:, location:)
       @left = left
       @right = right
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -4050,11 +4050,11 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(parts:, quote:, location:, comments: [])
+    def initialize(parts:, quote:, location:)
       @parts = parts
       @quote = quote
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -4161,11 +4161,11 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(keyword:, statements:, location:, comments: [])
+    def initialize(keyword:, statements:, location:)
       @keyword = keyword
       @statements = statements
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -4231,7 +4231,7 @@ module SyntaxTree
       @statements = statements
       @consequent = consequent
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -4435,11 +4435,11 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(keyword:, statements:, location:, comments: [])
+    def initialize(keyword:, statements:, location:)
       @keyword = keyword
       @statements = statements
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -4490,10 +4490,10 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(value:, location:, comments: [])
+    def initialize(value:, location:)
       @value = value
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -4532,11 +4532,11 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(value:, arguments:, location:, comments: [])
+    def initialize(value:, arguments:, location:)
       @value = value
       @arguments = arguments
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -4591,12 +4591,12 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(parent:, operator:, name:, location:, comments: [])
+    def initialize(parent:, operator:, name:, location:)
       @parent = parent
       @operator = operator
       @name = name
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -4639,10 +4639,10 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(value:, location:, comments: [])
+    def initialize(value:, location:)
       @value = value
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -4688,13 +4688,13 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(constant:, left:, values:, right:, location:, comments: [])
+    def initialize(constant:, left:, values:, right:, location:)
       @constant = constant
       @left = left
       @values = values
       @right = right
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -4763,12 +4763,12 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(index:, collection:, statements:, location:, comments: [])
+    def initialize(index:, collection:, statements:, location:)
       @index = index
       @collection = collection
       @statements = statements
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -4822,10 +4822,10 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(value:, location:, comments: [])
+    def initialize(value:, location:)
       @value = value
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -4887,11 +4887,11 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(lbrace:, assocs:, location:, comments: [])
+    def initialize(lbrace:, assocs:, location:)
       @lbrace = lbrace
       @assocs = assocs
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -4987,7 +4987,7 @@ module SyntaxTree
       @dedent = dedent
       @parts = parts
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -5064,10 +5064,10 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(value:, location:, comments: [])
+    def initialize(value:, location:)
       @value = value
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -5103,10 +5103,10 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(value:, location:, comments: [])
+    def initialize(value:, location:)
       @value = value
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -5195,12 +5195,12 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(constant:, keywords:, keyword_rest:, location:, comments: [])
+    def initialize(constant:, keywords:, keyword_rest:, location:)
       @constant = constant
       @keywords = keywords
       @keyword_rest = keyword_rest
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -5305,10 +5305,10 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(value:, location:, comments: [])
+    def initialize(value:, location:)
       @value = value
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -5574,7 +5574,7 @@ module SyntaxTree
       @statements = statements
       @consequent = consequent
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -5619,12 +5619,12 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(predicate:, truthy:, falsy:, location:, comments: [])
+    def initialize(predicate:, truthy:, falsy:, location:)
       @predicate = predicate
       @truthy = truthy
       @falsy = falsy
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -5761,11 +5761,11 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(statement:, predicate:, location:, comments: [])
+    def initialize(statement:, predicate:, location:)
       @statement = statement
       @predicate = predicate
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -5803,10 +5803,10 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(value:, location:, comments: [])
+    def initialize(value:, location:)
       @value = value
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -5848,12 +5848,12 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(pattern:, statements:, consequent:, location:, comments: [])
+    def initialize(pattern:, statements:, consequent:, location:)
       @pattern = pattern
       @statements = statements
       @consequent = consequent
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -5909,10 +5909,10 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(value:, location:, comments: [])
+    def initialize(value:, location:)
       @value = value
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -5953,10 +5953,10 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(value:, location:, comments: [])
+    def initialize(value:, location:)
       @value = value
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -6001,11 +6001,11 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(value:, location:, comments: [])
+    def initialize(value:, location:)
       @value = value
       @name = value.to_sym
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -6039,10 +6039,10 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(name:, location:, comments: [])
+    def initialize(name:, location:)
       @name = name
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -6085,10 +6085,10 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(value:, location:, comments: [])
+    def initialize(value:, location:)
       @value = value
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -6155,11 +6155,11 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(params:, statements:, location:, comments: [])
+    def initialize(params:, statements:, location:)
       @params = params
       @statements = statements
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -6263,11 +6263,11 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(params:, locals:, location:, comments: [])
+    def initialize(params:, locals:, location:)
       @params = params
       @locals = locals
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -6306,10 +6306,10 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(value:, location:, comments: [])
+    def initialize(value:, location:)
       @value = value
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -6339,10 +6339,10 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(value:, location:, comments: [])
+    def initialize(value:, location:)
       @value = value
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -6372,10 +6372,10 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(value:, location:, comments: [])
+    def initialize(value:, location:)
       @value = value
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -6421,11 +6421,11 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(target:, value:, location:, comments: [])
+    def initialize(target:, value:, location:)
       @target = target
       @value = value
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -6468,11 +6468,11 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(call:, block:, location:, comments: [])
+    def initialize(call:, block:, location:)
       @call = call
       @block = block
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -6529,11 +6529,11 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(parts:, comma: false, location:, comments: [])
+    def initialize(parts:, comma: false, location:)
       @parts = parts
       @comma = comma
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -6573,11 +6573,11 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(contents:, comma: false, location:, comments: [])
+    def initialize(contents:, comma: false, location:)
       @contents = contents
       @comma = comma
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -6631,11 +6631,11 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(constant:, bodystmt:, location:, comments: [])
+    def initialize(constant:, bodystmt:, location:)
       @constant = constant
       @bodystmt = bodystmt
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -6701,10 +6701,10 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(parts:, location:, comments: [])
+    def initialize(parts:, location:)
       @parts = parts
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -6750,10 +6750,10 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(arguments:, location:, comments: [])
+    def initialize(arguments:, location:)
       @arguments = arguments
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -6790,11 +6790,11 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(value:, location:, comments: [])
+    def initialize(value:, location:)
       @value = value
       @name = value.to_sym
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -6835,12 +6835,12 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(target:, operator:, value:, location:, comments: [])
+    def initialize(target:, operator:, value:, location:)
       @target = target
       @operator = operator
       @value = value
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -7081,7 +7081,7 @@ module SyntaxTree
       @keyword_rest = keyword_rest
       @block = block
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     # Params nodes are the most complicated in the tree. Occasionally you want
@@ -7187,11 +7187,11 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(lparen:, contents:, location:, comments: [])
+    def initialize(lparen:, contents:, location:)
       @lparen = lparen
       @contents = contents
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -7239,10 +7239,10 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(value:, location:, comments: [])
+    def initialize(value:, location:)
       @value = value
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -7272,10 +7272,10 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(statements:, location:, comments: [])
+    def initialize(statements:, location:)
       @statements = statements
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -7316,11 +7316,11 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(beginning:, elements:, location:, comments: [])
+    def initialize(beginning:, elements:, location:)
       @beginning = beginning
       @elements = elements
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -7410,11 +7410,11 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(beginning:, elements:, location:, comments: [])
+    def initialize(beginning:, elements:, location:)
       @beginning = beginning
       @elements = elements
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -7501,10 +7501,10 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(value:, location:, comments: [])
+    def initialize(value:, location:)
       @value = value
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -7587,10 +7587,10 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(value:, location:, comments: [])
+    def initialize(value:, location:)
       @value = value
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -7732,12 +7732,12 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(beginning:, ending:, parts:, location:, comments: [])
+    def initialize(beginning:, ending:, parts:, location:)
       @beginning = beginning
       @ending = ending
       @parts = parts
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -7843,11 +7843,11 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(exceptions:, variable:, location:, comments: [])
+    def initialize(exceptions:, variable:, location:)
       @exceptions = exceptions
       @variable = variable
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -7919,7 +7919,7 @@ module SyntaxTree
       @statements = statements
       @consequent = consequent
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def bind_end(end_char, end_column)
@@ -8004,11 +8004,11 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(statement:, value:, location:, comments: [])
+    def initialize(statement:, value:, location:)
       @statement = statement
       @value = value
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -8061,10 +8061,10 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(name:, location:, comments: [])
+    def initialize(name:, location:)
       @name = name
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -8098,10 +8098,10 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(value:, location:, comments: [])
+    def initialize(value:, location:)
       @value = value
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -8134,10 +8134,10 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(arguments:, location:, comments: [])
+    def initialize(arguments:, location:)
       @arguments = arguments
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -8170,10 +8170,10 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(value:, location:, comments: [])
+    def initialize(value:, location:)
       @value = value
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -8237,11 +8237,11 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(target:, bodystmt:, location:, comments: [])
+    def initialize(target:, bodystmt:, location:)
       @target = target
       @bodystmt = bodystmt
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -8294,11 +8294,11 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(parser, body:, location:, comments: [])
+    def initialize(parser, body:, location:)
       @parser = parser
       @body = body
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def bind(start_char, start_column, end_char, end_column)
@@ -8498,11 +8498,11 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(left:, right:, location:, comments: [])
+    def initialize(left:, right:, location:)
       @left = left
       @right = right
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -8544,10 +8544,10 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(variable:, location:, comments: [])
+    def initialize(variable:, location:)
       @variable = variable
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -8584,10 +8584,10 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(statements:, location:, comments: [])
+    def initialize(statements:, location:)
       @statements = statements
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -8646,11 +8646,11 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(parts:, quote:, location:, comments: [])
+    def initialize(parts:, quote:, location:)
       @parts = parts
       @quote = quote
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -8721,10 +8721,10 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(arguments:, location:, comments: [])
+    def initialize(arguments:, location:)
       @arguments = arguments
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -8838,10 +8838,10 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(value:, location:, comments: [])
+    def initialize(value:, location:)
       @value = value
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -8878,11 +8878,11 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(beginning:, elements:, location:, comments: [])
+    def initialize(beginning:, elements:, location:)
       @beginning = beginning
       @elements = elements
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -9031,10 +9031,10 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(constant:, location:, comments: [])
+    def initialize(constant:, location:)
       @constant = constant
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -9069,10 +9069,10 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(constant:, location:, comments: [])
+    def initialize(constant:, location:)
       @constant = constant
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -9144,10 +9144,10 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(value:, location:, comments: [])
+    def initialize(value:, location:)
       @value = value
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def match?(pattern)
@@ -9222,11 +9222,11 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(statement:, parentheses:, location:, comments: [])
+    def initialize(statement:, parentheses:, location:)
       @statement = statement
       @parentheses = parentheses
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -9288,11 +9288,11 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(operator:, statement:, location:, comments: [])
+    def initialize(operator:, statement:, location:)
       @operator = operator
       @statement = statement
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -9355,10 +9355,10 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(symbols:, location:, comments: [])
+    def initialize(symbols:, location:)
       @symbols = symbols
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -9417,7 +9417,7 @@ module SyntaxTree
       @statements = statements
       @consequent = consequent
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -9459,11 +9459,11 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(statement:, predicate:, location:, comments: [])
+    def initialize(statement:, predicate:, location:)
       @statement = statement
       @predicate = predicate
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -9556,11 +9556,11 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(predicate:, statements:, location:, comments: [])
+    def initialize(predicate:, statements:, location:)
       @predicate = predicate
       @statements = statements
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -9612,11 +9612,11 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(statement:, predicate:, location:, comments: [])
+    def initialize(statement:, predicate:, location:)
       @statement = statement
       @predicate = predicate
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -9678,11 +9678,11 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(left:, right:, location:, comments: [])
+    def initialize(left:, right:, location:)
       @left = left
       @right = right
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -9722,10 +9722,10 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(value:, location:, comments: [])
+    def initialize(value:, location:)
       @value = value
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -9766,10 +9766,10 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(value:, location:, comments: [])
+    def initialize(value:, location:)
       @value = value
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -9830,10 +9830,10 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(value:, location:, comments: [])
+    def initialize(value:, location:)
       @value = value
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -9870,10 +9870,10 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(value:, location:, comments: [])
+    def initialize(value:, location:)
       @value = value
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -9910,9 +9910,9 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(location:, comments: [])
+    def initialize(location:)
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -9963,7 +9963,7 @@ module SyntaxTree
       @statements = statements
       @consequent = consequent
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -10055,11 +10055,11 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(predicate:, statements:, location:, comments: [])
+    def initialize(predicate:, statements:, location:)
       @predicate = predicate
       @statements = statements
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -10111,11 +10111,11 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(statement:, predicate:, location:, comments: [])
+    def initialize(statement:, predicate:, location:)
       @statement = statement
       @predicate = predicate
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -10177,10 +10177,10 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(parts:, location:, comments: [])
+    def initialize(parts:, location:)
       @parts = parts
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def match?(pattern)
@@ -10220,11 +10220,11 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(beginning:, elements:, location:, comments: [])
+    def initialize(beginning:, elements:, location:)
       @beginning = beginning
       @elements = elements
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -10342,10 +10342,10 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(parts:, location:, comments: [])
+    def initialize(parts:, location:)
       @parts = parts
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -10380,10 +10380,10 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(arguments:, location:, comments: [])
+    def initialize(arguments:, location:)
       @arguments = arguments
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -10430,10 +10430,10 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(value:, location:, comments: [])
+    def initialize(value:, location:)
       @value = value
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -10466,10 +10466,10 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(value:, location:, comments: [])
+    def initialize(value:, location:)
       @value = value
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)

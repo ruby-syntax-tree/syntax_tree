@@ -2104,17 +2104,20 @@ module SyntaxTree
           location = params.contents.location
           location = location.to(locals.last.location) if locals.any?
 
-          Paren.new(
-            lparen: params.lparen,
-            contents:
-              LambdaVar.new(
-                params: params.contents,
-                locals: locals,
-                location: location
-              ),
-            location: params.location,
-            comments: params.comments
-          )
+          node =
+            Paren.new(
+              lparen: params.lparen,
+              contents:
+                LambdaVar.new(
+                  params: params.contents,
+                  locals: locals,
+                  location: location
+                ),
+              location: params.location
+            )
+
+          node.comments.concat(params.comments)
+          node
         when Params
           # In this case we've gotten to the <3.2 plain set of parameters. In
           # this case there cannot be lambda locals, so we will wrap the
@@ -2199,8 +2202,7 @@ module SyntaxTree
           on_comma: :item,
           on_rparen: :final
         },
-        final: {
-        }
+        final: {}
       }
 
       tokens[(index + 1)..].each_with_object([]) do |token, locals|
