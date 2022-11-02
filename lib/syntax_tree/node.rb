@@ -2936,6 +2936,9 @@ module SyntaxTree
     # [nil | Args] the arguments going along with the message
     attr_reader :arguments
 
+    # [nil | Block] the block associated with this method call
+    attr_reader :block
+
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
@@ -2944,6 +2947,7 @@ module SyntaxTree
       operator:,
       message:,
       arguments:,
+      block:,
       location:,
       comments: []
     )
@@ -2951,6 +2955,7 @@ module SyntaxTree
       @operator = operator
       @message = message
       @arguments = arguments
+      @block = block
       @location = location
       @comments = []
     end
@@ -2971,6 +2976,7 @@ module SyntaxTree
         operator: operator,
         message: message,
         arguments: arguments,
+        block: block,
         location: location,
         comments: comments
       }
@@ -3011,6 +3017,8 @@ module SyntaxTree
           end
         end
       end
+
+      q.format(block) if block
     end
 
     private
@@ -3559,8 +3567,8 @@ module SyntaxTree
       # If the receiver of this block a Command or CommandCall node, then there
       # are no parentheses around the arguments to that command, so we need to
       # break the block.
-      case q.parent.call
-      when Command, CommandCall
+      parent = q.parent
+      if (parent.is_a?(MethodAddBlock) && parent.call.is_a?(Command)) || parent.is_a?(CommandCall)
         q.break_parent
         format_break(q, break_opening, break_closing)
         return

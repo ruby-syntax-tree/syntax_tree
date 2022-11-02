@@ -1095,6 +1095,7 @@ module SyntaxTree
         operator: operator,
         message: message,
         arguments: arguments,
+        block: nil,
         location: receiver.location.to(ending.location)
       )
     end
@@ -2331,11 +2332,27 @@ module SyntaxTree
     #     Block block
     #   ) -> MethodAddBlock
     def on_method_add_block(call, block)
-      MethodAddBlock.new(
-        call: call,
-        block: block,
-        location: call.location.to(block.location)
-      )
+      case call
+      when CommandCall
+        node =
+          CommandCall.new(
+            receiver: call.receiver,
+            operator: call.operator,
+            message: call.message,
+            arguments: call.arguments,
+            block: block,
+            location: call.location.to(block.location)
+          )
+
+        node.comments.concat(call.comments)
+        node
+      else
+        MethodAddBlock.new(
+          call: call,
+          block: block,
+          location: call.location.to(block.location)
+        )
+      end
     end
 
     # :call-seq:
