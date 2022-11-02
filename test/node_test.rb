@@ -1013,7 +1013,7 @@ module SyntaxTree
     end
 
     def test_yield0
-      assert_node(Yield0, "yield")
+      assert_node(Yield, "yield")
     end
 
     def test_zsuper

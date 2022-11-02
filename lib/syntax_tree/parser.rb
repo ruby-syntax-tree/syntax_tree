@@ -3896,11 +3896,11 @@ module SyntaxTree
     end
 
     # :call-seq:
-    #   on_yield0: () -> Yield0
+    #   on_yield0: () -> Yield
     def on_yield0
       keyword = consume_keyword(:yield)
 
-      Yield0.new(value: keyword.value, location: keyword.location)
+      Yield.new(arguments: nil, location: keyword.location)
     end
 
     # :call-seq:

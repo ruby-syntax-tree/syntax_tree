@@ -5403,7 +5403,7 @@ module SyntaxTree
         case statement
         when Alias, Assign, Break, Command, CommandCall, Heredoc, If, IfOp,
              Lambda, MAssign, Next, OpAssign, RescueMod, Return, Return0, Super,
-             Undef, Unless, Until, VoidStmt, While, Yield, Yield0, ZSuper
+             Undef, Unless, Until, VoidStmt, While, Yield, ZSuper
           # This is a list of nodes that should not be allowed to be a part of a
           # ternary clause.
           false
@@ -5677,7 +5677,7 @@ module SyntaxTree
       force_flat = [
         Alias, Assign, Break, Command, CommandCall, Heredoc, If, IfOp, Lambda,
         MAssign, Next, OpAssign, RescueMod, Return, Return0, Super, Undef,
-        Unless, VoidStmt, Yield, Yield0, ZSuper
+        Unless, VoidStmt, Yield, ZSuper
       ]
 
       if q.parent.is_a?(Paren) || force_flat.include?(truthy.class) ||
@@ -10101,7 +10101,7 @@ module SyntaxTree
   #     yield value
   #
   class Yield < Node
-    # [Args | Paren] the arguments passed to the yield
+    # [nil | Args | Paren] the arguments passed to the yield
     attr_reader :arguments
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
@@ -10128,6 +10128,11 @@ module SyntaxTree
     end
 
     def format(q)
+      if arguments.nil?
+        q.text("yield")
+        return
+      end
+
       q.group do
         q.text("yield")
 
@@ -10143,42 +10148,6 @@ module SyntaxTree
           q.if_break { q.text(")") }
         end
       end
-    end
-  end
-
-  # Yield0 represents the bare +yield+ keyword with no arguments.
-  #
-  #     yield
-  #
-  class Yield0 < Node
-    # [String] the value of the keyword
-    attr_reader :value
-
-    # [Array[ Comment | EmbDoc ]] the comments attached to this node
-    attr_reader :comments
-
-    def initialize(value:, location:)
-      @value = value
-      @location = location
-      @comments = []
-    end
-
-    def accept(visitor)
-      visitor.visit_yield0(self)
-    end
-
-    def child_nodes
-      []
-    end
-
-    alias deconstruct child_nodes
-
-    def deconstruct_keys(_keys)
-      { value: value, location: location, comments: comments }
-    end
-
-    def format(q)
-      q.text(value)
     end
   end
 

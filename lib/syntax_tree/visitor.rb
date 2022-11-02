@@ -467,9 +467,6 @@ module SyntaxTree
     # Visit a Yield node.
     alias visit_yield visit_child_nodes
 
-    # Visit a Yield0 node.
-    alias visit_yield0 visit_child_nodes
-
     # Visit a ZSuper node.
     alias visit_zsuper visit_child_nodes
 

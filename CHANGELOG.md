@@ -12,6 +12,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 - `IfMod` and `UnlessMod` are no longer nodes. Instead, they have been folded into `If` and `Unless`, respectively. The `If` and `Unless` nodes now have a `modifier?` method to tell you if they were original found in the modifier form.
 - `WhileMod` and `UntilMod` are no longer nodes. Instead, they have been folded into `While` and `Until`, respectively. The `While` and `Until` nodes now have a `modifier?` method to tell you if they were originally found in the modifier form.
 - `VarAlias` is no longer a node. Instead it has been folded into the `Alias` node. The `Alias` node now has a `var_alias?` method to tell you if it is aliasing a global variable.
+- `Yield0` is no longer a node. Instead if has been folded into the `Yield` node. The `Yield` node can now have its `arguments` field be `nil`.
 
 ## [4.3.0] - 2022-10-28
 

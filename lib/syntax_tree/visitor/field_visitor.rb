@@ -1060,10 +1060,6 @@ module SyntaxTree
         end
       end
 
-      def visit_yield0(node)
-        visit_token(node, "yield0")
-      end
-
       def visit_zsuper(node)
         visit_token(node, "zsuper")
       end
