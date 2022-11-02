@@ -2071,8 +2071,7 @@ module SyntaxTree
         when Paren, Statements
           # If we hit certain breakpoints then we know we're safe.
           return false
-        when If, IfMod, IfOp, Unless, UnlessMod, While, WhileMod, Until,
-             UntilMod
+        when If, IfOp, Unless, While, WhileMod, Until, UntilMod
           return true if parent.predicate == previous
         end
 
@@ -3884,7 +3883,7 @@ module SyntaxTree
       q.format(left) if left
 
       case q.parent
-      when If, IfMod, Unless, UnlessMod
+      when If, Unless
         q.text(" #{operator} ")
       else
         q.text(operator)
@@ -5398,10 +5397,10 @@ module SyntaxTree
       # and default instead to breaking them into multiple lines.
       def ternaryable?(statement)
         case statement
-        when Alias, Assign, Break, Command, CommandCall, Heredoc, If, IfMod,
-             IfOp, Lambda, MAssign, Next, OpAssign, RescueMod, Return, Return0,
-             Super, Undef, Unless, UnlessMod, Until, UntilMod, VarAlias,
-             VoidStmt, While, WhileMod, Yield, Yield0, ZSuper
+        when Alias, Assign, Break, Command, CommandCall, Heredoc, If, IfOp,
+             Lambda, MAssign, Next, OpAssign, RescueMod, Return, Return0, Super,
+             Undef, Unless, Until, UntilMod, VarAlias, VoidStmt, While,
+             WhileMod, Yield, Yield0, ZSuper
           # This is a list of nodes that should not be allowed to be a part of a
           # ternary clause.
           false
@@ -5432,40 +5431,59 @@ module SyntaxTree
     end
 
     def format(q)
-      # If we can transform this node into a ternary, then we're going to print
-      # a special version that uses the ternary operator if it fits on one line.
-      if Ternaryable.call(q, node)
-        format_ternary(q)
-        return
-      end
+      if node.modifier?
+        statement = node.statements.body[0]
 
-      # If the predicate of the conditional contains an assignment (in which
-      # case we can't know for certain that that assignment doesn't impact the
-      # statements inside the conditional) then we can't use the modifier form
-      # and we must use the block form.
-      if ContainsAssignment.call(node.predicate)
-        format_break(q, force: true)
-        return
-      end
-
-      if node.consequent || node.statements.empty? || contains_conditional?
-        q.group { format_break(q, force: true) }
+        if ContainsAssignment.call(statement) || q.parent.is_a?(In)
+          q.group { format_flat(q) }
+        else
+          q.group { q.if_break { format_break(q, force: false) }.if_flat { format_flat(q) } }
+        end
       else
-        q.group do
-          q
-            .if_break { format_break(q, force: false) }
-            .if_flat do
-              Parentheses.flat(q) do
-                q.format(node.statements)
-                q.text(" #{keyword} ")
-                q.format(node.predicate)
+        # If we can transform this node into a ternary, then we're going to
+        # print a special version that uses the ternary operator if it fits on
+        # one line.
+        if Ternaryable.call(q, node)
+          format_ternary(q)
+          return
+        end
+
+        # If the predicate of the conditional contains an assignment (in which
+        # case we can't know for certain that that assignment doesn't impact the
+        # statements inside the conditional) then we can't use the modifier form
+        # and we must use the block form.
+        if ContainsAssignment.call(node.predicate)
+          format_break(q, force: true)
+          return
+        end
+
+        if node.consequent || node.statements.empty? || contains_conditional?
+          q.group { format_break(q, force: true) }
+        else
+          q.group do
+            q
+              .if_break { format_break(q, force: false) }
+              .if_flat do
+                Parentheses.flat(q) do
+                  q.format(node.statements)
+                  q.text(" #{keyword} ")
+                  q.format(node.predicate)
+                end
               end
-            end
+          end
         end
       end
     end
 
     private
+
+    def format_flat(q)
+      Parentheses.flat(q) do
+        q.format(node.statements.body[0])
+        q.text(" #{keyword} ")
+        q.format(node.predicate)
+      end
+    end
 
     def format_break(q, force:)
       q.text("#{keyword} ")
@@ -5537,7 +5555,7 @@ module SyntaxTree
       return false if statements.length != 1
 
       case statements.first
-      when If, IfMod, IfOp, Unless, UnlessMod
+      when If, IfOp, Unless
         true
       else
         false
@@ -5600,6 +5618,11 @@ module SyntaxTree
     def format(q)
       ConditionalFormatter.new("if", self).format(q)
     end
+
+    # Checks if the node was originally found in the modifier form.
+    def modifier?
+      predicate.location.start_char > statements.location.start_char
+    end
   end
 
   # IfOp represents a ternary clause.
@@ -5649,10 +5672,9 @@ module SyntaxTree
 
     def format(q)
       force_flat = [
-        Alias, Assign, Break, Command, CommandCall, Heredoc, If, IfMod, IfOp,
-        Lambda, MAssign, Next, OpAssign, RescueMod, Return, Return0, Super,
-        Undef, Unless, UnlessMod, UntilMod, VarAlias, VoidStmt, WhileMod, Yield,
-        Yield0, ZSuper
+        Alias, Assign, Break, Command, CommandCall, Heredoc, If, IfOp, Lambda,
+        MAssign, Next, OpAssign, RescueMod, Return, Return0, Super, Undef,
+        Unless, UntilMod, VarAlias, VoidStmt, WhileMod, Yield, Yield0, ZSuper
       ]
 
       if q.parent.is_a?(Paren) || force_flat.include?(truthy.class) ||
@@ -5701,94 +5723,6 @@ module SyntaxTree
         q.breakable_space
         q.format(falsy)
       end
-    end
-  end
-
-  # Formats an IfMod or UnlessMod node.
-  class ConditionalModFormatter
-    # [String] the keyword associated with this conditional
-    attr_reader :keyword
-
-    # [IfMod | UnlessMod] the node that is being formatted
-    attr_reader :node
-
-    def initialize(keyword, node)
-      @keyword = keyword
-      @node = node
-    end
-
-    def format(q)
-      if ContainsAssignment.call(node.statement) || q.parent.is_a?(In)
-        q.group { format_flat(q) }
-      else
-        q.group { q.if_break { format_break(q) }.if_flat { format_flat(q) } }
-      end
-    end
-
-    private
-
-    def format_break(q)
-      q.text("#{keyword} ")
-      q.nest(keyword.length + 1) { q.format(node.predicate) }
-      q.indent do
-        q.breakable_space
-        q.format(node.statement)
-      end
-      q.breakable_space
-      q.text("end")
-    end
-
-    def format_flat(q)
-      Parentheses.flat(q) do
-        q.format(node.statement)
-        q.text(" #{keyword} ")
-        q.format(node.predicate)
-      end
-    end
-  end
-
-  # IfMod represents the modifier form of an +if+ statement.
-  #
-  #     expression if predicate
-  #
-  class IfMod < Node
-    # [untyped] the expression to be executed
-    attr_reader :statement
-
-    # [untyped] the expression to be checked
-    attr_reader :predicate
-
-    # [Array[ Comment | EmbDoc ]] the comments attached to this node
-    attr_reader :comments
-
-    def initialize(statement:, predicate:, location:)
-      @statement = statement
-      @predicate = predicate
-      @location = location
-      @comments = []
-    end
-
-    def accept(visitor)
-      visitor.visit_if_mod(self)
-    end
-
-    def child_nodes
-      [statement, predicate]
-    end
-
-    alias deconstruct child_nodes
-
-    def deconstruct_keys(_keys)
-      {
-        statement: statement,
-        predicate: predicate,
-        location: location,
-        comments: comments
-      }
-    end
-
-    def format(q)
-      ConditionalModFormatter.new("if", self).format(q)
     end
   end
 
@@ -9443,50 +9377,10 @@ module SyntaxTree
     def format(q)
       ConditionalFormatter.new("unless", self).format(q)
     end
-  end
 
-  # UnlessMod represents the modifier form of an +unless+ statement.
-  #
-  #     expression unless predicate
-  #
-  class UnlessMod < Node
-    # [untyped] the expression to be executed
-    attr_reader :statement
-
-    # [untyped] the expression to be checked
-    attr_reader :predicate
-
-    # [Array[ Comment | EmbDoc ]] the comments attached to this node
-    attr_reader :comments
-
-    def initialize(statement:, predicate:, location:)
-      @statement = statement
-      @predicate = predicate
-      @location = location
-      @comments = []
-    end
-
-    def accept(visitor)
-      visitor.visit_unless_mod(self)
-    end
-
-    def child_nodes
-      [statement, predicate]
-    end
-
-    alias deconstruct child_nodes
-
-    def deconstruct_keys(_keys)
-      {
-        statement: statement,
-        predicate: predicate,
-        location: location,
-        comments: comments
-      }
-    end
-
-    def format(q)
-      ConditionalModFormatter.new("unless", self).format(q)
+    # Checks if the node was originally found in the modifier form.
+    def modifier?
+      predicate.location.start_char > statements.location.start_char
     end
   end
 

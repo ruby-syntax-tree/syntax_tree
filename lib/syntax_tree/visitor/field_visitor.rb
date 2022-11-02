@@ -523,14 +523,6 @@ module SyntaxTree
         end
       end
 
-      def visit_if_mod(node)
-        node(node, "if_mod") do
-          field("statement", node.statement)
-          field("predicate", node.predicate)
-          comments(node)
-        end
-      end
-
       def visit_if_op(node)
         node(node, "if_op") do
           field("predicate", node.predicate)
@@ -978,14 +970,6 @@ module SyntaxTree
           field("predicate", node.predicate)
           field("statements", node.statements)
           field("consequent", node.consequent) if node.consequent
-          comments(node)
-        end
-      end
-
-      def visit_unless_mod(node)
-        node(node, "unless_mod") do
-          field("statement", node.statement)
-          field("predicate", node.predicate)
           comments(node)
         end
       end

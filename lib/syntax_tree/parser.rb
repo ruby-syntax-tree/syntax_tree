@@ -1911,13 +1911,14 @@ module SyntaxTree
     end
 
     # :call-seq:
-    #   on_if_mod: (untyped predicate, untyped statement) -> IfMod
+    #   on_if_mod: (untyped predicate, untyped statement) -> If
     def on_if_mod(predicate, statement)
       consume_keyword(:if)
 
-      IfMod.new(
-        statement: statement,
+      If.new(
         predicate: predicate,
+        statements: Statements.new(self, body: [statement], location: statement.location),
+        consequent: nil,
         location: statement.location.to(predicate.location)
       )
     end
@@ -3586,13 +3587,14 @@ module SyntaxTree
     end
 
     # :call-seq:
-    #   on_unless_mod: (untyped predicate, untyped statement) -> UnlessMod
+    #   on_unless_mod: (untyped predicate, untyped statement) -> Unless
     def on_unless_mod(predicate, statement)
       consume_keyword(:unless)
 
-      UnlessMod.new(
-        statement: statement,
+      Unless.new(
         predicate: predicate,
+        statements: Statements.new(self, body: [statement], location: statement.location),
+        consequent: nil,
         location: statement.location.to(predicate.location)
       )
     end

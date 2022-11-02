@@ -206,9 +206,6 @@ module SyntaxTree
     # Visit an If node.
     alias visit_if visit_child_nodes
 
-    # Visit an IfMod node.
-    alias visit_if_mod visit_child_nodes
-
     # Visit an IfOp node.
     alias visit_if_op visit_child_nodes
 
@@ -430,9 +427,6 @@ module SyntaxTree
 
     # Visit an Unless node.
     alias visit_unless visit_child_nodes
-
-    # Visit an UnlessMod node.
-    alias visit_unless_mod visit_child_nodes
 
     # Visit an Until node.
     alias visit_until visit_child_nodes

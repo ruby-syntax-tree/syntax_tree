@@ -583,7 +583,7 @@ module SyntaxTree
     end
 
     def test_if_mod
-      assert_node(IfMod, "expression if predicate")
+      assert_node(If, "expression if predicate")
     end
 
     def test_imaginary
@@ -924,10 +924,6 @@ module SyntaxTree
 
     def test_unless
       assert_node(Unless, "unless value then else end")
-    end
-
-    def test_unless_mod
-      assert_node(UnlessMod, "expression unless predicate")
     end
 
     def test_until
