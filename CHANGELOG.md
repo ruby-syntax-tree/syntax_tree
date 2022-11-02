@@ -19,7 +19,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
   - `DoBlock` and `BraceBlock` have now been folded into a `Block` node. The `Block` node now has a `keywords?` method on it that returns true if the block was constructed with the `do`..`end` keywords. The `visit_do_block` and `visit_brace_block` methods on the visitor have therefore been removed and replaced with the `visit_block` method.
   - `Return0` is no longer a node. Instead if has been folded into the `Return` node. The `Return` node can now have its `arguments` field be `nil`. Consequently, the `visit_return0` method has been removed from the visitor interface. If you were previously using this method, you should now use `visit_return` instead.
 - The `ArgsForward`, `Redo`, `Retry`, and `ZSuper` nodes no longer have `value` fields associated with them (which were always string literals corresponding to the keyword being used).
-- `CommandCall` now has a `block` attribute on it. This attribute is used in the place where you would previously have a `MethodAddBlock` structure. Where before the `MethodAddBlock` would have the `CommandCall` and `Block` as its two children, you now just have one `CommandCall` node with the `block` attribute set to the `Block` node.
+- The `Command` and `CommandCall` nodes now has `block` attributes on them. These attributes are used in the place where you would previously have had a `MethodAddBlock` structure. Where before the `MethodAddBlock` would have the command and block as its two children, you now just have one command node with the `block` attribute set to the `Block` node.
 
 ## [4.3.0] - 2022-10-28
 

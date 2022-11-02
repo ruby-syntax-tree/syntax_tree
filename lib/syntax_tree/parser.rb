@@ -1076,6 +1076,7 @@ module SyntaxTree
       Command.new(
         message: message,
         arguments: arguments,
+        block: nil,
         location: message.location.to(arguments.location)
       )
     end
@@ -2333,6 +2334,17 @@ module SyntaxTree
     #   ) -> MethodAddBlock
     def on_method_add_block(call, block)
       case call
+      when Command
+        node =
+          Command.new(
+            message: call.message,
+            arguments: call.arguments,
+            block: block,
+            location: call.location.to(block.location)
+          )
+
+        node.comments.concat(call.comments)
+        node
       when CommandCall
         node =
           CommandCall.new(
