@@ -1616,7 +1616,13 @@ module SyntaxTree
     # :call-seq:
     #   on_fcall: ((Const | Ident) value) -> Call
     def on_fcall(value)
-      Call.new(receiver: nil, operator: nil, message: value, arguments: nil, location: value.location)
+      Call.new(
+        receiver: nil,
+        operator: nil,
+        message: value,
+        arguments: nil,
+        location: value.location
+      )
     end
 
     # :call-seq:
@@ -1923,7 +1929,8 @@ module SyntaxTree
 
       If.new(
         predicate: predicate,
-        statements: Statements.new(self, body: [statement], location: statement.location),
+        statements:
+          Statements.new(self, body: [statement], location: statement.location),
         consequent: nil,
         location: statement.location.to(predicate.location)
       )
@@ -2209,7 +2216,8 @@ module SyntaxTree
           on_comma: :item,
           on_rparen: :final
         },
-        final: {}
+        final: {
+        }
       }
 
       tokens[(index + 1)..].each_with_object([]) do |token, locals|
@@ -3622,7 +3630,8 @@ module SyntaxTree
 
       Unless.new(
         predicate: predicate,
-        statements: Statements.new(self, body: [statement], location: statement.location),
+        statements:
+          Statements.new(self, body: [statement], location: statement.location),
         consequent: nil,
         location: statement.location.to(predicate.location)
       )
@@ -3665,7 +3674,8 @@ module SyntaxTree
 
       Until.new(
         predicate: predicate,
-        statements: Statements.new(self, body: [statement], location: statement.location),
+        statements:
+          Statements.new(self, body: [statement], location: statement.location),
         location: statement.location.to(predicate.location)
       )
     end
@@ -3791,7 +3801,8 @@ module SyntaxTree
 
       While.new(
         predicate: predicate,
-        statements: Statements.new(self, body: [statement], location: statement.location),
+        statements:
+          Statements.new(self, body: [statement], location: statement.location),
         location: statement.location.to(predicate.location)
       )
     end

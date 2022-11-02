@@ -359,7 +359,8 @@ module SyntaxTree
     # Formats an argument to the alias keyword. For symbol literals it uses the
     # value of the symbol directly to look like bare words.
     class AliasArgumentFormatter
-      # [Backref | DynaSymbol | GVar | SymbolLiteral] the argument being passed to alias
+      # [Backref | DynaSymbol | GVar | SymbolLiteral] the argument being passed
+      # to alias
       attr_reader :argument
 
       def initialize(argument)
@@ -2245,14 +2246,26 @@ module SyntaxTree
         when Call
           case (receiver = child.receiver)
           when Call
-            children << receiver
+            if receiver.receiver.nil?
+              break
+            else
+              children << receiver
+            end
           when MethodAddBlock
-            receiver.call.is_a?(Call) ? children << receiver : break
+            if receiver.call.is_a?(Call) && !receiver.call.receiver.nil?
+              children << receiver
+            else
+              break
+            end
           else
             break
           end
         when MethodAddBlock
-          child.call.is_a?(Call) ? children << child.call : break
+          if child.call.is_a?(Call) && !child.call.receiver.nil?
+            children << child.call
+          else
+            break
+          end
         else
           break
         end
@@ -2271,7 +2284,8 @@ module SyntaxTree
         # of just Statements nodes.
         parent = parents[3] if parent.is_a?(Block) && parent.keywords?
 
-        if parent.is_a?(MethodAddBlock) && parent.call.is_a?(Call) && parent.call.message.value == "sig"
+        if parent.is_a?(MethodAddBlock) && parent.call.is_a?(Call) &&
+             parent.call.message.value == "sig"
           threshold = 2
         end
       end
@@ -2300,7 +2314,7 @@ module SyntaxTree
       # formatter so it's as if we had descending normally into them. This is
       # necessary so they can check their parents as normal.
       q.stack.concat(children)
-      q.format(children.last.receiver)
+      q.format(children.last.receiver) if children.last.receiver
 
       q.group do
         if attach_directly?(children.last)
@@ -2343,7 +2357,8 @@ module SyntaxTree
             # If the parent call node has a comment on the message then we need
             # to print the operator trailing in order to keep it working.
             last_child = children.last
-            if last_child.is_a?(Call) && last_child.message.comments.any?
+            if last_child.is_a?(Call) && last_child.message.comments.any? &&
+                 last_child.operator
               q.format(CallOperatorFormatter.new(last_child.operator))
               skip_operator = true
             else
@@ -2372,9 +2387,9 @@ module SyntaxTree
 
       case node
       when Call
-        true
+        !node.receiver.nil?
       when MethodAddBlock
-        node.call.is_a?(Call)
+        node.call.is_a?(Call) && !node.call.receiver.nil?
       else
         false
       end
@@ -2405,7 +2420,7 @@ module SyntaxTree
       case child
       when Call
         q.group do
-          unless skip_operator
+          if !skip_operator && child.operator
             q.format(CallOperatorFormatter.new(child.operator))
           end
           q.format(child.message) if child.message != :call
@@ -2495,7 +2510,8 @@ module SyntaxTree
         # If we're at the top of a call chain, then we're going to do some
         # specialized printing in case we can print it nicely. We _only_ do this
         # at the top of the chain to avoid weird recursion issues.
-        if CallChainFormatter.chained?(receiver) && !CallChainFormatter.chained?(q.parent)
+        if CallChainFormatter.chained?(receiver) &&
+             !CallChainFormatter.chained?(q.parent)
           q.group do
             q
               .if_break { CallChainFormatter.new(self).format(q) }
@@ -2507,11 +2523,13 @@ module SyntaxTree
       else
         q.format(message)
 
-        if arguments.is_a?(ArgParen) && arguments.arguments.nil? && !message.is_a?(Const)
-          # If you're using an explicit set of parentheses on something that looks
-          # like a constant, then we need to match that in order to maintain valid
-          # Ruby. For example, you could do something like Foo(), on which we
-          # would need to keep the parentheses to make it look like a method call.
+        if arguments.is_a?(ArgParen) && arguments.arguments.nil? &&
+             !message.is_a?(Const)
+          # If you're using an explicit set of parentheses on something that
+          # looks like a constant, then we need to match that in order to
+          # maintain valid Ruby. For example, you could do something like Foo(),
+          # on which we would need to keep the parentheses to make it look like
+          # a method call.
         else
           q.format(arguments)
         end
@@ -3726,7 +3744,13 @@ module SyntaxTree
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
-      { left: left, operator: operator, right: right, location: location, comments: comments }
+      {
+        left: left,
+        operator: operator,
+        right: right,
+        location: location,
+        comments: comments
+      }
     end
 
     def format(q)
@@ -5133,7 +5157,11 @@ module SyntaxTree
         if ContainsAssignment.call(statement) || q.parent.is_a?(In)
           q.group { format_flat(q) }
         else
-          q.group { q.if_break { format_break(q, force: false) }.if_flat { format_flat(q) } }
+          q.group do
+            q
+              .if_break { format_break(q, force: false) }
+              .if_flat { format_flat(q) }
+          end
         end
       else
         # If we can transform this node into a ternary, then we're going to
@@ -9063,7 +9091,8 @@ module SyntaxTree
       #
       #     foo = bar while foo
       #
-      if node.modifier? && (statement = node.statements.body.first) && (statement.is_a?(Begin) || ContainsAssignment.call(statement))
+      if node.modifier? && (statement = node.statements.body.first) &&
+           (statement.is_a?(Begin) || ContainsAssignment.call(statement))
         q.format(statement)
         q.text(" #{keyword} ")
         q.format(node.predicate)
@@ -9466,9 +9495,7 @@ module SyntaxTree
             # last argument to the predicate is and endless range, then you are
             # forced to use the "then" keyword to make it parse properly.
             last = arguments.parts.last
-            if last.is_a?(RangeLiteral) && !last.right
-              q.text(" then")
-            end
+            q.text(" then") if last.is_a?(RangeLiteral) && !last.right
           end
         end
 

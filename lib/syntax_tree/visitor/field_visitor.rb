@@ -779,9 +779,7 @@ module SyntaxTree
       end
 
       def visit_retry(node)
-        node(node, "retry") do
-          comments(node)
-        end
+        node(node, "retry") { comments(node) }
       end
 
       def visit_return(node)
@@ -1021,9 +1019,7 @@ module SyntaxTree
       end
 
       def visit_zsuper(node)
-        node(node, "zsuper") do
-          comments(node)
-        end
+        node(node, "zsuper") { comments(node) }
       end
 
       def visit___end__(node)
