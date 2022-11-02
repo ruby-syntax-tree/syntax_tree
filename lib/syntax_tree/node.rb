@@ -1961,222 +1961,6 @@ module SyntaxTree
     end
   end
 
-  # Responsible for formatting either a BraceBlock or a DoBlock.
-  class BlockFormatter
-    # Formats the opening brace or keyword of a block.
-    class BlockOpenFormatter
-      # [String] the actual output that should be printed
-      attr_reader :text
-
-      # [LBrace | Keyword] the node that is being represented
-      attr_reader :node
-
-      def initialize(text, node)
-        @text = text
-        @node = node
-      end
-
-      def comments
-        node.comments
-      end
-
-      def format(q)
-        q.text(text)
-      end
-    end
-
-    # [BraceBlock | DoBlock] the block node to be formatted
-    attr_reader :node
-
-    # [LBrace | Keyword] the node that opens the block
-    attr_reader :block_open
-
-    # [String] the string that closes the block
-    attr_reader :block_close
-
-    # [BodyStmt | Statements] the statements inside the block
-    attr_reader :statements
-
-    def initialize(node, block_open, block_close, statements)
-      @node = node
-      @block_open = block_open
-      @block_close = block_close
-      @statements = statements
-    end
-
-    def format(q)
-      # If this is nested anywhere inside of a Command or CommandCall node, then
-      # we can't change which operators we're using for the bounds of the block.
-      break_opening, break_closing, flat_opening, flat_closing =
-        if unchangeable_bounds?(q)
-          [block_open.value, block_close, block_open.value, block_close]
-        elsif forced_do_end_bounds?(q)
-          %w[do end do end]
-        elsif forced_brace_bounds?(q)
-          %w[{ } { }]
-        else
-          %w[do end { }]
-        end
-
-      # If the receiver of this block a Command or CommandCall node, then there
-      # are no parentheses around the arguments to that command, so we need to
-      # break the block.
-      case q.parent.call
-      when Command, CommandCall
-        q.break_parent
-        format_break(q, break_opening, break_closing)
-        return
-      end
-
-      q.group do
-        q
-          .if_break { format_break(q, break_opening, break_closing) }
-          .if_flat { format_flat(q, flat_opening, flat_closing) }
-      end
-    end
-
-    private
-
-    # If this is nested anywhere inside certain nodes, then we can't change
-    # which operators/keywords we're using for the bounds of the block.
-    def unchangeable_bounds?(q)
-      q.parents.any? do |parent|
-        # If we hit a statements, then we're safe to use whatever since we
-        # know for certain we're going to get split over multiple lines
-        # anyway.
-        case parent
-        when Statements, ArgParen
-          break false
-        when Command, CommandCall
-          true
-        else
-          false
-        end
-      end
-    end
-
-    # If we're a sibling of a control-flow keyword, then we're going to have to
-    # use the do..end bounds.
-    def forced_do_end_bounds?(q)
-      case q.parent.call
-      when Break, Next, Return, Super
-        true
-      else
-        false
-      end
-    end
-
-    # If we're the predicate of a loop or conditional, then we're going to have
-    # to go with the {..} bounds.
-    def forced_brace_bounds?(q)
-      previous = nil
-      q.parents.any? do |parent|
-        case parent
-        when Paren, Statements
-          # If we hit certain breakpoints then we know we're safe.
-          return false
-        when If, IfOp, Unless, While, Until
-          return true if parent.predicate == previous
-        end
-
-        previous = parent
-        false
-      end
-    end
-
-    def format_break(q, opening, closing)
-      q.text(" ")
-      q.format(BlockOpenFormatter.new(opening, block_open), stackable: false)
-
-      if node.block_var
-        q.text(" ")
-        q.format(node.block_var)
-      end
-
-      unless statements.empty?
-        q.indent do
-          q.breakable_space
-          q.format(statements)
-        end
-      end
-
-      q.breakable_space
-      q.text(closing)
-    end
-
-    def format_flat(q, opening, closing)
-      q.text(" ")
-      q.format(BlockOpenFormatter.new(opening, block_open), stackable: false)
-
-      if node.block_var
-        q.breakable_space
-        q.format(node.block_var)
-        q.breakable_space
-      end
-
-      if statements.empty?
-        q.text(" ") if opening == "do"
-      else
-        q.breakable_space unless node.block_var
-        q.format(statements)
-        q.breakable_space
-      end
-
-      q.text(closing)
-    end
-  end
-
-  # BraceBlock represents passing a block to a method call using the { }
-  # operators.
-  #
-  #     method { |variable| variable + 1 }
-  #
-  class BraceBlock < Node
-    # [LBrace] the left brace that opens this block
-    attr_reader :lbrace
-
-    # [nil | BlockVar] the optional set of parameters to the block
-    attr_reader :block_var
-
-    # [Statements] the list of expressions to evaluate within the block
-    attr_reader :statements
-
-    # [Array[ Comment | EmbDoc ]] the comments attached to this node
-    attr_reader :comments
-
-    def initialize(lbrace:, block_var:, statements:, location:)
-      @lbrace = lbrace
-      @block_var = block_var
-      @statements = statements
-      @location = location
-      @comments = []
-    end
-
-    def accept(visitor)
-      visitor.visit_brace_block(self)
-    end
-
-    def child_nodes
-      [lbrace, block_var, statements]
-    end
-
-    alias deconstruct child_nodes
-
-    def deconstruct_keys(_keys)
-      {
-        lbrace: lbrace,
-        block_var: block_var,
-        statements: statements,
-        location: location,
-        comments: comments
-      }
-    end
-
-    def format(q)
-      BlockFormatter.new(self, lbrace, "}", statements).format(q)
-    end
-  end
-
   # Formats either a Break, Next, or Return node.
   class FlowControlFormatter
     # [String] the keyword to print
@@ -2479,10 +2263,10 @@ module SyntaxTree
       # https://github.com/prettier/plugin-ruby/issues/863.
       parents = q.parents.take(4)
       if (parent = parents[2])
-        # If we're at a do_block, then we want to go one more level up. This is
-        # because do blocks have BodyStmt nodes instead of just Statements
-        # nodes.
-        parent = parents[3] if parent.is_a?(DoBlock)
+        # If we're at a block with the `do` keywords, then we want to go one
+        # more level up. This is because do blocks have BodyStmt nodes instead
+        # of just Statements nodes.
+        parent = parents[3] if parent.is_a?(Block) && parent.keywords?
 
         if parent.is_a?(MethodAddBlock) && parent.call.is_a?(Call) && parent.call.message.value == "sig"
           threshold = 2
@@ -3683,27 +3467,51 @@ module SyntaxTree
     end
   end
 
-  # DoBlock represents passing a block to a method call using the +do+ and +end+
-  # keywords.
+  # Block represents passing a block to a method call using the +do+ and +end+
+  # keywords or the +{+ and +}+ operators.
   #
   #     method do |value|
   #     end
   #
-  class DoBlock < Node
-    # [Kw] the do keyword that opens this block
-    attr_reader :keyword
+  #     method { |value| }
+  #
+  class Block < Node
+    # Formats the opening brace or keyword of a block.
+    class BlockOpenFormatter
+      # [String] the actual output that should be printed
+      attr_reader :text
+
+      # [LBrace | Keyword] the node that is being represented
+      attr_reader :node
+
+      def initialize(text, node)
+        @text = text
+        @node = node
+      end
+
+      def comments
+        node.comments
+      end
+
+      def format(q)
+        q.text(text)
+      end
+    end
+
+    # [LBrace | Kw] the left brace or the do keyword that opens this block
+    attr_reader :opening
 
     # [nil | BlockVar] the optional variable declaration within this block
     attr_reader :block_var
 
-    # [BodyStmt] the expressions to be executed within this block
+    # [BodyStmt | Statements] the expressions to be executed within this block
     attr_reader :bodystmt
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(keyword:, block_var:, bodystmt:, location:)
-      @keyword = keyword
+    def initialize(opening:, block_var:, bodystmt:, location:)
+      @opening = opening
       @block_var = block_var
       @bodystmt = bodystmt
       @location = location
@@ -3711,18 +3519,18 @@ module SyntaxTree
     end
 
     def accept(visitor)
-      visitor.visit_do_block(self)
+      visitor.visit_block(self)
     end
 
     def child_nodes
-      [keyword, block_var, bodystmt]
+      [opening, block_var, bodystmt]
     end
 
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
       {
-        keyword: keyword,
+        opening: opening,
         block_var: block_var,
         bodystmt: bodystmt,
         location: location,
@@ -3731,7 +3539,129 @@ module SyntaxTree
     end
 
     def format(q)
-      BlockFormatter.new(self, keyword, "end", bodystmt).format(q)
+      # If this is nested anywhere inside of a Command or CommandCall node, then
+      # we can't change which operators we're using for the bounds of the block.
+      break_opening, break_closing, flat_opening, flat_closing =
+        if unchangeable_bounds?(q)
+          block_close = keywords? ? "end" : "}"
+          [opening.value, block_close, opening.value, block_close]
+        elsif forced_do_end_bounds?(q)
+          %w[do end do end]
+        elsif forced_brace_bounds?(q)
+          %w[{ } { }]
+        else
+          %w[do end { }]
+        end
+
+      # If the receiver of this block a Command or CommandCall node, then there
+      # are no parentheses around the arguments to that command, so we need to
+      # break the block.
+      case q.parent.call
+      when Command, CommandCall
+        q.break_parent
+        format_break(q, break_opening, break_closing)
+        return
+      end
+
+      q.group do
+        q
+          .if_break { format_break(q, break_opening, break_closing) }
+          .if_flat { format_flat(q, flat_opening, flat_closing) }
+      end
+    end
+
+    def keywords?
+      opening.is_a?(Kw)
+    end
+
+    private
+
+    # If this is nested anywhere inside certain nodes, then we can't change
+    # which operators/keywords we're using for the bounds of the block.
+    def unchangeable_bounds?(q)
+      q.parents.any? do |parent|
+        # If we hit a statements, then we're safe to use whatever since we
+        # know for certain we're going to get split over multiple lines
+        # anyway.
+        case parent
+        when Statements, ArgParen
+          break false
+        when Command, CommandCall
+          true
+        else
+          false
+        end
+      end
+    end
+
+    # If we're a sibling of a control-flow keyword, then we're going to have to
+    # use the do..end bounds.
+    def forced_do_end_bounds?(q)
+      case q.parent.call
+      when Break, Next, Return, Super
+        true
+      else
+        false
+      end
+    end
+
+    # If we're the predicate of a loop or conditional, then we're going to have
+    # to go with the {..} bounds.
+    def forced_brace_bounds?(q)
+      previous = nil
+      q.parents.any? do |parent|
+        case parent
+        when Paren, Statements
+          # If we hit certain breakpoints then we know we're safe.
+          return false
+        when If, IfOp, Unless, While, Until
+          return true if parent.predicate == previous
+        end
+
+        previous = parent
+        false
+      end
+    end
+
+    def format_break(q, break_opening, break_closing)
+      q.text(" ")
+      q.format(BlockOpenFormatter.new(break_opening, opening), stackable: false)
+
+      if block_var
+        q.text(" ")
+        q.format(block_var)
+      end
+
+      unless bodystmt.empty?
+        q.indent do
+          q.breakable_space
+          q.format(bodystmt)
+        end
+      end
+
+      q.breakable_space
+      q.text(break_closing)
+    end
+
+    def format_flat(q, flat_opening, flat_closing)
+      q.text(" ")
+      q.format(BlockOpenFormatter.new(flat_opening, opening), stackable: false)
+
+      if block_var
+        q.breakable_space
+        q.format(block_var)
+        q.breakable_space
+      end
+
+      if bodystmt.empty?
+        q.text(" ") if flat_opening == "do"
+      else
+        q.breakable_space unless block_var
+        q.format(bodystmt)
+        q.breakable_space
+      end
+
+      q.text(flat_closing)
     end
   end
 
@@ -6144,7 +6074,7 @@ module SyntaxTree
     # [Call | Command | CommandCall] the method call
     attr_reader :call
 
-    # [BraceBlock | DoBlock] the block being sent with the method call
+    # [Block] the block being sent with the method call
     attr_reader :block
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node

@@ -276,7 +276,7 @@ module SyntaxTree
       source = "method { |variable| variable + 1 }"
 
       at = location(chars: 7..34)
-      assert_node(BraceBlock, source, at: at, &:block)
+      assert_node(Block, source, at: at, &:block)
     end
 
     def test_break
@@ -410,7 +410,7 @@ module SyntaxTree
       source = "method do |variable| variable + 1 end"
 
       at = location(chars: 7..37)
-      assert_node(DoBlock, source, at: at, &:block)
+      assert_node(Block, source, at: at, &:block)
     end
 
     def test_dot2
@@ -647,7 +647,7 @@ module SyntaxTree
       source = "method {}"
 
       at = location(chars: 7..8)
-      assert_node(LBrace, source, at: at) { |node| node.block.lbrace }
+      assert_node(LBrace, source, at: at) { |node| node.block.opening }
     end
 
     def test_lparen

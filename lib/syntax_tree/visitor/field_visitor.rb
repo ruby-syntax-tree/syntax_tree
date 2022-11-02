@@ -184,6 +184,14 @@ module SyntaxTree
         end
       end
 
+      def visit_block(node)
+        node(node, "block") do
+          field("block_var", node.block_var) if node.block_var
+          field("bodystmt", node.bodystmt)
+          comments(node)
+        end
+      end
+
       def visit_blockarg(node)
         node(node, "blockarg") do
           field("name", node.name) if node.name
@@ -205,14 +213,6 @@ module SyntaxTree
           field("rescue_clause", node.rescue_clause) if node.rescue_clause
           field("else_clause", node.else_clause) if node.else_clause
           field("ensure_clause", node.ensure_clause) if node.ensure_clause
-          comments(node)
-        end
-      end
-
-      def visit_brace_block(node)
-        node(node, "brace_block") do
-          field("block_var", node.block_var) if node.block_var
-          field("statements", node.statements)
           comments(node)
         end
       end
@@ -327,14 +327,6 @@ module SyntaxTree
       def visit_defined(node)
         node(node, "defined") do
           field("value", node.value)
-          comments(node)
-        end
-      end
-
-      def visit_do_block(node)
-        node(node, "do_block") do
-          field("block_var", node.block_var) if node.block_var
-          field("bodystmt", node.bodystmt)
           comments(node)
         end
       end

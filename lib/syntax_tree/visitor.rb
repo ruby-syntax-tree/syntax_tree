@@ -62,6 +62,9 @@ module SyntaxTree
     # Visit a Binary node.
     alias visit_binary visit_child_nodes
 
+    # Visit a Block node.
+    alias visit_block visit_child_nodes
+
     # Visit a BlockArg node.
     alias visit_blockarg visit_child_nodes
 
@@ -70,9 +73,6 @@ module SyntaxTree
 
     # Visit a BodyStmt node.
     alias visit_bodystmt visit_child_nodes
-
-    # Visit a BraceBlock node.
-    alias visit_brace_block visit_child_nodes
 
     # Visit a Break node.
     alias visit_break visit_child_nodes
@@ -121,9 +121,6 @@ module SyntaxTree
 
     # Visit a Defined node.
     alias visit_defined visit_child_nodes
-
-    # Visit a DoBlock node.
-    alias visit_do_block visit_child_nodes
 
     # Visit a DynaSymbol node.
     alias visit_dyna_symbol visit_child_nodes

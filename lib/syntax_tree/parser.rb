@@ -920,7 +920,7 @@ module SyntaxTree
     #   on_brace_block: (
     #     (nil | BlockVar) block_var,
     #     Statements statements
-    #   ) -> BraceBlock
+    #   ) -> Block
     def on_brace_block(block_var, statements)
       lbrace = consume_token(LBrace)
       rbrace = consume_token(RBrace)
@@ -947,10 +947,10 @@ module SyntaxTree
           end_column: rbrace.location.end_column
         )
 
-      BraceBlock.new(
-        lbrace: lbrace,
+      Block.new(
+        opening: lbrace,
         block_var: block_var,
-        statements: statements,
+        bodystmt: statements,
         location: location
       )
     end
@@ -1336,7 +1336,7 @@ module SyntaxTree
     end
 
     # :call-seq:
-    #   on_do_block: (BlockVar block_var, BodyStmt bodystmt) -> DoBlock
+    #   on_do_block: (BlockVar block_var, BodyStmt bodystmt) -> Block
     def on_do_block(block_var, bodystmt)
       beginning = consume_keyword(:do)
       ending = consume_keyword(:end)
@@ -1350,8 +1350,8 @@ module SyntaxTree
         ending.location.start_column
       )
 
-      DoBlock.new(
-        keyword: beginning,
+      Block.new(
+        opening: beginning,
         block_var: block_var,
         bodystmt: bodystmt,
         location: beginning.location.to(ending.location)
@@ -2328,7 +2328,7 @@ module SyntaxTree
     # :call-seq:
     #   on_method_add_block: (
     #     (Call | Command | CommandCall) call,
-    #     (BraceBlock | DoBlock) block
+    #     Block block
     #   ) -> MethodAddBlock
     def on_method_add_block(call, block)
       MethodAddBlock.new(
