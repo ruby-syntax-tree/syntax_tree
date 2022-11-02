@@ -2484,8 +2484,7 @@ module SyntaxTree
         # nodes.
         parent = parents[3] if parent.is_a?(DoBlock)
 
-        if parent.is_a?(MethodAddBlock) && parent.call.is_a?(FCall) &&
-             parent.call.value.value == "sig"
+        if parent.is_a?(MethodAddBlock) && parent.call.is_a?(Call) && parent.call.message.value == "sig"
           threshold = 2
         end
       end
@@ -2647,10 +2646,10 @@ module SyntaxTree
   #     receiver.message
   #
   class Call < Node
-    # [untyped] the receiver of the method call
+    # [nil | untyped] the receiver of the method call
     attr_reader :receiver
 
-    # [:"::" | Op | Period] the operator being used to send the message
+    # [nil | :"::" | Op | Period] the operator being used to send the message
     attr_reader :operator
 
     # [:call | Backtick | Const | Ident | Op] the message being sent
@@ -2705,23 +2704,35 @@ module SyntaxTree
     end
 
     def format(q)
-      # If we're at the top of a call chain, then we're going to do some
-      # specialized printing in case we can print it nicely. We _only_ do this
-      # at the top of the chain to avoid weird recursion issues.
-      if CallChainFormatter.chained?(receiver) &&
-           !CallChainFormatter.chained?(q.parent)
-        q.group do
-          q
-            .if_break { CallChainFormatter.new(self).format(q) }
-            .if_flat { format_contents(q) }
+      if receiver
+        # If we're at the top of a call chain, then we're going to do some
+        # specialized printing in case we can print it nicely. We _only_ do this
+        # at the top of the chain to avoid weird recursion issues.
+        if CallChainFormatter.chained?(receiver) && !CallChainFormatter.chained?(q.parent)
+          q.group do
+            q
+              .if_break { CallChainFormatter.new(self).format(q) }
+              .if_flat { format_contents(q) }
+          end
+        else
+          format_contents(q)
         end
       else
-        format_contents(q)
+        q.format(message)
+
+        if arguments.is_a?(ArgParen) && arguments.arguments.nil? && !message.is_a?(Const)
+          # If you're using an explicit set of parentheses on something that looks
+          # like a constant, then we need to match that in order to maintain valid
+          # Ruby. For example, you could do something like Foo(), on which we
+          # would need to keep the parentheses to make it look like a method call.
+        else
+          q.format(arguments)
+        end
       end
     end
 
     # Print out the arguments to this call. If there are no arguments, then do
-    #nothing.
+    # nothing.
     def format_arguments(q)
       case arguments
       when ArgParen
@@ -4515,64 +4526,6 @@ module SyntaxTree
 
     def format(q)
       q.text(value)
-    end
-  end
-
-  # FCall represents the piece of a method call that comes before any arguments
-  # (i.e., just the name of the method). It is used in places where the parser
-  # is sure that it is a method call and not potentially a local variable.
-  #
-  #     method(argument)
-  #
-  # In the above example, it's referring to the +method+ segment.
-  class FCall < Node
-    # [Const | Ident] the name of the method
-    attr_reader :value
-
-    # [nil | ArgParen | Args] the arguments to the method call
-    attr_reader :arguments
-
-    # [Array[ Comment | EmbDoc ]] the comments attached to this node
-    attr_reader :comments
-
-    def initialize(value:, arguments:, location:)
-      @value = value
-      @arguments = arguments
-      @location = location
-      @comments = []
-    end
-
-    def accept(visitor)
-      visitor.visit_fcall(self)
-    end
-
-    def child_nodes
-      [value, arguments]
-    end
-
-    alias deconstruct child_nodes
-
-    def deconstruct_keys(_keys)
-      {
-        value: value,
-        arguments: arguments,
-        location: location,
-        comments: comments
-      }
-    end
-
-    def format(q)
-      q.format(value)
-
-      if arguments.is_a?(ArgParen) && arguments.arguments.nil? &&
-           !value.is_a?(Const)
-        # If you're using an explicit set of parentheses on something that looks
-        # like a constant, then we need to match that in order to maintain valid
-        # Ruby. For example, you could do something like Foo(), on which we
-        # would need to keep the parentheses to make it look like a method call.
-      else
-        q.format(arguments)
-      end
     end
   end
 
@@ -6396,7 +6349,7 @@ module SyntaxTree
   #     method {}
   #
   class MethodAddBlock < Node
-    # [Call | Command | CommandCall | FCall] the method call
+    # [Call | Command | CommandCall] the method call
     attr_reader :call
 
     # [BraceBlock | DoBlock] the block being sent with the method call

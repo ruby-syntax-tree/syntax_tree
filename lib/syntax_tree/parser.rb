@@ -1608,9 +1608,9 @@ module SyntaxTree
     end
 
     # :call-seq:
-    #   on_fcall: ((Const | Ident) value) -> FCall
+    #   on_fcall: ((Const | Ident) value) -> Call
     def on_fcall(value)
-      FCall.new(value: value, arguments: nil, location: value.location)
+      Call.new(receiver: nil, operator: nil, message: value, arguments: nil, location: value.location)
     end
 
     # :call-seq:
@@ -2305,29 +2305,25 @@ module SyntaxTree
 
     # :call-seq:
     #   on_method_add_arg: (
-    #     (Call | FCall) call,
+    #     Call call,
     #     (ArgParen | Args) arguments
-    #   ) -> Call | FCall
+    #   ) -> Call
     def on_method_add_arg(call, arguments)
       location = call.location
       location = location.to(arguments.location) if arguments.is_a?(ArgParen)
 
-      if call.is_a?(FCall)
-        FCall.new(value: call.value, arguments: arguments, location: location)
-      else
-        Call.new(
-          receiver: call.receiver,
-          operator: call.operator,
-          message: call.message,
-          arguments: arguments,
-          location: location
-        )
-      end
+      Call.new(
+        receiver: call.receiver,
+        operator: call.operator,
+        message: call.message,
+        arguments: arguments,
+        location: location
+      )
     end
 
     # :call-seq:
     #   on_method_add_block: (
-    #     (Call | Command | CommandCall | FCall) call,
+    #     (Call | Command | CommandCall) call,
     #     (BraceBlock | DoBlock) block
     #   ) -> MethodAddBlock
     def on_method_add_block(call, block)

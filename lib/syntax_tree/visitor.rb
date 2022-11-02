@@ -167,9 +167,6 @@ module SyntaxTree
     # Visit an ExcessedComma node.
     alias visit_excessed_comma visit_child_nodes
 
-    # Visit a FCall node.
-    alias visit_fcall visit_child_nodes
-
     # Visit a Field node.
     alias visit_field visit_child_nodes
 

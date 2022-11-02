@@ -487,7 +487,7 @@ module SyntaxTree
     end
 
     def test_fcall
-      assert_node(FCall, "method(argument)")
+      assert_node(Call, "method(argument)")
     end
 
     def test_field
