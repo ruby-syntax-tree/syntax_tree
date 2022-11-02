@@ -379,13 +379,13 @@ module SyntaxTree
 
     guard_version("3.0.0") do
       def test_def_endless
-        assert_node(DefEndless, "def method = result")
+        assert_node(Def, "def method = result")
       end
     end
 
     guard_version("3.1.0") do
       def test_def_endless_command
-        assert_node(DefEndless, "def method = result argument")
+        assert_node(Def, "def method = result argument")
       end
     end
 

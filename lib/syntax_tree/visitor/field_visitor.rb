@@ -322,20 +322,6 @@ module SyntaxTree
         end
       end
 
-      def visit_def_endless(node)
-        node(node, "def_endless") do
-          if node.target
-            field("target", node.target)
-            field("operator", node.operator)
-          end
-
-          field("name", node.name)
-          field("paren", node.paren) if node.paren
-          field("statement", node.statement)
-          comments(node)
-        end
-      end
-
       def visit_defined(node)
         node(node, "defined") do
           field("value", node.value)

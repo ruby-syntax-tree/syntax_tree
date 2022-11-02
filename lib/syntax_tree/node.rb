@@ -3108,7 +3108,7 @@ module SyntaxTree
           part = parts.first
 
           case part
-          when Def, Defs, DefEndless
+          when Def, Defs
             q.text(" ")
             yield
           when IfOp
@@ -3540,10 +3540,10 @@ module SyntaxTree
     # [Backtick | Const | Ident | Kw | Op] the name of the method
     attr_reader :name
 
-    # [Params | Paren] the parameter declaration for the method
+    # [nil | Params | Paren] the parameter declaration for the method
     attr_reader :params
 
-    # [BodyStmt] the expressions to be executed by the method
+    # [BodyStmt | untyped] the expressions to be executed by the method
     attr_reader :bodystmt
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
@@ -3583,112 +3583,41 @@ module SyntaxTree
           q.text("def ")
           q.format(name)
 
-          if !params.is_a?(Params) || !params.empty? || params.comments.any?
+          case params
+          when Paren
             q.format(params)
+          when Params
+            q.format(params) if !params.empty? || params.comments.any?
           end
         end
 
-        unless bodystmt.empty?
-          q.indent do
-            q.breakable_force
-            q.format(bodystmt)
+        if endless?
+          q.text(" =")
+          q.group do
+            q.indent do
+              q.breakable_space
+              q.format(bodystmt)
+            end
           end
-        end
+        else
+          unless bodystmt.empty?
+            q.indent do
+              q.breakable_force
+              q.format(bodystmt)
+            end
+          end
 
-        q.breakable_force
-        q.text("end")
+          q.breakable_force
+          q.text("end")
+        end
       end
     end
-  end
 
-  # DefEndless represents defining a single-line method since Ruby 3.0+.
-  #
-  #     def method = result
-  #
-  class DefEndless < Node
-    # [untyped] the target where the method is being defined
-    attr_reader :target
-
-    # [Op | Period] the operator being used to declare the method
-    attr_reader :operator
-
-    # [Backtick | Const | Ident | Kw | Op] the name of the method
-    attr_reader :name
-
-    # [nil | Params | Paren] the parameter declaration for the method
-    attr_reader :paren
-
-    # [untyped] the expression to be executed by the method
-    attr_reader :statement
-
-    # [Array[ Comment | EmbDoc ]] the comments attached to this node
-    attr_reader :comments
-
-    def initialize(
-      target:,
-      operator:,
-      name:,
-      paren:,
-      statement:,
-      location:,
-      comments: []
-    )
-      @target = target
-      @operator = operator
-      @name = name
-      @paren = paren
-      @statement = statement
-      @location = location
-      @comments = []
-    end
-
-    def accept(visitor)
-      visitor.visit_def_endless(self)
-    end
-
-    def child_nodes
-      [target, operator, name, paren, statement]
-    end
-
-    alias deconstruct child_nodes
-
-    def deconstruct_keys(_keys)
-      {
-        target: target,
-        operator: operator,
-        name: name,
-        paren: paren,
-        statement: statement,
-        location: location,
-        comments: comments
-      }
-    end
-
-    def format(q)
-      q.group do
-        q.text("def ")
-
-        if target
-          q.format(target)
-          q.format(CallOperatorFormatter.new(operator), stackable: false)
-        end
-
-        q.format(name)
-
-        if paren
-          params = paren
-          params = params.contents if params.is_a?(Paren)
-          q.format(paren) unless params.empty?
-        end
-
-        q.text(" =")
-        q.group do
-          q.indent do
-            q.breakable_space
-            q.format(statement)
-          end
-        end
-      end
+    # Returns true if the method was found in the source in the "endless" form,
+    # i.e. where the method body is defined using the `=` operator after the
+    # method name and parameters.
+    def endless?
+      !bodystmt.is_a?(BodyStmt)
     end
   end
 
@@ -3751,10 +3680,10 @@ module SyntaxTree
     # [Backtick | Const | Ident | Kw | Op] the name of the method
     attr_reader :name
 
-    # [Params | Paren] the parameter declaration for the method
+    # [nil | Params | Paren] the parameter declaration for the method
     attr_reader :params
 
-    # [BodyStmt] the expressions to be executed by the method
+    # [BodyStmt | untyped] the expressions to be executed by the method
     attr_reader :bodystmt
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
@@ -3808,21 +3737,41 @@ module SyntaxTree
           q.format(CallOperatorFormatter.new(operator), stackable: false)
           q.format(name)
 
-          if !params.is_a?(Params) || !params.empty? || params.comments.any?
+          case params
+          when Paren
             q.format(params)
+          when Params
+            q.format(params) if !params.empty? || params.comments.any?
           end
         end
 
-        unless bodystmt.empty?
-          q.indent do
-            q.breakable_force
-            q.format(bodystmt)
+        if endless?
+          q.text(" =")
+          q.group do
+            q.indent do
+              q.breakable_space
+              q.format(bodystmt)
+            end
           end
-        end
+        else
+          unless bodystmt.empty?
+            q.indent do
+              q.breakable_force
+              q.format(bodystmt)
+            end
+          end
 
-        q.breakable_force
-        q.text("end")
+          q.breakable_force
+          q.text("end")
+        end
       end
+    end
+
+    # Returns true if the method was found in the source in the "endless" form,
+    # i.e. where the method body is defined using the `=` operator after the
+    # method name and parameters.
+    def endless?
+      !bodystmt.is_a?(BodyStmt)
     end
   end
 
@@ -6971,7 +6920,7 @@ module SyntaxTree
       end
 
       case q.parent
-      when Def, Defs, DefEndless
+      when Def, Defs
         q.nest(0) do
           q.text("(")
           q.group do

@@ -1181,7 +1181,7 @@ module SyntaxTree
     #     (Backtick | Const | Ident | Kw | Op) name,
     #     (nil | Params | Paren) params,
     #     untyped bodystmt
-    #   ) -> Def | DefEndless
+    #   ) -> Def
     def on_def(name, params, bodystmt)
       # Make sure to delete this token in case you're defining something like
       # def class which would lead to this being a kw and causing all kinds of
@@ -1234,12 +1234,10 @@ module SyntaxTree
         # the statements list. Before, it was just the individual statement.
         statement = bodystmt.is_a?(BodyStmt) ? bodystmt.statements : bodystmt
 
-        DefEndless.new(
-          target: nil,
-          operator: nil,
+        Def.new(
           name: name,
-          paren: params,
-          statement: statement,
+          params: params,
+          bodystmt: statement,
           location: beginning.location.to(bodystmt.location)
         )
       end
@@ -1322,12 +1320,12 @@ module SyntaxTree
         # the statements list. Before, it was just the individual statement.
         statement = bodystmt.is_a?(BodyStmt) ? bodystmt.statements : bodystmt
 
-        DefEndless.new(
+        Defs.new(
           target: target,
           operator: operator,
           name: name,
-          paren: params,
-          statement: statement,
+          params: params,
+          bodystmt: statement,
           location: beginning.location.to(bodystmt.location)
         )
       end

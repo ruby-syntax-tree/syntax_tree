@@ -119,9 +119,6 @@ module SyntaxTree
     # Visit a Def node.
     alias visit_def visit_child_nodes
 
-    # Visit a DefEndless node.
-    alias visit_def_endless visit_child_nodes
-
     # Visit a Defined node.
     alias visit_defined visit_child_nodes
 

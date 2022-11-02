@@ -15,6 +15,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
   - `Yield0` is no longer a node. Instead if has been folded into the `Yield` node. The `Yield` node can now have its `arguments` field be `nil`. Consequently, the `visit_yield0` method has been removed from the visitor interface. If you were previously using this method, you should now use `visit_yield` instead.
   - `FCall` is no longer a node. Instead it has been folded into the `Call` node. The `Call` node can now have its `receiver` and `operator` fields be `nil`. Consequently, the `visit_fcall` method has been removed from the visitor interface. If you were previously using this method, you should now use `visit_call` instead.
   - `Dot2` and `Dot3` are no longer nodes. Instead they have become a single new `RangeLiteral` node. This node looks the same as `Dot2` and `Dot3`, except that it additionally has an `operator` field that contains the operator that created the node. Consequently, the `visit_dot2` and `visit_dot3` methods have been removed from the visitor interface. If you were previously using these methods, you should now use `visit_range_literal` instead.
+  - `DefEndless` has been folded into the `Def` and `Defs` nodes.
 
 ## [4.3.0] - 2022-10-28
 
