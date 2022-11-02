@@ -723,7 +723,7 @@ module SyntaxTree
       end
 
       def visit_redo(node)
-        visit_token(node, "redo")
+        node(node, "redo") { comments(node) }
       end
 
       def visit_regexp_beg(node)
@@ -779,7 +779,9 @@ module SyntaxTree
       end
 
       def visit_retry(node)
-        visit_token(node, "retry")
+        node(node, "retry") do
+          comments(node)
+        end
       end
 
       def visit_return(node)

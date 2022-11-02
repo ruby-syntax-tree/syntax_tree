@@ -2903,7 +2903,7 @@ module SyntaxTree
     def on_redo
       keyword = consume_keyword(:redo)
 
-      Redo.new(value: keyword.value, location: keyword.location)
+      Redo.new(location: keyword.location)
     end
 
     # :call-seq:
@@ -3069,7 +3069,7 @@ module SyntaxTree
     def on_retry
       keyword = consume_keyword(:retry)
 
-      Retry.new(value: keyword.value, location: keyword.location)
+      Retry.new(location: keyword.location)
     end
 
     # :call-seq:

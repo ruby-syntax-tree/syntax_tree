@@ -7199,14 +7199,10 @@ module SyntaxTree
   #     redo
   #
   class Redo < Node
-    # [String] the value of the keyword
-    attr_reader :value
-
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(value:, location:)
-      @value = value
+    def initialize(location:)
       @location = location
       @comments = []
     end
@@ -7222,11 +7218,11 @@ module SyntaxTree
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
-      { value: value, location: location, comments: comments }
+      { location: location, comments: comments }
     end
 
     def format(q)
-      q.text(value)
+      q.text("redo")
     end
   end
 
@@ -7710,14 +7706,10 @@ module SyntaxTree
   #     retry
   #
   class Retry < Node
-    # [String] the value of the keyword
-    attr_reader :value
-
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(value:, location:)
-      @value = value
+    def initialize(location:)
       @location = location
       @comments = []
     end
@@ -7733,11 +7725,11 @@ module SyntaxTree
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
-      { value: value, location: location, comments: comments }
+      { location: location, comments: comments }
     end
 
     def format(q)
-      q.text(value)
+      q.text("retry")
     end
   end
 
