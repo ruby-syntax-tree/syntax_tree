@@ -103,7 +103,7 @@ module SyntaxTree
       end
 
       def visit_args_forward(node)
-        visit_token(node, "args_forward")
+        node(node, "args_forward") { comments(node) }
       end
 
       def visit_array(node)

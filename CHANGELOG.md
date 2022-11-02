@@ -18,7 +18,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
   - `DefEndless` and `Defs` have both been folded into the `Def` node. The `Def` node now has the `target` and `operator` fields which originally came from `Defs` which can both be `nil`. It also now has an `endless?` method on it to tell if the original node was found in the endless form. Finally the `bodystmt` field can now either be a `BodyStmt` as it was or any other kind of node since that was the body of the `DefEndless` node. The `visit_defs` and `visit_def_endless` methods on the visitor have therefore been removed.
   - `DoBlock` and `BraceBlock` have now been folded into a `Block` node. The `Block` node now has a `keywords?` method on it that returns true if the block was constructed with the `do`..`end` keywords. The `visit_do_block` and `visit_brace_block` methods on the visitor have therefore been removed and replaced with the `visit_block` method.
   - `Return0` is no longer a node. Instead if has been folded into the `Return` node. The `Return` node can now have its `arguments` field be `nil`. Consequently, the `visit_return0` method has been removed from the visitor interface. If you were previously using this method, you should now use `visit_return` instead.
-- The `Redo`, `Retry`, and `ZSuper` nodes no longer have `value` fields associated with them (which were always string literals corresponding to the keyword being used).
+- The `ArgsForward`, `Redo`, `Retry`, and `ZSuper` nodes no longer have `value` fields associated with them (which were always string literals corresponding to the keyword being used).
 
 ## [4.3.0] - 2022-10-28
 

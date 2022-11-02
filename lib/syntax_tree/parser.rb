@@ -575,7 +575,7 @@ module SyntaxTree
     def on_args_forward
       op = consume_operator(:"...")
 
-      ArgsForward.new(value: op.value, location: op.location)
+      ArgsForward.new(location: op.location)
     end
 
     # :call-seq:
