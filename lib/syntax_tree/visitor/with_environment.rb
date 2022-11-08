@@ -56,14 +56,6 @@ module SyntaxTree
       with_new_environment { super }
     end
 
-    def visit_defs(node)
-      with_new_environment { super }
-    end
-
-    def visit_def_endless(node)
-      with_new_environment { super }
-    end
-
     # Visit for keeping track of local arguments, such as method and block
     # arguments
     def visit_params(node)

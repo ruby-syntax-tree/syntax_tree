@@ -575,7 +575,7 @@ module SyntaxTree
     def on_args_forward
       op = consume_operator(:"...")
 
-      ArgsForward.new(value: op.value, location: op.location)
+      ArgsForward.new(location: op.location)
     end
 
     # :call-seq:
@@ -920,7 +920,7 @@ module SyntaxTree
     #   on_brace_block: (
     #     (nil | BlockVar) block_var,
     #     Statements statements
-    #   ) -> BraceBlock
+    #   ) -> Block
     def on_brace_block(block_var, statements)
       lbrace = consume_token(LBrace)
       rbrace = consume_token(RBrace)
@@ -947,10 +947,10 @@ module SyntaxTree
           end_column: rbrace.location.end_column
         )
 
-      BraceBlock.new(
-        lbrace: lbrace,
+      Block.new(
+        opening: lbrace,
         block_var: block_var,
-        statements: statements,
+        bodystmt: statements,
         location: location
       )
     end
@@ -1076,6 +1076,7 @@ module SyntaxTree
       Command.new(
         message: message,
         arguments: arguments,
+        block: nil,
         location: message.location.to(arguments.location)
       )
     end
@@ -1095,6 +1096,7 @@ module SyntaxTree
         operator: operator,
         message: message,
         arguments: arguments,
+        block: nil,
         location: receiver.location.to(ending.location)
       )
     end
@@ -1181,7 +1183,7 @@ module SyntaxTree
     #     (Backtick | Const | Ident | Kw | Op) name,
     #     (nil | Params | Paren) params,
     #     untyped bodystmt
-    #   ) -> Def | DefEndless
+    #   ) -> Def
     def on_def(name, params, bodystmt)
       # Make sure to delete this token in case you're defining something like
       # def class which would lead to this being a kw and causing all kinds of
@@ -1224,6 +1226,8 @@ module SyntaxTree
         )
 
         Def.new(
+          target: nil,
+          operator: nil,
           name: name,
           params: params,
           bodystmt: bodystmt,
@@ -1234,12 +1238,12 @@ module SyntaxTree
         # the statements list. Before, it was just the individual statement.
         statement = bodystmt.is_a?(BodyStmt) ? bodystmt.statements : bodystmt
 
-        DefEndless.new(
+        Def.new(
           target: nil,
           operator: nil,
           name: name,
-          paren: params,
-          statement: statement,
+          params: params,
+          bodystmt: statement,
           location: beginning.location.to(bodystmt.location)
         )
       end
@@ -1270,7 +1274,7 @@ module SyntaxTree
     #     (Backtick | Const | Ident | Kw | Op) name,
     #     (Params | Paren) params,
     #     BodyStmt bodystmt
-    #   ) -> Defs
+    #   ) -> Def
     def on_defs(target, operator, name, params, bodystmt)
       # Make sure to delete this token in case you're defining something
       # like def class which would lead to this being a kw and causing all kinds
@@ -1309,7 +1313,7 @@ module SyntaxTree
           ending.location.start_column
         )
 
-        Defs.new(
+        Def.new(
           target: target,
           operator: operator,
           name: name,
@@ -1322,19 +1326,19 @@ module SyntaxTree
         # the statements list. Before, it was just the individual statement.
         statement = bodystmt.is_a?(BodyStmt) ? bodystmt.statements : bodystmt
 
-        DefEndless.new(
+        Def.new(
           target: target,
           operator: operator,
           name: name,
-          paren: params,
-          statement: statement,
+          params: params,
+          bodystmt: statement,
           location: beginning.location.to(bodystmt.location)
         )
       end
     end
 
     # :call-seq:
-    #   on_do_block: (BlockVar block_var, BodyStmt bodystmt) -> DoBlock
+    #   on_do_block: (BlockVar block_var, BodyStmt bodystmt) -> Block
     def on_do_block(block_var, bodystmt)
       beginning = consume_keyword(:do)
       ending = consume_keyword(:end)
@@ -1348,8 +1352,8 @@ module SyntaxTree
         ending.location.start_column
       )
 
-      DoBlock.new(
-        keyword: beginning,
+      Block.new(
+        opening: beginning,
         block_var: block_var,
         bodystmt: bodystmt,
         location: beginning.location.to(ending.location)
@@ -1357,30 +1361,32 @@ module SyntaxTree
     end
 
     # :call-seq:
-    #   on_dot2: ((nil | untyped) left, (nil | untyped) right) -> Dot2
+    #   on_dot2: ((nil | untyped) left, (nil | untyped) right) -> RangeLiteral
     def on_dot2(left, right)
       operator = consume_operator(:"..")
 
       beginning = left || operator
       ending = right || operator
 
-      Dot2.new(
+      RangeLiteral.new(
         left: left,
+        operator: operator,
         right: right,
         location: beginning.location.to(ending.location)
       )
     end
 
     # :call-seq:
-    #   on_dot3: ((nil | untyped) left, (nil | untyped) right) -> Dot3
+    #   on_dot3: ((nil | untyped) left, (nil | untyped) right) -> RangeLiteral
     def on_dot3(left, right)
       operator = consume_operator(:"...")
 
       beginning = left || operator
       ending = right || operator
 
-      Dot3.new(
+      RangeLiteral.new(
         left: left,
+        operator: operator,
         right: right,
         location: beginning.location.to(ending.location)
       )
@@ -1608,9 +1614,15 @@ module SyntaxTree
     end
 
     # :call-seq:
-    #   on_fcall: ((Const | Ident) value) -> FCall
+    #   on_fcall: ((Const | Ident) value) -> Call
     def on_fcall(value)
-      FCall.new(value: value, arguments: nil, location: value.location)
+      Call.new(
+        receiver: nil,
+        operator: nil,
+        message: value,
+        arguments: nil,
+        location: value.location
+      )
     end
 
     # :call-seq:
@@ -1911,13 +1923,15 @@ module SyntaxTree
     end
 
     # :call-seq:
-    #   on_if_mod: (untyped predicate, untyped statement) -> IfMod
+    #   on_if_mod: (untyped predicate, untyped statement) -> If
     def on_if_mod(predicate, statement)
       consume_keyword(:if)
 
-      IfMod.new(
-        statement: statement,
+      If.new(
         predicate: predicate,
+        statements:
+          Statements.new(self, body: [statement], location: statement.location),
+        consequent: nil,
         location: statement.location.to(predicate.location)
       )
     end
@@ -2104,17 +2118,20 @@ module SyntaxTree
           location = params.contents.location
           location = location.to(locals.last.location) if locals.any?
 
-          Paren.new(
-            lparen: params.lparen,
-            contents:
-              LambdaVar.new(
-                params: params.contents,
-                locals: locals,
-                location: location
-              ),
-            location: params.location,
-            comments: params.comments
-          )
+          node =
+            Paren.new(
+              lparen: params.lparen,
+              contents:
+                LambdaVar.new(
+                  params: params.contents,
+                  locals: locals,
+                  location: location
+                ),
+              location: params.location
+            )
+
+          node.comments.concat(params.comments)
+          node
         when Params
           # In this case we've gotten to the <3.2 plain set of parameters. In
           # this case there cannot be lambda locals, so we will wrap the
@@ -2302,37 +2319,60 @@ module SyntaxTree
 
     # :call-seq:
     #   on_method_add_arg: (
-    #     (Call | FCall) call,
+    #     Call call,
     #     (ArgParen | Args) arguments
-    #   ) -> Call | FCall
+    #   ) -> Call
     def on_method_add_arg(call, arguments)
       location = call.location
       location = location.to(arguments.location) if arguments.is_a?(ArgParen)
 
-      if call.is_a?(FCall)
-        FCall.new(value: call.value, arguments: arguments, location: location)
-      else
-        Call.new(
-          receiver: call.receiver,
-          operator: call.operator,
-          message: call.message,
-          arguments: arguments,
-          location: location
-        )
-      end
+      Call.new(
+        receiver: call.receiver,
+        operator: call.operator,
+        message: call.message,
+        arguments: arguments,
+        location: location
+      )
     end
 
     # :call-seq:
     #   on_method_add_block: (
-    #     (Call | Command | CommandCall | FCall) call,
-    #     (BraceBlock | DoBlock) block
+    #     (Call | Command | CommandCall) call,
+    #     Block block
     #   ) -> MethodAddBlock
     def on_method_add_block(call, block)
-      MethodAddBlock.new(
-        call: call,
-        block: block,
-        location: call.location.to(block.location)
-      )
+      case call
+      when Command
+        node =
+          Command.new(
+            message: call.message,
+            arguments: call.arguments,
+            block: block,
+            location: call.location.to(block.location)
+          )
+
+        node.comments.concat(call.comments)
+        node
+      when CommandCall
+        node =
+          CommandCall.new(
+            receiver: call.receiver,
+            operator: call.operator,
+            message: call.message,
+            arguments: call.arguments,
+            block: block,
+            location: call.location.to(block.location)
+          )
+
+        node.comments.concat(call.comments)
+        node
+      else
+        MethodAddBlock.new(
+          call: call,
+          block: block,
+          location: call.location.to(block.location)
+        )
+      end
     end
 
     # :call-seq:
@@ -2900,7 +2940,7 @@ module SyntaxTree
     def on_redo
       keyword = consume_keyword(:redo)
 
-      Redo.new(value: keyword.value, location: keyword.location)
+      Redo.new(location: keyword.location)
     end
 
     # :call-seq:
@@ -3066,7 +3106,7 @@ module SyntaxTree
     def on_retry
       keyword = consume_keyword(:retry)
 
-      Retry.new(value: keyword.value, location: keyword.location)
+      Retry.new(location: keyword.location)
     end
 
     # :call-seq:
@@ -3081,11 +3121,11 @@ module SyntaxTree
     end
 
     # :call-seq:
-    #   on_return0: () -> Return0
+    #   on_return0: () -> Return
     def on_return0
       keyword = consume_keyword(:return)
 
-      Return0.new(value: keyword.value, location: keyword.location)
+      Return.new(arguments: nil, location: keyword.location)
     end
 
     # :call-seq:
@@ -3584,13 +3624,15 @@ module SyntaxTree
     end
 
     # :call-seq:
-    #   on_unless_mod: (untyped predicate, untyped statement) -> UnlessMod
+    #   on_unless_mod: (untyped predicate, untyped statement) -> Unless
     def on_unless_mod(predicate, statement)
       consume_keyword(:unless)
 
-      UnlessMod.new(
-        statement: statement,
+      Unless.new(
         predicate: predicate,
+        statements:
+          Statements.new(self, body: [statement], location: statement.location),
+        consequent: nil,
         location: statement.location.to(predicate.location)
       )
     end
@@ -3626,23 +3668,24 @@ module SyntaxTree
     end
 
     # :call-seq:
-    #   on_until_mod: (untyped predicate, untyped statement) -> UntilMod
+    #   on_until_mod: (untyped predicate, untyped statement) -> Until
     def on_until_mod(predicate, statement)
       consume_keyword(:until)
 
-      UntilMod.new(
-        statement: statement,
+      Until.new(
         predicate: predicate,
+        statements:
+          Statements.new(self, body: [statement], location: statement.location),
         location: statement.location.to(predicate.location)
       )
     end
 
     # :call-seq:
-    #   on_var_alias: (GVar left, (Backref | GVar) right) -> VarAlias
+    #   on_var_alias: (GVar left, (Backref | GVar) right) -> Alias
     def on_var_alias(left, right)
       keyword = consume_keyword(:alias)
 
-      VarAlias.new(
+      Alias.new(
         left: left,
         right: right,
         location: keyword.location.to(right.location)
@@ -3752,13 +3795,14 @@ module SyntaxTree
     end
 
     # :call-seq:
-    #   on_while_mod: (untyped predicate, untyped statement) -> WhileMod
+    #   on_while_mod: (untyped predicate, untyped statement) -> While
     def on_while_mod(predicate, statement)
       consume_keyword(:while)
 
-      WhileMod.new(
-        statement: statement,
+      While.new(
         predicate: predicate,
+        statements:
+          Statements.new(self, body: [statement], location: statement.location),
         location: statement.location.to(predicate.location)
       )
     end
@@ -3892,11 +3936,11 @@ module SyntaxTree
     end
 
     # :call-seq:
-    #   on_yield0: () -> Yield0
+    #   on_yield0: () -> Yield
     def on_yield0
       keyword = consume_keyword(:yield)
 
-      Yield0.new(value: keyword.value, location: keyword.location)
+      Yield.new(arguments: nil, location: keyword.location)
     end
 
     # :call-seq:
@@ -3904,7 +3948,7 @@ module SyntaxTree
     def on_zsuper
       keyword = consume_keyword(:super)
 
-      ZSuper.new(value: keyword.value, location: keyword.location)
+      ZSuper.new(location: keyword.location)
     end
   end
 end

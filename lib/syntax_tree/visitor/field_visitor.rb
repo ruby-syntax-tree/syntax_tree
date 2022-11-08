@@ -103,7 +103,7 @@ module SyntaxTree
       end
 
       def visit_args_forward(node)
-        visit_token(node, "args_forward")
+        node(node, "args_forward") { comments(node) }
       end
 
       def visit_array(node)
@@ -184,6 +184,14 @@ module SyntaxTree
         end
       end
 
+      def visit_block(node)
+        node(node, "block") do
+          field("block_var", node.block_var) if node.block_var
+          field("bodystmt", node.bodystmt)
+          comments(node)
+        end
+      end
+
       def visit_blockarg(node)
         node(node, "blockarg") do
           field("name", node.name) if node.name
@@ -205,14 +213,6 @@ module SyntaxTree
           field("rescue_clause", node.rescue_clause) if node.rescue_clause
           field("else_clause", node.else_clause) if node.else_clause
           field("ensure_clause", node.ensure_clause) if node.ensure_clause
-          comments(node)
-        end
-      end
-
-      def visit_brace_block(node)
-        node(node, "brace_block") do
-          field("block_var", node.block_var) if node.block_var
-          field("statements", node.statements)
           comments(node)
         end
       end
@@ -315,36 +315,6 @@ module SyntaxTree
 
       def visit_def(node)
         node(node, "def") do
-          field("name", node.name)
-          field("params", node.params)
-          field("bodystmt", node.bodystmt)
-          comments(node)
-        end
-      end
-
-      def visit_def_endless(node)
-        node(node, "def_endless") do
-          if node.target
-            field("target", node.target)
-            field("operator", node.operator)
-          end
-
-          field("name", node.name)
-          field("paren", node.paren) if node.paren
-          field("statement", node.statement)
-          comments(node)
-        end
-      end
-
-      def visit_defined(node)
-        node(node, "defined") do
-          field("value", node.value)
-          comments(node)
-        end
-      end
-
-      def visit_defs(node)
-        node(node, "defs") do
           field("target", node.target)
           field("operator", node.operator)
           field("name", node.name)
@@ -354,26 +324,9 @@ module SyntaxTree
         end
       end
 
-      def visit_do_block(node)
-        node(node, "do_block") do
-          field("block_var", node.block_var) if node.block_var
-          field("bodystmt", node.bodystmt)
-          comments(node)
-        end
-      end
-
-      def visit_dot2(node)
-        node(node, "dot2") do
-          field("left", node.left) if node.left
-          field("right", node.right) if node.right
-          comments(node)
-        end
-      end
-
-      def visit_dot3(node)
-        node(node, "dot3") do
-          field("left", node.left) if node.left
-          field("right", node.right) if node.right
+      def visit_defined(node)
+        node(node, "defined") do
+          field("value", node.value)
           comments(node)
         end
       end
@@ -519,14 +472,6 @@ module SyntaxTree
           field("predicate", node.predicate)
           field("statements", node.statements)
           field("consequent", node.consequent) if node.consequent
-          comments(node)
-        end
-      end
-
-      def visit_if_mod(node)
-        node(node, "if_mod") do
-          field("statement", node.statement)
-          field("predicate", node.predicate)
           comments(node)
         end
       end
@@ -747,6 +692,15 @@ module SyntaxTree
         node(node, "qwords_beg") { field("value", node.value) }
       end
 
+      def visit_range_literal(node)
+        node(node, "range_literal") do
+          field("left", node.left) if node.left
+          field("operator", node.operator)
+          field("right", node.right) if node.right
+          comments(node)
+        end
+      end
+
       def visit_rassign(node)
         node(node, "rassign") do
           field("value", node.value)
@@ -769,7 +723,7 @@ module SyntaxTree
       end
 
       def visit_redo(node)
-        visit_token(node, "redo")
+        node(node, "redo") { comments(node) }
       end
 
       def visit_regexp_beg(node)
@@ -825,7 +779,7 @@ module SyntaxTree
       end
 
       def visit_retry(node)
-        visit_token(node, "retry")
+        node(node, "retry") { comments(node) }
       end
 
       def visit_return(node)
@@ -833,10 +787,6 @@ module SyntaxTree
           field("arguments", node.arguments)
           comments(node)
         end
-      end
-
-      def visit_return0(node)
-        visit_token(node, "return0")
       end
 
       def visit_rparen(node)
@@ -982,34 +932,10 @@ module SyntaxTree
         end
       end
 
-      def visit_unless_mod(node)
-        node(node, "unless_mod") do
-          field("statement", node.statement)
-          field("predicate", node.predicate)
-          comments(node)
-        end
-      end
-
       def visit_until(node)
         node(node, "until") do
           field("predicate", node.predicate)
           field("statements", node.statements)
-          comments(node)
-        end
-      end
-
-      def visit_until_mod(node)
-        node(node, "until_mod") do
-          field("statement", node.statement)
-          field("predicate", node.predicate)
-          comments(node)
-        end
-      end
-
-      def visit_var_alias(node)
-        node(node, "var_alias") do
-          field("left", node.left)
-          field("right", node.right)
           comments(node)
         end
       end
@@ -1056,14 +982,6 @@ module SyntaxTree
         end
       end
 
-      def visit_while_mod(node)
-        node(node, "while_mod") do
-          field("statement", node.statement)
-          field("predicate", node.predicate)
-          comments(node)
-        end
-      end
-
       def visit_word(node)
         node(node, "word") do
           list("parts", node.parts)
@@ -1100,12 +1018,8 @@ module SyntaxTree
         end
       end
 
-      def visit_yield0(node)
-        visit_token(node, "yield0")
-      end
-
       def visit_zsuper(node)
-        visit_token(node, "zsuper")
+        node(node, "zsuper") { comments(node) }
       end
 
       def visit___end__(node)

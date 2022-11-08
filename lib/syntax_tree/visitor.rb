@@ -62,6 +62,9 @@ module SyntaxTree
     # Visit a Binary node.
     alias visit_binary visit_child_nodes
 
+    # Visit a Block node.
+    alias visit_block visit_child_nodes
+
     # Visit a BlockArg node.
     alias visit_blockarg visit_child_nodes
 
@@ -70,9 +73,6 @@ module SyntaxTree
 
     # Visit a BodyStmt node.
     alias visit_bodystmt visit_child_nodes
-
-    # Visit a BraceBlock node.
-    alias visit_brace_block visit_child_nodes
 
     # Visit a Break node.
     alias visit_break visit_child_nodes
@@ -119,23 +119,8 @@ module SyntaxTree
     # Visit a Def node.
     alias visit_def visit_child_nodes
 
-    # Visit a DefEndless node.
-    alias visit_def_endless visit_child_nodes
-
     # Visit a Defined node.
     alias visit_defined visit_child_nodes
-
-    # Visit a Defs node.
-    alias visit_defs visit_child_nodes
-
-    # Visit a DoBlock node.
-    alias visit_do_block visit_child_nodes
-
-    # Visit a Dot2 node.
-    alias visit_dot2 visit_child_nodes
-
-    # Visit a Dot3 node.
-    alias visit_dot3 visit_child_nodes
 
     # Visit a DynaSymbol node.
     alias visit_dyna_symbol visit_child_nodes
@@ -166,9 +151,6 @@ module SyntaxTree
 
     # Visit an ExcessedComma node.
     alias visit_excessed_comma visit_child_nodes
-
-    # Visit a FCall node.
-    alias visit_fcall visit_child_nodes
 
     # Visit a Field node.
     alias visit_field visit_child_nodes
@@ -205,9 +187,6 @@ module SyntaxTree
 
     # Visit an If node.
     alias visit_if visit_child_nodes
-
-    # Visit an IfMod node.
-    alias visit_if_mod visit_child_nodes
 
     # Visit an IfOp node.
     alias visit_if_op visit_child_nodes
@@ -311,6 +290,9 @@ module SyntaxTree
     # Visit a QWordsBeg node.
     alias visit_qwords_beg visit_child_nodes
 
+    # Visit a RangeLiteral node
+    alias visit_range_literal visit_child_nodes
+
     # Visit a RAssign node.
     alias visit_rassign visit_child_nodes
 
@@ -355,9 +337,6 @@ module SyntaxTree
 
     # Visit a Return node.
     alias visit_return visit_child_nodes
-
-    # Visit a Return0 node.
-    alias visit_return0 visit_child_nodes
 
     # Visit a RParen node.
     alias visit_rparen visit_child_nodes
@@ -431,17 +410,8 @@ module SyntaxTree
     # Visit an Unless node.
     alias visit_unless visit_child_nodes
 
-    # Visit an UnlessMod node.
-    alias visit_unless_mod visit_child_nodes
-
     # Visit an Until node.
     alias visit_until visit_child_nodes
-
-    # Visit an UntilMod node.
-    alias visit_until_mod visit_child_nodes
-
-    # Visit a VarAlias node.
-    alias visit_var_alias visit_child_nodes
 
     # Visit a VarField node.
     alias visit_var_field visit_child_nodes
@@ -461,9 +431,6 @@ module SyntaxTree
     # Visit a While node.
     alias visit_while visit_child_nodes
 
-    # Visit a WhileMod node.
-    alias visit_while_mod visit_child_nodes
-
     # Visit a Word node.
     alias visit_word visit_child_nodes
 
@@ -481,9 +448,6 @@ module SyntaxTree
 
     # Visit a Yield node.
     alias visit_yield visit_child_nodes
-
-    # Visit a Yield0 node.
-    alias visit_yield0 visit_child_nodes
 
     # Visit a ZSuper node.
     alias visit_zsuper visit_child_nodes

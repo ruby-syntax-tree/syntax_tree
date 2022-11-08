@@ -146,11 +146,11 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(lbrace:, statements:, location:, comments: [])
+    def initialize(lbrace:, statements:, location:)
       @lbrace = lbrace
       @statements = statements
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -199,10 +199,10 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(value:, location:, comments: [])
+    def initialize(value:, location:)
       @value = value
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -249,11 +249,11 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(lbrace:, statements:, location:, comments: [])
+    def initialize(lbrace:, statements:, location:)
       @lbrace = lbrace
       @statements = statements
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -305,10 +305,10 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(value:, location:, comments: [])
+    def initialize(value:, location:)
       @value = value
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -359,7 +359,8 @@ module SyntaxTree
     # Formats an argument to the alias keyword. For symbol literals it uses the
     # value of the symbol directly to look like bare words.
     class AliasArgumentFormatter
-      # [DynaSymbol | SymbolLiteral] the argument being passed to alias
+      # [Backref | DynaSymbol | GVar | SymbolLiteral] the argument being passed
+      # to alias
       attr_reader :argument
 
       def initialize(argument)
@@ -383,20 +384,20 @@ module SyntaxTree
       end
     end
 
-    # [DynaSymbol | SymbolLiteral] the new name of the method
+    # [DynaSymbol | GVar | SymbolLiteral] the new name of the method
     attr_reader :left
 
-    # [DynaSymbol | SymbolLiteral] the old name of the method
+    # [Backref | DynaSymbol | GVar | SymbolLiteral] the old name of the method
     attr_reader :right
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(left:, right:, location:, comments: [])
+    def initialize(left:, right:, location:)
       @left = left
       @right = right
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -428,6 +429,10 @@ module SyntaxTree
         end
       end
     end
+
+    def var_alias?
+      left.is_a?(GVar)
+    end
   end
 
   # ARef represents when you're pulling a value out of a collection at a
@@ -453,11 +458,11 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(collection:, index:, location:, comments: [])
+    def initialize(collection:, index:, location:)
       @collection = collection
       @index = index
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -514,11 +519,11 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(collection:, index:, location:, comments: [])
+    def initialize(collection:, index:, location:)
       @collection = collection
       @index = index
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -577,10 +582,10 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(arguments:, location:, comments: [])
+    def initialize(arguments:, location:)
       @arguments = arguments
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -650,10 +655,10 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(parts:, location:, comments: [])
+    def initialize(parts:, location:)
       @parts = parts
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -686,10 +691,10 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(value:, location:, comments: [])
+    def initialize(value:, location:)
       @value = value
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -723,10 +728,10 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(value:, location:, comments: [])
+    def initialize(value:, location:)
       @value = value
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -767,16 +772,12 @@ module SyntaxTree
   # The ArgsForward node appears in both the caller (the request method calls)
   # and the callee (the get and post definitions).
   class ArgsForward < Node
-    # [String] the value of the operator
-    attr_reader :value
-
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(value:, location:, comments: [])
-      @value = value
+    def initialize(location:)
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -790,11 +791,11 @@ module SyntaxTree
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
-      { value: value, location: location, comments: comments }
+      { location: location, comments: comments }
     end
 
     def format(q)
-      q.text(value)
+      q.text("...")
     end
   end
 
@@ -955,11 +956,11 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(lbracket:, contents:, location:, comments: [])
+    def initialize(lbracket:, contents:, location:)
       @lbracket = lbracket
       @contents = contents
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -1132,7 +1133,7 @@ module SyntaxTree
       @rest = rest
       @posts = posts
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -1209,11 +1210,11 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(target:, value:, location:, comments: [])
+    def initialize(target:, value:, location:)
       @target = target
       @value = value
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -1271,11 +1272,11 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(key:, value:, location:, comments: [])
+    def initialize(key:, value:, location:)
       @key = key
       @value = value
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -1330,10 +1331,10 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(value:, location:, comments: [])
+    def initialize(value:, location:)
       @value = value
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -1368,10 +1369,10 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(value:, location:, comments: [])
+    def initialize(value:, location:)
       @value = value
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -1403,10 +1404,10 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(value:, location:, comments: [])
+    def initialize(value:, location:)
       @value = value
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -1515,10 +1516,10 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(assocs:, location:, comments: [])
+    def initialize(assocs:, location:)
       @assocs = assocs
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -1557,10 +1558,10 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(bodystmt:, location:, comments: [])
+    def initialize(bodystmt:, location:)
       @bodystmt = bodystmt
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -1605,10 +1606,10 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(statement:, location:, comments: [])
+    def initialize(statement:, location:)
       @statement = statement
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -1677,12 +1678,12 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(left:, operator:, right:, location:, comments: [])
+    def initialize(left:, operator:, right:, location:)
       @left = left
       @operator = operator
       @right = right
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -1745,11 +1746,11 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(params:, locals:, location:, comments: [])
+    def initialize(params:, locals:, location:)
       @params = params
       @locals = locals
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -1803,10 +1804,10 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(name:, location:, comments: [])
+    def initialize(name:, location:)
       @name = name
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -1866,7 +1867,7 @@ module SyntaxTree
       @else_clause = else_clause
       @ensure_clause = ensure_clause
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def bind(start_char, start_column, end_char, end_column)
@@ -1957,223 +1958,6 @@ module SyntaxTree
     end
   end
 
-  # Responsible for formatting either a BraceBlock or a DoBlock.
-  class BlockFormatter
-    # Formats the opening brace or keyword of a block.
-    class BlockOpenFormatter
-      # [String] the actual output that should be printed
-      attr_reader :text
-
-      # [LBrace | Keyword] the node that is being represented
-      attr_reader :node
-
-      def initialize(text, node)
-        @text = text
-        @node = node
-      end
-
-      def comments
-        node.comments
-      end
-
-      def format(q)
-        q.text(text)
-      end
-    end
-
-    # [BraceBlock | DoBlock] the block node to be formatted
-    attr_reader :node
-
-    # [LBrace | Keyword] the node that opens the block
-    attr_reader :block_open
-
-    # [String] the string that closes the block
-    attr_reader :block_close
-
-    # [BodyStmt | Statements] the statements inside the block
-    attr_reader :statements
-
-    def initialize(node, block_open, block_close, statements)
-      @node = node
-      @block_open = block_open
-      @block_close = block_close
-      @statements = statements
-    end
-
-    def format(q)
-      # If this is nested anywhere inside of a Command or CommandCall node, then
-      # we can't change which operators we're using for the bounds of the block.
-      break_opening, break_closing, flat_opening, flat_closing =
-        if unchangeable_bounds?(q)
-          [block_open.value, block_close, block_open.value, block_close]
-        elsif forced_do_end_bounds?(q)
-          %w[do end do end]
-        elsif forced_brace_bounds?(q)
-          %w[{ } { }]
-        else
-          %w[do end { }]
-        end
-
-      # If the receiver of this block a Command or CommandCall node, then there
-      # are no parentheses around the arguments to that command, so we need to
-      # break the block.
-      case q.parent.call
-      when Command, CommandCall
-        q.break_parent
-        format_break(q, break_opening, break_closing)
-        return
-      end
-
-      q.group do
-        q
-          .if_break { format_break(q, break_opening, break_closing) }
-          .if_flat { format_flat(q, flat_opening, flat_closing) }
-      end
-    end
-
-    private
-
-    # If this is nested anywhere inside certain nodes, then we can't change
-    # which operators/keywords we're using for the bounds of the block.
-    def unchangeable_bounds?(q)
-      q.parents.any? do |parent|
-        # If we hit a statements, then we're safe to use whatever since we
-        # know for certain we're going to get split over multiple lines
-        # anyway.
-        case parent
-        when Statements, ArgParen
-          break false
-        when Command, CommandCall
-          true
-        else
-          false
-        end
-      end
-    end
-
-    # If we're a sibling of a control-flow keyword, then we're going to have to
-    # use the do..end bounds.
-    def forced_do_end_bounds?(q)
-      case q.parent.call
-      when Break, Next, Return, Super
-        true
-      else
-        false
-      end
-    end
-
-    # If we're the predicate of a loop or conditional, then we're going to have
-    # to go with the {..} bounds.
-    def forced_brace_bounds?(q)
-      previous = nil
-      q.parents.any? do |parent|
-        case parent
-        when Paren, Statements
-          # If we hit certain breakpoints then we know we're safe.
-          return false
-        when If, IfMod, IfOp, Unless, UnlessMod, While, WhileMod, Until,
-             UntilMod
-          return true if parent.predicate == previous
-        end
-
-        previous = parent
-        false
-      end
-    end
-
-    def format_break(q, opening, closing)
-      q.text(" ")
-      q.format(BlockOpenFormatter.new(opening, block_open), stackable: false)
-
-      if node.block_var
-        q.text(" ")
-        q.format(node.block_var)
-      end
-
-      unless statements.empty?
-        q.indent do
-          q.breakable_space
-          q.format(statements)
-        end
-      end
-
-      q.breakable_space
-      q.text(closing)
-    end
-
-    def format_flat(q, opening, closing)
-      q.text(" ")
-      q.format(BlockOpenFormatter.new(opening, block_open), stackable: false)
-
-      if node.block_var
-        q.breakable_space
-        q.format(node.block_var)
-        q.breakable_space
-      end
-
-      if statements.empty?
-        q.text(" ") if opening == "do"
-      else
-        q.breakable_space unless node.block_var
-        q.format(statements)
-        q.breakable_space
-      end
-
-      q.text(closing)
-    end
-  end
-
-  # BraceBlock represents passing a block to a method call using the { }
-  # operators.
-  #
-  #     method { |variable| variable + 1 }
-  #
-  class BraceBlock < Node
-    # [LBrace] the left brace that opens this block
-    attr_reader :lbrace
-
-    # [nil | BlockVar] the optional set of parameters to the block
-    attr_reader :block_var
-
-    # [Statements] the list of expressions to evaluate within the block
-    attr_reader :statements
-
-    # [Array[ Comment | EmbDoc ]] the comments attached to this node
-    attr_reader :comments
-
-    def initialize(lbrace:, block_var:, statements:, location:, comments: [])
-      @lbrace = lbrace
-      @block_var = block_var
-      @statements = statements
-      @location = location
-      @comments = comments
-    end
-
-    def accept(visitor)
-      visitor.visit_brace_block(self)
-    end
-
-    def child_nodes
-      [lbrace, block_var, statements]
-    end
-
-    alias deconstruct child_nodes
-
-    def deconstruct_keys(_keys)
-      {
-        lbrace: lbrace,
-        block_var: block_var,
-        statements: statements,
-        location: location,
-        comments: comments
-      }
-    end
-
-    def format(q)
-      BlockFormatter.new(self, lbrace, "}", statements).format(q)
-    end
-  end
-
   # Formats either a Break, Next, or Return node.
   class FlowControlFormatter
     # [String] the keyword to print
@@ -2188,6 +1972,13 @@ module SyntaxTree
     end
 
     def format(q)
+      # If there are no arguments associated with this flow control, then we can
+      # safely just print the keyword and return.
+      if node.arguments.nil?
+        q.text(keyword)
+        return
+      end
+
       q.group do
         q.text(keyword)
 
@@ -2371,10 +2162,10 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(arguments:, location:, comments: [])
+    def initialize(arguments:, location:)
       @arguments = arguments
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -2455,14 +2246,26 @@ module SyntaxTree
         when Call
           case (receiver = child.receiver)
           when Call
-            children << receiver
+            if receiver.receiver.nil?
+              break
+            else
+              children << receiver
+            end
           when MethodAddBlock
-            receiver.call.is_a?(Call) ? children << receiver : break
+            if receiver.call.is_a?(Call) && !receiver.call.receiver.nil?
+              children << receiver
+            else
+              break
+            end
           else
             break
           end
         when MethodAddBlock
-          child.call.is_a?(Call) ? children << child.call : break
+          if child.call.is_a?(Call) && !child.call.receiver.nil?
+            children << child.call
+          else
+            break
+          end
         else
           break
         end
@@ -2476,13 +2279,13 @@ module SyntaxTree
       # https://github.com/prettier/plugin-ruby/issues/863.
       parents = q.parents.take(4)
       if (parent = parents[2])
-        # If we're at a do_block, then we want to go one more level up. This is
-        # because do blocks have BodyStmt nodes instead of just Statements
-        # nodes.
-        parent = parents[3] if parent.is_a?(DoBlock)
+        # If we're at a block with the `do` keywords, then we want to go one
+        # more level up. This is because do blocks have BodyStmt nodes instead
+        # of just Statements nodes.
+        parent = parents[3] if parent.is_a?(Block) && parent.keywords?
 
-        if parent.is_a?(MethodAddBlock) && parent.call.is_a?(FCall) &&
-             parent.call.value.value == "sig"
+        if parent.is_a?(MethodAddBlock) && parent.call.is_a?(Call) &&
+             parent.call.message.value == "sig"
           threshold = 2
         end
       end
@@ -2511,7 +2314,7 @@ module SyntaxTree
       # formatter so it's as if we had descending normally into them. This is
       # necessary so they can check their parents as normal.
       q.stack.concat(children)
-      q.format(children.last.receiver)
+      q.format(children.last.receiver) if children.last.receiver
 
       q.group do
         if attach_directly?(children.last)
@@ -2554,7 +2357,8 @@ module SyntaxTree
             # If the parent call node has a comment on the message then we need
             # to print the operator trailing in order to keep it working.
             last_child = children.last
-            if last_child.is_a?(Call) && last_child.message.comments.any?
+            if last_child.is_a?(Call) && last_child.message.comments.any? &&
+                 last_child.operator
               q.format(CallOperatorFormatter.new(last_child.operator))
               skip_operator = true
             else
@@ -2583,9 +2387,9 @@ module SyntaxTree
 
       case node
       when Call
-        true
+        !node.receiver.nil?
       when MethodAddBlock
-        node.call.is_a?(Call)
+        node.call.is_a?(Call) && !node.call.receiver.nil?
       else
         false
       end
@@ -2616,7 +2420,7 @@ module SyntaxTree
       case child
       when Call
         q.group do
-          unless skip_operator
+          if !skip_operator && child.operator
             q.format(CallOperatorFormatter.new(child.operator))
           end
           q.format(child.message) if child.message != :call
@@ -2644,10 +2448,10 @@ module SyntaxTree
   #     receiver.message
   #
   class Call < Node
-    # [untyped] the receiver of the method call
+    # [nil | untyped] the receiver of the method call
     attr_reader :receiver
 
-    # [:"::" | Op | Period] the operator being used to send the message
+    # [nil | :"::" | Op | Period] the operator being used to send the message
     attr_reader :operator
 
     # [:call | Backtick | Const | Ident | Op] the message being sent
@@ -2672,7 +2476,7 @@ module SyntaxTree
       @message = message
       @arguments = arguments
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -2702,23 +2506,38 @@ module SyntaxTree
     end
 
     def format(q)
-      # If we're at the top of a call chain, then we're going to do some
-      # specialized printing in case we can print it nicely. We _only_ do this
-      # at the top of the chain to avoid weird recursion issues.
-      if CallChainFormatter.chained?(receiver) &&
-           !CallChainFormatter.chained?(q.parent)
-        q.group do
-          q
-            .if_break { CallChainFormatter.new(self).format(q) }
-            .if_flat { format_contents(q) }
+      if receiver
+        # If we're at the top of a call chain, then we're going to do some
+        # specialized printing in case we can print it nicely. We _only_ do this
+        # at the top of the chain to avoid weird recursion issues.
+        if CallChainFormatter.chained?(receiver) &&
+             !CallChainFormatter.chained?(q.parent)
+          q.group do
+            q
+              .if_break { CallChainFormatter.new(self).format(q) }
+              .if_flat { format_contents(q) }
+          end
+        else
+          format_contents(q)
         end
       else
-        format_contents(q)
+        q.format(message)
+
+        if arguments.is_a?(ArgParen) && arguments.arguments.nil? &&
+             !message.is_a?(Const)
+          # If you're using an explicit set of parentheses on something that
+          # looks like a constant, then we need to match that in order to
+          # maintain valid Ruby. For example, you could do something like Foo(),
+          # on which we would need to keep the parentheses to make it look like
+          # a method call.
+        else
+          q.format(arguments)
+        end
       end
     end
 
     # Print out the arguments to this call. If there are no arguments, then do
-    #nothing.
+    # nothing.
     def format_arguments(q)
       case arguments
       when ArgParen
@@ -2782,12 +2601,12 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(keyword:, value:, consequent:, location:, comments: [])
+    def initialize(keyword:, value:, consequent:, location:)
       @keyword = keyword
       @value = value
       @consequent = consequent
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -2847,12 +2666,12 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(value:, operator:, pattern:, location:, comments: [])
+    def initialize(value:, operator:, pattern:, location:)
       @value = value
       @operator = operator
       @pattern = pattern
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -2943,12 +2762,12 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(constant:, superclass:, bodystmt:, location:, comments: [])
+    def initialize(constant:, superclass:, bodystmt:, location:)
       @constant = constant
       @superclass = superclass
       @bodystmt = bodystmt
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -3046,14 +2865,18 @@ module SyntaxTree
     # [Args] the arguments being sent with the message
     attr_reader :arguments
 
+    # [nil | Block] the optional block being passed to the method
+    attr_reader :block
+
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(message:, arguments:, location:, comments: [])
+    def initialize(message:, arguments:, block:, location:)
       @message = message
       @arguments = arguments
+      @block = block
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -3061,7 +2884,7 @@ module SyntaxTree
     end
 
     def child_nodes
-      [message, arguments]
+      [message, arguments, block]
     end
 
     alias deconstruct child_nodes
@@ -3070,6 +2893,7 @@ module SyntaxTree
       {
         message: message,
         arguments: arguments,
+        block: block,
         location: location,
         comments: comments
       }
@@ -3080,6 +2904,8 @@ module SyntaxTree
         q.format(message)
         align(q, self) { q.format(arguments) }
       end
+
+      q.format(block) if block
     end
 
     private
@@ -3094,7 +2920,7 @@ module SyntaxTree
           part = parts.first
 
           case part
-          when Def, Defs, DefEndless
+          when Def
             q.text(" ")
             yield
           when IfOp
@@ -3135,6 +2961,9 @@ module SyntaxTree
     # [nil | Args] the arguments going along with the message
     attr_reader :arguments
 
+    # [nil | Block] the block associated with this method call
+    attr_reader :block
+
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
@@ -3143,6 +2972,7 @@ module SyntaxTree
       operator:,
       message:,
       arguments:,
+      block:,
       location:,
       comments: []
     )
@@ -3150,8 +2980,9 @@ module SyntaxTree
       @operator = operator
       @message = message
       @arguments = arguments
+      @block = block
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -3159,7 +2990,7 @@ module SyntaxTree
     end
 
     def child_nodes
-      [receiver, message, arguments]
+      [receiver, message, arguments, block]
     end
 
     alias deconstruct child_nodes
@@ -3170,6 +3001,7 @@ module SyntaxTree
         operator: operator,
         message: message,
         arguments: arguments,
+        block: block,
         location: location,
         comments: comments
       }
@@ -3210,6 +3042,8 @@ module SyntaxTree
           end
         end
       end
+
+      q.format(block) if block
     end
 
     private
@@ -3323,10 +3157,10 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(value:, location:, comments: [])
+    def initialize(value:, location:)
       @value = value
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -3364,11 +3198,11 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(parent:, constant:, location:, comments: [])
+    def initialize(parent:, constant:, location:)
       @parent = parent
       @constant = constant
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -3411,11 +3245,11 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(parent:, constant:, location:, comments: [])
+    def initialize(parent:, constant:, location:)
       @parent = parent
       @constant = constant
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -3457,10 +3291,10 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(constant:, location:, comments: [])
+    def initialize(constant:, location:)
       @constant = constant
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -3493,10 +3327,10 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(value:, location:, comments: [])
+    def initialize(value:, location:)
       @value = value
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -3521,26 +3355,35 @@ module SyntaxTree
   # Def represents defining a regular method on the current self object.
   #
   #     def method(param) result end
+  #     def object.method(param) result end
   #
   class Def < Node
+    # [nil | untyped] the target where the method is being defined
+    attr_reader :target
+
+    # [nil | Op | Period] the operator being used to declare the method
+    attr_reader :operator
+
     # [Backtick | Const | Ident | Kw | Op] the name of the method
     attr_reader :name
 
-    # [Params | Paren] the parameter declaration for the method
+    # [nil | Params | Paren] the parameter declaration for the method
     attr_reader :params
 
-    # [BodyStmt] the expressions to be executed by the method
+    # [BodyStmt | untyped] the expressions to be executed by the method
     attr_reader :bodystmt
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(name:, params:, bodystmt:, location:, comments: [])
+    def initialize(target:, operator:, name:, params:, bodystmt:, location:)
+      @target = target
+      @operator = operator
       @name = name
       @params = params
       @bodystmt = bodystmt
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -3548,13 +3391,15 @@ module SyntaxTree
     end
 
     def child_nodes
-      [name, params, bodystmt]
+      [target, operator, name, params, bodystmt]
     end
 
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
       {
+        target: target,
+        operator: operator,
         name: name,
         params: params,
         bodystmt: bodystmt,
@@ -3567,114 +3412,49 @@ module SyntaxTree
       q.group do
         q.group do
           q.text("def ")
+
+          if target
+            q.format(target)
+            q.format(CallOperatorFormatter.new(operator), stackable: false)
+          end
+
           q.format(name)
 
-          if !params.is_a?(Params) || !params.empty? || params.comments.any?
+          case params
+          when Paren
             q.format(params)
+          when Params
+            q.format(params) if !params.empty? || params.comments.any?
           end
         end
 
-        unless bodystmt.empty?
-          q.indent do
-            q.breakable_force
-            q.format(bodystmt)
+        if endless?
+          q.text(" =")
+          q.group do
+            q.indent do
+              q.breakable_space
+              q.format(bodystmt)
+            end
           end
-        end
+        else
+          unless bodystmt.empty?
+            q.indent do
+              q.breakable_force
+              q.format(bodystmt)
+            end
+          end
 
-        q.breakable_force
-        q.text("end")
+          q.breakable_force
+          q.text("end")
+        end
       end
     end
-  end
 
-  # DefEndless represents defining a single-line method since Ruby 3.0+.
-  #
-  #     def method = result
-  #
-  class DefEndless < Node
-    # [untyped] the target where the method is being defined
-    attr_reader :target
-
-    # [Op | Period] the operator being used to declare the method
-    attr_reader :operator
-
-    # [Backtick | Const | Ident | Kw | Op] the name of the method
-    attr_reader :name
-
-    # [nil | Params | Paren] the parameter declaration for the method
-    attr_reader :paren
-
-    # [untyped] the expression to be executed by the method
-    attr_reader :statement
-
-    # [Array[ Comment | EmbDoc ]] the comments attached to this node
-    attr_reader :comments
-
-    def initialize(
-      target:,
-      operator:,
-      name:,
-      paren:,
-      statement:,
-      location:,
-      comments: []
-    )
-      @target = target
-      @operator = operator
-      @name = name
-      @paren = paren
-      @statement = statement
-      @location = location
-      @comments = comments
-    end
-
-    def accept(visitor)
-      visitor.visit_def_endless(self)
-    end
-
-    def child_nodes
-      [target, operator, name, paren, statement]
-    end
-
-    alias deconstruct child_nodes
-
-    def deconstruct_keys(_keys)
-      {
-        target: target,
-        operator: operator,
-        name: name,
-        paren: paren,
-        statement: statement,
-        location: location,
-        comments: comments
-      }
-    end
-
-    def format(q)
-      q.group do
-        q.text("def ")
-
-        if target
-          q.format(target)
-          q.format(CallOperatorFormatter.new(operator), stackable: false)
-        end
-
-        q.format(name)
-
-        if paren
-          params = paren
-          params = params.contents if params.is_a?(Paren)
-          q.format(paren) unless params.empty?
-        end
-
-        q.text(" =")
-        q.group do
-          q.indent do
-            q.breakable_space
-            q.format(statement)
-          end
-        end
-      end
+    # Returns true if the method was found in the source in the "endless" form,
+    # i.e. where the method body is defined using the `=` operator after the
+    # method name and parameters.
+    def endless?
+      !bodystmt.is_a?(BodyStmt)
     end
   end
 
@@ -3690,10 +3470,10 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(value:, location:, comments: [])
+    def initialize(value:, location:)
       @value = value
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -3723,135 +3503,70 @@ module SyntaxTree
     end
   end
 
-  # Defs represents defining a singleton method on an object.
-  #
-  #     def object.method(param) result end
-  #
-  class Defs < Node
-    # [untyped] the target where the method is being defined
-    attr_reader :target
-
-    # [Op | Period] the operator being used to declare the method
-    attr_reader :operator
-
-    # [Backtick | Const | Ident | Kw | Op] the name of the method
-    attr_reader :name
-
-    # [Params | Paren] the parameter declaration for the method
-    attr_reader :params
-
-    # [BodyStmt] the expressions to be executed by the method
-    attr_reader :bodystmt
-
-    # [Array[ Comment | EmbDoc ]] the comments attached to this node
-    attr_reader :comments
-
-    def initialize(
-      target:,
-      operator:,
-      name:,
-      params:,
-      bodystmt:,
-      location:,
-      comments: []
-    )
-      @target = target
-      @operator = operator
-      @name = name
-      @params = params
-      @bodystmt = bodystmt
-      @location = location
-      @comments = comments
-    end
-
-    def accept(visitor)
-      visitor.visit_defs(self)
-    end
-
-    def child_nodes
-      [target, operator, name, params, bodystmt]
-    end
-
-    alias deconstruct child_nodes
-
-    def deconstruct_keys(_keys)
-      {
-        target: target,
-        operator: operator,
-        name: name,
-        params: params,
-        bodystmt: bodystmt,
-        location: location,
-        comments: comments
-      }
-    end
-
-    def format(q)
-      q.group do
-        q.group do
-          q.text("def ")
-          q.format(target)
-          q.format(CallOperatorFormatter.new(operator), stackable: false)
-          q.format(name)
-
-          if !params.is_a?(Params) || !params.empty? || params.comments.any?
-            q.format(params)
-          end
-        end
-
-        unless bodystmt.empty?
-          q.indent do
-            q.breakable_force
-            q.format(bodystmt)
-          end
-        end
-
-        q.breakable_force
-        q.text("end")
-      end
-    end
-  end
-
-  # DoBlock represents passing a block to a method call using the +do+ and +end+
-  # keywords.
+  # Block represents passing a block to a method call using the +do+ and +end+
+  # keywords or the +{+ and +}+ operators.
   #
   #     method do |value|
   #     end
   #
-  class DoBlock < Node
-    # [Kw] the do keyword that opens this block
-    attr_reader :keyword
+  #     method { |value| }
+  #
+  class Block < Node
+    # Formats the opening brace or keyword of a block.
+    class BlockOpenFormatter
+      # [String] the actual output that should be printed
+      attr_reader :text
+
+      # [LBrace | Keyword] the node that is being represented
+      attr_reader :node
+
+      def initialize(text, node)
+        @text = text
+        @node = node
+      end
+
+      def comments
+        node.comments
+      end
+
+      def format(q)
+        q.text(text)
+      end
+    end
+
+    # [LBrace | Kw] the left brace or the do keyword that opens this block
+    attr_reader :opening
 
     # [nil | BlockVar] the optional variable declaration within this block
     attr_reader :block_var
 
-    # [BodyStmt] the expressions to be executed within this block
+    # [BodyStmt | Statements] the expressions to be executed within this block
     attr_reader :bodystmt
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(keyword:, block_var:, bodystmt:, location:, comments: [])
-      @keyword = keyword
+    def initialize(opening:, block_var:, bodystmt:, location:)
+      @opening = opening
       @block_var = block_var
       @bodystmt = bodystmt
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
-      visitor.visit_do_block(self)
+      visitor.visit_block(self)
     end
 
     def child_nodes
-      [keyword, block_var, bodystmt]
+      [opening, block_var, bodystmt]
     end
 
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
       {
-        keyword: keyword,
+        opening: opening,
         block_var: block_var,
         bodystmt: bodystmt,
         location: location,
@@ -3860,42 +3575,134 @@ module SyntaxTree
     end
 
     def format(q)
-      BlockFormatter.new(self, keyword, "end", bodystmt).format(q)
-    end
-  end
+      # If this is nested anywhere inside of a Command or CommandCall node, then
+      # we can't change which operators we're using for the bounds of the block.
+      break_opening, break_closing, flat_opening, flat_closing =
+        if unchangeable_bounds?(q)
+          block_close = keywords? ? "end" : "}"
+          [opening.value, block_close, opening.value, block_close]
+        elsif forced_do_end_bounds?(q)
+          %w[do end do end]
+        elsif forced_brace_bounds?(q)
+          %w[{ } { }]
+        else
+          %w[do end { }]
+        end
 
-  # Responsible for formatting Dot2 and Dot3 nodes.
-  class DotFormatter
-    # [String] the operator to display
-    attr_reader :operator
-
-    # [Dot2 | Dot3] the node that is being formatter
-    attr_reader :node
-
-    def initialize(operator, node)
-      @operator = operator
-      @node = node
-    end
-
-    def format(q)
-      left = node.left
-      right = node.right
-
-      q.format(left) if left
-
+      # If the receiver of this block a Command or CommandCall node, then there
+      # are no parentheses around the arguments to that command, so we need to
+      # break the block.
       case q.parent
-      when If, IfMod, Unless, UnlessMod
-        q.text(" #{operator} ")
-      else
-        q.text(operator)
+      when Command, CommandCall
+        q.break_parent
+        format_break(q, break_opening, break_closing)
+        return
       end
 
-      q.format(right) if right
+      q.group do
+        q
+          .if_break { format_break(q, break_opening, break_closing) }
+          .if_flat { format_flat(q, flat_opening, flat_closing) }
+      end
+    end
+
+    def keywords?
+      opening.is_a?(Kw)
+    end
+
+    private
+
+    # If this is nested anywhere inside certain nodes, then we can't change
+    # which operators/keywords we're using for the bounds of the block.
+    def unchangeable_bounds?(q)
+      q.parents.any? do |parent|
+        # If we hit a statements, then we're safe to use whatever since we
+        # know for certain we're going to get split over multiple lines
+        # anyway.
+        case parent
+        when Statements, ArgParen
+          break false
+        when Command, CommandCall
+          true
+        else
+          false
+        end
+      end
+    end
+
+    # If we're a sibling of a control-flow keyword, then we're going to have to
+    # use the do..end bounds.
+    def forced_do_end_bounds?(q)
+      case q.parent.call
+      when Break, Next, Return, Super
+        true
+      else
+        false
+      end
+    end
+
+    # If we're the predicate of a loop or conditional, then we're going to have
+    # to go with the {..} bounds.
+    def forced_brace_bounds?(q)
+      previous = nil
+      q.parents.any? do |parent|
+        case parent
+        when Paren, Statements
+          # If we hit certain breakpoints then we know we're safe.
+          return false
+        when If, IfOp, Unless, While, Until
+          return true if parent.predicate == previous
+        end
+
+        previous = parent
+        false
+      end
+    end
+
+    def format_break(q, break_opening, break_closing)
+      q.text(" ")
+      q.format(BlockOpenFormatter.new(break_opening, opening), stackable: false)
+
+      if block_var
+        q.text(" ")
+        q.format(block_var)
+      end
+
+      unless bodystmt.empty?
+        q.indent do
+          q.breakable_space
+          q.format(bodystmt)
+        end
+      end
+
+      q.breakable_space
+      q.text(break_closing)
+    end
+
+    def format_flat(q, flat_opening, flat_closing)
+      q.text(" ")
+      q.format(BlockOpenFormatter.new(flat_opening, opening), stackable: false)
+
+      if block_var
+        q.breakable_space
+        q.format(block_var)
+        q.breakable_space
+      end
+
+      if bodystmt.empty?
+        q.text(" ") if flat_opening == "do"
+      else
+        q.breakable_space unless block_var
+        q.format(bodystmt)
+        q.breakable_space
+      end
+
+      q.text(flat_closing)
     end
   end
 
-  # Dot2 represents using the .. operator between two expressions. Usually this
-  # is to create a range object.
+  # RangeLiteral represents using the .. or the ... operator between two
+  # expressions. Usually this is to create a range object.
   #
   #     1..2
   #
@@ -3905,9 +3712,12 @@ module SyntaxTree
   #     end
   #
   # One of the sides of the expression may be nil, but not both.
-  class Dot2 < Node
+  class RangeLiteral < Node
     # [nil | untyped] the left side of the expression
     attr_reader :left
+
+    # [Op] the operator used for this range
+    attr_reader :operator
 
     # [nil | untyped] the right side of the expression
     attr_reader :right
@@ -3915,15 +3725,16 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(left:, right:, location:, comments: [])
+    def initialize(left:, operator:, right:, location:)
       @left = left
+      @operator = operator
       @right = right
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
-      visitor.visit_dot2(self)
+      visitor.visit_range_literal(self)
     end
 
     def child_nodes
@@ -3933,59 +3744,26 @@ module SyntaxTree
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
-      { left: left, right: right, location: location, comments: comments }
+      {
+        left: left,
+        operator: operator,
+        right: right,
+        location: location,
+        comments: comments
+      }
     end
 
     def format(q)
-      DotFormatter.new("..", self).format(q)
-    end
-  end
+      q.format(left) if left
 
-  # Dot3 represents using the ... operator between two expressions. Usually this
-  # is to create a range object. It's effectively the same event as the Dot2
-  # node but with this operator you're asking Ruby to omit the final value.
-  #
-  #     1...2
-  #
-  # Like Dot2 it can also be used to create a flip-flop.
-  #
-  #     if value == 5 ... value == 10
-  #     end
-  #
-  # One of the sides of the expression may be nil, but not both.
-  class Dot3 < Node
-    # [nil | untyped] the left side of the expression
-    attr_reader :left
+      case q.parent
+      when If, Unless
+        q.text(" #{operator.value} ")
+      else
+        q.text(operator.value)
+      end
 
-    # [nil | untyped] the right side of the expression
-    attr_reader :right
-
-    # [Array[ Comment | EmbDoc ]] the comments attached to this node
-    attr_reader :comments
-
-    def initialize(left:, right:, location:, comments: [])
-      @left = left
-      @right = right
-      @location = location
-      @comments = comments
-    end
-
-    def accept(visitor)
-      visitor.visit_dot3(self)
-    end
-
-    def child_nodes
-      [left, right]
-    end
-
-    alias deconstruct child_nodes
-
-    def deconstruct_keys(_keys)
-      { left: left, right: right, location: location, comments: comments }
-    end
-
-    def format(q)
-      DotFormatter.new("...", self).format(q)
+      q.format(right) if right
     end
   end
 
@@ -4050,11 +3828,11 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(parts:, quote:, location:, comments: [])
+    def initialize(parts:, quote:, location:)
       @parts = parts
       @quote = quote
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -4161,11 +3939,11 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(keyword:, statements:, location:, comments: [])
+    def initialize(keyword:, statements:, location:)
       @keyword = keyword
       @statements = statements
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -4231,7 +4009,7 @@ module SyntaxTree
       @statements = statements
       @consequent = consequent
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -4435,11 +4213,11 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(keyword:, statements:, location:, comments: [])
+    def initialize(keyword:, statements:, location:)
       @keyword = keyword
       @statements = statements
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -4490,10 +4268,10 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(value:, location:, comments: [])
+    def initialize(value:, location:)
       @value = value
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -4515,64 +4293,6 @@ module SyntaxTree
     end
   end
 
-  # FCall represents the piece of a method call that comes before any arguments
-  # (i.e., just the name of the method). It is used in places where the parser
-  # is sure that it is a method call and not potentially a local variable.
-  #
-  #     method(argument)
-  #
-  # In the above example, it's referring to the +method+ segment.
-  class FCall < Node
-    # [Const | Ident] the name of the method
-    attr_reader :value
-
-    # [nil | ArgParen | Args] the arguments to the method call
-    attr_reader :arguments
-
-    # [Array[ Comment | EmbDoc ]] the comments attached to this node
-    attr_reader :comments
-
-    def initialize(value:, arguments:, location:, comments: [])
-      @value = value
-      @arguments = arguments
-      @location = location
-      @comments = comments
-    end
-
-    def accept(visitor)
-      visitor.visit_fcall(self)
-    end
-
-    def child_nodes
-      [value, arguments]
-    end
-
-    alias deconstruct child_nodes
-
-    def deconstruct_keys(_keys)
-      {
-        value: value,
-        arguments: arguments,
-        location: location,
-        comments: comments
-      }
-    end
-
-    def format(q)
-      q.format(value)
-
-      if arguments.is_a?(ArgParen) && arguments.arguments.nil? &&
-           !value.is_a?(Const)
-        # If you're using an explicit set of parentheses on something that looks
-        # like a constant, then we need to match that in order to maintain valid
-        # Ruby. For example, you could do something like Foo(), on which we
-        # would need to keep the parentheses to make it look like a method call.
-      else
-        q.format(arguments)
-      end
-    end
-  end
-
   # Field is always the child of an assignment. It represents assigning to a
   # “field” on an object.
   #
@@ -4591,12 +4311,12 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(parent:, operator:, name:, location:, comments: [])
+    def initialize(parent:, operator:, name:, location:)
       @parent = parent
       @operator = operator
       @name = name
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -4639,10 +4359,10 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(value:, location:, comments: [])
+    def initialize(value:, location:)
       @value = value
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -4688,13 +4408,13 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(constant:, left:, values:, right:, location:, comments: [])
+    def initialize(constant:, left:, values:, right:, location:)
       @constant = constant
       @left = left
       @values = values
       @right = right
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -4763,12 +4483,12 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(index:, collection:, statements:, location:, comments: [])
+    def initialize(index:, collection:, statements:, location:)
       @index = index
       @collection = collection
       @statements = statements
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -4822,10 +4542,10 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(value:, location:, comments: [])
+    def initialize(value:, location:)
       @value = value
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -4887,11 +4607,11 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(lbrace:, assocs:, location:, comments: [])
+    def initialize(lbrace:, assocs:, location:)
       @lbrace = lbrace
       @assocs = assocs
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -4987,7 +4707,7 @@ module SyntaxTree
       @dedent = dedent
       @parts = parts
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -5064,10 +4784,10 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(value:, location:, comments: [])
+    def initialize(value:, location:)
       @value = value
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -5103,10 +4823,10 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(value:, location:, comments: [])
+    def initialize(value:, location:)
       @value = value
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -5195,12 +4915,12 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(constant:, keywords:, keyword_rest:, location:, comments: [])
+    def initialize(constant:, keywords:, keyword_rest:, location:)
       @constant = constant
       @keywords = keywords
       @keyword_rest = keyword_rest
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -5305,10 +5025,10 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(value:, location:, comments: [])
+    def initialize(value:, location:)
       @value = value
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -5398,10 +5118,9 @@ module SyntaxTree
       # and default instead to breaking them into multiple lines.
       def ternaryable?(statement)
         case statement
-        when Alias, Assign, Break, Command, CommandCall, Heredoc, If, IfMod,
-             IfOp, Lambda, MAssign, Next, OpAssign, RescueMod, Return, Return0,
-             Super, Undef, Unless, UnlessMod, Until, UntilMod, VarAlias,
-             VoidStmt, While, WhileMod, Yield, Yield0, ZSuper
+        when Alias, Assign, Break, Command, CommandCall, Heredoc, If, IfOp,
+             Lambda, MAssign, Next, OpAssign, RescueMod, Return, Super, Undef,
+             Unless, Until, VoidStmt, While, Yield, ZSuper
           # This is a list of nodes that should not be allowed to be a part of a
           # ternary clause.
           false
@@ -5432,40 +5151,63 @@ module SyntaxTree
     end
 
     def format(q)
-      # If we can transform this node into a ternary, then we're going to print
-      # a special version that uses the ternary operator if it fits on one line.
-      if Ternaryable.call(q, node)
-        format_ternary(q)
-        return
-      end
+      if node.modifier?
+        statement = node.statements.body[0]
 
-      # If the predicate of the conditional contains an assignment (in which
-      # case we can't know for certain that that assignment doesn't impact the
-      # statements inside the conditional) then we can't use the modifier form
-      # and we must use the block form.
-      if ContainsAssignment.call(node.predicate)
-        format_break(q, force: true)
-        return
-      end
-
-      if node.consequent || node.statements.empty? || contains_conditional?
-        q.group { format_break(q, force: true) }
+        if ContainsAssignment.call(statement) || q.parent.is_a?(In)
+          q.group { format_flat(q) }
+        else
+          q.group do
+            q
+              .if_break { format_break(q, force: false) }
+              .if_flat { format_flat(q) }
+          end
+        end
       else
-        q.group do
-          q
-            .if_break { format_break(q, force: false) }
-            .if_flat do
-              Parentheses.flat(q) do
-                q.format(node.statements)
-                q.text(" #{keyword} ")
-                q.format(node.predicate)
+        # If we can transform this node into a ternary, then we're going to
+        # print a special version that uses the ternary operator if it fits on
+        # one line.
+        if Ternaryable.call(q, node)
+          format_ternary(q)
+          return
+        end
+
+        # If the predicate of the conditional contains an assignment (in which
+        # case we can't know for certain that that assignment doesn't impact the
+        # statements inside the conditional) then we can't use the modifier form
+        # and we must use the block form.
+        if ContainsAssignment.call(node.predicate)
+          format_break(q, force: true)
+          return
+        end
+
+        if node.consequent || node.statements.empty? || contains_conditional?
+          q.group { format_break(q, force: true) }
+        else
+          q.group do
+            q
+              .if_break { format_break(q, force: false) }
+              .if_flat do
+                Parentheses.flat(q) do
+                  q.format(node.statements)
+                  q.text(" #{keyword} ")
+                  q.format(node.predicate)
+                end
               end
-            end
+          end
         end
       end
     end
 
     private
+
+    def format_flat(q)
+      Parentheses.flat(q) do
+        q.format(node.statements.body[0])
+        q.text(" #{keyword} ")
+        q.format(node.predicate)
+      end
+    end
 
     def format_break(q, force:)
       q.text("#{keyword} ")
@@ -5537,7 +5279,7 @@ module SyntaxTree
       return false if statements.length != 1
 
       case statements.first
-      when If, IfMod, IfOp, Unless, UnlessMod
+      when If, IfOp, Unless
         true
       else
         false
@@ -5574,7 +5316,7 @@ module SyntaxTree
       @statements = statements
       @consequent = consequent
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -5600,6 +5342,11 @@ module SyntaxTree
     def format(q)
       ConditionalFormatter.new("if", self).format(q)
     end
+
+    # Checks if the node was originally found in the modifier form.
+    def modifier?
+      predicate.location.start_char > statements.location.start_char
+    end
   end
 
   # IfOp represents a ternary clause.
@@ -5619,12 +5366,12 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(predicate:, truthy:, falsy:, location:, comments: [])
+    def initialize(predicate:, truthy:, falsy:, location:)
       @predicate = predicate
       @truthy = truthy
       @falsy = falsy
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -5649,10 +5396,9 @@ module SyntaxTree
 
     def format(q)
       force_flat = [
-        Alias, Assign, Break, Command, CommandCall, Heredoc, If, IfMod, IfOp,
-        Lambda, MAssign, Next, OpAssign, RescueMod, Return, Return0, Super,
-        Undef, Unless, UnlessMod, UntilMod, VarAlias, VoidStmt, WhileMod, Yield,
-        Yield0, ZSuper
+        Alias, Assign, Break, Command, CommandCall, Heredoc, If, IfOp, Lambda,
+        MAssign, Next, OpAssign, RescueMod, Return, Super, Undef, Unless,
+        VoidStmt, Yield, ZSuper
       ]
 
       if q.parent.is_a?(Paren) || force_flat.include?(truthy.class) ||
@@ -5704,94 +5450,6 @@ module SyntaxTree
     end
   end
 
-  # Formats an IfMod or UnlessMod node.
-  class ConditionalModFormatter
-    # [String] the keyword associated with this conditional
-    attr_reader :keyword
-
-    # [IfMod | UnlessMod] the node that is being formatted
-    attr_reader :node
-
-    def initialize(keyword, node)
-      @keyword = keyword
-      @node = node
-    end
-
-    def format(q)
-      if ContainsAssignment.call(node.statement) || q.parent.is_a?(In)
-        q.group { format_flat(q) }
-      else
-        q.group { q.if_break { format_break(q) }.if_flat { format_flat(q) } }
-      end
-    end
-
-    private
-
-    def format_break(q)
-      q.text("#{keyword} ")
-      q.nest(keyword.length + 1) { q.format(node.predicate) }
-      q.indent do
-        q.breakable_space
-        q.format(node.statement)
-      end
-      q.breakable_space
-      q.text("end")
-    end
-
-    def format_flat(q)
-      Parentheses.flat(q) do
-        q.format(node.statement)
-        q.text(" #{keyword} ")
-        q.format(node.predicate)
-      end
-    end
-  end
-
-  # IfMod represents the modifier form of an +if+ statement.
-  #
-  #     expression if predicate
-  #
-  class IfMod < Node
-    # [untyped] the expression to be executed
-    attr_reader :statement
-
-    # [untyped] the expression to be checked
-    attr_reader :predicate
-
-    # [Array[ Comment | EmbDoc ]] the comments attached to this node
-    attr_reader :comments
-
-    def initialize(statement:, predicate:, location:, comments: [])
-      @statement = statement
-      @predicate = predicate
-      @location = location
-      @comments = comments
-    end
-
-    def accept(visitor)
-      visitor.visit_if_mod(self)
-    end
-
-    def child_nodes
-      [statement, predicate]
-    end
-
-    alias deconstruct child_nodes
-
-    def deconstruct_keys(_keys)
-      {
-        statement: statement,
-        predicate: predicate,
-        location: location,
-        comments: comments
-      }
-    end
-
-    def format(q)
-      ConditionalModFormatter.new("if", self).format(q)
-    end
-  end
-
   # Imaginary represents an imaginary number literal.
   #
   #     1i
@@ -5803,10 +5461,10 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(value:, location:, comments: [])
+    def initialize(value:, location:)
       @value = value
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -5848,12 +5506,12 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(pattern:, statements:, consequent:, location:, comments: [])
+    def initialize(pattern:, statements:, consequent:, location:)
       @pattern = pattern
       @statements = statements
       @consequent = consequent
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -5909,10 +5567,10 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(value:, location:, comments: [])
+    def initialize(value:, location:)
       @value = value
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -5953,10 +5611,10 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(value:, location:, comments: [])
+    def initialize(value:, location:)
       @value = value
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -6001,11 +5659,11 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(value:, location:, comments: [])
+    def initialize(value:, location:)
       @value = value
       @name = value.to_sym
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -6039,10 +5697,10 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(name:, location:, comments: [])
+    def initialize(name:, location:)
       @name = name
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -6085,10 +5743,10 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(value:, location:, comments: [])
+    def initialize(value:, location:)
       @value = value
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -6155,11 +5813,11 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(params:, statements:, location:, comments: [])
+    def initialize(params:, statements:, location:)
       @params = params
       @statements = statements
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -6263,11 +5921,11 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(params:, locals:, location:, comments: [])
+    def initialize(params:, locals:, location:)
       @params = params
       @locals = locals
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -6306,10 +5964,10 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(value:, location:, comments: [])
+    def initialize(value:, location:)
       @value = value
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -6339,10 +5997,10 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(value:, location:, comments: [])
+    def initialize(value:, location:)
       @value = value
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -6372,10 +6030,10 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(value:, location:, comments: [])
+    def initialize(value:, location:)
       @value = value
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -6421,11 +6079,11 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(target:, value:, location:, comments: [])
+    def initialize(target:, value:, location:)
       @target = target
       @value = value
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -6459,20 +6117,20 @@ module SyntaxTree
   #     method {}
   #
   class MethodAddBlock < Node
-    # [Call | Command | CommandCall | FCall] the method call
+    # [Call | Command | CommandCall] the method call
     attr_reader :call
 
-    # [BraceBlock | DoBlock] the block being sent with the method call
+    # [Block] the block being sent with the method call
     attr_reader :block
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(call:, block:, location:, comments: [])
+    def initialize(call:, block:, location:)
       @call = call
       @block = block
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -6529,11 +6187,11 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(parts:, comma: false, location:, comments: [])
+    def initialize(parts:, comma: false, location:)
       @parts = parts
       @comma = comma
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -6573,11 +6231,11 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(contents:, comma: false, location:, comments: [])
+    def initialize(contents:, comma: false, location:)
       @contents = contents
       @comma = comma
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -6631,11 +6289,11 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(constant:, bodystmt:, location:, comments: [])
+    def initialize(constant:, bodystmt:, location:)
       @constant = constant
       @bodystmt = bodystmt
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -6701,10 +6359,10 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(parts:, location:, comments: [])
+    def initialize(parts:, location:)
       @parts = parts
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -6750,10 +6408,10 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(arguments:, location:, comments: [])
+    def initialize(arguments:, location:)
       @arguments = arguments
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -6790,11 +6448,11 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(value:, location:, comments: [])
+    def initialize(value:, location:)
       @value = value
       @name = value.to_sym
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -6835,12 +6493,12 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(target:, operator:, value:, location:, comments: [])
+    def initialize(target:, operator:, value:, location:)
       @target = target
       @operator = operator
       @value = value
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -7081,7 +6739,7 @@ module SyntaxTree
       @keyword_rest = keyword_rest
       @block = block
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     # Params nodes are the most complicated in the tree. Occasionally you want
@@ -7145,8 +6803,7 @@ module SyntaxTree
         return
       end
 
-      case q.parent
-      when Def, Defs, DefEndless
+      if q.parent.is_a?(Def)
         q.nest(0) do
           q.text("(")
           q.group do
@@ -7187,11 +6844,11 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(lparen:, contents:, location:, comments: [])
+    def initialize(lparen:, contents:, location:)
       @lparen = lparen
       @contents = contents
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -7239,10 +6896,10 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(value:, location:, comments: [])
+    def initialize(value:, location:)
       @value = value
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -7272,10 +6929,10 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(statements:, location:, comments: [])
+    def initialize(statements:, location:)
       @statements = statements
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -7316,11 +6973,11 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(beginning:, elements:, location:, comments: [])
+    def initialize(beginning:, elements:, location:)
       @beginning = beginning
       @elements = elements
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -7410,11 +7067,11 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(beginning:, elements:, location:, comments: [])
+    def initialize(beginning:, elements:, location:)
       @beginning = beginning
       @elements = elements
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -7501,10 +7158,10 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(value:, location:, comments: [])
+    def initialize(value:, location:)
       @value = value
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -7581,16 +7238,12 @@ module SyntaxTree
   #     redo
   #
   class Redo < Node
-    # [String] the value of the keyword
-    attr_reader :value
-
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(value:, location:, comments: [])
-      @value = value
+    def initialize(location:)
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -7604,11 +7257,11 @@ module SyntaxTree
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
-      { value: value, location: location, comments: comments }
+      { location: location, comments: comments }
     end
 
     def format(q)
-      q.text(value)
+      q.text("redo")
     end
   end
 
@@ -7732,12 +7385,12 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(beginning:, ending:, parts:, location:, comments: [])
+    def initialize(beginning:, ending:, parts:, location:)
       @beginning = beginning
       @ending = ending
       @parts = parts
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -7843,11 +7496,11 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(exceptions:, variable:, location:, comments: [])
+    def initialize(exceptions:, variable:, location:)
       @exceptions = exceptions
       @variable = variable
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -7919,7 +7572,7 @@ module SyntaxTree
       @statements = statements
       @consequent = consequent
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def bind_end(end_char, end_column)
@@ -8004,11 +7657,11 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(statement:, value:, location:, comments: [])
+    def initialize(statement:, value:, location:)
       @statement = statement
       @value = value
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -8061,10 +7714,10 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(name:, location:, comments: [])
+    def initialize(name:, location:)
       @name = name
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -8092,16 +7745,12 @@ module SyntaxTree
   #     retry
   #
   class Retry < Node
-    # [String] the value of the keyword
-    attr_reader :value
-
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(value:, location:, comments: [])
-      @value = value
+    def initialize(location:)
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -8115,11 +7764,11 @@ module SyntaxTree
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
-      { value: value, location: location, comments: comments }
+      { location: location, comments: comments }
     end
 
     def format(q)
-      q.text(value)
+      q.text("retry")
     end
   end
 
@@ -8128,16 +7777,16 @@ module SyntaxTree
   #     return value
   #
   class Return < Node
-    # [Args] the arguments being passed to the keyword
+    # [nil | Args] the arguments being passed to the keyword
     attr_reader :arguments
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(arguments:, location:, comments: [])
+    def initialize(arguments:, location:)
       @arguments = arguments
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -8156,42 +7805,6 @@ module SyntaxTree
 
     def format(q)
       FlowControlFormatter.new("return", self).format(q)
-    end
-  end
-
-  # Return0 represents the bare +return+ keyword with no arguments.
-  #
-  #     return
-  #
-  class Return0 < Node
-    # [String] the value of the keyword
-    attr_reader :value
-
-    # [Array[ Comment | EmbDoc ]] the comments attached to this node
-    attr_reader :comments
-
-    def initialize(value:, location:, comments: [])
-      @value = value
-      @location = location
-      @comments = comments
-    end
-
-    def accept(visitor)
-      visitor.visit_return0(self)
-    end
-
-    def child_nodes
-      []
-    end
-
-    alias deconstruct child_nodes
-
-    def deconstruct_keys(_keys)
-      { value: value, location: location, comments: comments }
-    end
-
-    def format(q)
-      q.text(value)
     end
   end
 
@@ -8237,11 +7850,11 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(target:, bodystmt:, location:, comments: [])
+    def initialize(target:, bodystmt:, location:)
       @target = target
       @bodystmt = bodystmt
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -8294,11 +7907,11 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(parser, body:, location:, comments: [])
+    def initialize(parser, body:, location:)
       @parser = parser
       @body = body
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def bind(start_char, start_column, end_char, end_column)
@@ -8498,11 +8111,11 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(left:, right:, location:, comments: [])
+    def initialize(left:, right:, location:)
       @left = left
       @right = right
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -8544,10 +8157,10 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(variable:, location:, comments: [])
+    def initialize(variable:, location:)
       @variable = variable
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -8584,10 +8197,10 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(statements:, location:, comments: [])
+    def initialize(statements:, location:)
       @statements = statements
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -8646,11 +8259,11 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(parts:, quote:, location:, comments: [])
+    def initialize(parts:, quote:, location:)
       @parts = parts
       @quote = quote
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -8721,10 +8334,10 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(arguments:, location:, comments: [])
+    def initialize(arguments:, location:)
       @arguments = arguments
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -8838,10 +8451,10 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(value:, location:, comments: [])
+    def initialize(value:, location:)
       @value = value
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -8878,11 +8491,11 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(beginning:, elements:, location:, comments: [])
+    def initialize(beginning:, elements:, location:)
       @beginning = beginning
       @elements = elements
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -9031,10 +8644,10 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(constant:, location:, comments: [])
+    def initialize(constant:, location:)
       @constant = constant
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -9069,10 +8682,10 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(constant:, location:, comments: [])
+    def initialize(constant:, location:)
       @constant = constant
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -9144,10 +8757,10 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(value:, location:, comments: [])
+    def initialize(value:, location:)
       @value = value
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def match?(pattern)
@@ -9222,11 +8835,11 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(statement:, parentheses:, location:, comments: [])
+    def initialize(statement:, parentheses:, location:)
       @statement = statement
       @parentheses = parentheses
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -9288,11 +8901,11 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(operator:, statement:, location:, comments: [])
+    def initialize(operator:, statement:, location:)
       @operator = operator
       @statement = statement
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -9355,10 +8968,10 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(symbols:, location:, comments: [])
+    def initialize(symbols:, location:)
       @symbols = symbols
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -9417,7 +9030,7 @@ module SyntaxTree
       @statements = statements
       @consequent = consequent
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -9443,87 +9056,68 @@ module SyntaxTree
     def format(q)
       ConditionalFormatter.new("unless", self).format(q)
     end
-  end
 
-  # UnlessMod represents the modifier form of an +unless+ statement.
-  #
-  #     expression unless predicate
-  #
-  class UnlessMod < Node
-    # [untyped] the expression to be executed
-    attr_reader :statement
-
-    # [untyped] the expression to be checked
-    attr_reader :predicate
-
-    # [Array[ Comment | EmbDoc ]] the comments attached to this node
-    attr_reader :comments
-
-    def initialize(statement:, predicate:, location:, comments: [])
-      @statement = statement
-      @predicate = predicate
-      @location = location
-      @comments = comments
-    end
-
-    def accept(visitor)
-      visitor.visit_unless_mod(self)
-    end
-
-    def child_nodes
-      [statement, predicate]
-    end
-
-    alias deconstruct child_nodes
-
-    def deconstruct_keys(_keys)
-      {
-        statement: statement,
-        predicate: predicate,
-        location: location,
-        comments: comments
-      }
-    end
-
-    def format(q)
-      ConditionalModFormatter.new("unless", self).format(q)
+    # Checks if the node was originally found in the modifier form.
+    def modifier?
+      predicate.location.start_char > statements.location.start_char
     end
   end
 
-  # Formats an Until, UntilMod, While, or WhileMod node.
+  # Formats an Until or While node.
   class LoopFormatter
     # [String] the name of the keyword used for this loop
     attr_reader :keyword
 
-    # [Until | UntilMod | While | WhileMod] the node that is being formatted
+    # [Until | While] the node that is being formatted
     attr_reader :node
 
-    # [untyped] the statements associated with the node
-    attr_reader :statements
-
-    def initialize(keyword, node, statements)
+    def initialize(keyword, node)
       @keyword = keyword
       @node = node
-      @statements = statements
     end
 
     def format(q)
-      if ContainsAssignment.call(node.predicate)
+      # If we're in the modifier form and we're modifying a `begin`, then this
+      # is a special case where we need to explicitly use the modifier form
+      # because otherwise the semantic meaning changes. This looks like:
+      #
+      #     begin
+      #       foo
+      #     end while bar
+      #
+      # Also, if the statement of the modifier includes an assignment, then we
+      # can't know for certain that it won't impact the predicate, so we need to
+      # force it to stay as it is. This looks like:
+      #
+      #     foo = bar while foo
+      #
+      if node.modifier? && (statement = node.statements.body.first) &&
+           (statement.is_a?(Begin) || ContainsAssignment.call(statement))
+        q.format(statement)
+        q.text(" #{keyword} ")
+        q.format(node.predicate)
+      elsif node.statements.empty?
+        q.group do
+          q.text("#{keyword} ")
+          q.nest(keyword.length + 1) { q.format(node.predicate) }
+          q.breakable_force
+          q.text("end")
+        end
+      elsif ContainsAssignment.call(node.predicate)
         format_break(q)
         q.break_parent
-        return
-      end
-
-      q.group do
-        q
-          .if_break { format_break(q) }
-          .if_flat do
-            Parentheses.flat(q) do
-              q.format(statements)
-              q.text(" #{keyword} ")
-              q.format(node.predicate)
+      else
+        q.group do
+          q
+            .if_break { format_break(q) }
+            .if_flat do
+              Parentheses.flat(q) do
+                q.format(node.statements)
+                q.text(" #{keyword} ")
+                q.format(node.predicate)
+              end
             end
-          end
+        end
       end
     end
 
@@ -9534,7 +9128,7 @@ module SyntaxTree
       q.nest(keyword.length + 1) { q.format(node.predicate) }
       q.indent do
         q.breakable_empty
-        q.format(statements)
+        q.format(node.statements)
       end
       q.breakable_empty
       q.text("end")
@@ -9556,11 +9150,11 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(predicate:, statements:, location:, comments: [])
+    def initialize(predicate:, statements:, location:)
       @predicate = predicate
       @statements = statements
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -9583,129 +9177,11 @@ module SyntaxTree
     end
 
     def format(q)
-      if statements.empty?
-        keyword = "until "
-
-        q.group do
-          q.text(keyword)
-          q.nest(keyword.length) { q.format(predicate) }
-          q.breakable_force
-          q.text("end")
-        end
-      else
-        LoopFormatter.new("until", self, statements).format(q)
-      end
-    end
-  end
-
-  # UntilMod represents the modifier form of a +until+ loop.
-  #
-  #     expression until predicate
-  #
-  class UntilMod < Node
-    # [untyped] the expression to be executed
-    attr_reader :statement
-
-    # [untyped] the expression to be checked
-    attr_reader :predicate
-
-    # [Array[ Comment | EmbDoc ]] the comments attached to this node
-    attr_reader :comments
-
-    def initialize(statement:, predicate:, location:, comments: [])
-      @statement = statement
-      @predicate = predicate
-      @location = location
-      @comments = comments
+      LoopFormatter.new("until", self).format(q)
     end
 
-    def accept(visitor)
-      visitor.visit_until_mod(self)
-    end
-
-    def child_nodes
-      [statement, predicate]
-    end
-
-    alias deconstruct child_nodes
-
-    def deconstruct_keys(_keys)
-      {
-        statement: statement,
-        predicate: predicate,
-        location: location,
-        comments: comments
-      }
-    end
-
-    def format(q)
-      # If we're in the modifier form and we're modifying a `begin`, then this
-      # is a special case where we need to explicitly use the modifier form
-      # because otherwise the semantic meaning changes. This looks like:
-      #
-      #     begin
-      #       foo
-      #     end until bar
-      #
-      # Also, if the statement of the modifier includes an assignment, then we
-      # can't know for certain that it won't impact the predicate, so we need to
-      # force it to stay as it is. This looks like:
-      #
-      #     foo = bar until foo
-      #
-      if statement.is_a?(Begin) || ContainsAssignment.call(statement)
-        q.format(statement)
-        q.text(" until ")
-        q.format(predicate)
-      else
-        LoopFormatter.new("until", self, statement).format(q)
-      end
-    end
-  end
-
-  # VarAlias represents when you're using the +alias+ keyword with global
-  # variable arguments.
-  #
-  #     alias $new $old
-  #
-  class VarAlias < Node
-    # [GVar] the new alias of the variable
-    attr_reader :left
-
-    # [Backref | GVar] the current name of the variable to be aliased
-    attr_reader :right
-
-    # [Array[ Comment | EmbDoc ]] the comments attached to this node
-    attr_reader :comments
-
-    def initialize(left:, right:, location:, comments: [])
-      @left = left
-      @right = right
-      @location = location
-      @comments = comments
-    end
-
-    def accept(visitor)
-      visitor.visit_var_alias(self)
-    end
-
-    def child_nodes
-      [left, right]
-    end
-
-    alias deconstruct child_nodes
-
-    def deconstruct_keys(_keys)
-      { left: left, right: right, location: location, comments: comments }
-    end
-
-    def format(q)
-      keyword = "alias "
-
-      q.text(keyword)
-      q.format(left)
-      q.text(" ")
-      q.format(right)
+    def modifier?
+      predicate.location.start_char > statements.location.start_char
     end
   end
 
@@ -9722,10 +9198,10 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(value:, location:, comments: [])
+    def initialize(value:, location:)
       @value = value
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -9766,10 +9242,10 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(value:, location:, comments: [])
+    def initialize(value:, location:)
       @value = value
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -9830,10 +9306,10 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(value:, location:, comments: [])
+    def initialize(value:, location:)
       @value = value
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -9870,10 +9346,10 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(value:, location:, comments: [])
+    def initialize(value:, location:)
       @value = value
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -9910,9 +9386,9 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(location:, comments: [])
+    def initialize(location:)
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -9963,7 +9439,7 @@ module SyntaxTree
       @statements = statements
       @consequent = consequent
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -10019,9 +9495,7 @@ module SyntaxTree
             # last argument to the predicate is and endless range, then you are
             # forced to use the "then" keyword to make it parse properly.
             last = arguments.parts.last
-            if (last.is_a?(Dot2) || last.is_a?(Dot3)) && !last.right
-              q.text(" then")
-            end
+            q.text(" then") if last.is_a?(RangeLiteral) && !last.right
           end
         end
 
@@ -10055,11 +9529,11 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(predicate:, statements:, location:, comments: [])
+    def initialize(predicate:, statements:, location:)
       @predicate = predicate
       @statements = statements
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -10082,83 +9556,11 @@ module SyntaxTree
     end
 
     def format(q)
-      if statements.empty?
-        keyword = "while "
-
-        q.group do
-          q.text(keyword)
-          q.nest(keyword.length) { q.format(predicate) }
-          q.breakable_force
-          q.text("end")
-        end
-      else
-        LoopFormatter.new("while", self, statements).format(q)
-      end
-    end
-  end
-
-  # WhileMod represents the modifier form of a +while+ loop.
-  #
-  #     expression while predicate
-  #
-  class WhileMod < Node
-    # [untyped] the expression to be executed
-    attr_reader :statement
-
-    # [untyped] the expression to be checked
-    attr_reader :predicate
-
-    # [Array[ Comment | EmbDoc ]] the comments attached to this node
-    attr_reader :comments
-
-    def initialize(statement:, predicate:, location:, comments: [])
-      @statement = statement
-      @predicate = predicate
-      @location = location
-      @comments = comments
+      LoopFormatter.new("while", self).format(q)
     end
 
-    def accept(visitor)
-      visitor.visit_while_mod(self)
-    end
-
-    def child_nodes
-      [statement, predicate]
-    end
-
-    alias deconstruct child_nodes
-
-    def deconstruct_keys(_keys)
-      {
-        statement: statement,
-        predicate: predicate,
-        location: location,
-        comments: comments
-      }
-    end
-
-    def format(q)
-      # If we're in the modifier form and we're modifying a `begin`, then this
-      # is a special case where we need to explicitly use the modifier form
-      # because otherwise the semantic meaning changes. This looks like:
-      #
-      #     begin
-      #       foo
-      #     end while bar
-      #
-      # Also, if the statement of the modifier includes an assignment, then we
-      # can't know for certain that it won't impact the predicate, so we need to
-      # force it to stay as it is. This looks like:
-      #
-      #     foo = bar while foo
-      #
-      if statement.is_a?(Begin) || ContainsAssignment.call(statement)
-        q.format(statement)
-        q.text(" while ")
-        q.format(predicate)
-      else
-        LoopFormatter.new("while", self, statement).format(q)
-      end
+    def modifier?
+      predicate.location.start_char > statements.location.start_char
     end
   end
 
@@ -10177,10 +9579,10 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(parts:, location:, comments: [])
+    def initialize(parts:, location:)
       @parts = parts
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def match?(pattern)
@@ -10220,11 +9622,11 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(beginning:, elements:, location:, comments: [])
+    def initialize(beginning:, elements:, location:)
       @beginning = beginning
       @elements = elements
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -10342,10 +9744,10 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(parts:, location:, comments: [])
+    def initialize(parts:, location:)
       @parts = parts
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -10374,16 +9776,16 @@ module SyntaxTree
   #     yield value
   #
   class Yield < Node
-    # [Args | Paren] the arguments passed to the yield
+    # [nil | Args | Paren] the arguments passed to the yield
     attr_reader :arguments
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(arguments:, location:, comments: [])
+    def initialize(arguments:, location:)
       @arguments = arguments
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -10401,6 +9803,11 @@ module SyntaxTree
     end
 
     def format(q)
+      if arguments.nil?
+        q.text("yield")
+        return
+      end
+
       q.group do
         q.text("yield")
 
@@ -10419,57 +9826,17 @@ module SyntaxTree
     end
   end
 
-  # Yield0 represents the bare +yield+ keyword with no arguments.
-  #
-  #     yield
-  #
-  class Yield0 < Node
-    # [String] the value of the keyword
-    attr_reader :value
-
-    # [Array[ Comment | EmbDoc ]] the comments attached to this node
-    attr_reader :comments
-
-    def initialize(value:, location:, comments: [])
-      @value = value
-      @location = location
-      @comments = comments
-    end
-
-    def accept(visitor)
-      visitor.visit_yield0(self)
-    end
-
-    def child_nodes
-      []
-    end
-
-    alias deconstruct child_nodes
-
-    def deconstruct_keys(_keys)
-      { value: value, location: location, comments: comments }
-    end
-
-    def format(q)
-      q.text(value)
-    end
-  end
-
   # ZSuper represents the bare +super+ keyword with no arguments.
   #
   #     super
   #
   class ZSuper < Node
-    # [String] the value of the keyword
-    attr_reader :value
-
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(value:, location:, comments: [])
-      @value = value
+    def initialize(location:)
       @location = location
-      @comments = comments
+      @comments = []
     end
 
     def accept(visitor)
@@ -10483,11 +9850,11 @@ module SyntaxTree
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
-      { value: value, location: location, comments: comments }
+      { location: location, comments: comments }
     end
 
     def format(q)
-      q.text(value)
+      q.text("super")
     end
   end
 end
