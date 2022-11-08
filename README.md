@@ -27,17 +27,21 @@ It is built with only standard library dependencies. It additionally ships with 
   - [SyntaxTree.read(filepath)](#syntaxtreereadfilepath)
   - [SyntaxTree.parse(source)](#syntaxtreeparsesource)
   - [SyntaxTree.format(source)](#syntaxtreeformatsource)
+  - [SyntaxTree.mutation(&block)](#syntaxtreemutationblock)
   - [SyntaxTree.search(source, query, &block)](#syntaxtreesearchsource-query-block)
 - [Nodes](#nodes)
   - [child_nodes](#child_nodes)
+  - [copy(**)](#copy)
   - [Pattern matching](#pattern-matching)
   - [pretty_print(q)](#pretty_printq)
   - [to_json(*opts)](#to_jsonopts)
   - [format(q)](#formatq)
+  - [===(other)](#other)
   - [construct_keys](#construct_keys)
 - [Visitor](#visitor)
   - [visit_method](#visit_method)
   - [BasicVisitor](#basicvisitor)
+  - [MutationVisitor](#mutationvisitor)
 - [Language server](#language-server)
   - [textDocument/formatting](#textdocumentformatting)
   - [textDocument/inlayHint](#textdocumentinlayhint)
@@ -332,6 +336,10 @@ This function takes an input string containing Ruby code and returns the syntax 
 
 This function takes an input string containing Ruby code, parses it into its underlying syntax tree, and formats it back out to a string. You can optionally pass a second argument to this method as well that is the maximum width to print. It defaults to `80`.
 
+### SyntaxTree.mutation(&block)
+
+This function yields a new mutation visitor to the block, and then returns the initialized visitor. It's effectively a shortcut for creating a `SyntaxTree::Visitor::MutationVisitor` without having to remember the class name. For more information on that visitor, see the definition below.
+
 ### SyntaxTree.search(source, query, &block)
 
 This function takes an input string containing Ruby code, an input string containing a valid Ruby `in` clause expression that can be used to match against nodes in the tree (can be generated using `stree expr`, `stree match`, or `Node#construct_keys`), and a block. Each node that matches the given query will be yielded to the block. The block will receive the node as its only argument.
@@ -348,6 +356,20 @@ One of the easiest ways to descend the tree is to use the `child_nodes` function
 program = SyntaxTree.parse("1 + 1")
 program.child_nodes.first.child_nodes.first
 # => (binary (int "1") :+ (int "1"))
+```
+
+### copy
+
+This method returns a copy of the node, with the given attributes replaced.
+
+```ruby
+program = SyntaxTree.parse("1 + 1")
+
+binary = program.statements.body.first
+# => (binary (int "1") + (int "1"))
+
+binary.copy(operator: :-)
+# => (binary (int "1") - (int "1"))
 ```
 
 ### Pattern matching
@@ -405,6 +427,18 @@ binary.format(formatter)
 formatter.flush
 formatter.output.join
 # => "1 + 1"
+```
+
+### ===(other)
+
+Every node responds to `===`, which is used to check if the given other node matches all of the attributes of the current node except for location and comments. For example:
+
+```ruby
+program1 = SyntaxTree.parse("1 + 1")
+program2 = SyntaxTree.parse("1 + 1")
+
+program1 === program2
+# => true
 ```
 
 ### construct_keys
@@ -494,6 +528,42 @@ end
 ```
 
 The visitor defined above will error out unless it's only visiting a `SyntaxTree::Int` node. This is useful in a couple of ways, e.g., if you're trying to define a visitor to handle the whole tree but it's currently a work-in-progress.
+
+### MutationVisitor
+
+The `MutationVisitor` is a visitor that can be used to mutate the tree. It works by defining a default `visit_*` method that returns a copy of the given node with all of its attributes visited. This new node will replace the old node in the tree. Typically, you use the `#mutate` method on it to define mutations using patterns. For example:
+
+```ruby
+# Create a new visitor
+visitor = SyntaxTree::Visitor::MutationVisitor.new
+
+# Specify that it should mutate If nodes with assignments in their predicates
+visitor.mutate("If[predicate: Assign | OpAssign]") do |node|
+  # Get the existing If's predicate node
+  predicate = node.predicate
+
+  # Create a new predicate node that wraps the existing predicate node
+  # in parentheses
+  predicate =
+    SyntaxTree::Paren.new(
+      lparen: SyntaxTree::LParen.default,
+      contents: predicate,
+      location: predicate.location
+    )
+
+  # Return a copy of this node with the new predicate
+  node.copy(predicate: predicate)
+end
+
+source = "if a = 1; end"
+program = SyntaxTree.parse(source)
+
+SyntaxTree::Formatter.format(source, program)
+# => "if a = 1\nend\n"
+
+SyntaxTree::Formatter.format(source, program.accept(visitor))
+# => "if (a = 1)\nend\n"
+```
 
 ### WithEnvironment
 

@@ -84,6 +84,9 @@ module SyntaxTree
       )
     end
 
+    # A convenience method that is typically used when you don't care about the
+    # location of a node, but need to create a Location instance to pass to a
+    # constructor.
     def self.default
       new(
         start_line: 1,
@@ -7239,6 +7242,15 @@ module SyntaxTree
     def ===(other)
       other.is_a?(LBrace) && value === other.value
     end
+
+    # Because some nodes keep around a { token so that comments can be attached
+    # to it if they occur in the source, oftentimes an LBrace is a child of
+    # another node. This means it's required at initialization time. To make it
+    # easier to create LBrace nodes without any specific value, this method
+    # provides a default node.
+    def self.default
+      new(value: "{", location: Location.default)
+    end
   end
 
   # LBracket represents the use of a left bracket, i.e., [.
@@ -7287,6 +7299,15 @@ module SyntaxTree
     def ===(other)
       other.is_a?(LBracket) && value === other.value
     end
+
+    # Because some nodes keep around a [ token so that comments can be attached
+    # to it if they occur in the source, oftentimes an LBracket is a child of
+    # another node. This means it's required at initialization time. To make it
+    # easier to create LBracket nodes without any specific value, this method
+    # provides a default node.
+    def self.default
+      new(value: "[", location: Location.default)
+    end
   end
 
   # LParen represents the use of a left parenthesis, i.e., (.
@@ -7334,6 +7355,15 @@ module SyntaxTree
 
     def ===(other)
       other.is_a?(LParen) && value === other.value
+    end
+
+    # Because some nodes keep around a ( token so that comments can be attached
+    # to it if they occur in the source, oftentimes an LParen is a child of
+    # another node. This means it's required at initialization time. To make it
+    # easier to create LParen nodes without any specific value, this method
+    # provides a default node.
+    def self.default
+      new(value: "(", location: Location.default)
     end
   end
 

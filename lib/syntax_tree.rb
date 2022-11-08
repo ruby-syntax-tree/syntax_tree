@@ -62,6 +62,13 @@ module SyntaxTree
     formatter.output.join
   end
 
+  # A convenience method for creating a new mutation visitor.
+  def self.mutation
+    visitor = Visitor::MutationVisitor.new
+    yield visitor
+    visitor
+  end
+
   # Returns the source from the given filepath taking into account any potential
   # magic encoding comments.
   def self.read(filepath)

@@ -5,30 +5,33 @@ module SyntaxTree
     # This visitor walks through the tree and copies each node as it is being
     # visited. This is useful for mutating the tree before it is formatted.
     class MutationVisitor < BasicVisitor
-      # Here we maintain a stack of parent nodes so that it's easy to reflect on
-      # the context of a given node while mutating it.
-      attr_reader :stack
+      attr_reader :mutations
 
       def initialize
-        @stack = []
+        @mutations = []
       end
 
-      # This is the main entrypoint that's going to be called when we're
-      # recursing down through the tree.
+      # Create a new mutation based on the given query that will mutate the node
+      # using the given block. The block should return a new node that will take
+      # the place of the given node in the tree. These blocks frequently make
+      # use of the `copy` method on nodes to create a new node with the same
+      # properties as the original node.
+      def mutate(query, &block)
+        mutations << [Pattern.new(query).compile, block]
+      end
+
+      # This is the base visit method for each node in the tree. It first
+      # creates a copy of the node using the visit_* methods defined below. Then
+      # it checks each mutation in sequence and calls it if it finds a match.
       def visit(node)
         return unless node
-
-        stack << node
         result = node.accept(self)
 
-        stack.pop
-        result
-      end
+        mutations.each do |(pattern, mutation)|
+          result = mutation.call(result) if pattern.call(result)
+        end
 
-      # This is a small helper to visit an array of nodes and return the result
-      # of visiting them all.
-      def visit_all(nodes)
-        nodes.map { |node| visit(node) }
+        result
       end
 
       # Visit a BEGINBlock node.
@@ -435,6 +438,7 @@ module SyntaxTree
       # Visit a If node.
       def visit_if(node)
         node.copy(
+          predicate: visit(node.predicate),
           statements: visit(node.statements),
           consequent: visit(node.consequent)
         )
@@ -822,6 +826,7 @@ module SyntaxTree
       # Visit a Unless node.
       def visit_unless(node)
         node.copy(
+          predicate: visit(node.predicate),
           statements: visit(node.statements),
           consequent: visit(node.consequent)
         )
@@ -829,7 +834,10 @@ module SyntaxTree
 
       # Visit a Until node.
       def visit_until(node)
-        node.copy(statements: visit(node.statements))
+        node.copy(
+          predicate: visit(node.predicate),
+          statements: visit(node.statements)
+        )
       end
 
       # Visit a VarField node.
@@ -868,7 +876,10 @@ module SyntaxTree
 
       # Visit a While node.
       def visit_while(node)
-        node.copy(statements: visit(node.statements))
+        node.copy(
+          predicate: visit(node.predicate),
+          statements: visit(node.statements)
+        )
       end
 
       # Visit a Word node.
