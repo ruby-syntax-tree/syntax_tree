@@ -161,12 +161,11 @@ module SyntaxTree
       [lbrace, statements]
     end
 
-    def copy(lbrace: nil, statements: nil, location: nil, comments: nil)
+    def copy(lbrace: nil, statements: nil, location: nil)
       BEGINBlock.new(
         lbrace: lbrace || self.lbrace,
         statements: statements || self.statements,
-        location: location || self.location,
-        comments: comments || self.comments
+        location: location || self.location
       )
     end
 
@@ -222,12 +221,8 @@ module SyntaxTree
       []
     end
 
-    def copy(value: nil, location: nil, comments: nil)
-      CHAR.new(
-        value: value || self.value,
-        location: location || self.location,
-        comments: comments || self.comments
-      )
+    def copy(value: nil, location: nil)
+      CHAR.new(value: value || self.value, location: location || self.location)
     end
 
     alias deconstruct child_nodes
@@ -281,12 +276,11 @@ module SyntaxTree
       [lbrace, statements]
     end
 
-    def copy(lbrace: nil, statements: nil, location: nil, comments: nil)
+    def copy(lbrace: nil, statements: nil, location: nil)
       ENDBlock.new(
         lbrace: lbrace || self.lbrace,
         statements: statements || self.statements,
-        location: location || self.location,
-        comments: comments || self.comments
+        location: location || self.location
       )
     end
 
@@ -345,11 +339,10 @@ module SyntaxTree
       []
     end
 
-    def copy(value: nil, location: nil, comments: nil)
+    def copy(value: nil, location: nil)
       EndContent.new(
         value: value || self.value,
-        location: location || self.location,
-        comments: comments || self.comments
+        location: location || self.location
       )
     end
 
@@ -442,12 +435,11 @@ module SyntaxTree
       [left, right]
     end
 
-    def copy(left: nil, right: nil, location: nil, comments: nil)
+    def copy(left: nil, right: nil, location: nil)
       Alias.new(
         left: left || self.left,
         right: right || self.right,
-        location: location || self.location,
-        comments: comments || self.comments
+        location: location || self.location
       )
     end
 
@@ -516,12 +508,11 @@ module SyntaxTree
       [collection, index]
     end
 
-    def copy(collection: nil, index: nil, location: nil, comments: nil)
+    def copy(collection: nil, index: nil, location: nil)
       ARef.new(
         collection: collection || self.collection,
         index: index || self.index,
-        location: location || self.location,
-        comments: comments || self.comments
+        location: location || self.location
       )
     end
 
@@ -586,12 +577,11 @@ module SyntaxTree
       [collection, index]
     end
 
-    def copy(collection: nil, index: nil, location: nil, comments: nil)
+    def copy(collection: nil, index: nil, location: nil)
       ARefField.new(
         collection: collection || self.collection,
         index: index || self.index,
-        location: location || self.location,
-        comments: comments || self.comments
+        location: location || self.location
       )
     end
 
@@ -657,11 +647,10 @@ module SyntaxTree
       [arguments]
     end
 
-    def copy(arguments: nil, location: nil, comments: nil)
+    def copy(arguments: nil, location: nil)
       ArgParen.new(
         arguments: arguments || self.arguments,
-        location: location || self.location,
-        comments: comments || self.comments
+        location: location || self.location
       )
     end
 
@@ -738,12 +727,8 @@ module SyntaxTree
       parts
     end
 
-    def copy(parts: nil, location: nil, comments: nil)
-      Args.new(
-        parts: parts || self.parts,
-        location: location || self.location,
-        comments: comments || self.comments
-      )
+    def copy(parts: nil, location: nil)
+      Args.new(parts: parts || self.parts, location: location || self.location)
     end
 
     alias deconstruct child_nodes
@@ -782,11 +767,10 @@ module SyntaxTree
       [value]
     end
 
-    def copy(value: nil, location: nil, comments: nil)
+    def copy(value: nil, location: nil)
       ArgBlock.new(
         value: value || self.value,
-        location: location || self.location,
-        comments: comments || self.comments
+        location: location || self.location
       )
     end
 
@@ -827,11 +811,10 @@ module SyntaxTree
       [value]
     end
 
-    def copy(value: nil, location: nil, comments: nil)
+    def copy(value: nil, location: nil)
       ArgStar.new(
         value: value || self.value,
-        location: location || self.location,
-        comments: comments || self.comments
+        location: location || self.location
       )
     end
 
@@ -881,11 +864,8 @@ module SyntaxTree
       []
     end
 
-    def copy(location: nil, comments: nil)
-      ArgsForward.new(
-        location: location || self.location,
-        comments: comments || self.comments
-      )
+    def copy(location: nil)
+      ArgsForward.new(location: location || self.location)
     end
 
     alias deconstruct child_nodes
@@ -1071,12 +1051,11 @@ module SyntaxTree
       [lbracket, contents]
     end
 
-    def copy(lbracket: nil, contents: nil, location: nil, comments: nil)
+    def copy(lbracket: nil, contents: nil, location: nil)
       ArrayLiteral.new(
         lbracket: lbracket || self.lbracket,
         contents: contents || self.contents,
-        location: location || self.location,
-        comments: comments || self.comments
+        location: location || self.location
       )
     end
 
@@ -1258,16 +1237,14 @@ module SyntaxTree
       requireds: nil,
       rest: nil,
       posts: nil,
-      location: nil,
-      comments: nil
+      location: nil
     )
       AryPtn.new(
         constant: constant || self.constant,
         requireds: requireds || self.requireds,
         rest: rest || self.rest,
         posts: posts || self.posts,
-        location: location || self.location,
-        comments: comments || self.comments
+        location: location || self.location
       )
     end
 
@@ -1352,12 +1329,11 @@ module SyntaxTree
       [target, value]
     end
 
-    def copy(target: nil, value: nil, location: nil, comments: nil)
+    def copy(target: nil, value: nil, location: nil)
       Assign.new(
         target: target || self.target,
         value: value || self.value,
-        location: location || self.location,
-        comments: comments || self.comments
+        location: location || self.location
       )
     end
 
@@ -1397,7 +1373,7 @@ module SyntaxTree
   #
   #     { key1: value1, key2: value2 }
   #
-  # In the above example, the would be two AssocNew nodes.
+  # In the above example, the would be two Assoc nodes.
   class Assoc < Node
     # [untyped] the key of this pair
     attr_reader :key
@@ -1423,12 +1399,11 @@ module SyntaxTree
       [key, value]
     end
 
-    def copy(key: nil, value: nil, location: nil, comments: nil)
+    def copy(key: nil, value: nil, location: nil)
       Assoc.new(
         key: key || self.key,
         value: value || self.value,
-        location: location || self.location,
-        comments: comments || self.comments
+        location: location || self.location
       )
     end
 
@@ -1490,11 +1465,10 @@ module SyntaxTree
       [value]
     end
 
-    def copy(value: nil, location: nil, comments: nil)
+    def copy(value: nil, location: nil)
       AssocSplat.new(
         value: value || self.value,
-        location: location || self.location,
-        comments: comments || self.comments
+        location: location || self.location
       )
     end
 
@@ -1536,11 +1510,10 @@ module SyntaxTree
       []
     end
 
-    def copy(value: nil, location: nil, comments: nil)
+    def copy(value: nil, location: nil)
       Backref.new(
         value: value || self.value,
-        location: location || self.location,
-        comments: comments || self.comments
+        location: location || self.location
       )
     end
 
@@ -1579,11 +1552,10 @@ module SyntaxTree
       []
     end
 
-    def copy(value: nil, location: nil, comments: nil)
+    def copy(value: nil, location: nil)
       Backtick.new(
         value: value || self.value,
-        location: location || self.location,
-        comments: comments || self.comments
+        location: location || self.location
       )
     end
 
@@ -1699,11 +1671,10 @@ module SyntaxTree
       assocs
     end
 
-    def copy(assocs: nil, location: nil, comments: nil)
+    def copy(assocs: nil, location: nil)
       BareAssocHash.new(
         assocs: assocs || self.assocs,
-        location: location || self.location,
-        comments: comments || self.comments
+        location: location || self.location
       )
     end
 
@@ -1749,11 +1720,10 @@ module SyntaxTree
       [bodystmt]
     end
 
-    def copy(bodystmt: nil, location: nil, comments: nil)
+    def copy(bodystmt: nil, location: nil)
       Begin.new(
         bodystmt: bodystmt || self.bodystmt,
-        location: location || self.location,
-        comments: comments || self.comments
+        location: location || self.location
       )
     end
 
@@ -1805,11 +1775,10 @@ module SyntaxTree
       [statement]
     end
 
-    def copy(statement: nil, location: nil, comments: nil)
+    def copy(statement: nil, location: nil)
       PinnedBegin.new(
         statement: statement || self.statement,
-        location: location || self.location,
-        comments: comments || self.comments
+        location: location || self.location
       )
     end
 
@@ -1887,13 +1856,12 @@ module SyntaxTree
       [left, right]
     end
 
-    def copy(left: nil, operator: nil, right: nil, location: nil, comments: nil)
+    def copy(left: nil, operator: nil, right: nil, location: nil)
       Binary.new(
         left: left || self.left,
         operator: operator || self.operator,
         right: right || self.right,
-        location: location || self.location,
-        comments: comments || self.comments
+        location: location || self.location
       )
     end
 
@@ -1964,12 +1932,11 @@ module SyntaxTree
       [params, *locals]
     end
 
-    def copy(params: nil, locals: nil, location: nil, comments: nil)
+    def copy(params: nil, locals: nil, location: nil)
       BlockVar.new(
         params: params || self.params,
         locals: locals || self.locals,
-        location: location || self.location,
-        comments: comments || self.comments
+        location: location || self.location
       )
     end
 
@@ -2030,12 +1997,8 @@ module SyntaxTree
       [name]
     end
 
-    def copy(name: nil, location: nil, comments: nil)
-      BlockArg.new(
-        name: name || self.name,
-        location: location || self.location,
-        comments: comments || self.comments
-      )
+    def copy(name: nil, location: nil)
+      BlockArg.new(name: name || self.name, location: location || self.location)
     end
 
     alias deconstruct child_nodes
@@ -2135,18 +2098,18 @@ module SyntaxTree
     def copy(
       statements: nil,
       rescue_clause: nil,
+      else_keyword: nil,
       else_clause: nil,
       ensure_clause: nil,
-      location: nil,
-      comments: nil
+      location: nil
     )
       BodyStmt.new(
         statements: statements || self.statements,
         rescue_clause: rescue_clause || self.rescue_clause,
+        else_keyword: else_keyword || self.else_keyword,
         else_clause: else_clause || self.else_clause,
         ensure_clause: ensure_clause || self.ensure_clause,
-        location: location || self.location,
-        comments: comments || self.comments
+        location: location || self.location
       )
     end
 
@@ -2156,6 +2119,7 @@ module SyntaxTree
       {
         statements: statements,
         rescue_clause: rescue_clause,
+        else_keyword: else_keyword,
         else_clause: else_clause,
         ensure_clause: ensure_clause,
         location: location,
@@ -2414,11 +2378,10 @@ module SyntaxTree
       [arguments]
     end
 
-    def copy(arguments: nil, location: nil, comments: nil)
+    def copy(arguments: nil, location: nil)
       Break.new(
         arguments: arguments || self.arguments,
-        location: location || self.location,
-        comments: comments || self.comments
+        location: location || self.location
       )
     end
 
@@ -2743,16 +2706,14 @@ module SyntaxTree
       operator: nil,
       message: nil,
       arguments: nil,
-      location: nil,
-      comments: nil
+      location: nil
     )
       Call.new(
         receiver: receiver || self.receiver,
         operator: operator || self.operator,
         message: message || self.message,
         arguments: arguments || self.arguments,
-        location: location || self.location,
-        comments: comments || self.comments
+        location: location || self.location
       )
     end
 
@@ -2881,19 +2842,12 @@ module SyntaxTree
       [keyword, value, consequent]
     end
 
-    def copy(
-      keyword: nil,
-      value: nil,
-      consequent: nil,
-      location: nil,
-      comments: nil
-    )
+    def copy(keyword: nil, value: nil, consequent: nil, location: nil)
       Case.new(
         keyword: keyword || self.keyword,
         value: value || self.value,
         consequent: consequent || self.consequent,
-        location: location || self.location,
-        comments: comments || self.comments
+        location: location || self.location
       )
     end
 
@@ -2962,19 +2916,12 @@ module SyntaxTree
       [value, operator, pattern]
     end
 
-    def copy(
-      value: nil,
-      operator: nil,
-      pattern: nil,
-      location: nil,
-      comments: nil
-    )
+    def copy(value: nil, operator: nil, pattern: nil, location: nil)
       RAssign.new(
         value: value || self.value,
         operator: operator || self.operator,
         pattern: pattern || self.pattern,
-        location: location || self.location,
-        comments: comments || self.comments
+        location: location || self.location
       )
     end
 
@@ -3074,19 +3021,12 @@ module SyntaxTree
       [constant, superclass, bodystmt]
     end
 
-    def copy(
-      constant: nil,
-      superclass: nil,
-      bodystmt: nil,
-      location: nil,
-      comments: nil
-    )
+    def copy(constant: nil, superclass: nil, bodystmt: nil, location: nil)
       ClassDeclaration.new(
         constant: constant || self.constant,
         superclass: superclass || self.superclass,
         bodystmt: bodystmt || self.bodystmt,
-        location: location || self.location,
-        comments: comments || self.comments
+        location: location || self.location
       )
     end
 
@@ -3203,19 +3143,12 @@ module SyntaxTree
       [message, arguments, block]
     end
 
-    def copy(
-      message: nil,
-      arguments: nil,
-      block: nil,
-      location: nil,
-      comments: nil
-    )
+    def copy(message: nil, arguments: nil, block: nil, location: nil)
       Command.new(
         message: message || self.message,
         arguments: arguments || self.arguments,
         block: block || self.block,
-        location: location || self.location,
-        comments: comments || self.comments
+        location: location || self.location
       )
     end
 
@@ -3331,8 +3264,7 @@ module SyntaxTree
       message: nil,
       arguments: nil,
       block: nil,
-      location: nil,
-      comments: nil
+      location: nil
     )
       CommandCall.new(
         receiver: receiver || self.receiver,
@@ -3340,8 +3272,7 @@ module SyntaxTree
         message: message || self.message,
         arguments: arguments || self.arguments,
         block: block || self.block,
-        location: location || self.location,
-        comments: comments || self.comments
+        location: location || self.location
       )
     end
 
@@ -3531,12 +3462,8 @@ module SyntaxTree
       []
     end
 
-    def copy(value: nil, location: nil, comments: nil)
-      Const.new(
-        value: value || self.value,
-        location: location || self.location,
-        comments: comments || self.comments
-      )
+    def copy(value: nil, location: nil)
+      Const.new(value: value || self.value, location: location || self.location)
     end
 
     alias deconstruct child_nodes
@@ -3581,12 +3508,11 @@ module SyntaxTree
       [parent, constant]
     end
 
-    def copy(parent: nil, constant: nil, location: nil, comments: nil)
+    def copy(parent: nil, constant: nil, location: nil)
       ConstPathField.new(
         parent: parent || self.parent,
         constant: constant || self.constant,
-        location: location || self.location,
-        comments: comments || self.comments
+        location: location || self.location
       )
     end
 
@@ -3637,12 +3563,11 @@ module SyntaxTree
       [parent, constant]
     end
 
-    def copy(parent: nil, constant: nil, location: nil, comments: nil)
+    def copy(parent: nil, constant: nil, location: nil)
       ConstPathRef.new(
         parent: parent || self.parent,
         constant: constant || self.constant,
-        location: location || self.location,
-        comments: comments || self.comments
+        location: location || self.location
       )
     end
 
@@ -3691,11 +3616,10 @@ module SyntaxTree
       [constant]
     end
 
-    def copy(constant: nil, location: nil, comments: nil)
+    def copy(constant: nil, location: nil)
       ConstRef.new(
         constant: constant || self.constant,
-        location: location || self.location,
-        comments: comments || self.comments
+        location: location || self.location
       )
     end
 
@@ -3735,12 +3659,8 @@ module SyntaxTree
       []
     end
 
-    def copy(value: nil, location: nil, comments: nil)
-      CVar.new(
-        value: value || self.value,
-        location: location || self.location,
-        comments: comments || self.comments
-      )
+    def copy(value: nil, location: nil)
+      CVar.new(value: value || self.value, location: location || self.location)
     end
 
     alias deconstruct child_nodes
@@ -3802,8 +3722,7 @@ module SyntaxTree
       name: nil,
       params: nil,
       bodystmt: nil,
-      location: nil,
-      comments: nil
+      location: nil
     )
       Def.new(
         target: target || self.target,
@@ -3811,8 +3730,7 @@ module SyntaxTree
         name: name || self.name,
         params: params || self.params,
         bodystmt: bodystmt || self.bodystmt,
-        location: location || self.location,
-        comments: comments || self.comments
+        location: location || self.location
       )
     end
 
@@ -3906,11 +3824,10 @@ module SyntaxTree
       [value]
     end
 
-    def copy(value: nil, location: nil, comments: nil)
+    def copy(value: nil, location: nil)
       Defined.new(
         value: value || self.value,
-        location: location || self.location,
-        comments: comments || self.comments
+        location: location || self.location
       )
     end
 
@@ -3992,19 +3909,12 @@ module SyntaxTree
       [opening, block_var, bodystmt]
     end
 
-    def copy(
-      opening: nil,
-      block_var: nil,
-      bodystmt: nil,
-      location: nil,
-      comments: nil
-    )
+    def copy(opening: nil, block_var: nil, bodystmt: nil, location: nil)
       Block.new(
         opening: opening || self.opening,
         block_var: block_var || self.block_var,
         bodystmt: bodystmt || self.bodystmt,
-        location: location || self.location,
-        comments: comments || self.comments
+        location: location || self.location
       )
     end
 
@@ -4187,13 +4097,12 @@ module SyntaxTree
       [left, right]
     end
 
-    def copy(left: nil, operator: nil, right: nil, location: nil, comments: nil)
+    def copy(left: nil, operator: nil, right: nil, location: nil)
       RangeLiteral.new(
         left: left || self.left,
         operator: operator || self.operator,
         right: right || self.right,
-        location: location || self.location,
-        comments: comments || self.comments
+        location: location || self.location
       )
     end
 
@@ -4299,12 +4208,11 @@ module SyntaxTree
       parts
     end
 
-    def copy(parts: nil, quote: nil, location: nil, comments: nil)
+    def copy(parts: nil, quote: nil, location: nil)
       DynaSymbol.new(
         parts: parts || self.parts,
         quote: quote || self.quote,
-        location: location || self.location,
-        comments: comments || self.comments
+        location: location || self.location
       )
     end
 
@@ -4419,12 +4327,11 @@ module SyntaxTree
       [keyword, statements]
     end
 
-    def copy(keyword: nil, statements: nil, location: nil, comments: nil)
+    def copy(keyword: nil, statements: nil, location: nil)
       Else.new(
         keyword: keyword || self.keyword,
         statements: statements || self.statements,
-        location: location || self.location,
-        comments: comments || self.comments
+        location: location || self.location
       )
     end
 
@@ -4494,19 +4401,12 @@ module SyntaxTree
       [predicate, statements, consequent]
     end
 
-    def copy(
-      predicate: nil,
-      statements: nil,
-      consequent: nil,
-      location: nil,
-      comments: nil
-    )
+    def copy(predicate: nil, statements: nil, consequent: nil, location: nil)
       Elsif.new(
         predicate: predicate || self.predicate,
         statements: statements || self.statements,
         consequent: consequent || self.consequent,
-        location: location || self.location,
-        comments: comments || self.comments
+        location: location || self.location
       )
     end
 
@@ -4746,12 +4646,11 @@ module SyntaxTree
       [keyword, statements]
     end
 
-    def copy(keyword: nil, statements: nil, location: nil, comments: nil)
+    def copy(keyword: nil, statements: nil, location: nil)
       Ensure.new(
         keyword: keyword || self.keyword,
         statements: statements || self.statements,
-        location: location || self.location,
-        comments: comments || self.comments
+        location: location || self.location
       )
     end
 
@@ -4809,11 +4708,10 @@ module SyntaxTree
       []
     end
 
-    def copy(value: nil, location: nil, comments: nil)
+    def copy(value: nil, location: nil)
       ExcessedComma.new(
         value: value || self.value,
-        location: location || self.location,
-        comments: comments || self.comments
+        location: location || self.location
       )
     end
 
@@ -4862,19 +4760,12 @@ module SyntaxTree
       [parent, (operator if operator != :"::"), name]
     end
 
-    def copy(
-      parent: nil,
-      operator: nil,
-      name: nil,
-      location: nil,
-      comments: nil
-    )
+    def copy(parent: nil, operator: nil, name: nil, location: nil)
       Field.new(
         parent: parent || self.parent,
         operator: operator || self.operator,
         name: name || self.name,
-        location: location || self.location,
-        comments: comments || self.comments
+        location: location || self.location
       )
     end
 
@@ -4924,11 +4815,10 @@ module SyntaxTree
       []
     end
 
-    def copy(value: nil, location: nil, comments: nil)
+    def copy(value: nil, location: nil)
       FloatLiteral.new(
         value: value || self.value,
-        location: location || self.location,
-        comments: comments || self.comments
+        location: location || self.location
       )
     end
 
@@ -4984,21 +4874,13 @@ module SyntaxTree
       [constant, left, *values, right]
     end
 
-    def copy(
-      constant: nil,
-      left: nil,
-      values: nil,
-      right: nil,
-      location: nil,
-      comments: nil
-    )
+    def copy(constant: nil, left: nil, values: nil, right: nil, location: nil)
       FndPtn.new(
         constant: constant || self.constant,
         left: left || self.left,
         values: values || self.values,
         right: right || self.right,
-        location: location || self.location,
-        comments: comments || self.comments
+        location: location || self.location
       )
     end
 
@@ -5076,19 +4958,12 @@ module SyntaxTree
       [index, collection, statements]
     end
 
-    def copy(
-      index: nil,
-      collection: nil,
-      statements: nil,
-      location: nil,
-      comments: nil
-    )
+    def copy(index: nil, collection: nil, statements: nil, location: nil)
       For.new(
         index: index || self.index,
         collection: collection || self.collection,
         statements: statements || self.statements,
-        location: location || self.location,
-        comments: comments || self.comments
+        location: location || self.location
       )
     end
 
@@ -5149,12 +5024,8 @@ module SyntaxTree
       []
     end
 
-    def copy(value: nil, location: nil, comments: nil)
-      GVar.new(
-        value: value || self.value,
-        location: location || self.location,
-        comments: comments || self.comments
-      )
+    def copy(value: nil, location: nil)
+      GVar.new(value: value || self.value, location: location || self.location)
     end
 
     alias deconstruct child_nodes
@@ -5202,7 +5073,7 @@ module SyntaxTree
     # [LBrace] the left brace that opens this hash
     attr_reader :lbrace
 
-    # [Array[ AssocNew | AssocSplat ]] the optional contents of the hash
+    # [Array[ Assoc | AssocSplat ]] the optional contents of the hash
     attr_reader :assocs
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
@@ -5223,12 +5094,11 @@ module SyntaxTree
       [lbrace] + assocs
     end
 
-    def copy(lbrace: nil, assocs: nil, location: nil, comments: nil)
+    def copy(lbrace: nil, assocs: nil, location: nil)
       HashLiteral.new(
         lbrace: lbrace || self.lbrace,
         assocs: assocs || self.assocs,
-        location: location || self.location,
-        comments: comments || self.comments
+        location: location || self.location
       )
     end
 
@@ -5328,19 +5198,12 @@ module SyntaxTree
       [beginning, *parts, ending]
     end
 
-    def copy(
-      beginning: nil,
-      location: nil,
-      ending: nil,
-      parts: nil,
-      comments: nil
-    )
+    def copy(beginning: nil, location: nil, ending: nil, parts: nil)
       Heredoc.new(
         beginning: beginning || self.beginning,
         location: location || self.location,
         ending: ending || self.ending,
-        parts: parts || self.parts,
-        comments: comments || self.comments
+        parts: parts || self.parts
       )
     end
 
@@ -5424,11 +5287,10 @@ module SyntaxTree
       []
     end
 
-    def copy(value: nil, location: nil, comments: nil)
+    def copy(value: nil, location: nil)
       HeredocBeg.new(
         value: value || self.value,
-        location: location || self.location,
-        comments: comments || self.comments
+        location: location || self.location
       )
     end
 
@@ -5471,11 +5333,10 @@ module SyntaxTree
       []
     end
 
-    def copy(value: nil, location: nil, comments: nil)
+    def copy(value: nil, location: nil)
       HeredocEnd.new(
         value: value || self.value,
-        location: location || self.location,
-        comments: comments || self.comments
+        location: location || self.location
       )
     end
 
@@ -5573,19 +5434,12 @@ module SyntaxTree
       [constant, *keywords.flatten(1), keyword_rest]
     end
 
-    def copy(
-      constant: nil,
-      keywords: nil,
-      keyword_rest: nil,
-      location: nil,
-      comments: nil
-    )
+    def copy(constant: nil, keywords: nil, keyword_rest: nil, location: nil)
       HshPtn.new(
         constant: constant || self.constant,
         keywords: keywords || self.keywords,
         keyword_rest: keyword_rest || self.keyword_rest,
-        location: location || self.location,
-        comments: comments || self.comments
+        location: location || self.location
       )
     end
 
@@ -5697,12 +5551,8 @@ module SyntaxTree
       []
     end
 
-    def copy(value: nil, location: nil, comments: nil)
-      Ident.new(
-        value: value || self.value,
-        location: location || self.location,
-        comments: comments || self.comments
-      )
+    def copy(value: nil, location: nil)
+      Ident.new(value: value || self.value, location: location || self.location)
     end
 
     alias deconstruct child_nodes
@@ -5965,7 +5815,7 @@ module SyntaxTree
     # [Statements] the expressions to be executed
     attr_reader :statements
 
-    # [nil, Elsif, Else] the next clause in the chain
+    # [nil | Elsif | Else] the next clause in the chain
     attr_reader :consequent
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
@@ -5993,19 +5843,12 @@ module SyntaxTree
       [predicate, statements, consequent]
     end
 
-    def copy(
-      predicate: nil,
-      statements: nil,
-      consequent: nil,
-      location: nil,
-      comments: nil
-    )
+    def copy(predicate: nil, statements: nil, consequent: nil, location: nil)
       If.new(
         predicate: predicate || self.predicate,
         statements: statements || self.statements,
         consequent: consequent || self.consequent,
-        location: location || self.location,
-        comments: comments || self.comments
+        location: location || self.location
       )
     end
 
@@ -6064,19 +5907,12 @@ module SyntaxTree
       [predicate, truthy, falsy]
     end
 
-    def copy(
-      predicate: nil,
-      truthy: nil,
-      falsy: nil,
-      location: nil,
-      comments: nil
-    )
+    def copy(predicate: nil, truthy: nil, falsy: nil, location: nil)
       IfOp.new(
         predicate: predicate || self.predicate,
         truthy: truthy || self.truthy,
         falsy: falsy || self.falsy,
-        location: location || self.location,
-        comments: comments || self.comments
+        location: location || self.location
       )
     end
 
@@ -6173,11 +6009,10 @@ module SyntaxTree
       []
     end
 
-    def copy(value: nil, location: nil, comments: nil)
+    def copy(value: nil, location: nil)
       Imaginary.new(
         value: value || self.value,
-        location: location || self.location,
-        comments: comments || self.comments
+        location: location || self.location
       )
     end
 
@@ -6228,19 +6063,12 @@ module SyntaxTree
       [pattern, statements, consequent]
     end
 
-    def copy(
-      pattern: nil,
-      statements: nil,
-      consequent: nil,
-      location: nil,
-      comments: nil
-    )
+    def copy(pattern: nil, statements: nil, consequent: nil, location: nil)
       In.new(
         pattern: pattern || self.pattern,
         statements: statements || self.statements,
         consequent: consequent || self.consequent,
-        location: location || self.location,
-        comments: comments || self.comments
+        location: location || self.location
       )
     end
 
@@ -6303,12 +6131,8 @@ module SyntaxTree
       []
     end
 
-    def copy(value: nil, location: nil, comments: nil)
-      Int.new(
-        value: value || self.value,
-        location: location || self.location,
-        comments: comments || self.comments
-      )
+    def copy(value: nil, location: nil)
+      Int.new(value: value || self.value, location: location || self.location)
     end
 
     alias deconstruct child_nodes
@@ -6355,12 +6179,8 @@ module SyntaxTree
       []
     end
 
-    def copy(value: nil, location: nil, comments: nil)
-      IVar.new(
-        value: value || self.value,
-        location: location || self.location,
-        comments: comments || self.comments
-      )
+    def copy(value: nil, location: nil)
+      IVar.new(value: value || self.value, location: location || self.location)
     end
 
     alias deconstruct child_nodes
@@ -6412,12 +6232,8 @@ module SyntaxTree
       []
     end
 
-    def copy(value: nil, location: nil, comments: nil)
-      Kw.new(
-        value: value || self.value,
-        location: location || self.location,
-        comments: comments || self.comments
-      )
+    def copy(value: nil, location: nil)
+      Kw.new(value: value || self.value, location: location || self.location)
     end
 
     alias deconstruct child_nodes
@@ -6457,11 +6273,10 @@ module SyntaxTree
       [name]
     end
 
-    def copy(name: nil, location: nil, comments: nil)
+    def copy(name: nil, location: nil)
       KwRestParam.new(
         name: name || self.name,
-        location: location || self.location,
-        comments: comments || self.comments
+        location: location || self.location
       )
     end
 
@@ -6511,12 +6326,8 @@ module SyntaxTree
       []
     end
 
-    def copy(value: nil, location: nil, comments: nil)
-      Label.new(
-        value: value || self.value,
-        location: location || self.location,
-        comments: comments || self.comments
-      )
+    def copy(value: nil, location: nil)
+      Label.new(value: value || self.value, location: location || self.location)
     end
 
     alias deconstruct child_nodes
@@ -6597,12 +6408,11 @@ module SyntaxTree
       [params, statements]
     end
 
-    def copy(params: nil, statements: nil, location: nil, comments: nil)
+    def copy(params: nil, statements: nil, location: nil)
       Lambda.new(
         params: params || self.params,
         statements: statements || self.statements,
-        location: location || self.location,
-        comments: comments || self.comments
+        location: location || self.location
       )
     end
 
@@ -6714,12 +6524,11 @@ module SyntaxTree
       [params, *locals]
     end
 
-    def copy(params: nil, locals: nil, location: nil, comments: nil)
+    def copy(params: nil, locals: nil, location: nil)
       LambdaVar.new(
         params: params || self.params,
         locals: locals || self.locals,
-        location: location || self.location,
-        comments: comments || self.comments
+        location: location || self.location
       )
     end
 
@@ -6765,11 +6574,10 @@ module SyntaxTree
       []
     end
 
-    def copy(value: nil, location: nil, comments: nil)
+    def copy(value: nil, location: nil)
       LBrace.new(
         value: value || self.value,
-        location: location || self.location,
-        comments: comments || self.comments
+        location: location || self.location
       )
     end
 
@@ -6806,11 +6614,10 @@ module SyntaxTree
       []
     end
 
-    def copy(value: nil, location: nil, comments: nil)
+    def copy(value: nil, location: nil)
       LBracket.new(
         value: value || self.value,
-        location: location || self.location,
-        comments: comments || self.comments
+        location: location || self.location
       )
     end
 
@@ -6847,11 +6654,10 @@ module SyntaxTree
       []
     end
 
-    def copy(value: nil, location: nil, comments: nil)
+    def copy(value: nil, location: nil)
       LParen.new(
         value: value || self.value,
-        location: location || self.location,
-        comments: comments || self.comments
+        location: location || self.location
       )
     end
 
@@ -6905,12 +6711,11 @@ module SyntaxTree
       [target, value]
     end
 
-    def copy(target: nil, value: nil, location: nil, comments: nil)
+    def copy(target: nil, value: nil, location: nil)
       MAssign.new(
         target: target || self.target,
         value: value || self.value,
-        location: location || self.location,
-        comments: comments || self.comments
+        location: location || self.location
       )
     end
 
@@ -6961,12 +6766,11 @@ module SyntaxTree
       [call, block]
     end
 
-    def copy(call: nil, block: nil, location: nil, comments: nil)
+    def copy(call: nil, block: nil, location: nil)
       MethodAddBlock.new(
         call: call || self.call,
         block: block || self.block,
-        location: location || self.location,
-        comments: comments || self.comments
+        location: location || self.location
       )
     end
 
@@ -7031,12 +6835,11 @@ module SyntaxTree
       parts
     end
 
-    def copy(parts: nil, location: nil, comma: nil, comments: nil)
+    def copy(parts: nil, location: nil, comma: nil)
       MLHS.new(
         parts: parts || self.parts,
         location: location || self.location,
-        comma: comma || self.comma,
-        comments: comments || self.comments
+        comma: comma || self.comma
       )
     end
 
@@ -7084,11 +6887,10 @@ module SyntaxTree
       [contents]
     end
 
-    def copy(contents: nil, location: nil, comments: nil)
+    def copy(contents: nil, location: nil)
       MLHSParen.new(
         contents: contents || self.contents,
-        location: location || self.location,
-        comments: comments || self.comments
+        location: location || self.location
       )
     end
 
@@ -7150,12 +6952,11 @@ module SyntaxTree
       [constant, bodystmt]
     end
 
-    def copy(constant: nil, bodystmt: nil, location: nil, comments: nil)
+    def copy(constant: nil, bodystmt: nil, location: nil)
       ModuleDeclaration.new(
         constant: constant || self.constant,
         bodystmt: bodystmt || self.bodystmt,
-        location: location || self.location,
-        comments: comments || self.comments
+        location: location || self.location
       )
     end
 
@@ -7228,12 +7029,8 @@ module SyntaxTree
       parts
     end
 
-    def copy(parts: nil, location: nil, comments: nil)
-      MRHS.new(
-        parts: parts || self.parts,
-        location: location || self.location,
-        comments: comments || self.comments
-      )
+    def copy(parts: nil, location: nil)
+      MRHS.new(parts: parts || self.parts, location: location || self.location)
     end
 
     alias deconstruct child_nodes
@@ -7285,11 +7082,10 @@ module SyntaxTree
       [arguments]
     end
 
-    def copy(arguments: nil, location: nil, comments: nil)
+    def copy(arguments: nil, location: nil)
       Next.new(
         arguments: arguments || self.arguments,
-        location: location || self.location,
-        comments: comments || self.comments
+        location: location || self.location
       )
     end
 
@@ -7334,12 +7130,8 @@ module SyntaxTree
       []
     end
 
-    def copy(value: nil, location: nil, comments: nil)
-      Op.new(
-        value: value || self.value,
-        location: location || self.location,
-        comments: comments || self.comments
-      )
+    def copy(value: nil, location: nil)
+      Op.new(value: value || self.value, location: location || self.location)
     end
 
     alias deconstruct child_nodes
@@ -7388,19 +7180,12 @@ module SyntaxTree
       [target, operator, value]
     end
 
-    def copy(
-      target: nil,
-      operator: nil,
-      value: nil,
-      location: nil,
-      comments: nil
-    )
+    def copy(target: nil, operator: nil, value: nil, location: nil)
       OpAssign.new(
         target: target || self.target,
         operator: operator || self.operator,
         value: value || self.value,
-        location: location || self.location,
-        comments: comments || self.comments
+        location: location || self.location
       )
     end
 
@@ -7670,8 +7455,7 @@ module SyntaxTree
       posts: nil,
       keywords: nil,
       keyword_rest: nil,
-      block: nil,
-      comments: nil
+      block: nil
     )
       Params.new(
         location: location || self.location,
@@ -7681,8 +7465,7 @@ module SyntaxTree
         posts: posts || self.posts,
         keywords: keywords || self.keywords,
         keyword_rest: keyword_rest || self.keyword_rest,
-        block: block || self.block,
-        comments: comments || self.comments
+        block: block || self.block
       )
     end
 
@@ -7778,12 +7561,11 @@ module SyntaxTree
       [lparen, contents]
     end
 
-    def copy(lparen: nil, contents: nil, location: nil, comments: nil)
+    def copy(lparen: nil, contents: nil, location: nil)
       Paren.new(
         lparen: lparen || self.lparen,
         contents: contents || self.contents,
-        location: location || self.location,
-        comments: comments || self.comments
+        location: location || self.location
       )
     end
 
@@ -7838,11 +7620,10 @@ module SyntaxTree
       []
     end
 
-    def copy(value: nil, location: nil, comments: nil)
+    def copy(value: nil, location: nil)
       Period.new(
         value: value || self.value,
-        location: location || self.location,
-        comments: comments || self.comments
+        location: location || self.location
       )
     end
 
@@ -7879,11 +7660,10 @@ module SyntaxTree
       [statements]
     end
 
-    def copy(statements: nil, location: nil, comments: nil)
+    def copy(statements: nil, location: nil)
       Program.new(
         statements: statements || self.statements,
-        location: location || self.location,
-        comments: comments || self.comments
+        location: location || self.location
       )
     end
 
@@ -7932,12 +7712,11 @@ module SyntaxTree
       []
     end
 
-    def copy(beginning: nil, elements: nil, location: nil, comments: nil)
+    def copy(beginning: nil, elements: nil, location: nil)
       QSymbols.new(
         beginning: beginning || self.beginning,
         elements: elements || self.elements,
-        location: location || self.location,
-        comments: comments || self.comments
+        location: location || self.location
       )
     end
 
@@ -8042,12 +7821,11 @@ module SyntaxTree
       []
     end
 
-    def copy(beginning: nil, elements: nil, location: nil, comments: nil)
+    def copy(beginning: nil, elements: nil, location: nil)
       QWords.new(
         beginning: beginning || self.beginning,
         elements: elements || self.elements,
-        location: location || self.location,
-        comments: comments || self.comments
+        location: location || self.location
       )
     end
 
@@ -8148,11 +7926,10 @@ module SyntaxTree
       []
     end
 
-    def copy(value: nil, location: nil, comments: nil)
+    def copy(value: nil, location: nil)
       RationalLiteral.new(
         value: value || self.value,
-        location: location || self.location,
-        comments: comments || self.comments
+        location: location || self.location
       )
     end
 
@@ -8252,11 +8029,8 @@ module SyntaxTree
       []
     end
 
-    def copy(location: nil, comments: nil)
-      Redo.new(
-        location: location || self.location,
-        comments: comments || self.comments
-      )
+    def copy(location: nil)
+      Redo.new(location: location || self.location)
     end
 
     alias deconstruct child_nodes
@@ -8428,21 +8202,12 @@ module SyntaxTree
       parts
     end
 
-    def copy(
-      beginning: nil,
-      ending: nil,
-      options: nil,
-      parts: nil,
-      location: nil,
-      comments: nil
-    )
+    def copy(beginning: nil, ending: nil, parts: nil, location: nil)
       RegexpLiteral.new(
         beginning: beginning || self.beginning,
         ending: ending || self.ending,
-        options: options || self.options,
         parts: parts || self.parts,
-        location: location || self.location,
-        comments: comments || self.comments
+        location: location || self.location
       )
     end
 
@@ -8556,12 +8321,11 @@ module SyntaxTree
       [*exceptions, variable]
     end
 
-    def copy(exceptions: nil, variable: nil, location: nil, comments: nil)
+    def copy(exceptions: nil, variable: nil, location: nil)
       RescueEx.new(
         exceptions: exceptions || self.exceptions,
         variable: variable || self.variable,
-        location: location || self.location,
-        comments: comments || self.comments
+        location: location || self.location
       )
     end
 
@@ -8664,16 +8428,14 @@ module SyntaxTree
       exception: nil,
       statements: nil,
       consequent: nil,
-      location: nil,
-      comments: nil
+      location: nil
     )
       Rescue.new(
         keyword: keyword || self.keyword,
         exception: exception || self.exception,
         statements: statements || self.statements,
         consequent: consequent || self.consequent,
-        location: location || self.location,
-        comments: comments || self.comments
+        location: location || self.location
       )
     end
 
@@ -8744,12 +8506,11 @@ module SyntaxTree
       [statement, value]
     end
 
-    def copy(statement: nil, value: nil, location: nil, comments: nil)
+    def copy(statement: nil, value: nil, location: nil)
       RescueMod.new(
         statement: statement || self.statement,
         value: value || self.value,
-        location: location || self.location,
-        comments: comments || self.comments
+        location: location || self.location
       )
     end
 
@@ -8809,11 +8570,10 @@ module SyntaxTree
       [name]
     end
 
-    def copy(name: nil, location: nil, comments: nil)
+    def copy(name: nil, location: nil)
       RestParam.new(
         name: name || self.name,
-        location: location || self.location,
-        comments: comments || self.comments
+        location: location || self.location
       )
     end
 
@@ -8850,11 +8610,8 @@ module SyntaxTree
       []
     end
 
-    def copy(location: nil, comments: nil)
-      Retry.new(
-        location: location || self.location,
-        comments: comments || self.comments
-      )
+    def copy(location: nil)
+      Retry.new(location: location || self.location)
     end
 
     alias deconstruct child_nodes
@@ -8893,11 +8650,10 @@ module SyntaxTree
       [arguments]
     end
 
-    def copy(arguments: nil, location: nil, comments: nil)
+    def copy(arguments: nil, location: nil)
       Return.new(
         arguments: arguments || self.arguments,
-        location: location || self.location,
-        comments: comments || self.comments
+        location: location || self.location
       )
     end
 
@@ -8976,12 +8732,11 @@ module SyntaxTree
       [target, bodystmt]
     end
 
-    def copy(target: nil, bodystmt: nil, location: nil, comments: nil)
+    def copy(target: nil, bodystmt: nil, location: nil)
       SClass.new(
         target: target || self.target,
         bodystmt: bodystmt || self.bodystmt,
-        location: location || self.location,
-        comments: comments || self.comments
+        location: location || self.location
       )
     end
 
@@ -9089,12 +8844,11 @@ module SyntaxTree
       body
     end
 
-    def copy(parser: nil, body: nil, location: nil, comments: nil)
+    def copy(body: nil, location: nil)
       Statements.new(
-        parser: parser || self.parser,
+        parser,
         body: body || self.body,
-        location: location || self.location,
-        comments: comments || self.comments
+        location: location || self.location
       )
     end
 
@@ -9262,12 +9016,11 @@ module SyntaxTree
       [left, right]
     end
 
-    def copy(left: nil, right: nil, location: nil, comments: nil)
+    def copy(left: nil, right: nil, location: nil)
       StringConcat.new(
         left: left || self.left,
         right: right || self.right,
-        location: location || self.location,
-        comments: comments || self.comments
+        location: location || self.location
       )
     end
 
@@ -9316,11 +9069,10 @@ module SyntaxTree
       [variable]
     end
 
-    def copy(variable: nil, location: nil, comments: nil)
+    def copy(variable: nil, location: nil)
       StringDVar.new(
         variable: variable || self.variable,
-        location: location || self.location,
-        comments: comments || self.comments
+        location: location || self.location
       )
     end
 
@@ -9364,11 +9116,10 @@ module SyntaxTree
       [statements]
     end
 
-    def copy(statements: nil, location: nil, comments: nil)
+    def copy(statements: nil, location: nil)
       StringEmbExpr.new(
         statements: statements || self.statements,
-        location: location || self.location,
-        comments: comments || self.comments
+        location: location || self.location
       )
     end
 
@@ -9435,12 +9186,11 @@ module SyntaxTree
       parts
     end
 
-    def copy(parts: nil, quote: nil, location: nil, comments: nil)
+    def copy(parts: nil, quote: nil, location: nil)
       StringLiteral.new(
         parts: parts || self.parts,
         quote: quote || self.quote,
-        location: location || self.location,
-        comments: comments || self.comments
+        location: location || self.location
       )
     end
 
@@ -9518,11 +9268,10 @@ module SyntaxTree
       [arguments]
     end
 
-    def copy(arguments: nil, location: nil, comments: nil)
+    def copy(arguments: nil, location: nil)
       Super.new(
         arguments: arguments || self.arguments,
-        location: location || self.location,
-        comments: comments || self.comments
+        location: location || self.location
       )
     end
 
@@ -9657,11 +9406,10 @@ module SyntaxTree
       [value]
     end
 
-    def copy(value: nil, location: nil, comments: nil)
+    def copy(value: nil, location: nil)
       SymbolLiteral.new(
         value: value || self.value,
-        location: location || self.location,
-        comments: comments || self.comments
+        location: location || self.location
       )
     end
 
@@ -9706,12 +9454,11 @@ module SyntaxTree
       []
     end
 
-    def copy(beginning: nil, elements: nil, location: nil, comments: nil)
+    def copy(beginning: nil, elements: nil, location: nil)
       Symbols.new(
         beginning: beginning || self.beginning,
         elements: elements || self.elements,
-        location: location || self.location,
-        comments: comments || self.comments
+        location: location || self.location
       )
     end
 
@@ -9888,11 +9635,10 @@ module SyntaxTree
       [constant]
     end
 
-    def copy(constant: nil, location: nil, comments: nil)
+    def copy(constant: nil, location: nil)
       TopConstField.new(
         constant: constant || self.constant,
-        location: location || self.location,
-        comments: comments || self.comments
+        location: location || self.location
       )
     end
 
@@ -9934,11 +9680,10 @@ module SyntaxTree
       [constant]
     end
 
-    def copy(constant: nil, location: nil, comments: nil)
+    def copy(constant: nil, location: nil)
       TopConstRef.new(
         constant: constant || self.constant,
-        location: location || self.location,
-        comments: comments || self.comments
+        location: location || self.location
       )
     end
 
@@ -10028,11 +9773,10 @@ module SyntaxTree
       []
     end
 
-    def copy(value: nil, location: nil, comments: nil)
+    def copy(value: nil, location: nil)
       TStringContent.new(
         value: value || self.value,
-        location: location || self.location,
-        comments: comments || self.comments
+        location: location || self.location
       )
     end
 
@@ -10118,12 +9862,11 @@ module SyntaxTree
       [statement]
     end
 
-    def copy(statement: nil, parentheses: nil, location: nil, comments: nil)
+    def copy(statement: nil, parentheses: nil, location: nil)
       Not.new(
         statement: statement || self.statement,
         parentheses: parentheses || self.parentheses,
-        location: location || self.location,
-        comments: comments || self.comments
+        location: location || self.location
       )
     end
 
@@ -10193,12 +9936,11 @@ module SyntaxTree
       [statement]
     end
 
-    def copy(operator: nil, statement: nil, location: nil, comments: nil)
+    def copy(operator: nil, statement: nil, location: nil)
       Unary.new(
         operator: operator || self.operator,
         statement: statement || self.statement,
-        location: location || self.location,
-        comments: comments || self.comments
+        location: location || self.location
       )
     end
 
@@ -10268,11 +10010,10 @@ module SyntaxTree
       symbols
     end
 
-    def copy(symbols: nil, location: nil, comments: nil)
+    def copy(symbols: nil, location: nil)
       Undef.new(
         symbols: symbols || self.symbols,
-        location: location || self.location,
-        comments: comments || self.comments
+        location: location || self.location
       )
     end
 
@@ -10307,7 +10048,7 @@ module SyntaxTree
     # [Statements] the expressions to be executed
     attr_reader :statements
 
-    # [nil, Elsif, Else] the next clause in the chain
+    # [nil | Elsif | Else] the next clause in the chain
     attr_reader :consequent
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
@@ -10335,19 +10076,12 @@ module SyntaxTree
       [predicate, statements, consequent]
     end
 
-    def copy(
-      predicate: nil,
-      statements: nil,
-      consequent: nil,
-      location: nil,
-      comments: nil
-    )
+    def copy(predicate: nil, statements: nil, consequent: nil, location: nil)
       Unless.new(
         predicate: predicate || self.predicate,
         statements: statements || self.statements,
         consequent: consequent || self.consequent,
-        location: location || self.location,
-        comments: comments || self.comments
+        location: location || self.location
       )
     end
 
@@ -10475,12 +10209,11 @@ module SyntaxTree
       [predicate, statements]
     end
 
-    def copy(predicate: nil, statements: nil, location: nil, comments: nil)
+    def copy(predicate: nil, statements: nil, location: nil)
       Until.new(
         predicate: predicate || self.predicate,
         statements: statements || self.statements,
-        location: location || self.location,
-        comments: comments || self.comments
+        location: location || self.location
       )
     end
 
@@ -10531,11 +10264,10 @@ module SyntaxTree
       [value]
     end
 
-    def copy(value: nil, location: nil, comments: nil)
+    def copy(value: nil, location: nil)
       VarField.new(
         value: value || self.value,
-        location: location || self.location,
-        comments: comments || self.comments
+        location: location || self.location
       )
     end
 
@@ -10583,11 +10315,10 @@ module SyntaxTree
       [value]
     end
 
-    def copy(value: nil, location: nil, comments: nil)
+    def copy(value: nil, location: nil)
       VarRef.new(
         value: value || self.value,
-        location: location || self.location,
-        comments: comments || self.comments
+        location: location || self.location
       )
     end
 
@@ -10655,11 +10386,10 @@ module SyntaxTree
       [value]
     end
 
-    def copy(value: nil, location: nil, comments: nil)
+    def copy(value: nil, location: nil)
       PinnedVarRef.new(
         value: value || self.value,
-        location: location || self.location,
-        comments: comments || self.comments
+        location: location || self.location
       )
     end
 
@@ -10703,12 +10433,8 @@ module SyntaxTree
       [value]
     end
 
-    def copy(value: nil, location: nil, comments: nil)
-      VCall.new(
-        value: value || self.value,
-        location: location || self.location,
-        comments: comments || self.comments
-      )
+    def copy(value: nil, location: nil)
+      VCall.new(value: value || self.value, location: location || self.location)
     end
 
     alias deconstruct child_nodes
@@ -10750,11 +10476,8 @@ module SyntaxTree
       []
     end
 
-    def copy(location: nil, comments: nil)
-      VoidStmt.new(
-        location: location || self.location,
-        comments: comments || self.comments
-      )
+    def copy(location: nil)
+      VoidStmt.new(location: location || self.location)
     end
 
     alias deconstruct child_nodes
@@ -10808,19 +10531,12 @@ module SyntaxTree
       [arguments, statements, consequent]
     end
 
-    def copy(
-      arguments: nil,
-      statements: nil,
-      consequent: nil,
-      location: nil,
-      comments: nil
-    )
+    def copy(arguments: nil, statements: nil, consequent: nil, location: nil)
       When.new(
         arguments: arguments || self.arguments,
         statements: statements || self.statements,
         consequent: consequent || self.consequent,
-        location: location || self.location,
-        comments: comments || self.comments
+        location: location || self.location
       )
     end
 
@@ -10918,12 +10634,11 @@ module SyntaxTree
       [predicate, statements]
     end
 
-    def copy(predicate: nil, statements: nil, location: nil, comments: nil)
+    def copy(predicate: nil, statements: nil, location: nil)
       While.new(
         predicate: predicate || self.predicate,
         statements: statements || self.statements,
-        location: location || self.location,
-        comments: comments || self.comments
+        location: location || self.location
       )
     end
 
@@ -10980,12 +10695,8 @@ module SyntaxTree
       parts
     end
 
-    def copy(parts: nil, location: nil, comments: nil)
-      Word.new(
-        parts: parts || self.parts,
-        location: location || self.location,
-        comments: comments || self.comments
-      )
+    def copy(parts: nil, location: nil)
+      Word.new(parts: parts || self.parts, location: location || self.location)
     end
 
     alias deconstruct child_nodes
@@ -11028,12 +10739,11 @@ module SyntaxTree
       []
     end
 
-    def copy(beginning: nil, elements: nil, location: nil, comments: nil)
+    def copy(beginning: nil, elements: nil, location: nil)
       Words.new(
         beginning: beginning || self.beginning,
         elements: elements || self.elements,
-        location: location || self.location,
-        comments: comments || self.comments
+        location: location || self.location
       )
     end
 
@@ -11172,11 +10882,10 @@ module SyntaxTree
       parts
     end
 
-    def copy(parts: nil, location: nil, comments: nil)
+    def copy(parts: nil, location: nil)
       XStringLiteral.new(
         parts: parts || self.parts,
-        location: location || self.location,
-        comments: comments || self.comments
+        location: location || self.location
       )
     end
 
@@ -11218,11 +10927,10 @@ module SyntaxTree
       [arguments]
     end
 
-    def copy(arguments: nil, location: nil, comments: nil)
+    def copy(arguments: nil, location: nil)
       Yield.new(
         arguments: arguments || self.arguments,
-        location: location || self.location,
-        comments: comments || self.comments
+        location: location || self.location
       )
     end
 
@@ -11277,11 +10985,8 @@ module SyntaxTree
       []
     end
 
-    def copy(location: nil, comments: nil)
-      ZSuper.new(
-        location: location || self.location,
-        comments: comments || self.comments
-      )
+    def copy(location: nil)
+      ZSuper.new(location: location || self.location)
     end
 
     alias deconstruct child_nodes

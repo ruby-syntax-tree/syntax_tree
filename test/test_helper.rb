@@ -61,6 +61,9 @@ module SyntaxTree
       refute_includes(pretty, "#<")
       assert_includes(pretty, type)
 
+      # Assert that we can get back a new tree by using the mutation visitor.
+      node.accept(Visitor::MutationVisitor.new)
+
       # Serialize the node to JSON, parse it back out, and assert that we have
       # found the expected type.
       json = node.to_json
