@@ -83,6 +83,20 @@ module SyntaxTree
         end_column: column
       )
     end
+
+    # A convenience method that is typically used when you don't care about the
+    # location of a node, but need to create a Location instance to pass to a
+    # constructor.
+    def self.default
+      new(
+        start_line: 1,
+        start_char: 0,
+        start_column: 0,
+        end_line: 1,
+        end_char: 0,
+        end_column: 0
+      )
+    end
   end
 
   # This is the parent node of all of the syntax tree nodes. It's pretty much
@@ -127,6 +141,18 @@ module SyntaxTree
     end
   end
 
+  # When we're implementing the === operator for a node, we oftentimes need to
+  # compare two arrays. We want to skip over the === definition of array and use
+  # our own here, so we do that using this module.
+  module ArrayMatch
+    def self.call(left, right)
+      left.length === right.length &&
+        left
+          .zip(right)
+          .all? { |left_value, right_value| left_value === right_value }
+    end
+  end
+
   # BEGINBlock represents the use of the +BEGIN+ keyword, which hooks into the
   # lifecycle of the interpreter. Whatever is inside the block will get executed
   # when the program starts.
@@ -161,6 +187,18 @@ module SyntaxTree
       [lbrace, statements]
     end
 
+    def copy(lbrace: nil, statements: nil, location: nil)
+      node =
+        BEGINBlock.new(
+          lbrace: lbrace || self.lbrace,
+          statements: statements || self.statements,
+          location: location || self.location
+        )
+
+      node.comments.concat(comments.map(&:copy))
+      node
+    end
+
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
@@ -183,6 +221,11 @@ module SyntaxTree
         q.breakable_space
         q.text("}")
       end
+    end
+
+    def ===(other)
+      other.is_a?(BEGINBlock) && lbrace === other.lbrace &&
+        statements === other.statements
     end
   end
 
@@ -213,6 +256,17 @@ module SyntaxTree
       []
     end
 
+    def copy(value: nil, location: nil)
+      node =
+        CHAR.new(
+          value: value || self.value,
+          location: location || self.location
+        )
+
+      node.comments.concat(comments.map(&:copy))
+      node
+    end
+
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
@@ -227,6 +281,10 @@ module SyntaxTree
         q.text(value[1] == "\"" ? "\\\"" : value[1])
         q.text(q.quote)
       end
+    end
+
+    def ===(other)
+      other.is_a?(CHAR) && value === other.value
     end
   end
 
@@ -264,6 +322,18 @@ module SyntaxTree
       [lbrace, statements]
     end
 
+    def copy(lbrace: nil, statements: nil, location: nil)
+      node =
+        ENDBlock.new(
+          lbrace: lbrace || self.lbrace,
+          statements: statements || self.statements,
+          location: location || self.location
+        )
+
+      node.comments.concat(comments.map(&:copy))
+      node
+    end
+
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
@@ -286,6 +356,11 @@ module SyntaxTree
         q.breakable_space
         q.text("}")
       end
+    end
+
+    def ===(other)
+      other.is_a?(ENDBlock) && lbrace === other.lbrace &&
+        statements === other.statements
     end
   end
 
@@ -319,6 +394,17 @@ module SyntaxTree
       []
     end
 
+    def copy(value: nil, location: nil)
+      node =
+        EndContent.new(
+          value: value || self.value,
+          location: location || self.location
+        )
+
+      node.comments.concat(comments.map(&:copy))
+      node
+    end
+
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
@@ -341,6 +427,10 @@ module SyntaxTree
       end
 
       q.breakable_return if value.end_with?("\n")
+    end
+
+    def ===(other)
+      other.is_a?(EndContent) && value === other.value
     end
   end
 
@@ -408,6 +498,18 @@ module SyntaxTree
       [left, right]
     end
 
+    def copy(left: nil, right: nil, location: nil)
+      node =
+        Alias.new(
+          left: left || self.left,
+          right: right || self.right,
+          location: location || self.location
+        )
+
+      node.comments.concat(comments.map(&:copy))
+      node
+    end
+
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
@@ -428,6 +530,10 @@ module SyntaxTree
           end
         end
       end
+    end
+
+    def ===(other)
+      other.is_a?(Alias) && left === other.left && right === other.right
     end
 
     def var_alias?
@@ -473,6 +579,18 @@ module SyntaxTree
       [collection, index]
     end
 
+    def copy(collection: nil, index: nil, location: nil)
+      node =
+        ARef.new(
+          collection: collection || self.collection,
+          index: index || self.index,
+          location: location || self.location
+        )
+
+      node.comments.concat(comments.map(&:copy))
+      node
+    end
+
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
@@ -499,6 +617,11 @@ module SyntaxTree
 
         q.text("]")
       end
+    end
+
+    def ===(other)
+      other.is_a?(ARef) && collection === other.collection &&
+        index === other.index
     end
   end
 
@@ -534,6 +657,18 @@ module SyntaxTree
       [collection, index]
     end
 
+    def copy(collection: nil, index: nil, location: nil)
+      node =
+        ARefField.new(
+          collection: collection || self.collection,
+          index: index || self.index,
+          location: location || self.location
+        )
+
+      node.comments.concat(comments.map(&:copy))
+      node
+    end
+
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
@@ -560,6 +695,11 @@ module SyntaxTree
 
         q.text("]")
       end
+    end
+
+    def ===(other)
+      other.is_a?(ARefField) && collection === other.collection &&
+        index === other.index
     end
   end
 
@@ -596,6 +736,17 @@ module SyntaxTree
       [arguments]
     end
 
+    def copy(arguments: nil, location: nil)
+      node =
+        ArgParen.new(
+          arguments: arguments || self.arguments,
+          location: location || self.location
+        )
+
+      node.comments.concat(comments.map(&:copy))
+      node
+    end
+
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
@@ -618,6 +769,10 @@ module SyntaxTree
         q.breakable_empty
       end
       q.text(")")
+    end
+
+    def ===(other)
+      other.is_a?(ArgParen) && arguments === other.arguments
     end
 
     private
@@ -669,6 +824,17 @@ module SyntaxTree
       parts
     end
 
+    def copy(parts: nil, location: nil)
+      node =
+        Args.new(
+          parts: parts || self.parts,
+          location: location || self.location
+        )
+
+      node.comments.concat(comments.map(&:copy))
+      node
+    end
+
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
@@ -677,6 +843,10 @@ module SyntaxTree
 
     def format(q)
       q.seplist(parts) { |part| q.format(part) }
+    end
+
+    def ===(other)
+      other.is_a?(Args) && ArrayMatch.call(parts, other.parts)
     end
   end
 
@@ -705,6 +875,17 @@ module SyntaxTree
       [value]
     end
 
+    def copy(value: nil, location: nil)
+      node =
+        ArgBlock.new(
+          value: value || self.value,
+          location: location || self.location
+        )
+
+      node.comments.concat(comments.map(&:copy))
+      node
+    end
+
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
@@ -714,6 +895,10 @@ module SyntaxTree
     def format(q)
       q.text("&")
       q.format(value) if value
+    end
+
+    def ===(other)
+      other.is_a?(ArgBlock) && value === other.value
     end
   end
 
@@ -742,6 +927,17 @@ module SyntaxTree
       [value]
     end
 
+    def copy(value: nil, location: nil)
+      node =
+        ArgStar.new(
+          value: value || self.value,
+          location: location || self.location
+        )
+
+      node.comments.concat(comments.map(&:copy))
+      node
+    end
+
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
@@ -751,6 +947,10 @@ module SyntaxTree
     def format(q)
       q.text("*")
       q.format(value) if value
+    end
+
+    def ===(other)
+      other.is_a?(ArgStar) && value === other.value
     end
   end
 
@@ -788,6 +988,13 @@ module SyntaxTree
       []
     end
 
+    def copy(location: nil)
+      node = ArgsForward.new(location: location || self.location)
+
+      node.comments.concat(comments.map(&:copy))
+      node
+    end
+
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
@@ -796,6 +1003,10 @@ module SyntaxTree
 
     def format(q)
       q.text("...")
+    end
+
+    def ===(other)
+      other.is_a?(ArgsForward)
     end
   end
 
@@ -971,6 +1182,18 @@ module SyntaxTree
       [lbracket, contents]
     end
 
+    def copy(lbracket: nil, contents: nil, location: nil)
+      node =
+        ArrayLiteral.new(
+          lbracket: lbracket || self.lbracket,
+          contents: contents || self.contents,
+          location: location || self.location
+        )
+
+      node.comments.concat(comments.map(&:copy))
+      node
+    end
+
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
@@ -1017,6 +1240,11 @@ module SyntaxTree
         q.breakable_empty
         q.text("]")
       end
+    end
+
+    def ===(other)
+      other.is_a?(ArrayLiteral) && lbracket === other.lbracket &&
+        contents === other.contents
     end
 
     private
@@ -1120,14 +1348,7 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(
-      constant:,
-      requireds:,
-      rest:,
-      posts:,
-      location:,
-      comments: []
-    )
+    def initialize(constant:, requireds:, rest:, posts:, location:)
       @constant = constant
       @requireds = requireds
       @rest = rest
@@ -1142,6 +1363,26 @@ module SyntaxTree
 
     def child_nodes
       [constant, *requireds, rest, *posts]
+    end
+
+    def copy(
+      constant: nil,
+      requireds: nil,
+      rest: nil,
+      posts: nil,
+      location: nil
+    )
+      node =
+        AryPtn.new(
+          constant: constant || self.constant,
+          requireds: requireds || self.requireds,
+          rest: rest || self.rest,
+          posts: posts || self.posts,
+          location: location || self.location
+        )
+
+      node.comments.concat(comments.map(&:copy))
+      node
     end
 
     alias deconstruct child_nodes
@@ -1173,6 +1414,12 @@ module SyntaxTree
         q.breakable_empty
         q.text("]")
       end
+    end
+
+    def ===(other)
+      other.is_a?(AryPtn) && constant === other.constant &&
+        ArrayMatch.call(requireds, other.requireds) && rest === other.rest &&
+        ArrayMatch.call(posts, other.posts)
     end
   end
 
@@ -1225,6 +1472,18 @@ module SyntaxTree
       [target, value]
     end
 
+    def copy(target: nil, value: nil, location: nil)
+      node =
+        Assign.new(
+          target: target || self.target,
+          value: value || self.value,
+          location: location || self.location
+        )
+
+      node.comments.concat(comments.map(&:copy))
+      node
+    end
+
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
@@ -1248,6 +1507,10 @@ module SyntaxTree
       end
     end
 
+    def ===(other)
+      other.is_a?(Assign) && target === other.target && value === other.value
+    end
+
     private
 
     def skip_indent?
@@ -1261,7 +1524,7 @@ module SyntaxTree
   #
   #     { key1: value1, key2: value2 }
   #
-  # In the above example, the would be two AssocNew nodes.
+  # In the above example, the would be two Assoc nodes.
   class Assoc < Node
     # [untyped] the key of this pair
     attr_reader :key
@@ -1287,6 +1550,18 @@ module SyntaxTree
       [key, value]
     end
 
+    def copy(key: nil, value: nil, location: nil)
+      node =
+        Assoc.new(
+          key: key || self.key,
+          value: value || self.value,
+          location: location || self.location
+        )
+
+      node.comments.concat(comments.map(&:copy))
+      node
+    end
+
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
@@ -1299,6 +1574,10 @@ module SyntaxTree
       else
         q.group { format_contents(q) }
       end
+    end
+
+    def ===(other)
+      other.is_a?(Assoc) && key === other.key && value === other.value
     end
 
     private
@@ -1345,6 +1624,17 @@ module SyntaxTree
       [value]
     end
 
+    def copy(value: nil, location: nil)
+      node =
+        AssocSplat.new(
+          value: value || self.value,
+          location: location || self.location
+        )
+
+      node.comments.concat(comments.map(&:copy))
+      node
+    end
+
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
@@ -1354,6 +1644,10 @@ module SyntaxTree
     def format(q)
       q.text("**")
       q.format(value)
+    end
+
+    def ===(other)
+      other.is_a?(AssocSplat) && value === other.value
     end
   end
 
@@ -1383,6 +1677,17 @@ module SyntaxTree
       []
     end
 
+    def copy(value: nil, location: nil)
+      node =
+        Backref.new(
+          value: value || self.value,
+          location: location || self.location
+        )
+
+      node.comments.concat(comments.map(&:copy))
+      node
+    end
+
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
@@ -1391,6 +1696,10 @@ module SyntaxTree
 
     def format(q)
       q.text(value)
+    end
+
+    def ===(other)
+      other.is_a?(Backref) && value === other.value
     end
   end
 
@@ -1418,6 +1727,17 @@ module SyntaxTree
       []
     end
 
+    def copy(value: nil, location: nil)
+      node =
+        Backtick.new(
+          value: value || self.value,
+          location: location || self.location
+        )
+
+      node.comments.concat(comments.map(&:copy))
+      node
+    end
+
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
@@ -1426,6 +1746,10 @@ module SyntaxTree
 
     def format(q)
       q.text(value)
+    end
+
+    def ===(other)
+      other.is_a?(Backtick) && value === other.value
     end
   end
 
@@ -1530,6 +1854,17 @@ module SyntaxTree
       assocs
     end
 
+    def copy(assocs: nil, location: nil)
+      node =
+        BareAssocHash.new(
+          assocs: assocs || self.assocs,
+          location: location || self.location
+        )
+
+      node.comments.concat(comments.map(&:copy))
+      node
+    end
+
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
@@ -1538,6 +1873,10 @@ module SyntaxTree
 
     def format(q)
       q.seplist(assocs) { |assoc| q.format(assoc) }
+    end
+
+    def ===(other)
+      other.is_a?(BareAssocHash) && ArrayMatch.call(assocs, other.assocs)
     end
 
     def format_key(q, key)
@@ -1572,6 +1911,17 @@ module SyntaxTree
       [bodystmt]
     end
 
+    def copy(bodystmt: nil, location: nil)
+      node =
+        Begin.new(
+          bodystmt: bodystmt || self.bodystmt,
+          location: location || self.location
+        )
+
+      node.comments.concat(comments.map(&:copy))
+      node
+    end
+
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
@@ -1590,6 +1940,10 @@ module SyntaxTree
 
       q.breakable_force
       q.text("end")
+    end
+
+    def ===(other)
+      other.is_a?(Begin) && bodystmt === other.bodystmt
     end
   end
 
@@ -1620,6 +1974,17 @@ module SyntaxTree
       [statement]
     end
 
+    def copy(statement: nil, location: nil)
+      node =
+        PinnedBegin.new(
+          statement: statement || self.statement,
+          location: location || self.location
+        )
+
+      node.comments.concat(comments.map(&:copy))
+      node
+    end
+
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
@@ -1638,6 +2003,10 @@ module SyntaxTree
           q.text(")")
         end
       end
+    end
+
+    def ===(other)
+      other.is_a?(PinnedBegin) && statement === other.statement
     end
   end
 
@@ -1694,6 +2063,19 @@ module SyntaxTree
       [left, right]
     end
 
+    def copy(left: nil, operator: nil, right: nil, location: nil)
+      node =
+        Binary.new(
+          left: left || self.left,
+          operator: operator || self.operator,
+          right: right || self.right,
+          location: location || self.location
+        )
+
+      node.comments.concat(comments.map(&:copy))
+      node
+    end
+
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
@@ -1726,6 +2108,11 @@ module SyntaxTree
           end
         end
       end
+    end
+
+    def ===(other)
+      other.is_a?(Binary) && left === other.left &&
+        operator === other.operator && right === other.right
     end
   end
 
@@ -1761,6 +2148,18 @@ module SyntaxTree
       [params, *locals]
     end
 
+    def copy(params: nil, locals: nil, location: nil)
+      node =
+        BlockVar.new(
+          params: params || self.params,
+          locals: locals || self.locals,
+          location: location || self.location
+        )
+
+      node.comments.concat(comments.map(&:copy))
+      node
+    end
+
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
@@ -1791,6 +2190,11 @@ module SyntaxTree
       end
       q.text("|")
     end
+
+    def ===(other)
+      other.is_a?(BlockVar) && params === other.params &&
+        ArrayMatch.call(locals, other.locals)
+    end
   end
 
   # BlockArg represents declaring a block parameter on a method definition.
@@ -1818,6 +2222,17 @@ module SyntaxTree
       [name]
     end
 
+    def copy(name: nil, location: nil)
+      node =
+        BlockArg.new(
+          name: name || self.name,
+          location: location || self.location
+        )
+
+      node.comments.concat(comments.map(&:copy))
+      node
+    end
+
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
@@ -1827,6 +2242,10 @@ module SyntaxTree
     def format(q)
       q.text("&")
       q.format(name) if name
+    end
+
+    def ===(other)
+      other.is_a?(BlockArg) && name === other.name
     end
   end
 
@@ -1858,8 +2277,7 @@ module SyntaxTree
       else_keyword:,
       else_clause:,
       ensure_clause:,
-      location:,
-      comments: []
+      location:
     )
       @statements = statements
       @rescue_clause = rescue_clause
@@ -1912,12 +2330,35 @@ module SyntaxTree
       [statements, rescue_clause, else_keyword, else_clause, ensure_clause]
     end
 
+    def copy(
+      statements: nil,
+      rescue_clause: nil,
+      else_keyword: nil,
+      else_clause: nil,
+      ensure_clause: nil,
+      location: nil
+    )
+      node =
+        BodyStmt.new(
+          statements: statements || self.statements,
+          rescue_clause: rescue_clause || self.rescue_clause,
+          else_keyword: else_keyword || self.else_keyword,
+          else_clause: else_clause || self.else_clause,
+          ensure_clause: ensure_clause || self.ensure_clause,
+          location: location || self.location
+        )
+
+      node.comments.concat(comments.map(&:copy))
+      node
+    end
+
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
       {
         statements: statements,
         rescue_clause: rescue_clause,
+        else_keyword: else_keyword,
         else_clause: else_clause,
         ensure_clause: ensure_clause,
         location: location,
@@ -1955,6 +2396,14 @@ module SyntaxTree
           end
         end
       end
+    end
+
+    def ===(other)
+      other.is_a?(BodyStmt) && statements === other.statements &&
+        rescue_clause === other.rescue_clause &&
+        else_keyword === other.else_keyword &&
+        else_clause === other.else_clause &&
+        ensure_clause === other.ensure_clause
     end
   end
 
@@ -2176,6 +2625,17 @@ module SyntaxTree
       [arguments]
     end
 
+    def copy(arguments: nil, location: nil)
+      node =
+        Break.new(
+          arguments: arguments || self.arguments,
+          location: location || self.location
+        )
+
+      node.comments.concat(comments.map(&:copy))
+      node
+    end
+
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
@@ -2184,6 +2644,10 @@ module SyntaxTree
 
     def format(q)
       FlowControlFormatter.new("break", self).format(q)
+    end
+
+    def ===(other)
+      other.is_a?(Break) && arguments === other.arguments
     end
   end
 
@@ -2463,14 +2927,7 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(
-      receiver:,
-      operator:,
-      message:,
-      arguments:,
-      location:,
-      comments: []
-    )
+    def initialize(receiver:, operator:, message:, arguments:, location:)
       @receiver = receiver
       @operator = operator
       @message = message
@@ -2490,6 +2947,26 @@ module SyntaxTree
         (message if message != :call),
         arguments
       ]
+    end
+
+    def copy(
+      receiver: nil,
+      operator: nil,
+      message: nil,
+      arguments: nil,
+      location: nil
+    )
+      node =
+        Call.new(
+          receiver: receiver || self.receiver,
+          operator: operator || self.operator,
+          message: message || self.message,
+          arguments: arguments || self.arguments,
+          location: location || self.location
+        )
+
+      node.comments.concat(comments.map(&:copy))
+      node
     end
 
     alias deconstruct child_nodes
@@ -2534,6 +3011,12 @@ module SyntaxTree
           q.format(arguments)
         end
       end
+    end
+
+    def ===(other)
+      other.is_a?(Call) && receiver === other.receiver &&
+        operator === other.operator && message === other.message &&
+        arguments === other.arguments
     end
 
     # Print out the arguments to this call. If there are no arguments, then do
@@ -2617,6 +3100,19 @@ module SyntaxTree
       [keyword, value, consequent]
     end
 
+    def copy(keyword: nil, value: nil, consequent: nil, location: nil)
+      node =
+        Case.new(
+          keyword: keyword || self.keyword,
+          value: value || self.value,
+          consequent: consequent || self.consequent,
+          location: location || self.location
+        )
+
+      node.comments.concat(comments.map(&:copy))
+      node
+    end
+
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
@@ -2644,6 +3140,11 @@ module SyntaxTree
 
         q.text("end")
       end
+    end
+
+    def ===(other)
+      other.is_a?(Case) && keyword === other.keyword && value === other.value &&
+        consequent === other.consequent
     end
   end
 
@@ -2682,6 +3183,19 @@ module SyntaxTree
       [value, operator, pattern]
     end
 
+    def copy(value: nil, operator: nil, pattern: nil, location: nil)
+      node =
+        RAssign.new(
+          value: value || self.value,
+          operator: operator || self.operator,
+          pattern: pattern || self.pattern,
+          location: location || self.location
+        )
+
+      node.comments.concat(comments.map(&:copy))
+      node
+    end
+
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
@@ -2713,6 +3227,11 @@ module SyntaxTree
           end
         end
       end
+    end
+
+    def ===(other)
+      other.is_a?(RAssign) && value === other.value &&
+        operator === other.operator && pattern === other.pattern
     end
   end
 
@@ -2778,6 +3297,19 @@ module SyntaxTree
       [constant, superclass, bodystmt]
     end
 
+    def copy(constant: nil, superclass: nil, bodystmt: nil, location: nil)
+      node =
+        ClassDeclaration.new(
+          constant: constant || self.constant,
+          superclass: superclass || self.superclass,
+          bodystmt: bodystmt || self.bodystmt,
+          location: location || self.location
+        )
+
+      node.comments.concat(comments.map(&:copy))
+      node
+    end
+
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
@@ -2810,6 +3342,11 @@ module SyntaxTree
           q.text("end")
         end
       end
+    end
+
+    def ===(other)
+      other.is_a?(ClassDeclaration) && constant === other.constant &&
+        superclass === other.superclass && bodystmt === other.bodystmt
     end
 
     private
@@ -2845,10 +3382,18 @@ module SyntaxTree
       []
     end
 
+    def copy(value: nil, location: nil)
+      Comma.new(value: value || self.value, location: location || self.location)
+    end
+
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
       { value: value, location: location }
+    end
+
+    def ===(other)
+      other.is_a?(Comma) && value === other.value
     end
   end
 
@@ -2887,6 +3432,19 @@ module SyntaxTree
       [message, arguments, block]
     end
 
+    def copy(message: nil, arguments: nil, block: nil, location: nil)
+      node =
+        Command.new(
+          message: message || self.message,
+          arguments: arguments || self.arguments,
+          block: block || self.block,
+          location: location || self.location
+        )
+
+      node.comments.concat(comments.map(&:copy))
+      node
+    end
+
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
@@ -2906,6 +3464,11 @@ module SyntaxTree
       end
 
       q.format(block) if block
+    end
+
+    def ===(other)
+      other.is_a?(Command) && message === other.message &&
+        arguments === other.arguments && block === other.block
     end
 
     private
@@ -2973,8 +3536,7 @@ module SyntaxTree
       message:,
       arguments:,
       block:,
-      location:,
-      comments: []
+      location:
     )
       @receiver = receiver
       @operator = operator
@@ -2991,6 +3553,28 @@ module SyntaxTree
 
     def child_nodes
       [receiver, message, arguments, block]
+    end
+
+    def copy(
+      receiver: nil,
+      operator: nil,
+      message: nil,
+      arguments: nil,
+      block: nil,
+      location: nil
+    )
+      node =
+        CommandCall.new(
+          receiver: receiver || self.receiver,
+          operator: operator || self.operator,
+          message: message || self.message,
+          arguments: arguments || self.arguments,
+          block: block || self.block,
+          location: location || self.location
+        )
+
+      node.comments.concat(comments.map(&:copy))
+      node
     end
 
     alias deconstruct child_nodes
@@ -3044,6 +3628,12 @@ module SyntaxTree
       end
 
       q.format(block) if block
+    end
+
+    def ===(other)
+      other.is_a?(CommandCall) && receiver === other.receiver &&
+        operator === other.operator && message === other.message &&
+        arguments === other.arguments && block === other.block
     end
 
     private
@@ -3125,6 +3715,14 @@ module SyntaxTree
       []
     end
 
+    def copy(value: nil, inline: nil, location: nil)
+      Comment.new(
+        value: value || self.value,
+        inline: inline || self.inline,
+        location: location || self.location
+      )
+    end
+
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
@@ -3133,6 +3731,10 @@ module SyntaxTree
 
     def format(q)
       q.text(value)
+    end
+
+    def ===(other)
+      other.is_a?(Comment) && value === other.value && inline === other.inline
     end
   end
 
@@ -3171,6 +3773,17 @@ module SyntaxTree
       []
     end
 
+    def copy(value: nil, location: nil)
+      node =
+        Const.new(
+          value: value || self.value,
+          location: location || self.location
+        )
+
+      node.comments.concat(comments.map(&:copy))
+      node
+    end
+
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
@@ -3179,6 +3792,10 @@ module SyntaxTree
 
     def format(q)
       q.text(value)
+    end
+
+    def ===(other)
+      other.is_a?(Const) && value === other.value
     end
   end
 
@@ -3213,6 +3830,18 @@ module SyntaxTree
       [parent, constant]
     end
 
+    def copy(parent: nil, constant: nil, location: nil)
+      node =
+        ConstPathField.new(
+          parent: parent || self.parent,
+          constant: constant || self.constant,
+          location: location || self.location
+        )
+
+      node.comments.concat(comments.map(&:copy))
+      node
+    end
+
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
@@ -3228,6 +3857,11 @@ module SyntaxTree
       q.format(parent)
       q.text("::")
       q.format(constant)
+    end
+
+    def ===(other)
+      other.is_a?(ConstPathField) && parent === other.parent &&
+        constant === other.constant
     end
   end
 
@@ -3260,6 +3894,18 @@ module SyntaxTree
       [parent, constant]
     end
 
+    def copy(parent: nil, constant: nil, location: nil)
+      node =
+        ConstPathRef.new(
+          parent: parent || self.parent,
+          constant: constant || self.constant,
+          location: location || self.location
+        )
+
+      node.comments.concat(comments.map(&:copy))
+      node
+    end
+
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
@@ -3275,6 +3921,11 @@ module SyntaxTree
       q.format(parent)
       q.text("::")
       q.format(constant)
+    end
+
+    def ===(other)
+      other.is_a?(ConstPathRef) && parent === other.parent &&
+        constant === other.constant
     end
   end
 
@@ -3305,6 +3956,17 @@ module SyntaxTree
       [constant]
     end
 
+    def copy(constant: nil, location: nil)
+      node =
+        ConstRef.new(
+          constant: constant || self.constant,
+          location: location || self.location
+        )
+
+      node.comments.concat(comments.map(&:copy))
+      node
+    end
+
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
@@ -3313,6 +3975,10 @@ module SyntaxTree
 
     def format(q)
       q.format(constant)
+    end
+
+    def ===(other)
+      other.is_a?(ConstRef) && constant === other.constant
     end
   end
 
@@ -3341,6 +4007,17 @@ module SyntaxTree
       []
     end
 
+    def copy(value: nil, location: nil)
+      node =
+        CVar.new(
+          value: value || self.value,
+          location: location || self.location
+        )
+
+      node.comments.concat(comments.map(&:copy))
+      node
+    end
+
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
@@ -3349,6 +4026,10 @@ module SyntaxTree
 
     def format(q)
       q.text(value)
+    end
+
+    def ===(other)
+      other.is_a?(CVar) && value === other.value
     end
   end
 
@@ -3392,6 +4073,28 @@ module SyntaxTree
 
     def child_nodes
       [target, operator, name, params, bodystmt]
+    end
+
+    def copy(
+      target: nil,
+      operator: nil,
+      name: nil,
+      params: nil,
+      bodystmt: nil,
+      location: nil
+    )
+      node =
+        Def.new(
+          target: target || self.target,
+          operator: operator || self.operator,
+          name: name || self.name,
+          params: params || self.params,
+          bodystmt: bodystmt || self.bodystmt,
+          location: location || self.location
+        )
+
+      node.comments.concat(comments.map(&:copy))
+      node
     end
 
     alias deconstruct child_nodes
@@ -3450,6 +4153,12 @@ module SyntaxTree
       end
     end
 
+    def ===(other)
+      other.is_a?(Def) && target === other.target &&
+        operator === other.operator && name === other.name &&
+        params === other.params && bodystmt === other.bodystmt
+    end
+
     # Returns true if the method was found in the source in the "endless" form,
     # i.e. where the method body is defined using the `=` operator after the
     # method name and parameters.
@@ -3484,6 +4193,17 @@ module SyntaxTree
       [value]
     end
 
+    def copy(value: nil, location: nil)
+      node =
+        Defined.new(
+          value: value || self.value,
+          location: location || self.location
+        )
+
+      node.comments.concat(comments.map(&:copy))
+      node
+    end
+
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
@@ -3500,6 +4220,10 @@ module SyntaxTree
         q.breakable_empty
       end
       q.text(")")
+    end
+
+    def ===(other)
+      other.is_a?(Defined) && value === other.value
     end
   end
 
@@ -3562,6 +4286,19 @@ module SyntaxTree
       [opening, block_var, bodystmt]
     end
 
+    def copy(opening: nil, block_var: nil, bodystmt: nil, location: nil)
+      node =
+        Block.new(
+          opening: opening || self.opening,
+          block_var: block_var || self.block_var,
+          bodystmt: bodystmt || self.bodystmt,
+          location: location || self.location
+        )
+
+      node.comments.concat(comments.map(&:copy))
+      node
+    end
+
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
@@ -3604,6 +4341,11 @@ module SyntaxTree
           .if_break { format_break(q, break_opening, break_closing) }
           .if_flat { format_flat(q, flat_opening, flat_closing) }
       end
+    end
+
+    def ===(other)
+      other.is_a?(Block) && opening === other.opening &&
+        block_var === other.block_var && bodystmt === other.bodystmt
     end
 
     def keywords?
@@ -3741,6 +4483,19 @@ module SyntaxTree
       [left, right]
     end
 
+    def copy(left: nil, operator: nil, right: nil, location: nil)
+      node =
+        RangeLiteral.new(
+          left: left || self.left,
+          operator: operator || self.operator,
+          right: right || self.right,
+          location: location || self.location
+        )
+
+      node.comments.concat(comments.map(&:copy))
+      node
+    end
+
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
@@ -3764,6 +4519,11 @@ module SyntaxTree
       end
 
       q.format(right) if right
+    end
+
+    def ===(other)
+      other.is_a?(RangeLiteral) && left === other.left &&
+        operator === other.operator && right === other.right
     end
   end
 
@@ -3843,6 +4603,18 @@ module SyntaxTree
       parts
     end
 
+    def copy(parts: nil, quote: nil, location: nil)
+      node =
+        DynaSymbol.new(
+          parts: parts || self.parts,
+          quote: quote || self.quote,
+          location: location || self.location
+        )
+
+      node.comments.concat(comments.map(&:copy))
+      node
+    end
+
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
@@ -3876,6 +4648,11 @@ module SyntaxTree
         end
       end
       q.text(closing_quote)
+    end
+
+    def ===(other)
+      other.is_a?(DynaSymbol) && ArrayMatch.call(parts, other.parts) &&
+        quote === other.quote
     end
 
     private
@@ -3954,6 +4731,18 @@ module SyntaxTree
       [keyword, statements]
     end
 
+    def copy(keyword: nil, statements: nil, location: nil)
+      node =
+        Else.new(
+          keyword: keyword || self.keyword,
+          statements: statements || self.statements,
+          location: location || self.location
+        )
+
+      node.comments.concat(comments.map(&:copy))
+      node
+    end
+
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
@@ -3977,6 +4766,11 @@ module SyntaxTree
         end
       end
     end
+
+    def ===(other)
+      other.is_a?(Else) && keyword === other.keyword &&
+        statements === other.statements
+    end
   end
 
   # Elsif represents another clause in an +if+ or +unless+ chain.
@@ -3998,13 +4792,7 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(
-      predicate:,
-      statements:,
-      consequent:,
-      location:,
-      comments: []
-    )
+    def initialize(predicate:, statements:, consequent:, location:)
       @predicate = predicate
       @statements = statements
       @consequent = consequent
@@ -4018,6 +4806,19 @@ module SyntaxTree
 
     def child_nodes
       [predicate, statements, consequent]
+    end
+
+    def copy(predicate: nil, statements: nil, consequent: nil, location: nil)
+      node =
+        Elsif.new(
+          predicate: predicate || self.predicate,
+          statements: statements || self.statements,
+          consequent: consequent || self.consequent,
+          location: location || self.location
+        )
+
+      node.comments.concat(comments.map(&:copy))
+      node
     end
 
     alias deconstruct child_nodes
@@ -4053,6 +4854,11 @@ module SyntaxTree
           end
         end
       end
+    end
+
+    def ===(other)
+      other.is_a?(Elsif) && predicate === other.predicate &&
+        statements === other.statements && consequent === other.consequent
     end
   end
 
@@ -4092,6 +4898,13 @@ module SyntaxTree
       []
     end
 
+    def copy(value: nil, location: nil)
+      EmbDoc.new(
+        value: value || self.value,
+        location: location || self.location
+      )
+    end
+
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
@@ -4101,6 +4914,10 @@ module SyntaxTree
     def format(q)
       q.trim
       q.text(value)
+    end
+
+    def ===(other)
+      other.is_a?(EmbDoc) && value === other.value
     end
   end
 
@@ -4127,10 +4944,21 @@ module SyntaxTree
       []
     end
 
+    def copy(value: nil, location: nil)
+      EmbExprBeg.new(
+        value: value || self.value,
+        location: location || self.location
+      )
+    end
+
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
       { value: value, location: location }
+    end
+
+    def ===(other)
+      other.is_a?(EmbExprBeg) && value === other.value
     end
   end
 
@@ -4157,10 +4985,21 @@ module SyntaxTree
       []
     end
 
+    def copy(value: nil, location: nil)
+      EmbExprEnd.new(
+        value: value || self.value,
+        location: location || self.location
+      )
+    end
+
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
       { value: value, location: location }
+    end
+
+    def ===(other)
+      other.is_a?(EmbExprEnd) && value === other.value
     end
   end
 
@@ -4189,10 +5028,21 @@ module SyntaxTree
       []
     end
 
+    def copy(value: nil, location: nil)
+      EmbVar.new(
+        value: value || self.value,
+        location: location || self.location
+      )
+    end
+
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
       { value: value, location: location }
+    end
+
+    def ===(other)
+      other.is_a?(EmbVar) && value === other.value
     end
   end
 
@@ -4228,6 +5078,18 @@ module SyntaxTree
       [keyword, statements]
     end
 
+    def copy(keyword: nil, statements: nil, location: nil)
+      node =
+        Ensure.new(
+          keyword: keyword || self.keyword,
+          statements: statements || self.statements,
+          location: location || self.location
+        )
+
+      node.comments.concat(comments.map(&:copy))
+      node
+    end
+
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
@@ -4248,6 +5110,11 @@ module SyntaxTree
           q.format(statements)
         end
       end
+    end
+
+    def ===(other)
+      other.is_a?(Ensure) && keyword === other.keyword &&
+        statements === other.statements
     end
   end
 
@@ -4282,6 +5149,17 @@ module SyntaxTree
       []
     end
 
+    def copy(value: nil, location: nil)
+      node =
+        ExcessedComma.new(
+          value: value || self.value,
+          location: location || self.location
+        )
+
+      node.comments.concat(comments.map(&:copy))
+      node
+    end
+
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
@@ -4290,6 +5168,10 @@ module SyntaxTree
 
     def format(q)
       q.text(value)
+    end
+
+    def ===(other)
+      other.is_a?(ExcessedComma) && value === other.value
     end
   end
 
@@ -4327,6 +5209,19 @@ module SyntaxTree
       [parent, (operator if operator != :"::"), name]
     end
 
+    def copy(parent: nil, operator: nil, name: nil, location: nil)
+      node =
+        Field.new(
+          parent: parent || self.parent,
+          operator: operator || self.operator,
+          name: name || self.name,
+          location: location || self.location
+        )
+
+      node.comments.concat(comments.map(&:copy))
+      node
+    end
+
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
@@ -4345,6 +5240,11 @@ module SyntaxTree
         q.format(CallOperatorFormatter.new(operator), stackable: false)
         q.format(name)
       end
+    end
+
+    def ===(other)
+      other.is_a?(Field) && parent === other.parent &&
+        operator === other.operator && name === other.name
     end
   end
 
@@ -4373,6 +5273,17 @@ module SyntaxTree
       []
     end
 
+    def copy(value: nil, location: nil)
+      node =
+        FloatLiteral.new(
+          value: value || self.value,
+          location: location || self.location
+        )
+
+      node.comments.concat(comments.map(&:copy))
+      node
+    end
+
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
@@ -4381,6 +5292,10 @@ module SyntaxTree
 
     def format(q)
       q.text(value)
+    end
+
+    def ===(other)
+      other.is_a?(FloatLiteral) && value === other.value
     end
   end
 
@@ -4425,6 +5340,20 @@ module SyntaxTree
       [constant, left, *values, right]
     end
 
+    def copy(constant: nil, left: nil, values: nil, right: nil, location: nil)
+      node =
+        FndPtn.new(
+          constant: constant || self.constant,
+          left: left || self.left,
+          values: values || self.values,
+          right: right || self.right,
+          location: location || self.location
+        )
+
+      node.comments.concat(comments.map(&:copy))
+      node
+    end
+
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
@@ -4461,6 +5390,12 @@ module SyntaxTree
         q.breakable_empty
         q.text("]")
       end
+    end
+
+    def ===(other)
+      other.is_a?(FndPtn) && constant === other.constant &&
+        left === other.left && ArrayMatch.call(values, other.values) &&
+        right === other.right
     end
   end
 
@@ -4499,6 +5434,19 @@ module SyntaxTree
       [index, collection, statements]
     end
 
+    def copy(index: nil, collection: nil, statements: nil, location: nil)
+      node =
+        For.new(
+          index: index || self.index,
+          collection: collection || self.collection,
+          statements: statements || self.statements,
+          location: location || self.location
+        )
+
+      node.comments.concat(comments.map(&:copy))
+      node
+    end
+
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
@@ -4529,6 +5477,11 @@ module SyntaxTree
         q.text("end")
       end
     end
+
+    def ===(other)
+      other.is_a?(For) && index === other.index &&
+        collection === other.collection && statements === other.statements
+    end
   end
 
   # GVar represents a global variable literal.
@@ -4556,6 +5509,17 @@ module SyntaxTree
       []
     end
 
+    def copy(value: nil, location: nil)
+      node =
+        GVar.new(
+          value: value || self.value,
+          location: location || self.location
+        )
+
+      node.comments.concat(comments.map(&:copy))
+      node
+    end
+
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
@@ -4564,6 +5528,10 @@ module SyntaxTree
 
     def format(q)
       q.text(value)
+    end
+
+    def ===(other)
+      other.is_a?(GVar) && value === other.value
     end
   end
 
@@ -4601,7 +5569,7 @@ module SyntaxTree
     # [LBrace] the left brace that opens this hash
     attr_reader :lbrace
 
-    # [Array[ AssocNew | AssocSplat ]] the optional contents of the hash
+    # [Array[ Assoc | AssocSplat ]] the optional contents of the hash
     attr_reader :assocs
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
@@ -4622,6 +5590,18 @@ module SyntaxTree
       [lbrace] + assocs
     end
 
+    def copy(lbrace: nil, assocs: nil, location: nil)
+      node =
+        HashLiteral.new(
+          lbrace: lbrace || self.lbrace,
+          assocs: assocs || self.assocs,
+          location: location || self.location
+        )
+
+      node.comments.concat(comments.map(&:copy))
+      node
+    end
+
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
@@ -4634,6 +5614,11 @@ module SyntaxTree
       else
         q.group { format_contents(q) }
       end
+    end
+
+    def ===(other)
+      other.is_a?(HashLiteral) && lbrace === other.lbrace &&
+        ArrayMatch.call(assocs, other.assocs)
     end
 
     def format_key(q, key)
@@ -4694,14 +5679,7 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(
-      beginning:,
-      ending: nil,
-      dedent: 0,
-      parts: [],
-      location:,
-      comments: []
-    )
+    def initialize(beginning:, ending: nil, dedent: 0, parts: [], location:)
       @beginning = beginning
       @ending = ending
       @dedent = dedent
@@ -4716,6 +5694,19 @@ module SyntaxTree
 
     def child_nodes
       [beginning, *parts, ending]
+    end
+
+    def copy(beginning: nil, location: nil, ending: nil, parts: nil)
+      node =
+        Heredoc.new(
+          beginning: beginning || self.beginning,
+          location: location || self.location,
+          ending: ending || self.ending,
+          parts: parts || self.parts
+        )
+
+      node.comments.concat(comments.map(&:copy))
+      node
     end
 
     alias deconstruct child_nodes
@@ -4768,6 +5759,11 @@ module SyntaxTree
         end
       end
     end
+
+    def ===(other)
+      other.is_a?(Heredoc) && beginning === other.beginning &&
+        ending === other.ending && ArrayMatch.call(parts, other.parts)
+    end
   end
 
   # HeredocBeg represents the beginning declaration of a heredoc.
@@ -4798,6 +5794,17 @@ module SyntaxTree
       []
     end
 
+    def copy(value: nil, location: nil)
+      node =
+        HeredocBeg.new(
+          value: value || self.value,
+          location: location || self.location
+        )
+
+      node.comments.concat(comments.map(&:copy))
+      node
+    end
+
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
@@ -4806,6 +5813,10 @@ module SyntaxTree
 
     def format(q)
       q.text(value)
+    end
+
+    def ===(other)
+      other.is_a?(HeredocBeg) && value === other.value
     end
   end
 
@@ -4837,6 +5848,17 @@ module SyntaxTree
       []
     end
 
+    def copy(value: nil, location: nil)
+      node =
+        HeredocEnd.new(
+          value: value || self.value,
+          location: location || self.location
+        )
+
+      node.comments.concat(comments.map(&:copy))
+      node
+    end
+
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
@@ -4845,6 +5867,10 @@ module SyntaxTree
 
     def format(q)
       q.text(value)
+    end
+
+    def ===(other)
+      other.is_a?(HeredocEnd) && value === other.value
     end
   end
 
@@ -4931,6 +5957,19 @@ module SyntaxTree
       [constant, *keywords.flatten(1), keyword_rest]
     end
 
+    def copy(constant: nil, keywords: nil, keyword_rest: nil, location: nil)
+      node =
+        HshPtn.new(
+          constant: constant || self.constant,
+          keywords: keywords || self.keywords,
+          keyword_rest: keyword_rest || self.keyword_rest,
+          location: location || self.location
+        )
+
+      node.comments.concat(comments.map(&:copy))
+      node
+    end
+
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
@@ -4995,6 +6034,15 @@ module SyntaxTree
       end
     end
 
+    def ===(other)
+      other.is_a?(HshPtn) && constant === other.constant &&
+        keywords.length == other.keywords.length &&
+        keywords
+          .zip(other.keywords)
+          .all? { |left, right| ArrayMatch.call(left, right) } &&
+        keyword_rest === other.keyword_rest
+    end
+
     private
 
     def format_contents(q, parts, nested)
@@ -5039,6 +6087,17 @@ module SyntaxTree
       []
     end
 
+    def copy(value: nil, location: nil)
+      node =
+        Ident.new(
+          value: value || self.value,
+          location: location || self.location
+        )
+
+      node.comments.concat(comments.map(&:copy))
+      node
+    end
+
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
@@ -5047,6 +6106,10 @@ module SyntaxTree
 
     def format(q)
       q.text(value)
+    end
+
+    def ===(other)
+      other.is_a?(Ident) && value === other.value
     end
   end
 
@@ -5299,19 +6362,13 @@ module SyntaxTree
     # [Statements] the expressions to be executed
     attr_reader :statements
 
-    # [nil, Elsif, Else] the next clause in the chain
+    # [nil | Elsif | Else] the next clause in the chain
     attr_reader :consequent
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(
-      predicate:,
-      statements:,
-      consequent:,
-      location:,
-      comments: []
-    )
+    def initialize(predicate:, statements:, consequent:, location:)
       @predicate = predicate
       @statements = statements
       @consequent = consequent
@@ -5325,6 +6382,19 @@ module SyntaxTree
 
     def child_nodes
       [predicate, statements, consequent]
+    end
+
+    def copy(predicate: nil, statements: nil, consequent: nil, location: nil)
+      node =
+        If.new(
+          predicate: predicate || self.predicate,
+          statements: statements || self.statements,
+          consequent: consequent || self.consequent,
+          location: location || self.location
+        )
+
+      node.comments.concat(comments.map(&:copy))
+      node
     end
 
     alias deconstruct child_nodes
@@ -5341,6 +6411,11 @@ module SyntaxTree
 
     def format(q)
       ConditionalFormatter.new("if", self).format(q)
+    end
+
+    def ===(other)
+      other.is_a?(If) && predicate === other.predicate &&
+        statements === other.statements && consequent === other.consequent
     end
 
     # Checks if the node was originally found in the modifier form.
@@ -5382,6 +6457,19 @@ module SyntaxTree
       [predicate, truthy, falsy]
     end
 
+    def copy(predicate: nil, truthy: nil, falsy: nil, location: nil)
+      node =
+        IfOp.new(
+          predicate: predicate || self.predicate,
+          truthy: truthy || self.truthy,
+          falsy: falsy || self.falsy,
+          location: location || self.location
+        )
+
+      node.comments.concat(comments.map(&:copy))
+      node
+    end
+
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
@@ -5408,6 +6496,11 @@ module SyntaxTree
       end
 
       q.group { q.if_break { format_break(q) }.if_flat { format_flat(q) } }
+    end
+
+    def ===(other)
+      other.is_a?(IfOp) && predicate === other.predicate &&
+        truthy === other.truthy && falsy === other.falsy
     end
 
     private
@@ -5475,6 +6568,17 @@ module SyntaxTree
       []
     end
 
+    def copy(value: nil, location: nil)
+      node =
+        Imaginary.new(
+          value: value || self.value,
+          location: location || self.location
+        )
+
+      node.comments.concat(comments.map(&:copy))
+      node
+    end
+
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
@@ -5483,6 +6587,10 @@ module SyntaxTree
 
     def format(q)
       q.text(value)
+    end
+
+    def ===(other)
+      other.is_a?(Imaginary) && value === other.value
     end
   end
 
@@ -5522,6 +6630,19 @@ module SyntaxTree
       [pattern, statements, consequent]
     end
 
+    def copy(pattern: nil, statements: nil, consequent: nil, location: nil)
+      node =
+        In.new(
+          pattern: pattern || self.pattern,
+          statements: statements || self.statements,
+          consequent: consequent || self.consequent,
+          location: location || self.location
+        )
+
+      node.comments.concat(comments.map(&:copy))
+      node
+    end
+
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
@@ -5554,6 +6675,11 @@ module SyntaxTree
         end
       end
     end
+
+    def ===(other)
+      other.is_a?(In) && pattern === other.pattern &&
+        statements === other.statements && consequent === other.consequent
+    end
   end
 
   # Int represents an integer number literal.
@@ -5581,6 +6707,14 @@ module SyntaxTree
       []
     end
 
+    def copy(value: nil, location: nil)
+      node =
+        Int.new(value: value || self.value, location: location || self.location)
+
+      node.comments.concat(comments.map(&:copy))
+      node
+    end
+
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
@@ -5597,6 +6731,10 @@ module SyntaxTree
       else
         q.text(value)
       end
+    end
+
+    def ===(other)
+      other.is_a?(Int) && value === other.value
     end
   end
 
@@ -5625,6 +6763,17 @@ module SyntaxTree
       []
     end
 
+    def copy(value: nil, location: nil)
+      node =
+        IVar.new(
+          value: value || self.value,
+          location: location || self.location
+        )
+
+      node.comments.concat(comments.map(&:copy))
+      node
+    end
+
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
@@ -5633,6 +6782,10 @@ module SyntaxTree
 
     def format(q)
       q.text(value)
+    end
+
+    def ===(other)
+      other.is_a?(IVar) && value === other.value
     end
   end
 
@@ -5674,6 +6827,14 @@ module SyntaxTree
       []
     end
 
+    def copy(value: nil, location: nil)
+      node =
+        Kw.new(value: value || self.value, location: location || self.location)
+
+      node.comments.concat(comments.map(&:copy))
+      node
+    end
+
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
@@ -5682,6 +6843,10 @@ module SyntaxTree
 
     def format(q)
       q.text(value)
+    end
+
+    def ===(other)
+      other.is_a?(Kw) && value === other.value
     end
   end
 
@@ -5711,6 +6876,17 @@ module SyntaxTree
       [name]
     end
 
+    def copy(name: nil, location: nil)
+      node =
+        KwRestParam.new(
+          name: name || self.name,
+          location: location || self.location
+        )
+
+      node.comments.concat(comments.map(&:copy))
+      node
+    end
+
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
@@ -5720,6 +6896,10 @@ module SyntaxTree
     def format(q)
       q.text("**")
       q.format(name) if name
+    end
+
+    def ===(other)
+      other.is_a?(KwRestParam) && name === other.name
     end
   end
 
@@ -5757,6 +6937,17 @@ module SyntaxTree
       []
     end
 
+    def copy(value: nil, location: nil)
+      node =
+        Label.new(
+          value: value || self.value,
+          location: location || self.location
+        )
+
+      node.comments.concat(comments.map(&:copy))
+      node
+    end
+
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
@@ -5765,6 +6956,10 @@ module SyntaxTree
 
     def format(q)
       q.text(value)
+    end
+
+    def ===(other)
+      other.is_a?(Label) && value === other.value
     end
   end
 
@@ -5792,10 +6987,21 @@ module SyntaxTree
       []
     end
 
+    def copy(value: nil, location: nil)
+      LabelEnd.new(
+        value: value || self.value,
+        location: location || self.location
+      )
+    end
+
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
       { value: value, location: location }
+    end
+
+    def ===(other)
+      other.is_a?(LabelEnd) && value === other.value
     end
   end
 
@@ -5826,6 +7032,18 @@ module SyntaxTree
 
     def child_nodes
       [params, statements]
+    end
+
+    def copy(params: nil, statements: nil, location: nil)
+      node =
+        Lambda.new(
+          params: params || self.params,
+          statements: statements || self.statements,
+          location: location || self.location
+        )
+
+      node.comments.concat(comments.map(&:copy))
+      node
     end
 
     alias deconstruct child_nodes
@@ -5901,6 +7119,11 @@ module SyntaxTree
           end
       end
     end
+
+    def ===(other)
+      other.is_a?(Lambda) && params === other.params &&
+        statements === other.statements
+    end
   end
 
   # LambdaVar represents the parameters being declared for a lambda. Effectively
@@ -5936,6 +7159,18 @@ module SyntaxTree
       [params, *locals]
     end
 
+    def copy(params: nil, locals: nil, location: nil)
+      node =
+        LambdaVar.new(
+          params: params || self.params,
+          locals: locals || self.locals,
+          location: location || self.location
+        )
+
+      node.comments.concat(comments.map(&:copy))
+      node
+    end
+
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
@@ -5953,6 +7188,11 @@ module SyntaxTree
         q.text("; ")
         q.seplist(locals, BlockVar::SEPARATOR) { |local| q.format(local) }
       end
+    end
+
+    def ===(other)
+      other.is_a?(LambdaVar) && params === other.params &&
+        ArrayMatch.call(locals, other.locals)
     end
   end
 
@@ -5978,6 +7218,17 @@ module SyntaxTree
       []
     end
 
+    def copy(value: nil, location: nil)
+      node =
+        LBrace.new(
+          value: value || self.value,
+          location: location || self.location
+        )
+
+      node.comments.concat(comments.map(&:copy))
+      node
+    end
+
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
@@ -5986,6 +7237,19 @@ module SyntaxTree
 
     def format(q)
       q.text(value)
+    end
+
+    def ===(other)
+      other.is_a?(LBrace) && value === other.value
+    end
+
+    # Because some nodes keep around a { token so that comments can be attached
+    # to it if they occur in the source, oftentimes an LBrace is a child of
+    # another node. This means it's required at initialization time. To make it
+    # easier to create LBrace nodes without any specific value, this method
+    # provides a default node.
+    def self.default
+      new(value: "{", location: Location.default)
     end
   end
 
@@ -6011,6 +7275,17 @@ module SyntaxTree
       []
     end
 
+    def copy(value: nil, location: nil)
+      node =
+        LBracket.new(
+          value: value || self.value,
+          location: location || self.location
+        )
+
+      node.comments.concat(comments.map(&:copy))
+      node
+    end
+
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
@@ -6019,6 +7294,19 @@ module SyntaxTree
 
     def format(q)
       q.text(value)
+    end
+
+    def ===(other)
+      other.is_a?(LBracket) && value === other.value
+    end
+
+    # Because some nodes keep around a [ token so that comments can be attached
+    # to it if they occur in the source, oftentimes an LBracket is a child of
+    # another node. This means it's required at initialization time. To make it
+    # easier to create LBracket nodes without any specific value, this method
+    # provides a default node.
+    def self.default
+      new(value: "[", location: Location.default)
     end
   end
 
@@ -6044,6 +7332,17 @@ module SyntaxTree
       []
     end
 
+    def copy(value: nil, location: nil)
+      node =
+        LParen.new(
+          value: value || self.value,
+          location: location || self.location
+        )
+
+      node.comments.concat(comments.map(&:copy))
+      node
+    end
+
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
@@ -6052,6 +7351,19 @@ module SyntaxTree
 
     def format(q)
       q.text(value)
+    end
+
+    def ===(other)
+      other.is_a?(LParen) && value === other.value
+    end
+
+    # Because some nodes keep around a ( token so that comments can be attached
+    # to it if they occur in the source, oftentimes an LParen is a child of
+    # another node. This means it's required at initialization time. To make it
+    # easier to create LParen nodes without any specific value, this method
+    # provides a default node.
+    def self.default
+      new(value: "(", location: Location.default)
     end
   end
 
@@ -6094,6 +7406,18 @@ module SyntaxTree
       [target, value]
     end
 
+    def copy(target: nil, value: nil, location: nil)
+      node =
+        MAssign.new(
+          target: target || self.target,
+          value: value || self.value,
+          location: location || self.location
+        )
+
+      node.comments.concat(comments.map(&:copy))
+      node
+    end
+
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
@@ -6109,6 +7433,10 @@ module SyntaxTree
           q.format(value)
         end
       end
+    end
+
+    def ===(other)
+      other.is_a?(MAssign) && target === other.target && value === other.value
     end
   end
 
@@ -6141,6 +7469,18 @@ module SyntaxTree
       [call, block]
     end
 
+    def copy(call: nil, block: nil, location: nil)
+      node =
+        MethodAddBlock.new(
+          call: call || self.call,
+          block: block || self.block,
+          location: location || self.location
+        )
+
+      node.comments.concat(comments.map(&:copy))
+      node
+    end
+
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
@@ -6161,6 +7501,11 @@ module SyntaxTree
       else
         format_contents(q)
       end
+    end
+
+    def ===(other)
+      other.is_a?(MethodAddBlock) && call === other.call &&
+        block === other.block
     end
 
     def format_contents(q)
@@ -6202,6 +7547,18 @@ module SyntaxTree
       parts
     end
 
+    def copy(parts: nil, location: nil, comma: nil)
+      node =
+        MLHS.new(
+          parts: parts || self.parts,
+          location: location || self.location,
+          comma: comma || self.comma
+        )
+
+      node.comments.concat(comments.map(&:copy))
+      node
+    end
+
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
@@ -6211,6 +7568,11 @@ module SyntaxTree
     def format(q)
       q.seplist(parts) { |part| q.format(part) }
       q.text(",") if comma
+    end
+
+    def ===(other)
+      other.is_a?(MLHS) && ArrayMatch.call(parts, other.parts) &&
+        comma === other.comma
     end
   end
 
@@ -6246,6 +7608,17 @@ module SyntaxTree
       [contents]
     end
 
+    def copy(contents: nil, location: nil)
+      node =
+        MLHSParen.new(
+          contents: contents || self.contents,
+          location: location || self.location
+        )
+
+      node.comments.concat(comments.map(&:copy))
+      node
+    end
+
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
@@ -6271,6 +7644,10 @@ module SyntaxTree
         end
         q.text(")")
       end
+    end
+
+    def ===(other)
+      other.is_a?(MLHSParen) && contents === other.contents
     end
   end
 
@@ -6304,6 +7681,18 @@ module SyntaxTree
       [constant, bodystmt]
     end
 
+    def copy(constant: nil, bodystmt: nil, location: nil)
+      node =
+        ModuleDeclaration.new(
+          constant: constant || self.constant,
+          bodystmt: bodystmt || self.bodystmt,
+          location: location || self.location
+        )
+
+      node.comments.concat(comments.map(&:copy))
+      node
+    end
+
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
@@ -6335,6 +7724,11 @@ module SyntaxTree
           q.text("end")
         end
       end
+    end
+
+    def ===(other)
+      other.is_a?(ModuleDeclaration) && constant === other.constant &&
+        bodystmt === other.bodystmt
     end
 
     private
@@ -6373,6 +7767,17 @@ module SyntaxTree
       parts
     end
 
+    def copy(parts: nil, location: nil)
+      node =
+        MRHS.new(
+          parts: parts || self.parts,
+          location: location || self.location
+        )
+
+      node.comments.concat(comments.map(&:copy))
+      node
+    end
+
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
@@ -6381,6 +7786,10 @@ module SyntaxTree
 
     def format(q)
       q.seplist(parts) { |part| q.format(part) }
+    end
+
+    def ===(other)
+      other.is_a?(MRHS) && ArrayMatch.call(parts, other.parts)
     end
   end
 
@@ -6422,6 +7831,17 @@ module SyntaxTree
       [arguments]
     end
 
+    def copy(arguments: nil, location: nil)
+      node =
+        Next.new(
+          arguments: arguments || self.arguments,
+          location: location || self.location
+        )
+
+      node.comments.concat(comments.map(&:copy))
+      node
+    end
+
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
@@ -6430,6 +7850,10 @@ module SyntaxTree
 
     def format(q)
       FlowControlFormatter.new("next", self).format(q)
+    end
+
+    def ===(other)
+      other.is_a?(Next) && arguments === other.arguments
     end
   end
 
@@ -6463,6 +7887,14 @@ module SyntaxTree
       []
     end
 
+    def copy(value: nil, location: nil)
+      node =
+        Op.new(value: value || self.value, location: location || self.location)
+
+      node.comments.concat(comments.map(&:copy))
+      node
+    end
+
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
@@ -6471,6 +7903,10 @@ module SyntaxTree
 
     def format(q)
       q.text(value)
+    end
+
+    def ===(other)
+      other.is_a?(Op) && value === other.value
     end
   end
 
@@ -6509,6 +7945,19 @@ module SyntaxTree
       [target, operator, value]
     end
 
+    def copy(target: nil, operator: nil, value: nil, location: nil)
+      node =
+        OpAssign.new(
+          target: target || self.target,
+          operator: operator || self.operator,
+          value: value || self.value,
+          location: location || self.location
+        )
+
+      node.comments.concat(comments.map(&:copy))
+      node
+    end
+
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
@@ -6537,6 +7986,11 @@ module SyntaxTree
           end
         end
       end
+    end
+
+    def ===(other)
+      other.is_a?(OpAssign) && target === other.target &&
+        operator === other.operator && value === other.value
     end
 
     private
@@ -6728,8 +8182,7 @@ module SyntaxTree
       keywords: [],
       keyword_rest: nil,
       block: nil,
-      location:,
-      comments: []
+      location:
     )
       @requireds = requireds
       @optionals = optionals
@@ -6765,6 +8218,32 @@ module SyntaxTree
         (keyword_rest if keyword_rest != :nil),
         block
       ]
+    end
+
+    def copy(
+      location: nil,
+      requireds: nil,
+      optionals: nil,
+      rest: nil,
+      posts: nil,
+      keywords: nil,
+      keyword_rest: nil,
+      block: nil
+    )
+      node =
+        Params.new(
+          location: location || self.location,
+          requireds: requireds || self.requireds,
+          optionals: optionals || self.optionals,
+          rest: rest || self.rest,
+          posts: posts || self.posts,
+          keywords: keywords || self.keywords,
+          keyword_rest: keyword_rest || self.keyword_rest,
+          block: block || self.block
+        )
+
+      node.comments.concat(comments.map(&:copy))
+      node
     end
 
     alias deconstruct child_nodes
@@ -6820,6 +8299,20 @@ module SyntaxTree
       end
     end
 
+    def ===(other)
+      other.is_a?(Params) && ArrayMatch.call(requireds, other.requireds) &&
+        optionals.length == other.optionals.length &&
+        optionals
+          .zip(other.optionals)
+          .all? { |left, right| ArrayMatch.call(left, right) } &&
+        rest === other.rest && ArrayMatch.call(posts, other.posts) &&
+        keywords.length == other.keywords.length &&
+        keywords
+          .zip(other.keywords)
+          .all? { |left, right| ArrayMatch.call(left, right) } &&
+        keyword_rest === other.keyword_rest && block === other.block
+    end
+
     private
 
     def format_contents(q, parts)
@@ -6859,6 +8352,18 @@ module SyntaxTree
       [lparen, contents]
     end
 
+    def copy(lparen: nil, contents: nil, location: nil)
+      node =
+        Paren.new(
+          lparen: lparen || self.lparen,
+          contents: contents || self.contents,
+          location: location || self.location
+        )
+
+      node.comments.concat(comments.map(&:copy))
+      node
+    end
+
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
@@ -6885,6 +8390,11 @@ module SyntaxTree
         q.text(")")
       end
     end
+
+    def ===(other)
+      other.is_a?(Paren) && lparen === other.lparen &&
+        contents === other.contents
+    end
   end
 
   # Period represents the use of the +.+ operator. It is usually found in method
@@ -6910,6 +8420,17 @@ module SyntaxTree
       []
     end
 
+    def copy(value: nil, location: nil)
+      node =
+        Period.new(
+          value: value || self.value,
+          location: location || self.location
+        )
+
+      node.comments.concat(comments.map(&:copy))
+      node
+    end
+
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
@@ -6918,6 +8439,10 @@ module SyntaxTree
 
     def format(q)
       q.text(value)
+    end
+
+    def ===(other)
+      other.is_a?(Period) && value === other.value
     end
   end
 
@@ -6943,6 +8468,17 @@ module SyntaxTree
       [statements]
     end
 
+    def copy(statements: nil, location: nil)
+      node =
+        Program.new(
+          statements: statements || self.statements,
+          location: location || self.location
+        )
+
+      node.comments.concat(comments.map(&:copy))
+      node
+    end
+
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
@@ -6956,6 +8492,10 @@ module SyntaxTree
       # it ends with the special __END__ syntax. In that case we want to
       # replicate the text exactly so we will just let it be.
       q.breakable_force unless statements.body.last.is_a?(EndContent)
+    end
+
+    def ===(other)
+      other.is_a?(Program) && statements === other.statements
     end
   end
 
@@ -6986,6 +8526,18 @@ module SyntaxTree
 
     def child_nodes
       []
+    end
+
+    def copy(beginning: nil, elements: nil, location: nil)
+      node =
+        QSymbols.new(
+          beginning: beginning || self.beginning,
+          elements: elements || self.elements,
+          location: location || self.location
+        )
+
+      node.comments.concat(comments.map(&:copy))
+      node
     end
 
     alias deconstruct child_nodes
@@ -7020,6 +8572,11 @@ module SyntaxTree
       end
       q.text(closing)
     end
+
+    def ===(other)
+      other.is_a?(QSymbols) && beginning === other.beginning &&
+        ArrayMatch.call(elements, other.elements)
+    end
   end
 
   # QSymbolsBeg represents the beginning of a symbol literal array.
@@ -7046,10 +8603,21 @@ module SyntaxTree
       []
     end
 
+    def copy(value: nil, location: nil)
+      QSymbolsBeg.new(
+        value: value || self.value,
+        location: location || self.location
+      )
+    end
+
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
       { value: value, location: location }
+    end
+
+    def ===(other)
+      other.is_a?(QSymbolsBeg) && value === other.value
     end
   end
 
@@ -7080,6 +8648,14 @@ module SyntaxTree
 
     def child_nodes
       []
+    end
+
+    def copy(beginning: nil, elements: nil, location: nil)
+      QWords.new(
+        beginning: beginning || self.beginning,
+        elements: elements || self.elements,
+        location: location || self.location
+      )
     end
 
     alias deconstruct child_nodes
@@ -7114,6 +8690,11 @@ module SyntaxTree
       end
       q.text(closing)
     end
+
+    def ===(other)
+      other.is_a?(QWords) && beginning === other.beginning &&
+        ArrayMatch.call(elements, other.elements)
+    end
   end
 
   # QWordsBeg represents the beginning of a string literal array.
@@ -7140,10 +8721,21 @@ module SyntaxTree
       []
     end
 
+    def copy(value: nil, location: nil)
+      QWordsBeg.new(
+        value: value || self.value,
+        location: location || self.location
+      )
+    end
+
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
       { value: value, location: location }
+    end
+
+    def ===(other)
+      other.is_a?(QWordsBeg) && value === other.value
     end
   end
 
@@ -7172,6 +8764,17 @@ module SyntaxTree
       []
     end
 
+    def copy(value: nil, location: nil)
+      node =
+        RationalLiteral.new(
+          value: value || self.value,
+          location: location || self.location
+        )
+
+      node.comments.concat(comments.map(&:copy))
+      node
+    end
+
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
@@ -7180,6 +8783,10 @@ module SyntaxTree
 
     def format(q)
       q.text(value)
+    end
+
+    def ===(other)
+      other.is_a?(RationalLiteral) && value === other.value
     end
   end
 
@@ -7201,10 +8808,21 @@ module SyntaxTree
       []
     end
 
+    def copy(value: nil, location: nil)
+      RBrace.new(
+        value: value || self.value,
+        location: location || self.location
+      )
+    end
+
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
       { value: value, location: location }
+    end
+
+    def ===(other)
+      other.is_a?(RBrace) && value === other.value
     end
   end
 
@@ -7226,10 +8844,21 @@ module SyntaxTree
       []
     end
 
+    def copy(value: nil, location: nil)
+      RBracket.new(
+        value: value || self.value,
+        location: location || self.location
+      )
+    end
+
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
       { value: value, location: location }
+    end
+
+    def ===(other)
+      other.is_a?(RBracket) && value === other.value
     end
   end
 
@@ -7254,6 +8883,13 @@ module SyntaxTree
       []
     end
 
+    def copy(location: nil)
+      node = Redo.new(location: location || self.location)
+
+      node.comments.concat(comments.map(&:copy))
+      node
+    end
+
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
@@ -7262,6 +8898,10 @@ module SyntaxTree
 
     def format(q)
       q.text("redo")
+    end
+
+    def ===(other)
+      other.is_a?(Redo)
     end
   end
 
@@ -7293,10 +8933,23 @@ module SyntaxTree
       parts
     end
 
+    def copy(beginning: nil, parts: nil, location: nil)
+      RegexpContent.new(
+        beginning: beginning || self.beginning,
+        parts: parts || self.parts,
+        location: location || self.location
+      )
+    end
+
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
       { beginning: beginning, parts: parts, location: location }
+    end
+
+    def ===(other)
+      other.is_a?(RegexpContent) && beginning === other.beginning &&
+        parts === other.parts
     end
   end
 
@@ -7326,10 +8979,21 @@ module SyntaxTree
       []
     end
 
+    def copy(value: nil, location: nil)
+      RegexpBeg.new(
+        value: value || self.value,
+        location: location || self.location
+      )
+    end
+
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
       { value: value, location: location }
+    end
+
+    def ===(other)
+      other.is_a?(RegexpBeg) && value === other.value
     end
   end
 
@@ -7360,10 +9024,21 @@ module SyntaxTree
       []
     end
 
+    def copy(value: nil, location: nil)
+      RegexpEnd.new(
+        value: value || self.value,
+        location: location || self.location
+      )
+    end
+
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
       { value: value, location: location }
+    end
+
+    def ===(other)
+      other.is_a?(RegexpEnd) && value === other.value
     end
   end
 
@@ -7399,6 +9074,19 @@ module SyntaxTree
 
     def child_nodes
       parts
+    end
+
+    def copy(beginning: nil, ending: nil, parts: nil, location: nil)
+      node =
+        RegexpLiteral.new(
+          beginning: beginning || self.beginning,
+          ending: ending || self.ending,
+          parts: parts || self.parts,
+          location: location || self.location
+        )
+
+      node.comments.concat(comments.map(&:copy))
+      node
     end
 
     alias deconstruct child_nodes
@@ -7452,6 +9140,12 @@ module SyntaxTree
           q.text(options)
         end
       end
+    end
+
+    def ===(other)
+      other.is_a?(RegexpLiteral) && beginning === other.beginning &&
+        ending === other.ending && options === other.options &&
+        ArrayMatch.call(parts, other.parts)
     end
 
     def options
@@ -7511,6 +9205,18 @@ module SyntaxTree
       [*exceptions, variable]
     end
 
+    def copy(exceptions: nil, variable: nil, location: nil)
+      node =
+        RescueEx.new(
+          exceptions: exceptions || self.exceptions,
+          variable: variable || self.variable,
+          location: location || self.location
+        )
+
+      node.comments.concat(comments.map(&:copy))
+      node
+    end
+
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
@@ -7534,6 +9240,11 @@ module SyntaxTree
           q.format(variable)
         end
       end
+    end
+
+    def ===(other)
+      other.is_a?(RescueEx) && exceptions === other.exceptions &&
+        variable === other.variable
     end
   end
 
@@ -7559,14 +9270,7 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(
-      keyword:,
-      exception:,
-      statements:,
-      consequent:,
-      location:,
-      comments: []
-    )
+    def initialize(keyword:, exception:, statements:, consequent:, location:)
       @keyword = keyword
       @exception = exception
       @statements = statements
@@ -7605,6 +9309,26 @@ module SyntaxTree
       [keyword, exception, statements, consequent]
     end
 
+    def copy(
+      keyword: nil,
+      exception: nil,
+      statements: nil,
+      consequent: nil,
+      location: nil
+    )
+      node =
+        Rescue.new(
+          keyword: keyword || self.keyword,
+          exception: exception || self.exception,
+          statements: statements || self.statements,
+          consequent: consequent || self.consequent,
+          location: location || self.location
+        )
+
+      node.comments.concat(comments.map(&:copy))
+      node
+    end
+
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
@@ -7641,6 +9365,12 @@ module SyntaxTree
         end
       end
     end
+
+    def ===(other)
+      other.is_a?(Rescue) && keyword === other.keyword &&
+        exception === other.exception && statements === other.statements &&
+        consequent === other.consequent
+    end
   end
 
   # RescueMod represents the use of the modifier form of a +rescue+ clause.
@@ -7672,6 +9402,18 @@ module SyntaxTree
       [statement, value]
     end
 
+    def copy(statement: nil, value: nil, location: nil)
+      node =
+        RescueMod.new(
+          statement: statement || self.statement,
+          value: value || self.value,
+          location: location || self.location
+        )
+
+      node.comments.concat(comments.map(&:copy))
+      node
+    end
+
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
@@ -7699,6 +9441,11 @@ module SyntaxTree
         q.breakable_force
       end
       q.text("end")
+    end
+
+    def ===(other)
+      other.is_a?(RescueMod) && statement === other.statement &&
+        value === other.value
     end
   end
 
@@ -7728,6 +9475,17 @@ module SyntaxTree
       [name]
     end
 
+    def copy(name: nil, location: nil)
+      node =
+        RestParam.new(
+          name: name || self.name,
+          location: location || self.location
+        )
+
+      node.comments.concat(comments.map(&:copy))
+      node
+    end
+
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
@@ -7737,6 +9495,10 @@ module SyntaxTree
     def format(q)
       q.text("*")
       q.format(name) if name
+    end
+
+    def ===(other)
+      other.is_a?(RestParam) && name === other.name
     end
   end
 
@@ -7761,6 +9523,13 @@ module SyntaxTree
       []
     end
 
+    def copy(location: nil)
+      node = Retry.new(location: location || self.location)
+
+      node.comments.concat(comments.map(&:copy))
+      node
+    end
+
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
@@ -7769,6 +9538,10 @@ module SyntaxTree
 
     def format(q)
       q.text("retry")
+    end
+
+    def ===(other)
+      other.is_a?(Retry)
     end
   end
 
@@ -7797,6 +9570,17 @@ module SyntaxTree
       [arguments]
     end
 
+    def copy(arguments: nil, location: nil)
+      node =
+        Return.new(
+          arguments: arguments || self.arguments,
+          location: location || self.location
+        )
+
+      node.comments.concat(comments.map(&:copy))
+      node
+    end
+
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
@@ -7805,6 +9589,10 @@ module SyntaxTree
 
     def format(q)
       FlowControlFormatter.new("return", self).format(q)
+    end
+
+    def ===(other)
+      other.is_a?(Return) && arguments === other.arguments
     end
   end
 
@@ -7826,10 +9614,21 @@ module SyntaxTree
       []
     end
 
+    def copy(value: nil, location: nil)
+      RParen.new(
+        value: value || self.value,
+        location: location || self.location
+      )
+    end
+
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
       { value: value, location: location }
+    end
+
+    def ===(other)
+      other.is_a?(RParen) && value === other.value
     end
   end
 
@@ -7865,6 +9664,18 @@ module SyntaxTree
       [target, bodystmt]
     end
 
+    def copy(target: nil, bodystmt: nil, location: nil)
+      node =
+        SClass.new(
+          target: target || self.target,
+          bodystmt: bodystmt || self.bodystmt,
+          location: location || self.location
+        )
+
+      node.comments.concat(comments.map(&:copy))
+      node
+    end
+
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
@@ -7887,6 +9698,11 @@ module SyntaxTree
         q.breakable_force
       end
       q.text("end")
+    end
+
+    def ===(other)
+      other.is_a?(SClass) && target === other.target &&
+        bodystmt === other.bodystmt
     end
   end
 
@@ -7969,6 +9785,18 @@ module SyntaxTree
       body
     end
 
+    def copy(body: nil, location: nil)
+      node =
+        Statements.new(
+          parser,
+          body: body || self.body,
+          location: location || self.location
+        )
+
+      node.comments.concat(comments.map(&:copy))
+      node
+    end
+
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
@@ -8021,6 +9849,10 @@ module SyntaxTree
         line = statement.location.end_line
         previous = statement
       end
+    end
+
+    def ===(other)
+      other.is_a?(Statements) && ArrayMatch.call(body, other.body)
     end
 
     private
@@ -8088,10 +9920,21 @@ module SyntaxTree
       parts
     end
 
+    def copy(parts: nil, location: nil)
+      StringContent.new(
+        parts: parts || self.parts,
+        location: location || self.location
+      )
+    end
+
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
       { parts: parts, location: location }
+    end
+
+    def ===(other)
+      other.is_a?(StringContent) && ArrayMatch.call(parts, other.parts)
     end
   end
 
@@ -8126,6 +9969,18 @@ module SyntaxTree
       [left, right]
     end
 
+    def copy(left: nil, right: nil, location: nil)
+      node =
+        StringConcat.new(
+          left: left || self.left,
+          right: right || self.right,
+          location: location || self.location
+        )
+
+      node.comments.concat(comments.map(&:copy))
+      node
+    end
+
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
@@ -8141,6 +9996,10 @@ module SyntaxTree
           q.format(right)
         end
       end
+    end
+
+    def ===(other)
+      other.is_a?(StringConcat) && left === other.left && right === other.right
     end
   end
 
@@ -8171,6 +10030,17 @@ module SyntaxTree
       [variable]
     end
 
+    def copy(variable: nil, location: nil)
+      node =
+        StringDVar.new(
+          variable: variable || self.variable,
+          location: location || self.location
+        )
+
+      node.comments.concat(comments.map(&:copy))
+      node
+    end
+
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
@@ -8181,6 +10051,10 @@ module SyntaxTree
       q.text('#{')
       q.format(variable)
       q.text("}")
+    end
+
+    def ===(other)
+      other.is_a?(StringDVar) && variable === other.variable
     end
   end
 
@@ -8209,6 +10083,17 @@ module SyntaxTree
 
     def child_nodes
       [statements]
+    end
+
+    def copy(statements: nil, location: nil)
+      node =
+        StringEmbExpr.new(
+          statements: statements || self.statements,
+          location: location || self.location
+        )
+
+      node.comments.concat(comments.map(&:copy))
+      node
     end
 
     alias deconstruct child_nodes
@@ -8242,6 +10127,10 @@ module SyntaxTree
         end
       end
     end
+
+    def ===(other)
+      other.is_a?(StringEmbExpr) && statements === other.statements
+    end
   end
 
   # StringLiteral represents a string literal.
@@ -8272,6 +10161,18 @@ module SyntaxTree
 
     def child_nodes
       parts
+    end
+
+    def copy(parts: nil, quote: nil, location: nil)
+      node =
+        StringLiteral.new(
+          parts: parts || self.parts,
+          quote: quote || self.quote,
+          location: location || self.location
+        )
+
+      node.comments.concat(comments.map(&:copy))
+      node
     end
 
     alias deconstruct child_nodes
@@ -8320,6 +10221,11 @@ module SyntaxTree
       end
       q.text(closing_quote)
     end
+
+    def ===(other)
+      other.is_a?(StringLiteral) && ArrayMatch.call(parts, other.parts) &&
+        quote === other.quote
+    end
   end
 
   # Super represents using the +super+ keyword with arguments. It can optionally
@@ -8348,6 +10254,17 @@ module SyntaxTree
       [arguments]
     end
 
+    def copy(arguments: nil, location: nil)
+      node =
+        Super.new(
+          arguments: arguments || self.arguments,
+          location: location || self.location
+        )
+
+      node.comments.concat(comments.map(&:copy))
+      node
+    end
+
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
@@ -8365,6 +10282,10 @@ module SyntaxTree
           q.nest("super ".length) { q.format(arguments) }
         end
       end
+    end
+
+    def ===(other)
+      other.is_a?(Super) && arguments === other.arguments
     end
   end
 
@@ -8401,10 +10322,21 @@ module SyntaxTree
       []
     end
 
+    def copy(value: nil, location: nil)
+      SymBeg.new(
+        value: value || self.value,
+        location: location || self.location
+      )
+    end
+
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
       { value: value, location: location }
+    end
+
+    def ===(other)
+      other.is_a?(SymBeg) && value === other.value
     end
   end
 
@@ -8431,10 +10363,21 @@ module SyntaxTree
       []
     end
 
+    def copy(value: nil, location: nil)
+      SymbolContent.new(
+        value: value || self.value,
+        location: location || self.location
+      )
+    end
+
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
       { value: value, location: location }
+    end
+
+    def ===(other)
+      other.is_a?(SymbolContent) && value === other.value
     end
   end
 
@@ -8465,6 +10408,17 @@ module SyntaxTree
       [value]
     end
 
+    def copy(value: nil, location: nil)
+      node =
+        SymbolLiteral.new(
+          value: value || self.value,
+          location: location || self.location
+        )
+
+      node.comments.concat(comments.map(&:copy))
+      node
+    end
+
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
@@ -8474,6 +10428,10 @@ module SyntaxTree
     def format(q)
       q.text(":")
       q.format(value)
+    end
+
+    def ===(other)
+      other.is_a?(SymbolLiteral) && value === other.value
     end
   end
 
@@ -8504,6 +10462,14 @@ module SyntaxTree
 
     def child_nodes
       []
+    end
+
+    def copy(beginning: nil, elements: nil, location: nil)
+      Symbols.new(
+        beginning: beginning || self.beginning,
+        elements: elements || self.elements,
+        location: location || self.location
+      )
     end
 
     alias deconstruct child_nodes
@@ -8538,6 +10504,11 @@ module SyntaxTree
       end
       q.text(closing)
     end
+
+    def ===(other)
+      other.is_a?(Symbols) && beginning === other.beginning &&
+        ArrayMatch.call(elements, other.elements)
+    end
   end
 
   # SymbolsBeg represents the start of a symbol array literal with
@@ -8565,10 +10536,21 @@ module SyntaxTree
       []
     end
 
+    def copy(value: nil, location: nil)
+      SymbolsBeg.new(
+        value: value || self.value,
+        location: location || self.location
+      )
+    end
+
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
       { value: value, location: location }
+    end
+
+    def ===(other)
+      other.is_a?(SymbolsBeg) && value === other.value
     end
   end
 
@@ -8594,10 +10576,21 @@ module SyntaxTree
       []
     end
 
+    def copy(value: nil, location: nil)
+      TLambda.new(
+        value: value || self.value,
+        location: location || self.location
+      )
+    end
+
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
       { value: value, location: location }
+    end
+
+    def ===(other)
+      other.is_a?(TLambda) && value === other.value
     end
   end
 
@@ -8624,10 +10617,21 @@ module SyntaxTree
       []
     end
 
+    def copy(value: nil, location: nil)
+      TLamBeg.new(
+        value: value || self.value,
+        location: location || self.location
+      )
+    end
+
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
       { value: value, location: location }
+    end
+
+    def ===(other)
+      other.is_a?(TLamBeg) && value === other.value
     end
   end
 
@@ -8658,6 +10662,17 @@ module SyntaxTree
       [constant]
     end
 
+    def copy(constant: nil, location: nil)
+      node =
+        TopConstField.new(
+          constant: constant || self.constant,
+          location: location || self.location
+        )
+
+      node.comments.concat(comments.map(&:copy))
+      node
+    end
+
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
@@ -8667,6 +10682,10 @@ module SyntaxTree
     def format(q)
       q.text("::")
       q.format(constant)
+    end
+
+    def ===(other)
+      other.is_a?(TopConstField) && constant === other.constant
     end
   end
 
@@ -8696,6 +10715,17 @@ module SyntaxTree
       [constant]
     end
 
+    def copy(constant: nil, location: nil)
+      node =
+        TopConstRef.new(
+          constant: constant || self.constant,
+          location: location || self.location
+        )
+
+      node.comments.concat(comments.map(&:copy))
+      node
+    end
+
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
@@ -8705,6 +10735,10 @@ module SyntaxTree
     def format(q)
       q.text("::")
       q.format(constant)
+    end
+
+    def ===(other)
+      other.is_a?(TopConstRef) && constant === other.constant
     end
   end
 
@@ -8735,10 +10769,21 @@ module SyntaxTree
       []
     end
 
+    def copy(value: nil, location: nil)
+      TStringBeg.new(
+        value: value || self.value,
+        location: location || self.location
+      )
+    end
+
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
       { value: value, location: location }
+    end
+
+    def ===(other)
+      other.is_a?(TStringBeg) && value === other.value
     end
   end
 
@@ -8775,6 +10820,17 @@ module SyntaxTree
       []
     end
 
+    def copy(value: nil, location: nil)
+      node =
+        TStringContent.new(
+          value: value || self.value,
+          location: location || self.location
+        )
+
+      node.comments.concat(comments.map(&:copy))
+      node
+    end
+
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
@@ -8783,6 +10839,10 @@ module SyntaxTree
 
     def format(q)
       q.text(value)
+    end
+
+    def ===(other)
+      other.is_a?(TStringContent) && value === other.value
     end
   end
 
@@ -8813,10 +10873,21 @@ module SyntaxTree
       []
     end
 
+    def copy(value: nil, location: nil)
+      TStringEnd.new(
+        value: value || self.value,
+        location: location || self.location
+      )
+    end
+
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
       { value: value, location: location }
+    end
+
+    def ===(other)
+      other.is_a?(TStringEnd) && value === other.value
     end
   end
 
@@ -8848,6 +10919,18 @@ module SyntaxTree
 
     def child_nodes
       [statement]
+    end
+
+    def copy(statement: nil, parentheses: nil, location: nil)
+      node =
+        Not.new(
+          statement: statement || self.statement,
+          parentheses: parentheses || self.parentheses,
+          location: location || self.location
+        )
+
+      node.comments.concat(comments.map(&:copy))
+      node
     end
 
     alias deconstruct child_nodes
@@ -8884,6 +10967,11 @@ module SyntaxTree
         end
       end
     end
+
+    def ===(other)
+      other.is_a?(Not) && statement === other.statement &&
+        parentheses === other.parentheses
+    end
   end
 
   # Unary represents a unary method being called on an expression, as in +!+ or
@@ -8916,6 +11004,18 @@ module SyntaxTree
       [statement]
     end
 
+    def copy(operator: nil, statement: nil, location: nil)
+      node =
+        Unary.new(
+          operator: operator || self.operator,
+          statement: statement || self.statement,
+          location: location || self.location
+        )
+
+      node.comments.concat(comments.map(&:copy))
+      node
+    end
+
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
@@ -8930,6 +11030,11 @@ module SyntaxTree
     def format(q)
       q.text(operator)
       q.format(statement)
+    end
+
+    def ===(other)
+      other.is_a?(Unary) && operator === other.operator &&
+        statement === other.statement
     end
   end
 
@@ -8982,6 +11087,17 @@ module SyntaxTree
       symbols
     end
 
+    def copy(symbols: nil, location: nil)
+      node =
+        Undef.new(
+          symbols: symbols || self.symbols,
+          location: location || self.location
+        )
+
+      node.comments.concat(comments.map(&:copy))
+      node
+    end
+
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
@@ -8999,6 +11115,10 @@ module SyntaxTree
         end
       end
     end
+
+    def ===(other)
+      other.is_a?(Undef) && ArrayMatch.call(symbols, other.symbols)
+    end
   end
 
   # Unless represents the first clause in an +unless+ chain.
@@ -9013,19 +11133,13 @@ module SyntaxTree
     # [Statements] the expressions to be executed
     attr_reader :statements
 
-    # [nil, Elsif, Else] the next clause in the chain
+    # [nil | Elsif | Else] the next clause in the chain
     attr_reader :consequent
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(
-      predicate:,
-      statements:,
-      consequent:,
-      location:,
-      comments: []
-    )
+    def initialize(predicate:, statements:, consequent:, location:)
       @predicate = predicate
       @statements = statements
       @consequent = consequent
@@ -9039,6 +11153,19 @@ module SyntaxTree
 
     def child_nodes
       [predicate, statements, consequent]
+    end
+
+    def copy(predicate: nil, statements: nil, consequent: nil, location: nil)
+      node =
+        Unless.new(
+          predicate: predicate || self.predicate,
+          statements: statements || self.statements,
+          consequent: consequent || self.consequent,
+          location: location || self.location
+        )
+
+      node.comments.concat(comments.map(&:copy))
+      node
     end
 
     alias deconstruct child_nodes
@@ -9055,6 +11182,11 @@ module SyntaxTree
 
     def format(q)
       ConditionalFormatter.new("unless", self).format(q)
+    end
+
+    def ===(other)
+      other.is_a?(Unless) && predicate === other.predicate &&
+        statements === other.statements && consequent === other.consequent
     end
 
     # Checks if the node was originally found in the modifier form.
@@ -9165,6 +11297,18 @@ module SyntaxTree
       [predicate, statements]
     end
 
+    def copy(predicate: nil, statements: nil, location: nil)
+      node =
+        Until.new(
+          predicate: predicate || self.predicate,
+          statements: statements || self.statements,
+          location: location || self.location
+        )
+
+      node.comments.concat(comments.map(&:copy))
+      node
+    end
+
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
@@ -9178,6 +11322,11 @@ module SyntaxTree
 
     def format(q)
       LoopFormatter.new("until", self).format(q)
+    end
+
+    def ===(other)
+      other.is_a?(Until) && predicate === other.predicate &&
+        statements === other.statements
     end
 
     def modifier?
@@ -9212,6 +11361,17 @@ module SyntaxTree
       [value]
     end
 
+    def copy(value: nil, location: nil)
+      node =
+        VarField.new(
+          value: value || self.value,
+          location: location || self.location
+        )
+
+      node.comments.concat(comments.map(&:copy))
+      node
+    end
+
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
@@ -9224,6 +11384,10 @@ module SyntaxTree
       elsif value
         q.format(value)
       end
+    end
+
+    def ===(other)
+      other.is_a?(VarField) && value === other.value
     end
   end
 
@@ -9256,6 +11420,17 @@ module SyntaxTree
       [value]
     end
 
+    def copy(value: nil, location: nil)
+      node =
+        VarRef.new(
+          value: value || self.value,
+          location: location || self.location
+        )
+
+      node.comments.concat(comments.map(&:copy))
+      node
+    end
+
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
@@ -9264,6 +11439,10 @@ module SyntaxTree
 
     def format(q)
       q.format(value)
+    end
+
+    def ===(other)
+      other.is_a?(VarRef) && value === other.value
     end
 
     # Oh man I hate this so much. Basically, ripper doesn't provide enough
@@ -9320,6 +11499,17 @@ module SyntaxTree
       [value]
     end
 
+    def copy(value: nil, location: nil)
+      node =
+        PinnedVarRef.new(
+          value: value || self.value,
+          location: location || self.location
+        )
+
+      node.comments.concat(comments.map(&:copy))
+      node
+    end
+
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
@@ -9331,6 +11521,10 @@ module SyntaxTree
         q.text("^")
         q.format(value)
       end
+    end
+
+    def ===(other)
+      other.is_a?(PinnedVarRef) && value === other.value
     end
   end
 
@@ -9360,6 +11554,17 @@ module SyntaxTree
       [value]
     end
 
+    def copy(value: nil, location: nil)
+      node =
+        VCall.new(
+          value: value || self.value,
+          location: location || self.location
+        )
+
+      node.comments.concat(comments.map(&:copy))
+      node
+    end
+
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
@@ -9368,6 +11573,10 @@ module SyntaxTree
 
     def format(q)
       q.format(value)
+    end
+
+    def ===(other)
+      other.is_a?(VCall) && value === other.value
     end
 
     def access_control?
@@ -9399,6 +11608,13 @@ module SyntaxTree
       []
     end
 
+    def copy(location: nil)
+      node = VoidStmt.new(location: location || self.location)
+
+      node.comments.concat(comments.map(&:copy))
+      node
+    end
+
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
@@ -9406,6 +11622,10 @@ module SyntaxTree
     end
 
     def format(q)
+    end
+
+    def ===(other)
+      other.is_a?(VoidStmt)
     end
   end
 
@@ -9428,13 +11648,7 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(
-      arguments:,
-      statements:,
-      consequent:,
-      location:,
-      comments: []
-    )
+    def initialize(arguments:, statements:, consequent:, location:)
       @arguments = arguments
       @statements = statements
       @consequent = consequent
@@ -9448,6 +11662,19 @@ module SyntaxTree
 
     def child_nodes
       [arguments, statements, consequent]
+    end
+
+    def copy(arguments: nil, statements: nil, consequent: nil, location: nil)
+      node =
+        When.new(
+          arguments: arguments || self.arguments,
+          statements: statements || self.statements,
+          consequent: consequent || self.consequent,
+          location: location || self.location
+        )
+
+      node.comments.concat(comments.map(&:copy))
+      node
     end
 
     alias deconstruct child_nodes
@@ -9512,6 +11739,11 @@ module SyntaxTree
         end
       end
     end
+
+    def ===(other)
+      other.is_a?(When) && arguments === other.arguments &&
+        statements === other.statements && consequent === other.consequent
+    end
   end
 
   # While represents a +while+ loop.
@@ -9544,6 +11776,18 @@ module SyntaxTree
       [predicate, statements]
     end
 
+    def copy(predicate: nil, statements: nil, location: nil)
+      node =
+        While.new(
+          predicate: predicate || self.predicate,
+          statements: statements || self.statements,
+          location: location || self.location
+        )
+
+      node.comments.concat(comments.map(&:copy))
+      node
+    end
+
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
@@ -9557,6 +11801,11 @@ module SyntaxTree
 
     def format(q)
       LoopFormatter.new("while", self).format(q)
+    end
+
+    def ===(other)
+      other.is_a?(While) && predicate === other.predicate &&
+        statements === other.statements
     end
 
     def modifier?
@@ -9597,6 +11846,17 @@ module SyntaxTree
       parts
     end
 
+    def copy(parts: nil, location: nil)
+      node =
+        Word.new(
+          parts: parts || self.parts,
+          location: location || self.location
+        )
+
+      node.comments.concat(comments.map(&:copy))
+      node
+    end
+
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
@@ -9605,6 +11865,10 @@ module SyntaxTree
 
     def format(q)
       q.format_each(parts)
+    end
+
+    def ===(other)
+      other.is_a?(Word) && ArrayMatch.call(parts, other.parts)
     end
   end
 
@@ -9635,6 +11899,14 @@ module SyntaxTree
 
     def child_nodes
       []
+    end
+
+    def copy(beginning: nil, elements: nil, location: nil)
+      Words.new(
+        beginning: beginning || self.beginning,
+        elements: elements || self.elements,
+        location: location || self.location
+      )
     end
 
     alias deconstruct child_nodes
@@ -9669,6 +11941,11 @@ module SyntaxTree
       end
       q.text(closing)
     end
+
+    def ===(other)
+      other.is_a?(Words) && beginning === other.beginning &&
+        ArrayMatch.call(elements, other.elements)
+    end
   end
 
   # WordsBeg represents the beginning of a string literal array with
@@ -9696,10 +11973,21 @@ module SyntaxTree
       []
     end
 
+    def copy(value: nil, location: nil)
+      WordsBeg.new(
+        value: value || self.value,
+        location: location || self.location
+      )
+    end
+
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
       { value: value, location: location }
+    end
+
+    def ===(other)
+      other.is_a?(WordsBeg) && value === other.value
     end
   end
 
@@ -9725,10 +12013,21 @@ module SyntaxTree
       parts
     end
 
+    def copy(parts: nil, location: nil)
+      XString.new(
+        parts: parts || self.parts,
+        location: location || self.location
+      )
+    end
+
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
       { parts: parts, location: location }
+    end
+
+    def ===(other)
+      other.is_a?(XString) && ArrayMatch.call(parts, other.parts)
     end
   end
 
@@ -9758,6 +12057,17 @@ module SyntaxTree
       parts
     end
 
+    def copy(parts: nil, location: nil)
+      node =
+        XStringLiteral.new(
+          parts: parts || self.parts,
+          location: location || self.location
+        )
+
+      node.comments.concat(comments.map(&:copy))
+      node
+    end
+
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
@@ -9768,6 +12078,10 @@ module SyntaxTree
       q.text("`")
       q.format_each(parts)
       q.text("`")
+    end
+
+    def ===(other)
+      other.is_a?(XStringLiteral) && ArrayMatch.call(parts, other.parts)
     end
   end
 
@@ -9794,6 +12108,17 @@ module SyntaxTree
 
     def child_nodes
       [arguments]
+    end
+
+    def copy(arguments: nil, location: nil)
+      node =
+        Yield.new(
+          arguments: arguments || self.arguments,
+          location: location || self.location
+        )
+
+      node.comments.concat(comments.map(&:copy))
+      node
     end
 
     alias deconstruct child_nodes
@@ -9824,6 +12149,10 @@ module SyntaxTree
         end
       end
     end
+
+    def ===(other)
+      other.is_a?(Yield) && arguments === other.arguments
+    end
   end
 
   # ZSuper represents the bare +super+ keyword with no arguments.
@@ -9847,6 +12176,13 @@ module SyntaxTree
       []
     end
 
+    def copy(location: nil)
+      node = ZSuper.new(location: location || self.location)
+
+      node.comments.concat(comments.map(&:copy))
+      node
+    end
+
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
@@ -9855,6 +12191,10 @@ module SyntaxTree
 
     def format(q)
       q.text("super")
+    end
+
+    def ===(other)
+      other.is_a?(ZSuper)
     end
   end
 end

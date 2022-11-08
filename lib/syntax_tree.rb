@@ -16,6 +16,7 @@ require_relative "syntax_tree/visitor"
 require_relative "syntax_tree/visitor/field_visitor"
 require_relative "syntax_tree/visitor/json_visitor"
 require_relative "syntax_tree/visitor/match_visitor"
+require_relative "syntax_tree/visitor/mutation_visitor"
 require_relative "syntax_tree/visitor/pretty_print_visitor"
 require_relative "syntax_tree/visitor/environment"
 require_relative "syntax_tree/visitor/with_environment"
@@ -59,6 +60,13 @@ module SyntaxTree
 
     formatter.flush
     formatter.output.join
+  end
+
+  # A convenience method for creating a new mutation visitor.
+  def self.mutation
+    visitor = Visitor::MutationVisitor.new
+    yield visitor
+    visitor
   end
 
   # Returns the source from the given filepath taking into account any potential

@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 
 ## [Unreleased]
 
+### Added
+
+- Every node now implements the `#copy(**)` method, which provides a copy of the node with the given attributes replaced.
+- Every node now implements the `#===(other)` method, which checks if the given node matches the current node for all attributes except for comments and location.
+- There is a new `SyntaxTree::Visitor::MutationVisitor` and its convenience method `SyntaxTree.mutation` which can be used to mutate a syntax tree. For details on how to use this visitor, check the README.
+
 ### Changed
 
 - Nodes no longer have a `comments:` keyword on their initializers. By default, they initialize to an empty array. If you were previously passing comments into the initializer, you should now create the node first, then call `node.comments.concat` to add your comments.
