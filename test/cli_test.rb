@@ -148,7 +148,6 @@ module SyntaxTree
     end
 
     def test_multiple_inline_scripts
-      skip if RUBY_ENGINE == "truffleruby" # Relies on a thread-safe StringIO
       stdio, = capture_io { SyntaxTree::CLI.run(%w[format -e 1+1 -e 2+2]) }
       assert_equal(["1 + 1", "2 + 2"], stdio.split("\n").sort)
     end
