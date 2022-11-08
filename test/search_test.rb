@@ -4,6 +4,50 @@ require_relative "test_helper"
 
 module SyntaxTree
   class SearchTest < Minitest::Test
+    def test_search_invalid_syntax
+      assert_raises(Pattern::CompilationError) { search("", "<>") }
+    end
+
+    def test_search_invalid_constant
+      assert_raises(Pattern::CompilationError) { search("", "Foo") }
+    end
+
+    def test_search_invalid_nested_constant
+      assert_raises(Pattern::CompilationError) { search("", "Foo::Bar") }
+    end
+
+    def test_search_regexp_with_interpolation
+      assert_raises(Pattern::CompilationError) { search("", "/\#{foo}/") }
+    end
+
+    def test_search_string_with_interpolation
+      assert_raises(Pattern::CompilationError) { search("", '"#{foo}"') }
+    end
+
+    def test_search_symbol_with_interpolation
+      assert_raises(Pattern::CompilationError) { search("", ":\"\#{foo}\"") }
+    end
+
+    def test_search_invalid_node
+      assert_raises(Pattern::CompilationError) { search("", "Int[^foo]") }
+    end
+
+    def test_search_self
+      assert_raises(Pattern::CompilationError) { search("", "self") }
+    end
+
+    def test_search_array_pattern_no_constant
+      results = search("1 + 2", "[Int, Int]")
+
+      assert_equal 1, results.length
+    end
+
+    def test_search_array_pattern
+      results = search("1 + 2", "Binary[Int, Int]")
+
+      assert_equal 1, results.length
+    end
+
     def test_search_binary_or
       results = search("Foo + Bar + 1", "VarRef | Int")
 
@@ -18,8 +62,20 @@ module SyntaxTree
       assert_equal %w[Bar Baz Foo], results.map { |node| node.value.value }.sort
     end
 
+    def test_search_object_const
+      results = search("1 + 2 + 3", "Int[value: String]")
+
+      assert_equal 3, results.length
+    end
+
     def test_search_syntax_tree_const
       results = search("Foo + Bar + Baz", "SyntaxTree::VarRef")
+
+      assert_equal 3, results.length
+    end
+
+    def test_search_hash_pattern_no_constant
+      results = search("Foo + Bar + Baz", "{ value: Const }")
 
       assert_equal 3, results.length
     end
@@ -39,13 +95,25 @@ module SyntaxTree
     end
 
     def test_search_string_empty
-      results = search("''", "StringLiteral[parts: []]")
+      results = search("", "''")
+
+      assert_empty results
+    end
+
+    def test_search_symbol_empty
+      results = search("", ":''")
+
+      assert_empty results
+    end
+
+    def test_search_symbol_plain
+      results = search("1 + 2", "Binary[operator: :'+']")
 
       assert_equal 1, results.length
     end
 
-    def test_search_symbol_empty
-      results = search(":''", "DynaSymbol[parts: []]")
+    def test_search_symbol
+      results = search("1 + 2", "Binary[operator: :+]")
 
       assert_equal 1, results.length
     end
@@ -53,10 +121,7 @@ module SyntaxTree
     private
 
     def search(source, query)
-      pattern = Pattern.new(query).compile
-      program = SyntaxTree.parse(source)
-
-      Search.new(pattern).scan(program).to_a
+      SyntaxTree.search(source, query).to_a
     end
   end
 end

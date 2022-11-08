@@ -497,10 +497,14 @@ module SyntaxTree
             Dir
               .glob(pattern)
               .each do |filepath|
-                if File.readable?(filepath) &&
-                     options.ignore_files.none? { File.fnmatch?(_1, filepath) }
-                  queue << FileItem.new(filepath)
-                end
+                # Skip past invalid filepaths by default.
+                next unless File.readable?(filepath)
+
+                # Skip past any ignored filepaths.
+                next if options.ignore_files.any? { File.fnmatch(_1, filepath) }
+
+                # Otherwise, a new file item for the given filepath to the list.
+                queue << FileItem.new(filepath)
               end
           end
 
