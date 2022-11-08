@@ -4,10 +4,6 @@ module SyntaxTree
   # The environment class is used to keep track of local variables and arguments
   # inside a particular scope
   class Environment
-    # [Array[Local]] The local variables and arguments defined in this
-    # environment
-    attr_reader :locals
-
     # This class tracks the occurrences of a local variable or argument
     class Local
       # [Symbol] The type of the local (e.g. :argument, :variable)
@@ -37,6 +33,13 @@ module SyntaxTree
         @usages << location
       end
     end
+
+    # [Array[Local]] The local variables and arguments defined in this
+    # environment
+    attr_reader :locals
+
+    # [Environment | nil] The parent environment
+    attr_reader :parent
 
     #   initialize: (Environment | nil parent) -> void
     def initialize(parent = nil)

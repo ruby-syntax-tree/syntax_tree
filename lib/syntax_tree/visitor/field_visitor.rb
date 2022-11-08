@@ -388,14 +388,6 @@ module SyntaxTree
         visit_token(node, "excessed_comma")
       end
 
-      def visit_fcall(node)
-        node(node, "fcall") do
-          field("value", node.value)
-          field("arguments", node.arguments) if node.arguments
-          comments(node)
-        end
-      end
-
       def visit_field(node)
         node(node, "field") do
           field("parent", node.parent)

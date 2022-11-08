@@ -142,11 +142,11 @@ module SyntaxTree
     def compile_const(node)
       value = node.value
 
-      if SyntaxTree.const_defined?(value)
+      if SyntaxTree.const_defined?(value, false)
         clazz = SyntaxTree.const_get(value)
 
         ->(other) { clazz === other }
-      elsif Object.const_defined?(value)
+      elsif Object.const_defined?(value, false)
         clazz = Object.const_get(value)
 
         ->(other) { clazz === other }
@@ -179,7 +179,7 @@ module SyntaxTree
 
         ->(other) { symbol === other }
       else
-        compile_error(root)
+        compile_error(node)
       end
     end
 

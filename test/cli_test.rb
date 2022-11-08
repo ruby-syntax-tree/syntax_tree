@@ -41,6 +41,7 @@ module SyntaxTree
     def test_ast_syntax_error
       result = run_cli("ast", contents: "foo\n<>\nbar\n")
       assert_includes(result.stderr, "syntax error")
+      refute_equal(0, result.status)
     end
 
     def test_check
@@ -51,12 +52,24 @@ module SyntaxTree
     def test_check_unformatted
       result = run_cli("check", contents: "foo")
       assert_includes(result.stderr, "expected")
+      refute_equal(0, result.status)
     end
 
     def test_check_print_width
       contents = "#{"a" * 40} + #{"b" * 40}\n"
       result = run_cli("check", "--print-width=100", contents: contents)
       assert_includes(result.stdio, "match")
+    end
+
+    def test_check_target_ruby_version
+      previous = Formatter::OPTIONS[:target_ruby_version]
+
+      begin
+        result = run_cli("check", "--target-ruby-version=2.6.0")
+        assert_includes(result.stdio, "match")
+      ensure
+        Formatter::OPTIONS[:target_ruby_version] = previous
+      end
     end
 
     def test_debug
@@ -71,6 +84,7 @@ module SyntaxTree
       SyntaxTree.stub(:format, formatting) do
         result = run_cli("debug")
         assert_includes(result.stderr, "idempotently")
+        refute_equal(0, result.status)
       end
     end
 
@@ -82,6 +96,12 @@ module SyntaxTree
     def test_expr
       result = run_cli("expr")
       assert_includes(result.stdio, "SyntaxTree::Ident")
+    end
+
+    def test_expr_more_than_one
+      result = run_cli("expr", contents: "1; 2")
+      assert_includes(result.stderr, "single expression")
+      refute_equal(0, result.status)
     end
 
     def test_format
@@ -104,6 +124,17 @@ module SyntaxTree
       assert_equal(2, result.stdio.lines.length)
     end
 
+    def test_search_multi_line
+      result = run_cli("search", "Binary", contents: "1 +\n2")
+      assert_equal(1, result.stdio.lines.length)
+    end
+
+    def test_search_invalid
+      result = run_cli("search", "FooBar")
+      assert_includes(result.stderr, "unable")
+      refute_equal(0, result.status)
+    end
+
     def test_version
       result = run_cli("version")
       assert_includes(result.stdio, SyntaxTree::VERSION.to_s)
@@ -120,6 +151,29 @@ module SyntaxTree
     def test_write_syntax_tree
       result = run_cli("write", contents: "<>")
       assert_includes(result.stderr, "syntax error")
+      refute_equal(0, result.status)
+    end
+
+    def test_write_script
+      args = ["write", "-e", "1 + 2"]
+      stdout, stderr = capture_io { SyntaxTree::CLI.run(args) }
+
+      assert_includes stdout, "script"
+      assert_empty stderr
+    end
+
+    def test_write_stdin
+      previous = $stdin
+      $stdin = StringIO.new("1 + 2")
+
+      begin
+        stdout, stderr = capture_io { SyntaxTree::CLI.run(["write"]) }
+
+        assert_includes stdout, "stdin"
+        assert_empty stderr
+      ensure
+        $stdin = previous
+      end
     end
 
     def test_help
@@ -128,8 +182,10 @@ module SyntaxTree
     end
 
     def test_help_default
-      *, stderr = capture_io { SyntaxTree::CLI.run(["foobar"]) }
+      status = 0
+      *, stderr = capture_io { status = SyntaxTree::CLI.run(["foobar"]) }
       assert_includes(stderr, "stree help")
+      refute_equal(0, status)
     end
 
     def test_no_arguments
@@ -215,6 +271,7 @@ module SyntaxTree
         result = run_cli("check", "--print-width=82", contents: contents)
 
         assert_includes(result.stderr, "expected")
+        refute_equal(0, result.status)
       end
     end
 
@@ -251,7 +308,12 @@ module SyntaxTree
       status = nil
       stdio, stderr =
         capture_io do
-          status = SyntaxTree::CLI.run([command, *args, tempfile.path])
+          status =
+            begin
+              SyntaxTree::CLI.run([command, *args, tempfile.path])
+            rescue SystemExit => error
+              error.status
+            end
         end
 
       Result.new(status: status, stdio: stdio, stderr: stderr)

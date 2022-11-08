@@ -615,5 +615,45 @@ module SyntaxTree
       assert_equal(1, argument.definitions[0].start_line)
       assert_equal(5, argument.usages[0].start_line)
     end
+
+    class Resolver < Visitor
+      include WithEnvironment
+
+      attr_reader :locals
+
+      def initialize
+        @locals = []
+      end
+
+      def visit_assign(node)
+        level = 0
+        environment = current_environment
+        level += 1 until (environment = environment.parent).nil?
+
+        locals << [node.target.value.value, level]
+        super
+      end
+    end
+
+    def test_class
+      source = <<~RUBY
+        module Level0
+          level0 = 0
+
+          module Level1
+            level1 = 1
+
+            class Level2
+              level2 = 2
+            end
+          end
+        end
+      RUBY
+
+      visitor = Resolver.new
+      SyntaxTree.parse(source).accept(visitor)
+
+      assert_equal [["level0", 0], ["level1", 1], ["level2", 2]], visitor.locals
+    end
   end
 end
