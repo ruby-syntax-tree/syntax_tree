@@ -31,7 +31,7 @@ It is built with only standard library dependencies. It additionally ships with 
   - [SyntaxTree.search(source, query, &block)](#syntaxtreesearchsource-query-block)
 - [Nodes](#nodes)
   - [child_nodes](#child_nodes)
-  - [copy(**)](#copy)
+  - [copy(**attrs)](#copyattrs)
   - [Pattern matching](#pattern-matching)
   - [pretty_print(q)](#pretty_printq)
   - [to_json(*opts)](#to_jsonopts)
@@ -358,7 +358,7 @@ program.child_nodes.first.child_nodes.first
 # => (binary (int "1") :+ (int "1"))
 ```
 
-### copy
+### copy(**attrs)
 
 This method returns a copy of the node, with the given attributes replaced.
 
