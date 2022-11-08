@@ -127,6 +127,18 @@ module SyntaxTree
     end
   end
 
+  # When we're implementing the === operator for a node, we oftentimes need to
+  # compare two arrays. We want to skip over the === definition of array and use
+  # our own here, so we do that using this module.
+  module ArrayMatch
+    def self.call(left, right)
+      left.length === right.length &&
+        left
+          .zip(right)
+          .all? { |left_value, right_value| left_value === right_value }
+    end
+  end
+
   # BEGINBlock represents the use of the +BEGIN+ keyword, which hooks into the
   # lifecycle of the interpreter. Whatever is inside the block will get executed
   # when the program starts.
@@ -192,6 +204,11 @@ module SyntaxTree
         q.text("}")
       end
     end
+
+    def ===(other)
+      other.is_a?(BEGINBlock) && lbrace === other.lbrace &&
+        statements === other.statements
+    end
   end
 
   # CHAR irepresents a single codepoint in the script encoding.
@@ -239,6 +256,10 @@ module SyntaxTree
         q.text(value[1] == "\"" ? "\\\"" : value[1])
         q.text(q.quote)
       end
+    end
+
+    def ===(other)
+      other.is_a?(CHAR) && value === other.value
     end
   end
 
@@ -307,6 +328,11 @@ module SyntaxTree
         q.text("}")
       end
     end
+
+    def ===(other)
+      other.is_a?(ENDBlock) && lbrace === other.lbrace &&
+        statements === other.statements
+    end
   end
 
   # EndContent represents the use of __END__ syntax, which allows individual
@@ -368,6 +394,10 @@ module SyntaxTree
       end
 
       q.breakable_return if value.end_with?("\n")
+    end
+
+    def ===(other)
+      other.is_a?(EndContent) && value === other.value
     end
   end
 
@@ -465,6 +495,10 @@ module SyntaxTree
       end
     end
 
+    def ===(other)
+      other.is_a?(Alias) && left === other.left && right === other.right
+    end
+
     def var_alias?
       left.is_a?(GVar)
     end
@@ -543,6 +577,11 @@ module SyntaxTree
         q.text("]")
       end
     end
+
+    def ===(other)
+      other.is_a?(ARef) && collection === other.collection &&
+        index === other.index
+    end
   end
 
   # ARefField represents assigning values into collections at specific indices.
@@ -612,6 +651,11 @@ module SyntaxTree
         q.text("]")
       end
     end
+
+    def ===(other)
+      other.is_a?(ARefField) && collection === other.collection &&
+        index === other.index
+    end
   end
 
   # ArgParen represents wrapping arguments to a method inside a set of
@@ -678,6 +722,10 @@ module SyntaxTree
       q.text(")")
     end
 
+    def ===(other)
+      other.is_a?(ArgParen) && arguments === other.arguments
+    end
+
     private
 
     def trailing_comma?
@@ -740,6 +788,10 @@ module SyntaxTree
     def format(q)
       q.seplist(parts) { |part| q.format(part) }
     end
+
+    def ===(other)
+      other.is_a?(Args) && ArrayMatch.call(parts, other.parts)
+    end
   end
 
   # ArgBlock represents using a block operator on an expression.
@@ -784,6 +836,10 @@ module SyntaxTree
       q.text("&")
       q.format(value) if value
     end
+
+    def ===(other)
+      other.is_a?(ArgBlock) && value === other.value
+    end
   end
 
   # Star represents using a splat operator on an expression.
@@ -827,6 +883,10 @@ module SyntaxTree
     def format(q)
       q.text("*")
       q.format(value) if value
+    end
+
+    def ===(other)
+      other.is_a?(ArgStar) && value === other.value
     end
   end
 
@@ -876,6 +936,10 @@ module SyntaxTree
 
     def format(q)
       q.text("...")
+    end
+
+    def ===(other)
+      other.is_a?(ArgsForward)
     end
   end
 
@@ -1107,6 +1171,11 @@ module SyntaxTree
       end
     end
 
+    def ===(other)
+      other.is_a?(ArrayLiteral) && lbracket === other.lbracket &&
+        contents === other.contents
+    end
+
     private
 
     def qwords?
@@ -1278,6 +1347,12 @@ module SyntaxTree
         q.text("]")
       end
     end
+
+    def ===(other)
+      other.is_a?(AryPtn) && constant === other.constant &&
+        ArrayMatch.call(requireds, other.requireds) && rest === other.rest &&
+        ArrayMatch.call(posts, other.posts)
+    end
   end
 
   # Determins if the following value should be indented or not.
@@ -1360,6 +1435,10 @@ module SyntaxTree
       end
     end
 
+    def ===(other)
+      other.is_a?(Assign) && target === other.target && value === other.value
+    end
+
     private
 
     def skip_indent?
@@ -1419,6 +1498,10 @@ module SyntaxTree
       else
         q.group { format_contents(q) }
       end
+    end
+
+    def ===(other)
+      other.is_a?(Assoc) && key === other.key && value === other.value
     end
 
     private
@@ -1482,6 +1565,10 @@ module SyntaxTree
       q.text("**")
       q.format(value)
     end
+
+    def ===(other)
+      other.is_a?(AssocSplat) && value === other.value
+    end
   end
 
   # Backref represents a global variable referencing a matched value. It comes
@@ -1526,6 +1613,10 @@ module SyntaxTree
     def format(q)
       q.text(value)
     end
+
+    def ===(other)
+      other.is_a?(Backref) && value === other.value
+    end
   end
 
   # Backtick represents the use of the ` operator. It's usually found being used
@@ -1567,6 +1658,10 @@ module SyntaxTree
 
     def format(q)
       q.text(value)
+    end
+
+    def ===(other)
+      other.is_a?(Backtick) && value === other.value
     end
   end
 
@@ -1688,6 +1783,10 @@ module SyntaxTree
       q.seplist(assocs) { |assoc| q.format(assoc) }
     end
 
+    def ===(other)
+      other.is_a?(BareAssocHash) && ArrayMatch.call(assocs, other.assocs)
+    end
+
     def format_key(q, key)
       (@key_formatter ||= HashKeyFormatter.for(self)).format_key(q, key)
     end
@@ -1746,6 +1845,10 @@ module SyntaxTree
       q.breakable_force
       q.text("end")
     end
+
+    def ===(other)
+      other.is_a?(Begin) && bodystmt === other.bodystmt
+    end
   end
 
   # PinnedBegin represents a pinning a nested statement within pattern matching.
@@ -1800,6 +1903,10 @@ module SyntaxTree
           q.text(")")
         end
       end
+    end
+
+    def ===(other)
+      other.is_a?(PinnedBegin) && statement === other.statement
     end
   end
 
@@ -1898,6 +2005,11 @@ module SyntaxTree
         end
       end
     end
+
+    def ===(other)
+      other.is_a?(Binary) && left === other.left &&
+        operator === other.operator && right === other.right
+    end
   end
 
   # BlockVar represents the parameters being declared for a block. Effectively
@@ -1970,6 +2082,11 @@ module SyntaxTree
       end
       q.text("|")
     end
+
+    def ===(other)
+      other.is_a?(BlockVar) && params === other.params &&
+        ArrayMatch.call(locals, other.locals)
+    end
   end
 
   # BlockArg represents declaring a block parameter on a method definition.
@@ -2010,6 +2127,10 @@ module SyntaxTree
     def format(q)
       q.text("&")
       q.format(name) if name
+    end
+
+    def ===(other)
+      other.is_a?(BlockArg) && name === other.name
     end
   end
 
@@ -2157,6 +2278,14 @@ module SyntaxTree
           end
         end
       end
+    end
+
+    def ===(other)
+      other.is_a?(BodyStmt) && statements === other.statements &&
+        rescue_clause === other.rescue_clause &&
+        else_keyword === other.else_keyword &&
+        else_clause === other.else_clause &&
+        ensure_clause === other.ensure_clause
     end
   end
 
@@ -2393,6 +2522,10 @@ module SyntaxTree
 
     def format(q)
       FlowControlFormatter.new("break", self).format(q)
+    end
+
+    def ===(other)
+      other.is_a?(Break) && arguments === other.arguments
     end
   end
 
@@ -2761,6 +2894,12 @@ module SyntaxTree
       end
     end
 
+    def ===(other)
+      other.is_a?(Call) && receiver === other.receiver &&
+        operator === other.operator && message === other.message &&
+        arguments === other.arguments
+    end
+
     # Print out the arguments to this call. If there are no arguments, then do
     # nothing.
     def format_arguments(q)
@@ -2879,6 +3018,11 @@ module SyntaxTree
         q.text("end")
       end
     end
+
+    def ===(other)
+      other.is_a?(Case) && keyword === other.keyword && value === other.value &&
+        consequent === other.consequent
+    end
   end
 
   # RAssign represents a single-line pattern match.
@@ -2956,6 +3100,11 @@ module SyntaxTree
           end
         end
       end
+    end
+
+    def ===(other)
+      other.is_a?(RAssign) && value === other.value &&
+        operator === other.operator && pattern === other.pattern
     end
   end
 
@@ -3064,6 +3213,11 @@ module SyntaxTree
       end
     end
 
+    def ===(other)
+      other.is_a?(ClassDeclaration) && constant === other.constant &&
+        superclass === other.superclass && bodystmt === other.bodystmt
+    end
+
     private
 
     def format_declaration(q)
@@ -3105,6 +3259,10 @@ module SyntaxTree
 
     def deconstruct_keys(_keys)
       { value: value, location: location }
+    end
+
+    def ===(other)
+      other.is_a?(Comma) && value === other.value
     end
   end
 
@@ -3171,6 +3329,11 @@ module SyntaxTree
       end
 
       q.format(block) if block
+    end
+
+    def ===(other)
+      other.is_a?(Command) && message === other.message &&
+        arguments === other.arguments && block === other.block
     end
 
     private
@@ -3329,6 +3492,12 @@ module SyntaxTree
       q.format(block) if block
     end
 
+    def ===(other)
+      other.is_a?(CommandCall) && receiver === other.receiver &&
+        operator === other.operator && message === other.message &&
+        arguments === other.arguments && block === other.block
+    end
+
     private
 
     def argument_alignment(q, doc)
@@ -3425,6 +3594,10 @@ module SyntaxTree
     def format(q)
       q.text(value)
     end
+
+    def ===(other)
+      other.is_a?(Comment) && value === other.value && inline === other.inline
+    end
   end
 
   # Const represents a literal value that _looks_ like a constant. This could
@@ -3474,6 +3647,10 @@ module SyntaxTree
 
     def format(q)
       q.text(value)
+    end
+
+    def ===(other)
+      other.is_a?(Const) && value === other.value
     end
   end
 
@@ -3532,6 +3709,11 @@ module SyntaxTree
       q.text("::")
       q.format(constant)
     end
+
+    def ===(other)
+      other.is_a?(ConstPathField) && parent === other.parent &&
+        constant === other.constant
+    end
   end
 
   # ConstPathRef represents referencing a constant by a path.
@@ -3587,6 +3769,11 @@ module SyntaxTree
       q.text("::")
       q.format(constant)
     end
+
+    def ===(other)
+      other.is_a?(ConstPathRef) && parent === other.parent &&
+        constant === other.constant
+    end
   end
 
   # ConstRef represents the name of the constant being used in a class or module
@@ -3632,6 +3819,10 @@ module SyntaxTree
     def format(q)
       q.format(constant)
     end
+
+    def ===(other)
+      other.is_a?(ConstRef) && constant === other.constant
+    end
   end
 
   # CVar represents the use of a class variable.
@@ -3671,6 +3862,10 @@ module SyntaxTree
 
     def format(q)
       q.text(value)
+    end
+
+    def ===(other)
+      other.is_a?(CVar) && value === other.value
     end
   end
 
@@ -3790,6 +3985,12 @@ module SyntaxTree
       end
     end
 
+    def ===(other)
+      other.is_a?(Def) && target === other.target &&
+        operator === other.operator && name === other.name &&
+        params === other.params && bodystmt === other.bodystmt
+    end
+
     # Returns true if the method was found in the source in the "endless" form,
     # i.e. where the method body is defined using the `=` operator after the
     # method name and parameters.
@@ -3847,6 +4048,10 @@ module SyntaxTree
         q.breakable_empty
       end
       q.text(")")
+    end
+
+    def ===(other)
+      other.is_a?(Defined) && value === other.value
     end
   end
 
@@ -3960,6 +4165,11 @@ module SyntaxTree
           .if_break { format_break(q, break_opening, break_closing) }
           .if_flat { format_flat(q, flat_opening, flat_closing) }
       end
+    end
+
+    def ===(other)
+      other.is_a?(Block) && opening === other.opening &&
+        block_var === other.block_var && bodystmt === other.bodystmt
     end
 
     def keywords?
@@ -4130,6 +4340,11 @@ module SyntaxTree
 
       q.format(right) if right
     end
+
+    def ===(other)
+      other.is_a?(RangeLiteral) && left === other.left &&
+        operator === other.operator && right === other.right
+    end
   end
 
   # Responsible for providing information about quotes to be used for strings
@@ -4251,6 +4466,11 @@ module SyntaxTree
       q.text(closing_quote)
     end
 
+    def ===(other)
+      other.is_a?(DynaSymbol) && ArrayMatch.call(parts, other.parts) &&
+        quote === other.quote
+    end
+
     private
 
     # Here we determine the quotes to use for a dynamic symbol. It's bound by a
@@ -4358,6 +4578,11 @@ module SyntaxTree
         end
       end
     end
+
+    def ===(other)
+      other.is_a?(Else) && keyword === other.keyword &&
+        statements === other.statements
+    end
   end
 
   # Elsif represents another clause in an +if+ or +unless+ chain.
@@ -4444,6 +4669,11 @@ module SyntaxTree
         end
       end
     end
+
+    def ===(other)
+      other.is_a?(Elsif) && predicate === other.predicate &&
+        statements === other.statements && consequent === other.consequent
+    end
   end
 
   # EmbDoc represents a multi-line comment.
@@ -4499,6 +4729,10 @@ module SyntaxTree
       q.trim
       q.text(value)
     end
+
+    def ===(other)
+      other.is_a?(EmbDoc) && value === other.value
+    end
   end
 
   # EmbExprBeg represents the beginning token for using interpolation inside of
@@ -4536,6 +4770,10 @@ module SyntaxTree
     def deconstruct_keys(_keys)
       { value: value, location: location }
     end
+
+    def ===(other)
+      other.is_a?(EmbExprBeg) && value === other.value
+    end
   end
 
   # EmbExprEnd represents the ending token for using interpolation inside of a
@@ -4572,6 +4810,10 @@ module SyntaxTree
 
     def deconstruct_keys(_keys)
       { value: value, location: location }
+    end
+
+    def ===(other)
+      other.is_a?(EmbExprEnd) && value === other.value
     end
   end
 
@@ -4611,6 +4853,10 @@ module SyntaxTree
 
     def deconstruct_keys(_keys)
       { value: value, location: location }
+    end
+
+    def ===(other)
+      other.is_a?(EmbVar) && value === other.value
     end
   end
 
@@ -4675,6 +4921,11 @@ module SyntaxTree
         end
       end
     end
+
+    def ===(other)
+      other.is_a?(Ensure) && keyword === other.keyword &&
+        statements === other.statements
+    end
   end
 
   # ExcessedComma represents a trailing comma in a list of block parameters. It
@@ -4723,6 +4974,10 @@ module SyntaxTree
 
     def format(q)
       q.text(value)
+    end
+
+    def ===(other)
+      other.is_a?(ExcessedComma) && value === other.value
     end
   end
 
@@ -4788,6 +5043,11 @@ module SyntaxTree
         q.format(name)
       end
     end
+
+    def ===(other)
+      other.is_a?(Field) && parent === other.parent &&
+        operator === other.operator && name === other.name
+    end
   end
 
   # FloatLiteral represents a floating point number literal.
@@ -4830,6 +5090,10 @@ module SyntaxTree
 
     def format(q)
       q.text(value)
+    end
+
+    def ===(other)
+      other.is_a?(FloatLiteral) && value === other.value
     end
   end
 
@@ -4921,6 +5185,12 @@ module SyntaxTree
         q.text("]")
       end
     end
+
+    def ===(other)
+      other.is_a?(FndPtn) && constant === other.constant &&
+        left === other.left && ArrayMatch.call(values, other.values) &&
+        right === other.right
+    end
   end
 
   # For represents using a +for+ loop.
@@ -4997,6 +5267,11 @@ module SyntaxTree
         q.text("end")
       end
     end
+
+    def ===(other)
+      other.is_a?(For) && index === other.index &&
+        collection === other.collection && statements === other.statements
+    end
   end
 
   # GVar represents a global variable literal.
@@ -5036,6 +5311,10 @@ module SyntaxTree
 
     def format(q)
       q.text(value)
+    end
+
+    def ===(other)
+      other.is_a?(GVar) && value === other.value
     end
   end
 
@@ -5114,6 +5393,11 @@ module SyntaxTree
       else
         q.group { format_contents(q) }
       end
+    end
+
+    def ===(other)
+      other.is_a?(HashLiteral) && lbrace === other.lbrace &&
+        ArrayMatch.call(assocs, other.assocs)
     end
 
     def format_key(q, key)
@@ -5257,6 +5541,11 @@ module SyntaxTree
         end
       end
     end
+
+    def ===(other)
+      other.is_a?(Heredoc) && beginning === other.beginning &&
+        ending === other.ending && ArrayMatch.call(parts, other.parts)
+    end
   end
 
   # HeredocBeg represents the beginning declaration of a heredoc.
@@ -5303,6 +5592,10 @@ module SyntaxTree
     def format(q)
       q.text(value)
     end
+
+    def ===(other)
+      other.is_a?(HeredocBeg) && value === other.value
+    end
   end
 
   # HeredocEnd represents the closing declaration of a heredoc.
@@ -5348,6 +5641,10 @@ module SyntaxTree
 
     def format(q)
       q.text(value)
+    end
+
+    def ===(other)
+      other.is_a?(HeredocEnd) && value === other.value
     end
   end
 
@@ -5507,6 +5804,15 @@ module SyntaxTree
       end
     end
 
+    def ===(other)
+      other.is_a?(HshPtn) && constant === other.constant &&
+        keywords.length == other.keywords.length &&
+        keywords
+          .zip(other.keywords)
+          .all? { |left, right| ArrayMatch.call(left, right) } &&
+        keyword_rest === other.keyword_rest
+    end
+
     private
 
     def format_contents(q, parts, nested)
@@ -5563,6 +5869,10 @@ module SyntaxTree
 
     def format(q)
       q.text(value)
+    end
+
+    def ===(other)
+      other.is_a?(Ident) && value === other.value
     end
   end
 
@@ -5868,6 +6178,11 @@ module SyntaxTree
       ConditionalFormatter.new("if", self).format(q)
     end
 
+    def ===(other)
+      other.is_a?(If) && predicate === other.predicate &&
+        statements === other.statements && consequent === other.consequent
+    end
+
     # Checks if the node was originally found in the modifier form.
     def modifier?
       predicate.location.start_char > statements.location.start_char
@@ -5942,6 +6257,11 @@ module SyntaxTree
       end
 
       q.group { q.if_break { format_break(q) }.if_flat { format_flat(q) } }
+    end
+
+    def ===(other)
+      other.is_a?(IfOp) && predicate === other.predicate &&
+        truthy === other.truthy && falsy === other.falsy
     end
 
     private
@@ -6025,6 +6345,10 @@ module SyntaxTree
     def format(q)
       q.text(value)
     end
+
+    def ===(other)
+      other.is_a?(Imaginary) && value === other.value
+    end
   end
 
   # In represents using the +in+ keyword within the Ruby 2.7+ pattern matching
@@ -6104,6 +6428,11 @@ module SyntaxTree
         end
       end
     end
+
+    def ===(other)
+      other.is_a?(In) && pattern === other.pattern &&
+        statements === other.statements && consequent === other.consequent
+    end
   end
 
   # Int represents an integer number literal.
@@ -6152,6 +6481,10 @@ module SyntaxTree
         q.text(value)
       end
     end
+
+    def ===(other)
+      other.is_a?(Int) && value === other.value
+    end
   end
 
   # IVar represents an instance variable literal.
@@ -6191,6 +6524,10 @@ module SyntaxTree
 
     def format(q)
       q.text(value)
+    end
+
+    def ===(other)
+      other.is_a?(IVar) && value === other.value
     end
   end
 
@@ -6245,6 +6582,10 @@ module SyntaxTree
     def format(q)
       q.text(value)
     end
+
+    def ===(other)
+      other.is_a?(Kw) && value === other.value
+    end
   end
 
   # KwRestParam represents defining a parameter in a method definition that
@@ -6289,6 +6630,10 @@ module SyntaxTree
     def format(q)
       q.text("**")
       q.format(name) if name
+    end
+
+    def ===(other)
+      other.is_a?(KwRestParam) && name === other.name
     end
   end
 
@@ -6339,6 +6684,10 @@ module SyntaxTree
     def format(q)
       q.text(value)
     end
+
+    def ===(other)
+      other.is_a?(Label) && value === other.value
+    end
   end
 
   # LabelEnd represents the end of a dynamic symbol.
@@ -6376,6 +6725,10 @@ module SyntaxTree
 
     def deconstruct_keys(_keys)
       { value: value, location: location }
+    end
+
+    def ===(other)
+      other.is_a?(LabelEnd) && value === other.value
     end
   end
 
@@ -6489,6 +6842,11 @@ module SyntaxTree
           end
       end
     end
+
+    def ===(other)
+      other.is_a?(Lambda) && params === other.params &&
+        statements === other.statements
+    end
   end
 
   # LambdaVar represents the parameters being declared for a lambda. Effectively
@@ -6550,6 +6908,11 @@ module SyntaxTree
         q.seplist(locals, BlockVar::SEPARATOR) { |local| q.format(local) }
       end
     end
+
+    def ===(other)
+      other.is_a?(LambdaVar) && params === other.params &&
+        ArrayMatch.call(locals, other.locals)
+    end
   end
 
   # LBrace represents the use of a left brace, i.e., {.
@@ -6589,6 +6952,10 @@ module SyntaxTree
 
     def format(q)
       q.text(value)
+    end
+
+    def ===(other)
+      other.is_a?(LBrace) && value === other.value
     end
   end
 
@@ -6630,6 +6997,10 @@ module SyntaxTree
     def format(q)
       q.text(value)
     end
+
+    def ===(other)
+      other.is_a?(LBracket) && value === other.value
+    end
   end
 
   # LParen represents the use of a left parenthesis, i.e., (.
@@ -6669,6 +7040,10 @@ module SyntaxTree
 
     def format(q)
       q.text(value)
+    end
+
+    def ===(other)
+      other.is_a?(LParen) && value === other.value
     end
   end
 
@@ -6735,6 +7110,10 @@ module SyntaxTree
         end
       end
     end
+
+    def ===(other)
+      other.is_a?(MAssign) && target === other.target && value === other.value
+    end
   end
 
   # MethodAddBlock represents a method call with a block argument.
@@ -6796,6 +7175,11 @@ module SyntaxTree
       end
     end
 
+    def ===(other)
+      other.is_a?(MethodAddBlock) && call === other.call &&
+        block === other.block
+    end
+
     def format_contents(q)
       q.format(call)
       q.format(block)
@@ -6852,6 +7236,11 @@ module SyntaxTree
     def format(q)
       q.seplist(parts) { |part| q.format(part) }
       q.text(",") if comma
+    end
+
+    def ===(other)
+      other.is_a?(MLHS) && ArrayMatch.call(parts, other.parts) &&
+        comma === other.comma
     end
   end
 
@@ -6919,6 +7308,10 @@ module SyntaxTree
         end
         q.text(")")
       end
+    end
+
+    def ===(other)
+      other.is_a?(MLHSParen) && contents === other.contents
     end
   end
 
@@ -6993,6 +7386,11 @@ module SyntaxTree
       end
     end
 
+    def ===(other)
+      other.is_a?(ModuleDeclaration) && constant === other.constant &&
+        bodystmt === other.bodystmt
+    end
+
     private
 
     def format_declaration(q)
@@ -7041,6 +7439,10 @@ module SyntaxTree
 
     def format(q)
       q.seplist(parts) { |part| q.format(part) }
+    end
+
+    def ===(other)
+      other.is_a?(MRHS) && ArrayMatch.call(parts, other.parts)
     end
   end
 
@@ -7098,6 +7500,10 @@ module SyntaxTree
     def format(q)
       FlowControlFormatter.new("next", self).format(q)
     end
+
+    def ===(other)
+      other.is_a?(Next) && arguments === other.arguments
+    end
   end
 
   # Op represents an operator literal in the source.
@@ -7142,6 +7548,10 @@ module SyntaxTree
 
     def format(q)
       q.text(value)
+    end
+
+    def ===(other)
+      other.is_a?(Op) && value === other.value
     end
   end
 
@@ -7217,6 +7627,11 @@ module SyntaxTree
           end
         end
       end
+    end
+
+    def ===(other)
+      other.is_a?(OpAssign) && target === other.target &&
+        operator === other.operator && value === other.value
     end
 
     private
@@ -7522,6 +7937,20 @@ module SyntaxTree
       end
     end
 
+    def ===(other)
+      other.is_a?(Params) && ArrayMatch.call(requireds, other.requireds) &&
+        optionals.length == other.optionals.length &&
+        optionals
+          .zip(other.optionals)
+          .all? { |left, right| ArrayMatch.call(left, right) } &&
+        rest === other.rest && ArrayMatch.call(posts, other.posts) &&
+        keywords.length == other.keywords.length &&
+        keywords
+          .zip(other.keywords)
+          .all? { |left, right| ArrayMatch.call(left, right) } &&
+        keyword_rest === other.keyword_rest && block === other.block
+    end
+
     private
 
     def format_contents(q, parts)
@@ -7595,6 +8024,11 @@ module SyntaxTree
         q.text(")")
       end
     end
+
+    def ===(other)
+      other.is_a?(Paren) && lparen === other.lparen &&
+        contents === other.contents
+    end
   end
 
   # Period represents the use of the +.+ operator. It is usually found in method
@@ -7635,6 +8069,10 @@ module SyntaxTree
 
     def format(q)
       q.text(value)
+    end
+
+    def ===(other)
+      other.is_a?(Period) && value === other.value
     end
   end
 
@@ -7680,6 +8118,10 @@ module SyntaxTree
       # it ends with the special __END__ syntax. In that case we want to
       # replicate the text exactly so we will just let it be.
       q.breakable_force unless statements.body.last.is_a?(EndContent)
+    end
+
+    def ===(other)
+      other.is_a?(Program) && statements === other.statements
     end
   end
 
@@ -7752,6 +8194,11 @@ module SyntaxTree
       end
       q.text(closing)
     end
+
+    def ===(other)
+      other.is_a?(QSymbols) && beginning === other.beginning &&
+        ArrayMatch.call(elements, other.elements)
+    end
   end
 
   # QSymbolsBeg represents the beginning of a symbol literal array.
@@ -7789,6 +8236,10 @@ module SyntaxTree
 
     def deconstruct_keys(_keys)
       { value: value, location: location }
+    end
+
+    def ===(other)
+      other.is_a?(QSymbolsBeg) && value === other.value
     end
   end
 
@@ -7861,6 +8312,11 @@ module SyntaxTree
       end
       q.text(closing)
     end
+
+    def ===(other)
+      other.is_a?(QWords) && beginning === other.beginning &&
+        ArrayMatch.call(elements, other.elements)
+    end
   end
 
   # QWordsBeg represents the beginning of a string literal array.
@@ -7898,6 +8354,10 @@ module SyntaxTree
 
     def deconstruct_keys(_keys)
       { value: value, location: location }
+    end
+
+    def ===(other)
+      other.is_a?(QWordsBeg) && value === other.value
     end
   end
 
@@ -7942,6 +8402,10 @@ module SyntaxTree
     def format(q)
       q.text(value)
     end
+
+    def ===(other)
+      other.is_a?(RationalLiteral) && value === other.value
+    end
   end
 
   # RBrace represents the use of a right brace, i.e., +++.
@@ -7974,6 +8438,10 @@ module SyntaxTree
     def deconstruct_keys(_keys)
       { value: value, location: location }
     end
+
+    def ===(other)
+      other.is_a?(RBrace) && value === other.value
+    end
   end
 
   # RBracket represents the use of a right bracket, i.e., +]+.
@@ -8005,6 +8473,10 @@ module SyntaxTree
 
     def deconstruct_keys(_keys)
       { value: value, location: location }
+    end
+
+    def ===(other)
+      other.is_a?(RBracket) && value === other.value
     end
   end
 
@@ -8041,6 +8513,10 @@ module SyntaxTree
 
     def format(q)
       q.text("redo")
+    end
+
+    def ===(other)
+      other.is_a?(Redo)
     end
   end
 
@@ -8085,6 +8561,11 @@ module SyntaxTree
     def deconstruct_keys(_keys)
       { beginning: beginning, parts: parts, location: location }
     end
+
+    def ===(other)
+      other.is_a?(RegexpContent) && beginning === other.beginning &&
+        parts === other.parts
+    end
   end
 
   # RegexpBeg represents the start of a regular expression literal.
@@ -8124,6 +8605,10 @@ module SyntaxTree
 
     def deconstruct_keys(_keys)
       { value: value, location: location }
+    end
+
+    def ===(other)
+      other.is_a?(RegexpBeg) && value === other.value
     end
   end
 
@@ -8165,6 +8650,10 @@ module SyntaxTree
 
     def deconstruct_keys(_keys)
       { value: value, location: location }
+    end
+
+    def ===(other)
+      other.is_a?(RegexpEnd) && value === other.value
     end
   end
 
@@ -8264,6 +8753,12 @@ module SyntaxTree
       end
     end
 
+    def ===(other)
+      other.is_a?(RegexpLiteral) && beginning === other.beginning &&
+        ending === other.ending && options === other.options &&
+        ArrayMatch.call(parts, other.parts)
+    end
+
     def options
       ending[1..]
     end
@@ -8352,6 +8847,11 @@ module SyntaxTree
           q.format(variable)
         end
       end
+    end
+
+    def ===(other)
+      other.is_a?(RescueEx) && exceptions === other.exceptions &&
+        variable === other.variable
     end
   end
 
@@ -8475,6 +8975,12 @@ module SyntaxTree
         end
       end
     end
+
+    def ===(other)
+      other.is_a?(Rescue) && keyword === other.keyword &&
+        exception === other.exception && statements === other.statements &&
+        consequent === other.consequent
+    end
   end
 
   # RescueMod represents the use of the modifier form of a +rescue+ clause.
@@ -8542,6 +9048,11 @@ module SyntaxTree
       end
       q.text("end")
     end
+
+    def ===(other)
+      other.is_a?(RescueMod) && statement === other.statement &&
+        value === other.value
+    end
   end
 
   # RestParam represents defining a parameter in a method definition that
@@ -8587,6 +9098,10 @@ module SyntaxTree
       q.text("*")
       q.format(name) if name
     end
+
+    def ===(other)
+      other.is_a?(RestParam) && name === other.name
+    end
   end
 
   # Retry represents the use of the +retry+ keyword.
@@ -8622,6 +9137,10 @@ module SyntaxTree
 
     def format(q)
       q.text("retry")
+    end
+
+    def ===(other)
+      other.is_a?(Retry)
     end
   end
 
@@ -8666,6 +9185,10 @@ module SyntaxTree
     def format(q)
       FlowControlFormatter.new("return", self).format(q)
     end
+
+    def ===(other)
+      other.is_a?(Return) && arguments === other.arguments
+    end
   end
 
   # RParen represents the use of a right parenthesis, i.e., +)+.
@@ -8697,6 +9220,10 @@ module SyntaxTree
 
     def deconstruct_keys(_keys)
       { value: value, location: location }
+    end
+
+    def ===(other)
+      other.is_a?(RParen) && value === other.value
     end
   end
 
@@ -8762,6 +9289,11 @@ module SyntaxTree
         q.breakable_force
       end
       q.text("end")
+    end
+
+    def ===(other)
+      other.is_a?(SClass) && target === other.target &&
+        bodystmt === other.bodystmt
     end
   end
 
@@ -8906,6 +9438,10 @@ module SyntaxTree
       end
     end
 
+    def ===(other)
+      other.is_a?(Statements) && ArrayMatch.call(body, other.body)
+    end
+
     private
 
     # As efficiently as possible, gather up all of the comments that have been
@@ -8983,6 +9519,10 @@ module SyntaxTree
     def deconstruct_keys(_keys)
       { parts: parts, location: location }
     end
+
+    def ===(other)
+      other.is_a?(StringContent) && ArrayMatch.call(parts, other.parts)
+    end
   end
 
   # StringConcat represents concatenating two strings together using a backward
@@ -9040,6 +9580,10 @@ module SyntaxTree
         end
       end
     end
+
+    def ===(other)
+      other.is_a?(StringConcat) && left === other.left && right === other.right
+    end
   end
 
   # StringDVar represents shorthand interpolation of a variable into a string.
@@ -9086,6 +9630,10 @@ module SyntaxTree
       q.text('#{')
       q.format(variable)
       q.text("}")
+    end
+
+    def ===(other)
+      other.is_a?(StringDVar) && variable === other.variable
     end
   end
 
@@ -9153,6 +9701,10 @@ module SyntaxTree
           q.text("}")
         end
       end
+    end
+
+    def ===(other)
+      other.is_a?(StringEmbExpr) && statements === other.statements
     end
   end
 
@@ -9240,6 +9792,11 @@ module SyntaxTree
       end
       q.text(closing_quote)
     end
+
+    def ===(other)
+      other.is_a?(StringLiteral) && ArrayMatch.call(parts, other.parts) &&
+        quote === other.quote
+    end
   end
 
   # Super represents using the +super+ keyword with arguments. It can optionally
@@ -9293,6 +9850,10 @@ module SyntaxTree
         end
       end
     end
+
+    def ===(other)
+      other.is_a?(Super) && arguments === other.arguments
+    end
   end
 
   # SymBeg represents the beginning of a symbol literal.
@@ -9340,6 +9901,10 @@ module SyntaxTree
     def deconstruct_keys(_keys)
       { value: value, location: location }
     end
+
+    def ===(other)
+      other.is_a?(SymBeg) && value === other.value
+    end
   end
 
   # SymbolContent represents symbol contents and is always the child of a
@@ -9376,6 +9941,10 @@ module SyntaxTree
 
     def deconstruct_keys(_keys)
       { value: value, location: location }
+    end
+
+    def ===(other)
+      other.is_a?(SymbolContent) && value === other.value
     end
   end
 
@@ -9422,6 +9991,10 @@ module SyntaxTree
     def format(q)
       q.text(":")
       q.format(value)
+    end
+
+    def ===(other)
+      other.is_a?(SymbolLiteral) && value === other.value
     end
   end
 
@@ -9494,6 +10067,11 @@ module SyntaxTree
       end
       q.text(closing)
     end
+
+    def ===(other)
+      other.is_a?(Symbols) && beginning === other.beginning &&
+        ArrayMatch.call(elements, other.elements)
+    end
   end
 
   # SymbolsBeg represents the start of a symbol array literal with
@@ -9533,6 +10111,10 @@ module SyntaxTree
     def deconstruct_keys(_keys)
       { value: value, location: location }
     end
+
+    def ===(other)
+      other.is_a?(SymbolsBeg) && value === other.value
+    end
   end
 
   # TLambda represents the beginning of a lambda literal.
@@ -9568,6 +10150,10 @@ module SyntaxTree
 
     def deconstruct_keys(_keys)
       { value: value, location: location }
+    end
+
+    def ===(other)
+      other.is_a?(TLambda) && value === other.value
     end
   end
 
@@ -9605,6 +10191,10 @@ module SyntaxTree
 
     def deconstruct_keys(_keys)
       { value: value, location: location }
+    end
+
+    def ===(other)
+      other.is_a?(TLamBeg) && value === other.value
     end
   end
 
@@ -9652,6 +10242,10 @@ module SyntaxTree
       q.text("::")
       q.format(constant)
     end
+
+    def ===(other)
+      other.is_a?(TopConstField) && constant === other.constant
+    end
   end
 
   # TopConstRef is very similar to TopConstField except that it is not involved
@@ -9697,6 +10291,10 @@ module SyntaxTree
       q.text("::")
       q.format(constant)
     end
+
+    def ===(other)
+      other.is_a?(TopConstRef) && constant === other.constant
+    end
   end
 
   # TStringBeg represents the beginning of a string literal.
@@ -9737,6 +10335,10 @@ module SyntaxTree
 
     def deconstruct_keys(_keys)
       { value: value, location: location }
+    end
+
+    def ===(other)
+      other.is_a?(TStringBeg) && value === other.value
     end
   end
 
@@ -9789,6 +10391,10 @@ module SyntaxTree
     def format(q)
       q.text(value)
     end
+
+    def ===(other)
+      other.is_a?(TStringContent) && value === other.value
+    end
   end
 
   # TStringEnd represents the end of a string literal.
@@ -9829,6 +10435,10 @@ module SyntaxTree
 
     def deconstruct_keys(_keys)
       { value: value, location: location }
+    end
+
+    def ===(other)
+      other.is_a?(TStringEnd) && value === other.value
     end
   end
 
@@ -9904,6 +10514,11 @@ module SyntaxTree
         end
       end
     end
+
+    def ===(other)
+      other.is_a?(Not) && statement === other.statement &&
+        parentheses === other.parentheses
+    end
   end
 
   # Unary represents a unary method being called on an expression, as in +!+ or
@@ -9958,6 +10573,11 @@ module SyntaxTree
     def format(q)
       q.text(operator)
       q.format(statement)
+    end
+
+    def ===(other)
+      other.is_a?(Unary) && operator === other.operator &&
+        statement === other.statement
     end
   end
 
@@ -10034,6 +10654,10 @@ module SyntaxTree
         end
       end
     end
+
+    def ===(other)
+      other.is_a?(Undef) && ArrayMatch.call(symbols, other.symbols)
+    end
   end
 
   # Unless represents the first clause in an +unless+ chain.
@@ -10099,6 +10723,11 @@ module SyntaxTree
 
     def format(q)
       ConditionalFormatter.new("unless", self).format(q)
+    end
+
+    def ===(other)
+      other.is_a?(Unless) && predicate === other.predicate &&
+        statements === other.statements && consequent === other.consequent
     end
 
     # Checks if the node was originally found in the modifier form.
@@ -10232,6 +10861,11 @@ module SyntaxTree
       LoopFormatter.new("until", self).format(q)
     end
 
+    def ===(other)
+      other.is_a?(Until) && predicate === other.predicate &&
+        statements === other.statements
+    end
+
     def modifier?
       predicate.location.start_char > statements.location.start_char
     end
@@ -10284,6 +10918,10 @@ module SyntaxTree
         q.format(value)
       end
     end
+
+    def ===(other)
+      other.is_a?(VarField) && value === other.value
+    end
   end
 
   # VarRef represents a variable reference.
@@ -10330,6 +10968,10 @@ module SyntaxTree
 
     def format(q)
       q.format(value)
+    end
+
+    def ===(other)
+      other.is_a?(VarRef) && value === other.value
     end
 
     # Oh man I hate this so much. Basically, ripper doesn't provide enough
@@ -10405,6 +11047,10 @@ module SyntaxTree
         q.format(value)
       end
     end
+
+    def ===(other)
+      other.is_a?(PinnedVarRef) && value === other.value
+    end
   end
 
   # VCall represent any plain named object with Ruby that could be either a
@@ -10447,6 +11093,10 @@ module SyntaxTree
       q.format(value)
     end
 
+    def ===(other)
+      other.is_a?(VCall) && value === other.value
+    end
+
     def access_control?
       @access_control ||= %w[private protected public].include?(value.value)
     end
@@ -10487,6 +11137,10 @@ module SyntaxTree
     end
 
     def format(q)
+    end
+
+    def ===(other)
+      other.is_a?(VoidStmt)
     end
   end
 
@@ -10602,6 +11256,11 @@ module SyntaxTree
         end
       end
     end
+
+    def ===(other)
+      other.is_a?(When) && arguments === other.arguments &&
+        statements === other.statements && consequent === other.consequent
+    end
   end
 
   # While represents a +while+ loop.
@@ -10657,6 +11316,11 @@ module SyntaxTree
       LoopFormatter.new("while", self).format(q)
     end
 
+    def ===(other)
+      other.is_a?(While) && predicate === other.predicate &&
+        statements === other.statements
+    end
+
     def modifier?
       predicate.location.start_char > statements.location.start_char
     end
@@ -10707,6 +11371,10 @@ module SyntaxTree
 
     def format(q)
       q.format_each(parts)
+    end
+
+    def ===(other)
+      other.is_a?(Word) && ArrayMatch.call(parts, other.parts)
     end
   end
 
@@ -10779,6 +11447,11 @@ module SyntaxTree
       end
       q.text(closing)
     end
+
+    def ===(other)
+      other.is_a?(Words) && beginning === other.beginning &&
+        ArrayMatch.call(elements, other.elements)
+    end
   end
 
   # WordsBeg represents the beginning of a string literal array with
@@ -10818,6 +11491,10 @@ module SyntaxTree
     def deconstruct_keys(_keys)
       { value: value, location: location }
     end
+
+    def ===(other)
+      other.is_a?(WordsBeg) && value === other.value
+    end
   end
 
   # XString represents the contents of an XStringLiteral.
@@ -10853,6 +11530,10 @@ module SyntaxTree
 
     def deconstruct_keys(_keys)
       { parts: parts, location: location }
+    end
+
+    def ===(other)
+      other.is_a?(XString) && ArrayMatch.call(parts, other.parts)
     end
   end
 
@@ -10899,6 +11580,10 @@ module SyntaxTree
       q.text("`")
       q.format_each(parts)
       q.text("`")
+    end
+
+    def ===(other)
+      other.is_a?(XStringLiteral) && ArrayMatch.call(parts, other.parts)
     end
   end
 
@@ -10962,6 +11647,10 @@ module SyntaxTree
         end
       end
     end
+
+    def ===(other)
+      other.is_a?(Yield) && arguments === other.arguments
+    end
   end
 
   # ZSuper represents the bare +super+ keyword with no arguments.
@@ -10997,6 +11686,10 @@ module SyntaxTree
 
     def format(q)
       q.text("super")
+    end
+
+    def ===(other)
+      other.is_a?(ZSuper)
     end
   end
 end
