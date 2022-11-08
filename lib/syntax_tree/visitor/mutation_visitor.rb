@@ -4,7 +4,33 @@ module SyntaxTree
   class Visitor
     # This visitor walks through the tree and copies each node as it is being
     # visited. This is useful for mutating the tree before it is formatted.
-    class MutationVisitor < Visitor
+    class MutationVisitor < BasicVisitor
+      # Here we maintain a stack of parent nodes so that it's easy to reflect on
+      # the context of a given node while mutating it.
+      attr_reader :stack
+
+      def initialize
+        @stack = []
+      end
+
+      # This is the main entrypoint that's going to be called when we're
+      # recursing down through the tree.
+      def visit(node)
+        return unless node
+
+        stack << node
+        result = node.accept(self)
+
+        stack.pop
+        result
+      end
+  
+      # This is a small helper to visit an array of nodes and return the result
+      # of visiting them all.
+      def visit_all(nodes)
+        nodes.map { |node| visit(node) }
+      end
+
       # Visit a BEGINBlock node.
       def visit_BEGIN(node)
         node.copy(
