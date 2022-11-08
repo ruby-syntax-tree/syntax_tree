@@ -24,7 +24,7 @@ module SyntaxTree
         stack.pop
         result
       end
-  
+
       # This is a small helper to visit an array of nodes and return the result
       # of visiting them all.
       def visit_all(nodes)
