@@ -46,8 +46,8 @@ It is built with only standard library dependencies. It additionally ships with 
   - [textDocument/formatting](#textdocumentformatting)
   - [textDocument/inlayHint](#textdocumentinlayhint)
   - [syntaxTree/visualizing](#syntaxtreevisualizing)
-- [Plugins](#plugins)
-  - [Customization](#customization)
+- [Customization](#customization)
+  - [Plugins](#plugins)
   - [Languages](#languages)
 - [Integration](#integration)
   - [Rake](#rake)
@@ -319,6 +319,10 @@ Baked into this syntax is the ability to provide exceptions to file name pattern
 ```shell
 stree write "**/{[!schema]*,*}.rb"
 ```
+
+## Formatting
+
+
 
 ## Library
 
@@ -619,18 +623,45 @@ Implicity, the `2 * 3` is going to be executed first because the `*` operator ha
 
 The language server additionally includes this custom request to return a textual representation of the syntax tree underlying the source code of a file. Language server clients can use this to (for example) open an additional tab with this information displayed.
 
-## Plugins
+## Customization
 
-You can register additional customization and additional languages that can flow through the same CLI with Syntax Tree's plugin system. When invoking the CLI, you pass through the list of plugins with the `--plugins` options to the commands that accept them. They should be a comma-delimited list. When the CLI first starts, it will require the files corresponding to those names.
+There are multiple ways to customize Syntax Tree's behavior when parsing and formatting code. You can ignore certain sections of the source code, you can register plugins to provide custom formatting behavior, and you can register additional languages to be parsed and formatted.
 
-### Customization
+### Ignoring code
 
-To register additional customization, define a file somewhere in your load path named `syntax_tree/my_plugin`. Then when invoking the CLI, you will pass `--plugins=my_plugin`. To require multiple, separate them by a comma. In this way, you can modify Syntax Tree however you would like. Some plugins ship with Syntax Tree itself. They are:
+To ignore a section of source code, you can a special `# stree-ignore` comment. This comment should be placed immediately above the code that you want to ignore. For example:
+
+```ruby
+numbers = [
+  10000,
+  20000,
+  30000
+]
+```
+
+Normally the snippet above would be formatted as `numbers = [10_000, 20_000, 30_000]`. However, sometimes you want to keep the original formatting to improve readability or maintainability. In that case, you can put the ignore comment before it, as in:
+
+```ruby
+# stree-ignore
+numbers = [
+  10000,
+  20000,
+  30000
+]
+```
+
+Now when Syntax Tree goes to format that code, it will copy the source code exactly as it is, including the newlines and indentation.
+
+### Plugins
+
+You can register additional customization that can flow through the same CLI with Syntax Tree's plugin system. When invoking the CLI, you pass through the list of plugins with the `--plugins` options to the commands that accept them. They should be a comma-delimited list. When the CLI first starts, it will require the files corresponding to those names.
+
+To register plugins, define a file somewhere in your load path named `syntax_tree/my_plugin`. Then when invoking the CLI, you will pass `--plugins=my_plugin`. To require multiple, separate them by a comma. In this way, you can modify Syntax Tree however you would like. Some plugins ship with Syntax Tree itself. They are:
 
 * `plugin/single_quotes` - This will change all of your string literals to use single quotes instead of the default double quotes.
 * `plugin/trailing_comma` - This will put trailing commas into multiline array literals, hash literals, and method calls that can support trailing commas.
 
-If you're using Syntax Tree as a library, you should require those files directly.
+If you're using Syntax Tree as a library, you can require those files directly or manually pass those options to the formatter initializer through the `SyntaxTree::Formatter::Options` class.
 
 ### Languages
 

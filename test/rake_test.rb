@@ -46,12 +46,11 @@ module SyntaxTree
         invocation = nil
         stub = ->(args) { invocation = Invocation.new(args) }
 
-        begin
+        assert_raises SystemExit do
           SyntaxTree::CLI.stub(:run, stub) { ::Rake::Task[task_name].invoke }
-          flunk
-        rescue SystemExit
-          invocation
         end
+
+        invocation
       end
     end
   end
