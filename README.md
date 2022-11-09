@@ -538,7 +538,7 @@ The `MutationVisitor` is a visitor that can be used to mutate the tree. It works
 visitor = SyntaxTree::Visitor::MutationVisitor.new
 
 # Specify that it should mutate If nodes with assignments in their predicates
-visitor.mutate("If[predicate: Assign | OpAssign]") do |node|
+visitor.mutate("IfNode[predicate: Assign | OpAssign]") do |node|
   # Get the existing If's predicate node
   predicate = node.predicate
 

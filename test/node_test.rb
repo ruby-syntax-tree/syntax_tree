@@ -32,7 +32,7 @@ module SyntaxTree
     end
 
     def test_alias
-      assert_node(Alias, "alias left right")
+      assert_node(AliasNode, "alias left right")
     end
 
     def test_aref
@@ -276,7 +276,7 @@ module SyntaxTree
       source = "method { |variable| variable + 1 }"
 
       at = location(chars: 7..34)
-      assert_node(Block, source, at: at, &:block)
+      assert_node(BlockNode, source, at: at, &:block)
     end
 
     def test_break
@@ -284,7 +284,7 @@ module SyntaxTree
     end
 
     def test_call
-      assert_node(Call, "receiver.message")
+      assert_node(CallNode, "receiver.message")
     end
 
     def test_case
@@ -365,7 +365,7 @@ module SyntaxTree
     end
 
     def test_def
-      assert_node(Def, "def method(param) result end")
+      assert_node(DefNode, "def method(param) result end")
     end
 
     def test_def_paramless
@@ -374,18 +374,18 @@ module SyntaxTree
         end
       SOURCE
 
-      assert_node(Def, source)
+      assert_node(DefNode, source)
     end
 
     guard_version("3.0.0") do
       def test_def_endless
-        assert_node(Def, "def method = result")
+        assert_node(DefNode, "def method = result")
       end
     end
 
     guard_version("3.1.0") do
       def test_def_endless_command
-        assert_node(Def, "def method = result argument")
+        assert_node(DefNode, "def method = result argument")
       end
     end
 
@@ -394,7 +394,7 @@ module SyntaxTree
     end
 
     def test_defs
-      assert_node(Def, "def object.method(param) result end")
+      assert_node(DefNode, "def object.method(param) result end")
     end
 
     def test_defs_paramless
@@ -403,22 +403,22 @@ module SyntaxTree
         end
       SOURCE
 
-      assert_node(Def, source)
+      assert_node(DefNode, source)
     end
 
     def test_do_block
       source = "method do |variable| variable + 1 end"
 
       at = location(chars: 7..37)
-      assert_node(Block, source, at: at, &:block)
+      assert_node(BlockNode, source, at: at, &:block)
     end
 
     def test_dot2
-      assert_node(RangeLiteral, "1..3")
+      assert_node(RangeNode, "1..3")
     end
 
     def test_dot3
-      assert_node(RangeLiteral, "1...3")
+      assert_node(RangeNode, "1...3")
     end
 
     def test_dyna_symbol
@@ -487,7 +487,7 @@ module SyntaxTree
     end
 
     def test_fcall
-      assert_node(Call, "method(argument)")
+      assert_node(CallNode, "method(argument)")
     end
 
     def test_field
@@ -575,7 +575,7 @@ module SyntaxTree
     end
 
     def test_if
-      assert_node(If, "if value then else end")
+      assert_node(IfNode, "if value then else end")
     end
 
     def test_if_op
@@ -583,7 +583,7 @@ module SyntaxTree
     end
 
     def test_if_mod
-      assert_node(If, "expression if predicate")
+      assert_node(IfNode, "expression if predicate")
     end
 
     def test_imaginary
@@ -837,11 +837,11 @@ module SyntaxTree
     end
 
     def test_return
-      assert_node(Return, "return value")
+      assert_node(ReturnNode, "return value")
     end
 
     def test_return0
-      assert_node(Return, "return")
+      assert_node(ReturnNode, "return")
     end
 
     def test_sclass
@@ -923,19 +923,23 @@ module SyntaxTree
     end
 
     def test_unless
-      assert_node(Unless, "unless value then else end")
+      assert_node(UnlessNode, "unless value then else end")
+    end
+
+    def test_unless_mod
+      assert_node(UnlessNode, "expression unless predicate")
     end
 
     def test_until
-      assert_node(Until, "until value do end")
+      assert_node(UntilNode, "until value do end")
     end
 
     def test_until_mod
-      assert_node(Until, "expression until predicate")
+      assert_node(UntilNode, "expression until predicate")
     end
 
     def test_var_alias
-      assert_node(Alias, "alias $new $old")
+      assert_node(AliasNode, "alias $new $old")
     end
 
     def test_var_field
@@ -977,11 +981,11 @@ module SyntaxTree
     end
 
     def test_while
-      assert_node(While, "while value do end")
+      assert_node(WhileNode, "while value do end")
     end
 
     def test_while_mod
-      assert_node(While, "expression while predicate")
+      assert_node(WhileNode, "expression while predicate")
     end
 
     def test_word
@@ -1009,11 +1013,11 @@ module SyntaxTree
     end
 
     def test_yield
-      assert_node(Yield, "yield value")
+      assert_node(YieldNode, "yield value")
     end
 
     def test_yield0
-      assert_node(Yield, "yield")
+      assert_node(YieldNode, "yield")
     end
 
     def test_zsuper

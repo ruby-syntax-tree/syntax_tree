@@ -25,7 +25,7 @@ module SyntaxTree
 
     def build_mutation
       SyntaxTree.mutation do |mutation|
-        mutation.mutate("If[predicate: Assign | OpAssign]") do |node|
+        mutation.mutate("IfNode[predicate: Assign | OpAssign]") do |node|
           # Get the existing If's predicate node
           predicate = node.predicate
 

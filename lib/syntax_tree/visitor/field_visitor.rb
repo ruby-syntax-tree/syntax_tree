@@ -684,8 +684,8 @@ module SyntaxTree
         node(node, "qwords_beg") { field("value", node.value) }
       end
 
-      def visit_range_literal(node)
-        node(node, "range_literal") do
+      def visit_range(node)
+        node(node, "range") do
           field("left", node.left) if node.left
           field("operator", node.operator)
           field("right", node.right) if node.right
