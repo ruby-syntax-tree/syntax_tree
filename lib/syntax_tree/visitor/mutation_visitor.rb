@@ -60,7 +60,7 @@ module SyntaxTree
         node.copy
       end
 
-      # Visit a Alias node.
+      # Visit a AliasNode node.
       def visit_alias(node)
         node.copy(left: visit(node.left), right: visit(node.right))
       end
@@ -300,8 +300,8 @@ module SyntaxTree
         )
       end
 
-      # Visit a RangeLiteral node.
-      def visit_range_literal(node)
+      # Visit a RangeNode node.
+      def visit_range(node)
         node.copy(
           left: visit(node.left),
           operator: visit(node.operator),
@@ -435,7 +435,7 @@ module SyntaxTree
         node.copy
       end
 
-      # Visit a If node.
+      # Visit a IfNode node.
       def visit_if(node)
         node.copy(
           predicate: visit(node.predicate),
@@ -823,7 +823,7 @@ module SyntaxTree
         node.copy(symbols: visit_all(node.symbols))
       end
 
-      # Visit a Unless node.
+      # Visit a UnlessNode node.
       def visit_unless(node)
         node.copy(
           predicate: visit(node.predicate),
@@ -832,7 +832,7 @@ module SyntaxTree
         )
       end
 
-      # Visit a Until node.
+      # Visit a UntilNode node.
       def visit_until(node)
         node.copy(
           predicate: visit(node.predicate),
@@ -874,7 +874,7 @@ module SyntaxTree
         )
       end
 
-      # Visit a While node.
+      # Visit a WhileNode node.
       def visit_while(node)
         node.copy(
           predicate: visit(node.predicate),
@@ -910,7 +910,7 @@ module SyntaxTree
         node.copy(parts: visit_all(node.parts))
       end
 
-      # Visit a Yield node.
+      # Visit a YieldNode node.
       def visit_yield(node)
         node.copy(arguments: visit(node.arguments))
       end

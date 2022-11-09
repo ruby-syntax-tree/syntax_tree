@@ -445,7 +445,7 @@ module SyntaxTree
   # can either provide bare words (like the example above) or you can provide
   # symbols (note that this includes dynamic symbols like
   # :"left-#{middle}-right").
-  class Alias < Node
+  class AliasNode < Node
     # Formats an argument to the alias keyword. For symbol literals it uses the
     # value of the symbol directly to look like bare words.
     class AliasArgumentFormatter
@@ -500,7 +500,7 @@ module SyntaxTree
 
     def copy(left: nil, right: nil, location: nil)
       node =
-        Alias.new(
+        AliasNode.new(
           left: left || self.left,
           right: right || self.right,
           location: location || self.location
@@ -533,7 +533,7 @@ module SyntaxTree
     end
 
     def ===(other)
-      other.is_a?(Alias) && left === other.left && right === other.right
+      other.is_a?(AliasNode) && left === other.left && right === other.right
     end
 
     def var_alias?
@@ -1430,7 +1430,7 @@ module SyntaxTree
       when ArrayLiteral, HashLiteral, Heredoc, Lambda, QSymbols, QWords,
            Symbols, Words
         true
-      when Call
+      when CallNode
         skip_indent?(value.receiver)
       when DynaSymbol
         value.quote.start_with?("%s")
@@ -2707,16 +2707,16 @@ module SyntaxTree
       # longer at a chainable node.
       loop do
         case (child = children.last)
-        when Call
+        when CallNode
           case (receiver = child.receiver)
-          when Call
+          when CallNode
             if receiver.receiver.nil?
               break
             else
               children << receiver
             end
           when MethodAddBlock
-            if receiver.call.is_a?(Call) && !receiver.call.receiver.nil?
+            if receiver.call.is_a?(CallNode) && !receiver.call.receiver.nil?
               children << receiver
             else
               break
@@ -2725,7 +2725,7 @@ module SyntaxTree
             break
           end
         when MethodAddBlock
-          if child.call.is_a?(Call) && !child.call.receiver.nil?
+          if child.call.is_a?(CallNode) && !child.call.receiver.nil?
             children << child.call
           else
             break
@@ -2746,9 +2746,9 @@ module SyntaxTree
         # If we're at a block with the `do` keywords, then we want to go one
         # more level up. This is because do blocks have BodyStmt nodes instead
         # of just Statements nodes.
-        parent = parents[3] if parent.is_a?(Block) && parent.keywords?
+        parent = parents[3] if parent.is_a?(BlockNode) && parent.keywords?
 
-        if parent.is_a?(MethodAddBlock) && parent.call.is_a?(Call) &&
+        if parent.is_a?(MethodAddBlock) && parent.call.is_a?(CallNode) &&
              parent.call.message.value == "sig"
           threshold = 2
         end
@@ -2772,7 +2772,7 @@ module SyntaxTree
       empty_except_last =
         children
           .drop(1)
-          .all? { |child| child.is_a?(Call) && child.arguments.nil? }
+          .all? { |child| child.is_a?(CallNode) && child.arguments.nil? }
 
       # Here, we're going to add all of the children onto the stack of the
       # formatter so it's as if we had descending normally into them. This is
@@ -2793,8 +2793,8 @@ module SyntaxTree
           skip_operator = false
 
           while (child = children.pop)
-            if child.is_a?(Call)
-              if child.receiver.is_a?(Call) &&
+            if child.is_a?(CallNode)
+              if child.receiver.is_a?(CallNode) &&
                    (child.receiver.message != :call) &&
                    (child.receiver.message.value == "where") &&
                    (child.message.value == "not")
@@ -2821,7 +2821,7 @@ module SyntaxTree
             # If the parent call node has a comment on the message then we need
             # to print the operator trailing in order to keep it working.
             last_child = children.last
-            if last_child.is_a?(Call) && last_child.message.comments.any? &&
+            if last_child.is_a?(CallNode) && last_child.message.comments.any? &&
                  last_child.operator
               q.format(CallOperatorFormatter.new(last_child.operator))
               skip_operator = true
@@ -2838,7 +2838,7 @@ module SyntaxTree
 
       if empty_except_last
         case node
-        when Call
+        when CallNode
           node.format_arguments(q)
         when MethodAddBlock
           q.format(node.block)
@@ -2850,10 +2850,10 @@ module SyntaxTree
       return false if ENV["STREE_FAST_FORMAT"]
 
       case node
-      when Call
+      when CallNode
         !node.receiver.nil?
       when MethodAddBlock
-        node.call.is_a?(Call) && !node.call.receiver.nil?
+        node.call.is_a?(CallNode) && !node.call.receiver.nil?
       else
         false
       end
@@ -2866,7 +2866,8 @@ module SyntaxTree
     # format it separately here.
     def attach_directly?(node)
       case node.receiver
-      when ArrayLiteral, HashLiteral, Heredoc, If, Unless, XStringLiteral
+      when ArrayLiteral, HashLiteral, Heredoc, IfNode, UnlessNode,
+           XStringLiteral
         true
       else
         false
@@ -2882,7 +2883,7 @@ module SyntaxTree
     )
       # First, format the actual contents of the child.
       case child
-      when Call
+      when CallNode
         q.group do
           if !skip_operator && child.operator
             q.format(CallOperatorFormatter.new(child.operator))
@@ -2907,11 +2908,11 @@ module SyntaxTree
     end
   end
 
-  # Call represents a method call.
+  # CallNode represents a method call.
   #
   #     receiver.message
   #
-  class Call < Node
+  class CallNode < Node
     # [nil | untyped] the receiver of the method call
     attr_reader :receiver
 
@@ -2957,7 +2958,7 @@ module SyntaxTree
       location: nil
     )
       node =
-        Call.new(
+        CallNode.new(
           receiver: receiver || self.receiver,
           operator: operator || self.operator,
           message: message || self.message,
@@ -3014,7 +3015,7 @@ module SyntaxTree
     end
 
     def ===(other)
-      other.is_a?(Call) && receiver === other.receiver &&
+      other.is_a?(CallNode) && receiver === other.receiver &&
         operator === other.operator && message === other.message &&
         arguments === other.arguments
     end
@@ -3483,7 +3484,7 @@ module SyntaxTree
           part = parts.first
 
           case part
-          when Def
+          when DefNode
             q.text(" ")
             yield
           when IfOp
@@ -4038,7 +4039,7 @@ module SyntaxTree
   #     def method(param) result end
   #     def object.method(param) result end
   #
-  class Def < Node
+  class DefNode < Node
     # [nil | untyped] the target where the method is being defined
     attr_reader :target
 
@@ -4084,7 +4085,7 @@ module SyntaxTree
       location: nil
     )
       node =
-        Def.new(
+        DefNode.new(
           target: target || self.target,
           operator: operator || self.operator,
           name: name || self.name,
@@ -4154,7 +4155,7 @@ module SyntaxTree
     end
 
     def ===(other)
-      other.is_a?(Def) && target === other.target &&
+      other.is_a?(DefNode) && target === other.target &&
         operator === other.operator && name === other.name &&
         params === other.params && bodystmt === other.bodystmt
     end
@@ -4235,7 +4236,7 @@ module SyntaxTree
   #
   #     method { |value| }
   #
-  class Block < Node
+  class BlockNode < Node
     # Formats the opening brace or keyword of a block.
     class BlockOpenFormatter
       # [String] the actual output that should be printed
@@ -4288,7 +4289,7 @@ module SyntaxTree
 
     def copy(opening: nil, block_var: nil, bodystmt: nil, location: nil)
       node =
-        Block.new(
+        BlockNode.new(
           opening: opening || self.opening,
           block_var: block_var || self.block_var,
           bodystmt: bodystmt || self.bodystmt,
@@ -4344,7 +4345,7 @@ module SyntaxTree
     end
 
     def ===(other)
-      other.is_a?(Block) && opening === other.opening &&
+      other.is_a?(BlockNode) && opening === other.opening &&
         block_var === other.block_var && bodystmt === other.bodystmt
     end
 
@@ -4376,7 +4377,7 @@ module SyntaxTree
     # use the do..end bounds.
     def forced_do_end_bounds?(q)
       case q.parent.call
-      when Break, Next, Return, Super
+      when Break, Next, ReturnNode, Super
         true
       else
         false
@@ -4392,7 +4393,7 @@ module SyntaxTree
         when Paren, Statements
           # If we hit certain breakpoints then we know we're safe.
           return false
-        when If, IfOp, Unless, While, Until
+        when IfNode, IfOp, UnlessNode, WhileNode, UntilNode
           return true if parent.predicate == previous
         end
 
@@ -4443,7 +4444,7 @@ module SyntaxTree
     end
   end
 
-  # RangeLiteral represents using the .. or the ... operator between two
+  # RangeNode represents using the .. or the ... operator between two
   # expressions. Usually this is to create a range object.
   #
   #     1..2
@@ -4454,7 +4455,7 @@ module SyntaxTree
   #     end
   #
   # One of the sides of the expression may be nil, but not both.
-  class RangeLiteral < Node
+  class RangeNode < Node
     # [nil | untyped] the left side of the expression
     attr_reader :left
 
@@ -4476,7 +4477,7 @@ module SyntaxTree
     end
 
     def accept(visitor)
-      visitor.visit_range_literal(self)
+      visitor.visit_range(self)
     end
 
     def child_nodes
@@ -4485,7 +4486,7 @@ module SyntaxTree
 
     def copy(left: nil, operator: nil, right: nil, location: nil)
       node =
-        RangeLiteral.new(
+        RangeNode.new(
           left: left || self.left,
           operator: operator || self.operator,
           right: right || self.right,
@@ -4512,7 +4513,7 @@ module SyntaxTree
       q.format(left) if left
 
       case q.parent
-      when If, Unless
+      when IfNode, UnlessNode
         q.text(" #{operator.value} ")
       else
         q.text(operator.value)
@@ -4522,7 +4523,7 @@ module SyntaxTree
     end
 
     def ===(other)
-      other.is_a?(RangeLiteral) && left === other.left &&
+      other.is_a?(RangeNode) && left === other.left &&
         operator === other.operator && right === other.right
     end
   end
@@ -6182,9 +6183,10 @@ module SyntaxTree
       # and default instead to breaking them into multiple lines.
       def ternaryable?(statement)
         case statement
-        when Alias, Assign, Break, Command, CommandCall, Heredoc, If, IfOp,
-             Lambda, MAssign, Next, OpAssign, RescueMod, Return, Super, Undef,
-             Unless, Until, VoidStmt, While, Yield, ZSuper
+        when AliasNode, Assign, Break, Command, CommandCall, Heredoc, IfNode,
+             IfOp, Lambda, MAssign, Next, OpAssign, RescueMod, ReturnNode,
+             Super, Undef, UnlessNode, UntilNode, VoidStmt, WhileNode,
+             YieldNode, ZSuper
           # This is a list of nodes that should not be allowed to be a part of a
           # ternary clause.
           false
@@ -6343,7 +6345,7 @@ module SyntaxTree
       return false if statements.length != 1
 
       case statements.first
-      when If, IfOp, Unless
+      when IfNode, IfOp, UnlessNode
         true
       else
         false
@@ -6356,7 +6358,7 @@ module SyntaxTree
   #     if predicate
   #     end
   #
-  class If < Node
+  class IfNode < Node
     # [untyped] the expression to be checked
     attr_reader :predicate
 
@@ -6387,7 +6389,7 @@ module SyntaxTree
 
     def copy(predicate: nil, statements: nil, consequent: nil, location: nil)
       node =
-        If.new(
+        IfNode.new(
           predicate: predicate || self.predicate,
           statements: statements || self.statements,
           consequent: consequent || self.consequent,
@@ -6415,7 +6417,7 @@ module SyntaxTree
     end
 
     def ===(other)
-      other.is_a?(If) && predicate === other.predicate &&
+      other.is_a?(IfNode) && predicate === other.predicate &&
         statements === other.statements && consequent === other.consequent
     end
 
@@ -6485,9 +6487,9 @@ module SyntaxTree
 
     def format(q)
       force_flat = [
-        Alias, Assign, Break, Command, CommandCall, Heredoc, If, IfOp, Lambda,
-        MAssign, Next, OpAssign, RescueMod, Return, Super, Undef, Unless,
-        VoidStmt, Yield, ZSuper
+        AliasNode, Assign, Break, Command, CommandCall, Heredoc, IfNode, IfOp,
+        Lambda, MAssign, Next, OpAssign, RescueMod, ReturnNode, Super, Undef,
+        UnlessNode, VoidStmt, YieldNode, ZSuper
       ]
 
       if q.parent.is_a?(Paren) || force_flat.include?(truthy.class) ||
@@ -8039,7 +8041,7 @@ module SyntaxTree
       Assign,
       Assoc,
       Binary,
-      Call,
+      CallNode,
       Defined,
       MAssign,
       OpAssign
@@ -8283,7 +8285,7 @@ module SyntaxTree
         return
       end
 
-      if q.parent.is_a?(Def)
+      if q.parent.is_a?(DefNode)
         q.nest(0) do
           q.text("(")
           q.group do
@@ -9550,7 +9552,7 @@ module SyntaxTree
   #
   #     return value
   #
-  class Return < Node
+  class ReturnNode < Node
     # [nil | Args] the arguments being passed to the keyword
     attr_reader :arguments
 
@@ -9573,7 +9575,7 @@ module SyntaxTree
 
     def copy(arguments: nil, location: nil)
       node =
-        Return.new(
+        ReturnNode.new(
           arguments: arguments || self.arguments,
           location: location || self.location
         )
@@ -9593,7 +9595,7 @@ module SyntaxTree
     end
 
     def ===(other)
-      other.is_a?(Return) && arguments === other.arguments
+      other.is_a?(ReturnNode) && arguments === other.arguments
     end
   end
 
@@ -10955,7 +10957,7 @@ module SyntaxTree
       else
         grandparent = q.grandparent
         ternary =
-          (grandparent.is_a?(If) || grandparent.is_a?(Unless)) &&
+          (grandparent.is_a?(IfNode) || grandparent.is_a?(UnlessNode)) &&
             Ternaryable.call(q, grandparent)
 
         if ternary
@@ -11127,7 +11129,7 @@ module SyntaxTree
   #     unless predicate
   #     end
   #
-  class Unless < Node
+  class UnlessNode < Node
     # [untyped] the expression to be checked
     attr_reader :predicate
 
@@ -11158,7 +11160,7 @@ module SyntaxTree
 
     def copy(predicate: nil, statements: nil, consequent: nil, location: nil)
       node =
-        Unless.new(
+        UnlessNode.new(
           predicate: predicate || self.predicate,
           statements: statements || self.statements,
           consequent: consequent || self.consequent,
@@ -11186,7 +11188,7 @@ module SyntaxTree
     end
 
     def ===(other)
-      other.is_a?(Unless) && predicate === other.predicate &&
+      other.is_a?(UnlessNode) && predicate === other.predicate &&
         statements === other.statements && consequent === other.consequent
     end
 
@@ -11273,7 +11275,7 @@ module SyntaxTree
   #     until predicate
   #     end
   #
-  class Until < Node
+  class UntilNode < Node
     # [untyped] the expression to be checked
     attr_reader :predicate
 
@@ -11300,7 +11302,7 @@ module SyntaxTree
 
     def copy(predicate: nil, statements: nil, location: nil)
       node =
-        Until.new(
+        UntilNode.new(
           predicate: predicate || self.predicate,
           statements: statements || self.statements,
           location: location || self.location
@@ -11326,7 +11328,7 @@ module SyntaxTree
     end
 
     def ===(other)
-      other.is_a?(Until) && predicate === other.predicate &&
+      other.is_a?(UntilNode) && predicate === other.predicate &&
         statements === other.statements
     end
 
@@ -11723,7 +11725,7 @@ module SyntaxTree
             # last argument to the predicate is and endless range, then you are
             # forced to use the "then" keyword to make it parse properly.
             last = arguments.parts.last
-            q.text(" then") if last.is_a?(RangeLiteral) && !last.right
+            q.text(" then") if last.is_a?(RangeNode) && !last.right
           end
         end
 
@@ -11752,7 +11754,7 @@ module SyntaxTree
   #     while predicate
   #     end
   #
-  class While < Node
+  class WhileNode < Node
     # [untyped] the expression to be checked
     attr_reader :predicate
 
@@ -11779,7 +11781,7 @@ module SyntaxTree
 
     def copy(predicate: nil, statements: nil, location: nil)
       node =
-        While.new(
+        WhileNode.new(
           predicate: predicate || self.predicate,
           statements: statements || self.statements,
           location: location || self.location
@@ -11805,7 +11807,7 @@ module SyntaxTree
     end
 
     def ===(other)
-      other.is_a?(While) && predicate === other.predicate &&
+      other.is_a?(WhileNode) && predicate === other.predicate &&
         statements === other.statements
     end
 
@@ -12090,7 +12092,7 @@ module SyntaxTree
   #
   #     yield value
   #
-  class Yield < Node
+  class YieldNode < Node
     # [nil | Args | Paren] the arguments passed to the yield
     attr_reader :arguments
 
@@ -12113,7 +12115,7 @@ module SyntaxTree
 
     def copy(arguments: nil, location: nil)
       node =
-        Yield.new(
+        YieldNode.new(
           arguments: arguments || self.arguments,
           location: location || self.location
         )
@@ -12152,7 +12154,7 @@ module SyntaxTree
     end
 
     def ===(other)
-      other.is_a?(Yield) && arguments === other.arguments
+      other.is_a?(YieldNode) && arguments === other.arguments
     end
   end
 

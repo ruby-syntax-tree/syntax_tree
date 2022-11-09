@@ -11,7 +11,7 @@ module SyntaxTree
     # Visit an ARefField node.
     alias visit_aref_field visit_child_nodes
 
-    # Visit an Alias node.
+    # Visit an AliasNode node.
     alias visit_alias visit_child_nodes
 
     # Visit an ArgBlock node.
@@ -185,7 +185,7 @@ module SyntaxTree
     # Visit an Ident node.
     alias visit_ident visit_child_nodes
 
-    # Visit an If node.
+    # Visit an IfNode node.
     alias visit_if visit_child_nodes
 
     # Visit an IfOp node.
@@ -290,8 +290,8 @@ module SyntaxTree
     # Visit a QWordsBeg node.
     alias visit_qwords_beg visit_child_nodes
 
-    # Visit a RangeLiteral node
-    alias visit_range_literal visit_child_nodes
+    # Visit a RangeNode node
+    alias visit_range visit_child_nodes
 
     # Visit a RAssign node.
     alias visit_rassign visit_child_nodes
@@ -407,10 +407,10 @@ module SyntaxTree
     # Visit an Undef node.
     alias visit_undef visit_child_nodes
 
-    # Visit an Unless node.
+    # Visit an UnlessNode node.
     alias visit_unless visit_child_nodes
 
-    # Visit an Until node.
+    # Visit an UntilNode node.
     alias visit_until visit_child_nodes
 
     # Visit a VarField node.
@@ -428,7 +428,7 @@ module SyntaxTree
     # Visit a When node.
     alias visit_when visit_child_nodes
 
-    # Visit a While node.
+    # Visit a WhileNode node.
     alias visit_while visit_child_nodes
 
     # Visit a Word node.
@@ -446,7 +446,7 @@ module SyntaxTree
     # Visit a XStringLiteral node.
     alias visit_xstring_literal visit_child_nodes
 
-    # Visit a Yield node.
+    # Visit a YieldNode node.
     alias visit_yield visit_child_nodes
 
     # Visit a ZSuper node.
