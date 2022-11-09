@@ -1,3 +1,7 @@
 # frozen_string_literal: true
 
-SyntaxTree::Formatter::OPTIONS[:trailing_comma] = true
+module SyntaxTree
+  class Formatter
+    TRAILING_COMMA = true
+  end
+end

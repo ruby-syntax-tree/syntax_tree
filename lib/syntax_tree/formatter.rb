@@ -4,21 +4,63 @@ module SyntaxTree
   # A slightly enhanced PP that knows how to format recursively including
   # comments.
   class Formatter < PrettierPrint
+    # Unfortunately, Gem::Version.new is not ractor-safe because it performs
+    # global caching using a class variable. This works around that by just
+    # setting the instance variables directly.
+    class SemanticVersion < ::Gem::Version
+      def initialize(version)
+        @version = version
+        @segments = nil
+      end
+    end
+
     # We want to minimize as much as possible the number of options that are
     # available in syntax tree. For the most part, if users want non-default
     # formatting, they should override the format methods on the specific nodes
     # themselves. However, because of some history with prettier and the fact
     # that folks have become entrenched in their ways, we decided to provide a
     # small amount of configurability.
-    #
-    # Note that we're keeping this in a global-ish hash instead of just
-    # overriding methods on classes so that other plugins can reference this if
-    # necessary. For example, the RBS plugin references the quote style.
-    OPTIONS = {
-      quote: "\"",
-      trailing_comma: false,
-      target_ruby_version: Gem::Version.new(RUBY_VERSION)
-    }
+    class Options
+      attr_reader :quote, :trailing_comma, :target_ruby_version
+
+      def initialize(
+        quote: :default,
+        trailing_comma: :default,
+        target_ruby_version: :default
+      )
+        @quote =
+          if quote == :default
+            # We ship with a single quotes plugin that will define this
+            # constant. That constant is responsible for determining the default
+            # quote style. If it's defined, we default to single quotes,
+            # otherwise we default to double quotes.
+            defined?(SINGLE_QUOTES) ? "'" : "\""
+          else
+            quote
+          end
+
+        @trailing_comma =
+          if trailing_comma == :default
+            # We ship with a trailing comma plugin that will define this
+            # constant. That constant is responsible for determining the default
+            # trailing comma value. If it's defined, then we default to true.
+            # Otherwise we default to false.
+            defined?(TRAILING_COMMA)
+          else
+            trailing_comma
+          end
+
+        @target_ruby_version =
+          if target_ruby_version == :default
+            # The default target Ruby version is the current version of Ruby.
+            # This is really only used for very niche cases, and it shouldn't be
+            # used by most users.
+            SemanticVersion.new(RUBY_VERSION)
+          else
+            target_ruby_version
+          end
+      end
+    end
 
     COMMENT_PRIORITY = 1
     HEREDOC_PRIORITY = 2
@@ -30,22 +72,16 @@ module SyntaxTree
     attr_reader :quote, :trailing_comma, :target_ruby_version
     alias trailing_comma? trailing_comma
 
-    def initialize(
-      source,
-      *args,
-      quote: OPTIONS[:quote],
-      trailing_comma: OPTIONS[:trailing_comma],
-      target_ruby_version: OPTIONS[:target_ruby_version]
-    )
+    def initialize(source, *args, options: Options.new)
       super(*args)
 
       @source = source
       @stack = []
 
-      # Memoizing these values per formatter to make access faster.
-      @quote = quote
-      @trailing_comma = trailing_comma
-      @target_ruby_version = target_ruby_version
+      # Memoizing these values to make access faster.
+      @quote = options.quote
+      @trailing_comma = options.trailing_comma
+      @target_ruby_version = options.target_ruby_version
     end
 
     def self.format(source, node)

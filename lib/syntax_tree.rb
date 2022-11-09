@@ -54,8 +54,12 @@ module SyntaxTree
   end
 
   # Parses the given source and returns the formatted source.
-  def self.format(source, maxwidth = DEFAULT_PRINT_WIDTH)
-    formatter = Formatter.new(source, [], maxwidth)
+  def self.format(
+    source,
+    maxwidth = DEFAULT_PRINT_WIDTH,
+    options: Formatter::Options.new
+  )
+    formatter = Formatter.new(source, [], maxwidth, options: options)
     parse(source).format(formatter)
 
     formatter.flush
