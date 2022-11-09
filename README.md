@@ -42,11 +42,13 @@ It is built with only standard library dependencies. It additionally ships with 
   - [visit_method](#visit_method)
   - [BasicVisitor](#basicvisitor)
   - [MutationVisitor](#mutationvisitor)
+  - [WithEnvironment](#withenvironment)
 - [Language server](#language-server)
   - [textDocument/formatting](#textdocumentformatting)
   - [textDocument/inlayHint](#textdocumentinlayhint)
   - [syntaxTree/visualizing](#syntaxtreevisualizing)
 - [Customization](#customization)
+  - [Ignoring code](#ignoring-code)
   - [Plugins](#plugins)
   - [Languages](#languages)
 - [Integration](#integration)
@@ -320,10 +322,6 @@ Baked into this syntax is the ability to provide exceptions to file name pattern
 stree write "**/{[!schema]*,*}.rb"
 ```
 
-## Formatting
-
-
-
 ## Library
 
 Syntax Tree can be used as a library to access the syntax tree underlying Ruby source code.
@@ -580,13 +578,13 @@ class MyVisitor < Visitor
   include WithEnvironment
 
   def visit_ident(node)
-    # find_local will return a Local for any local variables or arguments present in the current environment or nil if
-    # the identifier is not a local
+    # find_local will return a Local for any local variables or arguments
+    # present in the current environment or nil if the identifier is not a local
     local = current_environment.find_local(node)
 
-    puts local.type # print the type of the local (:variable or :argument)
-    puts local.definitions # print the array of locations where this local is defined
-    puts local.usages # print the array of locations where this local occurs
+    puts local.type # the type of the local (:variable or :argument)
+    puts local.definitions # the array of locations where this local is defined
+    puts local.usages # the array of locations where this local occurs
   end
 end
 ```
