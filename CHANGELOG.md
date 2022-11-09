@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 
 ## [Unreleased]
 
+## [5.0.0] - 2022-11-09
+
 ### Added
 
 - Every node now implements the `#copy(**)` method, which provides a copy of the node with the given attributes replaced.
@@ -448,7 +450,8 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 
 - 🎉 Initial release! 🎉
 
-[unreleased]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v4.3.0...HEAD
+[unreleased]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v5.0.0...HEAD
+[5.0.0]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v4.3.0...v5.0.0
 [4.3.0]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v4.2.0...v4.3.0
 [4.2.0]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v4.1.0...v4.2.0
 [4.1.0]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v4.0.2...v4.1.0
