@@ -627,7 +627,7 @@ There are multiple ways to customize Syntax Tree's behavior when parsing and for
 
 ### Ignoring code
 
-To ignore a section of source code, you can a special `# stree-ignore` comment. This comment should be placed immediately above the code that you want to ignore. For example:
+To ignore a section of source code, you can use a special `# stree-ignore` comment. This comment should be placed immediately above the code that you want to ignore. For example:
 
 ```ruby
 numbers = [
