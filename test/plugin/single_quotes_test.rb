@@ -4,8 +4,6 @@ require_relative "../test_helper"
 
 module SyntaxTree
   class SingleQuotesTest < Minitest::Test
-    OPTIONS = Plugin.options("syntax_tree/plugin/single_quotes")
-
     def test_empty_string_literal
       assert_format("''\n", "\"\"")
     end
@@ -36,7 +34,8 @@ module SyntaxTree
     private
 
     def assert_format(expected, source = expected)
-      formatter = Formatter.new(source, [], **OPTIONS)
+      options = Formatter::Options.new(quote: "'")
+      formatter = Formatter.new(source, [], options: options)
       SyntaxTree.parse(source).format(formatter)
     
       formatter.flush

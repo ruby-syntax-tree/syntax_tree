@@ -131,9 +131,14 @@ module SyntaxTree
 
       def run(item)
         source = item.source
-        if source != item.handler.format(source, options.print_width)
-          raise UnformattedError
-        end
+        formatted =
+          item.handler.format(
+            source,
+            options.print_width,
+            options: options.formatter_options
+          )
+
+        raise UnformattedError if source != formatted
       rescue StandardError
         warn("[#{Color.yellow("warn")}] #{item.filepath}")
         raise
@@ -156,13 +161,23 @@ module SyntaxTree
 
       def run(item)
         handler = item.handler
-
         warning = "[#{Color.yellow("warn")}] #{item.filepath}"
-        formatted = handler.format(item.source, options.print_width)
 
-        if formatted != handler.format(formatted, options.print_width)
-          raise NonIdempotentFormatError
-        end
+        formatted =
+          handler.format(
+            item.source,
+            options.print_width,
+            options: options.formatter_options
+          )
+
+        double_formatted =
+          handler.format(
+            formatted,
+            options.print_width,
+            options: options.formatter_options
+          )
+
+        raise NonIdempotentFormatError if formatted != double_formatted
       rescue StandardError
         warn(warning)
         raise
@@ -182,7 +197,9 @@ module SyntaxTree
       def run(item)
         source = item.source
 
-        formatter = Formatter.new(source, [])
+        formatter_options = options.formatter_options
+        formatter = Formatter.new(source, [], options: formatter_options)
+
         item.handler.parse(source).format(formatter)
         pp formatter.groups.first
       end
@@ -206,7 +223,14 @@ module SyntaxTree
     # An action of the CLI that formats the input source and prints it out.
     class Format < Action
       def run(item)
-        puts item.handler.format(item.source, options.print_width)
+        formatted =
+          item.handler.format(
+            item.source,
+            options.print_width,
+            options: options.formatter_options
+          )
+
+        puts formatted
       end
     end
 
@@ -273,7 +297,13 @@ module SyntaxTree
         start = Time.now
 
         source = item.source
-        formatted = item.handler.format(source, options.print_width)
+        formatted =
+          item.handler.format(
+            source,
+            options.print_width,
+            options: options.formatter_options
+          )
+
         File.write(filepath, formatted) if item.writable?
 
         color = source == formatted ? Color.gray(filepath) : filepath
@@ -347,20 +377,16 @@ module SyntaxTree
                   :plugins,
                   :print_width,
                   :scripts,
-                  :target_ruby_version
+                  :formatter_options
 
-      def initialize(print_width: DEFAULT_PRINT_WIDTH)
+      def initialize
         @ignore_files = []
         @plugins = []
-        @print_width = print_width
+        @print_width = DEFAULT_PRINT_WIDTH
         @scripts = []
-        @target_ruby_version = nil
+        @formatter_options = Formatter::Options.new
       end
 
-      # TODO: This function causes a couple of side-effects that I really don't
-      # like to have here. It mutates the global state by requiring the plugins,
-      # and mutates the global options hash by adding the target ruby version.
-      # That should be done on a config-by-config basis, not here.
       def parse(arguments)
         parser.parse!(arguments)
       end
@@ -404,8 +430,10 @@ module SyntaxTree
           # If there is a target ruby version specified on the command line,
           # parse that out and use it when formatting.
           opts.on("--target-ruby-version=VERSION") do |version|
-            @target_ruby_version = Gem::Version.new(version)
-            Formatter::OPTIONS[:target_ruby_version] = @target_ruby_version
+            @formatter_options =
+              Formatter::Options.new(
+                target_ruby_version: Formatter::SemanticVersion.new(version)
+              )
           end
         end
       end

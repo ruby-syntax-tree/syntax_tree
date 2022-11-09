@@ -4,8 +4,6 @@ require_relative "../test_helper"
 
 module SyntaxTree
   class TrailingCommaTest < Minitest::Test
-    OPTIONS = Plugin.options("syntax_tree/plugin/trailing_comma")
-
     def test_arg_paren_flat
       assert_format("foo(a)\n")
     end
@@ -82,7 +80,8 @@ module SyntaxTree
     private
 
     def assert_format(expected, source = expected)
-      formatter = Formatter.new(source, [], **OPTIONS)
+      options = Formatter::Options.new(trailing_comma: true)
+      formatter = Formatter.new(source, [], options: options)
       SyntaxTree.parse(source).format(formatter)
     
       formatter.flush

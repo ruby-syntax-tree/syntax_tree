@@ -1026,7 +1026,7 @@ module SyntaxTree
       end
     end
 
-    BREAKABLE_SPACE_SEPARATOR = BreakableSpaceSeparator.new
+    BREAKABLE_SPACE_SEPARATOR = BreakableSpaceSeparator.new.freeze
 
     # Formats an array of multiple simple string literals into the %w syntax.
     class QWordsFormatter
@@ -1759,7 +1759,7 @@ module SyntaxTree
   module HashKeyFormatter
     # Formats the keys of a hash literal using labels.
     class Labels
-      LABEL = /\A[A-Za-z_](\w*[\w!?])?\z/
+      LABEL = /\A[A-Za-z_](\w*[\w!?])?\z/.freeze
 
       def format_key(q, key)
         case key
@@ -2176,7 +2176,7 @@ module SyntaxTree
 
     # We'll keep a single instance of this separator around for all block vars
     # to cut down on allocations.
-    SEPARATOR = Separator.new
+    SEPARATOR = Separator.new.freeze
 
     def format(q)
       q.text("|")
@@ -5723,7 +5723,8 @@ module SyntaxTree
 
     # This is a very specific behavior where you want to force a newline, but
     # don't want to force the break parent.
-    SEPARATOR = PrettierPrint::Breakable.new(" ", 1, indent: false, force: true)
+    SEPARATOR =
+      PrettierPrint::Breakable.new(" ", 1, indent: false, force: true).freeze
 
     def format(q)
       q.group do
@@ -6025,7 +6026,7 @@ module SyntaxTree
           format_contents(q, parts, nested)
         end
 
-        if q.target_ruby_version < Gem::Version.new("2.7.3")
+        if q.target_ruby_version < Formatter::SemanticVersion.new("2.7.3")
           q.text(" }")
         else
           q.breakable_space
@@ -11703,7 +11704,7 @@ module SyntaxTree
 
     # We're going to keep a single instance of this separator around so we don't
     # have to allocate a new one every time we format a when clause.
-    SEPARATOR = Separator.new
+    SEPARATOR = Separator.new.freeze
 
     def format(q)
       keyword = "when "

@@ -86,26 +86,6 @@ module SyntaxTree
   end
 end
 
-module SyntaxTree
-  module Plugin
-    # A couple of plugins modify the options hash on the formatter. They're
-    # modeled as files that should be required so that it's simple for the CLI
-    # and the library to use the same code path. In this case we're going to
-    # require the file for the plugin but ensure it doesn't make any lasting
-    # changes.
-    def self.options(path)
-      previous_options = SyntaxTree::Formatter::OPTIONS.dup
-
-      begin
-        require path
-        SyntaxTree::Formatter::OPTIONS.dup
-      ensure
-        SyntaxTree::Formatter::OPTIONS.merge!(previous_options)
-      end
-    end
-  end
-end
-
 # There are a bunch of fixtures defined in test/fixtures. They exercise every
 # possible combination of syntax that leads to variations in the types of nodes.
 # They are used for testing various parts of Syntax Tree, including formatting,
@@ -153,9 +133,8 @@ module Fixtures
           # If there's a comment starting with >= that starts after the % that
           # delineates the test, then we're going to check if the version
           # satisfies that constraint.
-          if comment&.start_with?(">=") &&
-               (ruby_version < Gem::Version.new(comment.split[1]))
-            next
+          if comment&.start_with?(">=")
+            next if ruby_version < Gem::Version.new(comment.split[1])
           end
 
           name = :"#{fixture}_#{index}"

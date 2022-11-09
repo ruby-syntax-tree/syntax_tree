@@ -62,14 +62,8 @@ module SyntaxTree
     end
 
     def test_check_target_ruby_version
-      previous = Formatter::OPTIONS[:target_ruby_version]
-
-      begin
-        result = run_cli("check", "--target-ruby-version=2.6.0")
-        assert_includes(result.stdio, "match")
-      ensure
-        Formatter::OPTIONS[:target_ruby_version] = previous
-      end
+      result = run_cli("check", "--target-ruby-version=2.6.0")
+      assert_includes(result.stdio, "match")
     end
 
     def test_debug
