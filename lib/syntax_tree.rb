@@ -40,6 +40,10 @@ module SyntaxTree
   # optional second argument to ::format.
   DEFAULT_PRINT_WIDTH = 80
 
+  # This is the default ruby version that we're going to target for formatting.
+  # It shouldn't really be changed except in very niche circumstances.
+  DEFAULT_RUBY_VERSION = Formatter::SemanticVersion.new(RUBY_VERSION).freeze
+
   # This is a hook provided so that plugins can register themselves as the
   # handler for a particular file type.
   def self.register_handler(extension, handler)
