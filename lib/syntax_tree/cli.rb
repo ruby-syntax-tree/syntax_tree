@@ -377,14 +377,19 @@ module SyntaxTree
                   :plugins,
                   :print_width,
                   :scripts,
-                  :formatter_options
+                  :target_ruby_version
 
       def initialize
         @ignore_files = []
         @plugins = []
         @print_width = DEFAULT_PRINT_WIDTH
         @scripts = []
-        @formatter_options = Formatter::Options.new
+        @target_ruby_version = DEFAULT_RUBY_VERSION
+      end
+
+      def formatter_options
+        @formatter_options ||=
+          Formatter::Options.new(target_ruby_version: target_ruby_version)
       end
 
       def parse(arguments)
@@ -430,10 +435,7 @@ module SyntaxTree
           # If there is a target ruby version specified on the command line,
           # parse that out and use it when formatting.
           opts.on("--target-ruby-version=VERSION") do |version|
-            @formatter_options =
-              Formatter::Options.new(
-                target_ruby_version: Formatter::SemanticVersion.new(version)
-              )
+            @target_ruby_version = Formatter::SemanticVersion.new(version)
           end
         end
       end
