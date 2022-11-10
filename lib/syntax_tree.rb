@@ -13,6 +13,7 @@ require_relative "syntax_tree/version"
 
 require_relative "syntax_tree/basic_visitor"
 require_relative "syntax_tree/visitor"
+require_relative "syntax_tree/visitor/compiler"
 require_relative "syntax_tree/visitor/field_visitor"
 require_relative "syntax_tree/visitor/json_visitor"
 require_relative "syntax_tree/visitor/match_visitor"
