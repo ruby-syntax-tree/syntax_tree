@@ -27,5 +27,37 @@ module SyntaxTree
 
       assert_equal(source, SyntaxTree.format(source))
     end
+
+    def test_formatting_with_different_indentation_level
+      source = <<~SOURCE
+        def foo
+          puts "a"
+        end
+      SOURCE
+
+      # Default indentation
+      assert_equal(source, SyntaxTree.format(source))
+
+      # Level 2
+      assert_equal(<<-EXPECTED.chomp, SyntaxTree.format(source, 80, 2).rstrip)
+  def foo
+    puts "a"
+  end
+      EXPECTED
+
+      # Level 4
+      assert_equal(<<-EXPECTED.chomp, SyntaxTree.format(source, 80, 4).rstrip)
+    def foo
+      puts "a"
+    end
+      EXPECTED
+
+      # Level 6
+      assert_equal(<<-EXPECTED.chomp, SyntaxTree.format(source, 80, 6).rstrip)
+      def foo
+        puts "a"
+      end
+      EXPECTED
+    end
   end
 end

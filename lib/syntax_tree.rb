@@ -44,6 +44,10 @@ module SyntaxTree
   # It shouldn't really be changed except in very niche circumstances.
   DEFAULT_RUBY_VERSION = Formatter::SemanticVersion.new(RUBY_VERSION).freeze
 
+  # The default indentation level for formatting. We allow changing this so
+  # that Syntax Tree can format arbitrary parts of a document.
+  DEFAULT_INDENTATION = 0
+
   # This is a hook provided so that plugins can register themselves as the
   # handler for a particular file type.
   def self.register_handler(extension, handler)
@@ -61,12 +65,13 @@ module SyntaxTree
   def self.format(
     source,
     maxwidth = DEFAULT_PRINT_WIDTH,
+    base_indentation = DEFAULT_INDENTATION,
     options: Formatter::Options.new
   )
     formatter = Formatter.new(source, [], maxwidth, options: options)
     parse(source).format(formatter)
 
-    formatter.flush
+    formatter.flush(base_indentation)
     formatter.output.join
   end
 
