@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 
 ## [Unreleased]
 
+### Changed
+
+- Support forwarding anonymous keyword arguments with `**`.
+
 ## [5.0.1] - 2022-11-10
 
 ### Changed
