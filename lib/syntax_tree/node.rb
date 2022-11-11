@@ -1604,7 +1604,7 @@ module SyntaxTree
   #     { **pairs }
   #
   class AssocSplat < Node
-    # [untyped] the expression that is being splatted
+    # [nil | untyped] the expression that is being splatted
     attr_reader :value
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
@@ -1643,7 +1643,7 @@ module SyntaxTree
 
     def format(q)
       q.text("**")
-      q.format(value)
+      q.format(value) if value
     end
 
     def ===(other)

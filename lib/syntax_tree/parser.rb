@@ -744,7 +744,7 @@ module SyntaxTree
 
       AssocSplat.new(
         value: value,
-        location: operator.location.to(value.location)
+        location: operator.location.to((value || operator).location)
       )
     end
 
