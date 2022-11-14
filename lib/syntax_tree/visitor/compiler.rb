@@ -751,10 +751,6 @@ module SyntaxTree
       # instruction sequence.
       attr_reader :builder
 
-      # A boolean that tracks whether or not we're currently compiling and
-      # inline storage for a constant lookup.
-      attr_reader :writing_storage
-
       # A boolean to track if we're currently compiling the last statement
       # within a set of statements. This information is necessary to determine
       # if we need to return the value of the last statement.
@@ -766,7 +762,6 @@ module SyntaxTree
       def initialize
         @current_iseq = nil
         @builder = nil
-        @writing_storage = false
         @last_statement = false
         @frozen_string_literal = false
       end
@@ -1659,25 +1654,6 @@ module SyntaxTree
             builder.putobject(part.accept(RubyVisitor.new))
           end
         end
-      end
-
-      # This is a helper method for compiling a constant lookup. In order to
-      # avoid having to look up the tree to determine if the constant is part of
-      # a larger path or not, we store a boolean flag that indicates that we're
-      # already in the middle of a constant lookup. That way we only get one set
-      # of opt_getinlinecache..opt_setinlinecache instructions.
-      def with_inline_storage
-        return yield if writing_storage
-
-        @writing_storage = true
-        inline_storage = current_iseq.inline_storage
-
-        getinlinecache = builder.opt_getinlinecache(-1, inline_storage)
-        yield
-        builder.opt_setinlinecache(inline_storage)
-
-        getinlinecache[1] = builder.label
-        @writing_storage = false
       end
 
       # The current instruction sequence that we're compiling is always stored
