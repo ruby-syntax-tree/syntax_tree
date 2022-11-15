@@ -306,7 +306,13 @@ module SyntaxTree
       "def foo(bar); end",
       "def foo(bar, baz); end",
       "def foo(bar = 1); end",
-      "def foo(bar = 1, baz = 2); end"
+      "def foo(bar = 1, baz = 2); end",
+      # Class/module definitions
+      "module Foo; end",
+      "module ::Foo; end",
+      "module Foo::Bar; end",
+      "module ::Foo::Bar; end",
+      "module Foo; module Bar; end; end"
     ]
 
     # These are the combinations of instructions that we're going to test.
