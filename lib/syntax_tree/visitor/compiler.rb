@@ -1541,6 +1541,17 @@ module SyntaxTree
         end
       end
 
+      def visit_super(node)
+        builder.putself
+        visit(node.arguments)
+        builder.invokesuper(
+          nil,
+          argument_parts(node.arguments).length,
+          VM_CALL_FCALL | VM_CALL_ARGS_SIMPLE | VM_CALL_SUPER,
+          nil
+        )
+      end
+
       def visit_symbol_literal(node)
         builder.putobject(node.accept(RubyVisitor.new))
       end

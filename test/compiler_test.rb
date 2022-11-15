@@ -281,6 +281,8 @@ module SyntaxTree
       "undef foo, bar, baz",
       "undef :foo, :bar, :baz",
       "super",
+      "super(1)",
+      "super(1, 2, 3)",
       # defined? usage
       "defined?(foo)",
       "defined?(\"foo\")",
