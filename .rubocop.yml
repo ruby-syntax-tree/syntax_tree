@@ -34,6 +34,9 @@ Lint/MissingSuper:
 Lint/RedundantRequireStatement:
   Enabled: false
 
+Lint/SuppressedException:
+  Enabled: false
+
 Lint/UnusedMethodArgument:
   AllowUnusedKeywordArguments: true
 
@@ -50,6 +53,9 @@ Naming/RescuedExceptionsVariableName:
   PreferredName: error
 
 Naming/VariableNumber:
+  Enabled: false
+
+Style/AccessorGrouping:
   Enabled: false
 
 Style/CaseEquality:

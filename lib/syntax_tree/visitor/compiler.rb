@@ -91,6 +91,10 @@ module SyntaxTree
           node.elements.map { |element| visit(element).to_sym }
         end
 
+        def visit_qwords(node)
+          visit_all(node.elements)
+        end
+
         def visit_range(node)
           left, right = [visit(node.left), visit(node.right)]
           node.operator.value === ".." ? left..right : left...right
@@ -154,6 +158,10 @@ module SyntaxTree
           end
         end
 
+        def visit_words(node)
+          visit_all(node.elements)
+        end
+
         def visit_unsupported(_node)
           raise CompilationError
         end
@@ -202,6 +210,9 @@ module SyntaxTree
           end
         end
 
+        # The type of the instruction sequence.
+        attr_reader :type
+
         # The name of the instruction sequence.
         attr_reader :name
 
@@ -210,6 +221,11 @@ module SyntaxTree
 
         # The location of the root node of this instruction sequence.
         attr_reader :location
+
+        # This is the list of information about the arguments to this
+        # instruction sequence.
+        attr_accessor :argument_size
+        attr_reader :argument_options
 
         # The list of instructions for this instruction sequence.
         attr_reader :insns
@@ -229,14 +245,17 @@ module SyntaxTree
         # maximum size of the stack for this instruction sequence.
         attr_reader :stack
 
-        def initialize(name, parent_iseq, location)
+        def initialize(type, name, parent_iseq, location)
+          @type = type
           @name = name
           @parent_iseq = parent_iseq
           @location = location
 
+          @argument_size = 0
+          @argument_options = {}
+
           @local_variables = []
           @inline_storages = {}
-
           @insns = []
           @storage_index = 0
           @stack = Stack.new
@@ -292,7 +311,7 @@ module SyntaxTree
             versions[1],
             1,
             {
-              arg_size: 0,
+              arg_size: argument_size,
               local_size: local_variables.length,
               stack_max: stack.maximum_size
             },
@@ -300,39 +319,42 @@ module SyntaxTree
             "<compiled>",
             "<compiled>",
             1,
-            :top,
+            type,
             local_variables,
-            {},
+            argument_options,
             [],
-            insns.map do |insn|
-              case insn[0]
-              when :getlocal_WC_0, :setlocal_WC_0
-                # Here we need to map the local variable index to the offset
-                # from the top of the stack where it will be stored.
-                [insn[0], local_variables.length - (insn[1] - 3) - 1]
-              when :getlocal_WC_1, :setlocal_WC_1
-                # Here we're going to do the same thing as with _WC_0 except
-                # we're looking at the parent scope.
-                [
-                  insn[0],
-                  parent_iseq.local_variables.length - (insn[1] - 3) - 1
-                ]
-              when :getlocal, :setlocal
-                # Here we're going to do the same thing as the other local
-                # instructions except that we'll traverse up the instruction
-                # sequences first.
-                iseq = self
-                insn[2].times { iseq = iseq.parent_iseq }
-                [insn[0], iseq.local_variables.length - (insn[1] - 3) - 1]
-              when :send
-                # For any instructions that push instruction sequences onto the
-                # stack, we need to call #to_a on them as well.
-                [insn[0], insn[1], (insn[2].to_a if insn[2])]
-              else
-                insn
-              end
-            end
+            insns.map { |insn| serialize(insn) }
           ]
+        end
+
+        private
+
+        def serialize(insn)
+          case insn[0]
+          when :getlocal_WC_0, :getlocal_WC_1, :getlocal, :setlocal_WC_0,
+               :setlocal_WC_1, :setlocal
+            iseq = self
+
+            case insn[0]
+            when :getlocal_WC_1, :setlocal_WC_1
+              iseq = iseq.parent_iseq
+            when :getlocal, :setlocal
+              insn[2].times { iseq = iseq.parent_iseq }
+            end
+
+            # Here we need to map the local variable index to the offset
+            # from the top of the stack where it will be stored.
+            index = iseq.local_variables.length - (insn[1] - 3) - 1
+            [insn[0], index, *insn[2..]]
+          when :definemethod
+            [insn[0], insn[1], insn[2].to_a]
+          when :send
+            # For any instructions that push instruction sequences onto the
+            # stack, we need to call #to_a on them as well.
+            [insn[0], insn[1], (insn[2].to_a if insn[2])]
+          else
+            insn
+          end
         end
       end
 
@@ -343,10 +365,22 @@ module SyntaxTree
       # we place the logic for checking the Ruby version in this class.
       class Builder
         attr_reader :iseq, :stack
+        attr_reader :frozen_string_literal,
+                    :operands_unification,
+                    :specialized_instruction
 
-        def initialize(iseq)
+        def initialize(
+          iseq,
+          frozen_string_literal: false,
+          operands_unification: true,
+          specialized_instruction: true
+        )
           @iseq = iseq
           @stack = iseq.stack
+
+          @frozen_string_literal = frozen_string_literal
+          @operands_unification = operands_unification
+          @specialized_instruction = specialized_instruction
         end
 
         # This creates a new label at the current length of the instruction
@@ -383,6 +417,11 @@ module SyntaxTree
         def defined(type, name, message)
           stack.change_by(-1 + 1)
           iseq.push([:defined, type, name, message])
+        end
+
+        def definemethod(name, method_iseq)
+          stack.change_by(0)
+          iseq.push([:definemethod, name, method_iseq])
         end
 
         def dup
@@ -431,24 +470,27 @@ module SyntaxTree
           if RUBY_VERSION >= "3.2"
             iseq.push([:getinstancevariable, name, iseq.inline_storage])
           else
-            iseq.push(
-              [:getinstancevariable, name, iseq.inline_storage_for(name)]
-            )
+            inline_storage = iseq.inline_storage_for(name)
+            iseq.push([:getinstancevariable, name, inline_storage])
           end
         end
 
         def getlocal(index, level)
           stack.change_by(+1)
 
-          # Specialize the getlocal instruction based on the level of the
-          # local variable. If it's 0 or 1, then there's a specialized
-          # instruction that will look at the current scope or the parent
-          # scope, respectively, and requires fewer operands.
-          case level
-          when 0
-            iseq.push([:getlocal_WC_0, index])
-          when 1
-            iseq.push([:getlocal_WC_1, index])
+          if operands_unification
+            # Specialize the getlocal instruction based on the level of the
+            # local variable. If it's 0 or 1, then there's a specialized
+            # instruction that will look at the current scope or the parent
+            # scope, respectively, and requires fewer operands.
+            case level
+            when 0
+              iseq.push([:getlocal_WC_0, index])
+            when 1
+              iseq.push([:getlocal_WC_1, index])
+            else
+              iseq.push([:getlocal, index, level])
+            end
           else
             iseq.push([:getlocal, index, level])
           end
@@ -466,9 +508,9 @@ module SyntaxTree
 
         def invokesuper(method_id, argc, flag, block_iseq)
           stack.change_by(-(argc + 1) + 1)
-          iseq.push(
-            [:invokesuper, call_data(method_id, argc, flag), block_iseq]
-          )
+
+          cdata = call_data(method_id, argc, flag)
+          iseq.push([:invokesuper, cdata, block_iseq])
         end
 
         def jump(index)
@@ -548,14 +590,18 @@ module SyntaxTree
         def putobject(object)
           stack.change_by(+1)
 
-          # Specialize the putobject instruction based on the value of the
-          # object. If it's 0 or 1, then there's a specialized instruction
-          # that will push the object onto the stack and requires fewer
-          # operands.
-          if object.eql?(0)
-            iseq.push([:putobject_INT2FIX_0_])
-          elsif object.eql?(1)
-            iseq.push([:putobject_INT2FIX_1_])
+          if operands_unification
+            # Specialize the putobject instruction based on the value of the
+            # object. If it's 0 or 1, then there's a specialized instruction
+            # that will push the object onto the stack and requires fewer
+            # operands.
+            if object.eql?(0)
+              iseq.push([:putobject_INT2FIX_0_])
+            elsif object.eql?(1)
+              iseq.push([:putobject_INT2FIX_1_])
+            else
+              iseq.push([:putobject, object])
+            end
           else
             iseq.push([:putobject, object])
           end
@@ -580,41 +626,45 @@ module SyntaxTree
           stack.change_by(-(argc + 1) + 1)
           cdata = call_data(method_id, argc, flag)
 
-          # Specialize the send instruction. If it doesn't have a block
-          # attached, then we will replace it with an opt_send_without_block
-          # and do further specializations based on the called method and the
-          # number of arguments.
+          if specialized_instruction
+            # Specialize the send instruction. If it doesn't have a block
+            # attached, then we will replace it with an opt_send_without_block
+            # and do further specializations based on the called method and the
+            # number of arguments.
 
-          # stree-ignore
-          if !block_iseq && (flag & VM_CALL_ARGS_BLOCKARG) == 0
-            case [method_id, argc]
-            when [:length, 0] then iseq.push([:opt_length, cdata])
-            when [:size, 0]   then iseq.push([:opt_size, cdata])
-            when [:empty?, 0] then iseq.push([:opt_empty_p, cdata])
-            when [:nil?, 0]   then iseq.push([:opt_nil_p, cdata])
-            when [:succ, 0]   then iseq.push([:opt_succ, cdata])
-            when [:!, 0]      then iseq.push([:opt_not, cdata])
-            when [:+, 1]      then iseq.push([:opt_plus, cdata])
-            when [:-, 1]      then iseq.push([:opt_minus, cdata])
-            when [:*, 1]      then iseq.push([:opt_mult, cdata])
-            when [:/, 1]      then iseq.push([:opt_div, cdata])
-            when [:%, 1]      then iseq.push([:opt_mod, cdata])
-            when [:==, 1]     then iseq.push([:opt_eq, cdata])
-            when [:=~, 1]     then iseq.push([:opt_regexpmatch2, cdata])
-            when [:<, 1]      then iseq.push([:opt_lt, cdata])
-            when [:<=, 1]     then iseq.push([:opt_le, cdata])
-            when [:>, 1]      then iseq.push([:opt_gt, cdata])
-            when [:>=, 1]     then iseq.push([:opt_ge, cdata])
-            when [:<<, 1]     then iseq.push([:opt_ltlt, cdata])
-            when [:[], 1]     then iseq.push([:opt_aref, cdata])
-            when [:&, 1]      then iseq.push([:opt_and, cdata])
-            when [:|, 1]      then iseq.push([:opt_or, cdata])
-            when [:[]=, 2]    then iseq.push([:opt_aset, cdata])
-            when [:!=, 1]
-              eql_data = call_data(:==, 1, VM_CALL_ARGS_SIMPLE)
-              iseq.push([:opt_neq, eql_data, cdata])
+            # stree-ignore
+            if !block_iseq && (flag & VM_CALL_ARGS_BLOCKARG) == 0
+              case [method_id, argc]
+              when [:length, 0] then iseq.push([:opt_length, cdata])
+              when [:size, 0]   then iseq.push([:opt_size, cdata])
+              when [:empty?, 0] then iseq.push([:opt_empty_p, cdata])
+              when [:nil?, 0]   then iseq.push([:opt_nil_p, cdata])
+              when [:succ, 0]   then iseq.push([:opt_succ, cdata])
+              when [:!, 0]      then iseq.push([:opt_not, cdata])
+              when [:+, 1]      then iseq.push([:opt_plus, cdata])
+              when [:-, 1]      then iseq.push([:opt_minus, cdata])
+              when [:*, 1]      then iseq.push([:opt_mult, cdata])
+              when [:/, 1]      then iseq.push([:opt_div, cdata])
+              when [:%, 1]      then iseq.push([:opt_mod, cdata])
+              when [:==, 1]     then iseq.push([:opt_eq, cdata])
+              when [:=~, 1]     then iseq.push([:opt_regexpmatch2, cdata])
+              when [:<, 1]      then iseq.push([:opt_lt, cdata])
+              when [:<=, 1]     then iseq.push([:opt_le, cdata])
+              when [:>, 1]      then iseq.push([:opt_gt, cdata])
+              when [:>=, 1]     then iseq.push([:opt_ge, cdata])
+              when [:<<, 1]     then iseq.push([:opt_ltlt, cdata])
+              when [:[], 1]     then iseq.push([:opt_aref, cdata])
+              when [:&, 1]      then iseq.push([:opt_and, cdata])
+              when [:|, 1]      then iseq.push([:opt_or, cdata])
+              when [:[]=, 2]    then iseq.push([:opt_aset, cdata])
+              when [:!=, 1]
+                eql_data = call_data(:==, 1, VM_CALL_ARGS_SIMPLE)
+                iseq.push([:opt_neq, eql_data, cdata])
+              else
+                iseq.push([:opt_send_without_block, cdata])
+              end
             else
-              iseq.push([:opt_send_without_block, cdata])
+              iseq.push([:send, cdata, block_iseq])
             end
           else
             iseq.push([:send, cdata, block_iseq])
@@ -647,24 +697,27 @@ module SyntaxTree
           if RUBY_VERSION >= "3.2"
             iseq.push([:setinstancevariable, name, iseq.inline_storage])
           else
-            iseq.push(
-              [:setinstancevariable, name, iseq.inline_storage_for(name)]
-            )
+            inline_storage = iseq.inline_storage_for(name)
+            iseq.push([:setinstancevariable, name, inline_storage])
           end
         end
 
         def setlocal(index, level)
           stack.change_by(-1)
 
-          # Specialize the setlocal instruction based on the level of the
-          # local variable. If it's 0 or 1, then there's a specialized
-          # instruction that will write to the current scope or the parent
-          # scope, respectively, and requires fewer operands.
-          case level
-          when 0
-            iseq.push([:setlocal_WC_0, index])
-          when 1
-            iseq.push([:setlocal_WC_1, index])
+          if operands_unification
+            # Specialize the setlocal instruction based on the level of the
+            # local variable. If it's 0 or 1, then there's a specialized
+            # instruction that will write to the current scope or the parent
+            # scope, respectively, and requires fewer operands.
+            case level
+            when 0
+              iseq.push([:setlocal_WC_0, index])
+            when 1
+              iseq.push([:setlocal_WC_1, index])
+            else
+              iseq.push([:setlocal, index, level])
+            end
           else
             iseq.push([:setlocal, index, level])
           end
@@ -744,6 +797,12 @@ module SyntaxTree
       DEFINED_FUNC = 16
       DEFINED_CONST_FROM = 17
 
+      # These options mirror the compilation options that we currently support
+      # that can be also passed to RubyVM::InstructionSequence.compile.
+      attr_reader :frozen_string_literal,
+                  :operands_unification,
+                  :specialized_instruction
+
       # The current instruction sequence that is being compiled.
       attr_reader :current_iseq
 
@@ -756,14 +815,18 @@ module SyntaxTree
       # if we need to return the value of the last statement.
       attr_reader :last_statement
 
-      # Whether or not the frozen_string_literal pragma has been set.
-      attr_reader :frozen_string_literal
+      def initialize(
+        frozen_string_literal: false,
+        operands_unification: true,
+        specialized_instruction: true
+      )
+        @frozen_string_literal = frozen_string_literal
+        @operands_unification = operands_unification
+        @specialized_instruction = specialized_instruction
 
-      def initialize
         @current_iseq = nil
         @builder = nil
         @last_statement = false
-        @frozen_string_literal = false
       end
 
       def visit_CHAR(node)
@@ -929,6 +992,10 @@ module SyntaxTree
         end
       end
 
+      def visit_bodystmt(node)
+        visit(node.statements)
+      end
+
       def visit_call(node)
         node.receiver ? visit(node.receiver) : builder.putself
 
@@ -1000,6 +1067,52 @@ module SyntaxTree
       def visit_const_path_ref(node)
         names = constant_names(node)
         builder.opt_getconstant_path(names)
+      end
+
+      def visit_def(node)
+        params = node.params
+        params = params.contents if params.is_a?(Paren)
+
+        method_iseq =
+          with_instruction_sequence(
+            :method,
+            node.name.value,
+            current_iseq,
+            node
+          ) do |iseq|
+            if params
+              params.requireds.each do |required|
+                iseq.local_variables << required.value.to_sym
+                iseq.argument_size += 1
+
+                iseq.argument_options[:lead_num] ||= 0
+                iseq.argument_options[:lead_num] += 1
+              end
+
+              params.optionals.each do |(optional, value)|
+                index = iseq.local_variables.length
+                name = optional.value.to_sym
+
+                iseq.local_variables << name
+                iseq.argument_size += 1
+
+                unless iseq.argument_options.key?(:opt)
+                  iseq.argument_options[:opt] = [builder.label]
+                end
+
+                visit(value)
+                builder.setlocal(index, 0)
+                iseq.argument_options[:opt] << builder.label
+              end
+            end
+
+            visit(node.bodystmt)
+            builder.leave
+          end
+
+        name = node.name.value.to_sym
+        builder.definemethod(name, method_iseq)
+        builder.putobject(name)
       end
 
       def visit_defined(node)
@@ -1096,6 +1209,7 @@ module SyntaxTree
 
         block_iseq =
           with_instruction_sequence(
+            :block,
             "block in #{current_iseq.name}",
             current_iseq,
             node.statements
@@ -1255,7 +1369,7 @@ module SyntaxTree
             end
           end
 
-        with_instruction_sequence("<compiled>", nil, node) do
+        with_instruction_sequence(:top, "<compiled>", nil, node) do
           if statements.empty?
             builder.putnil
           else
@@ -1273,8 +1387,12 @@ module SyntaxTree
       end
 
       def visit_qwords(node)
-        visit_all(node.elements)
-        builder.newarray(node.elements.length)
+        if frozen_string_literal
+          builder.duparray(node.accept(RubyVisitor.new))
+        else
+          visit_all(node.elements)
+          builder.newarray(node.elements.length)
+        end
       end
 
       def visit_range(node)
@@ -1485,8 +1603,21 @@ module SyntaxTree
       end
 
       def visit_words(node)
-        visit_all(node.elements)
-        builder.newarray(node.elements.length)
+        converted = nil
+
+        if frozen_string_literal
+          begin
+            converted = node.accept(RubyVisitor.new)
+          rescue RubyVisitor::CompilationError
+          end
+        end
+
+        if converted
+          builder.duparray(converted)
+        else
+          visit_all(node.elements)
+          builder.newarray(node.elements.length)
+        end
       end
 
       def visit_xstring_literal(node)
@@ -1660,15 +1791,23 @@ module SyntaxTree
       # on the compiler. When we descend into a node that has its own
       # instruction sequence, this method can be called to temporarily set the
       # new value of the instruction sequence, yield, and then set it back.
-      def with_instruction_sequence(name, parent_iseq, node)
+      def with_instruction_sequence(type, name, parent_iseq, node)
         previous_iseq = current_iseq
         previous_builder = builder
 
         begin
-          iseq = InstructionSequence.new(name, parent_iseq, node.location)
+          iseq = InstructionSequence.new(type, name, parent_iseq, node.location)
+
           @current_iseq = iseq
-          @builder = Builder.new(iseq)
-          yield
+          @builder =
+            Builder.new(
+              iseq,
+              frozen_string_literal: frozen_string_literal,
+              operands_unification: operands_unification,
+              specialized_instruction: specialized_instruction
+            )
+
+          yield iseq
           iseq
         ensure
           @current_iseq = previous_iseq
