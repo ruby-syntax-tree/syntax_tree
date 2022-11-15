@@ -248,8 +248,8 @@ module SyntaxTree
       "Foo::Bar.baz = 1",
       "::Foo::Bar.baz = 1",
       # Control flow
-      "1 && 2",
-      "1 || 2",
+      "foo && bar",
+      "foo || bar",
       "if foo then bar end",
       "if foo then bar else baz end",
       "foo if bar",
@@ -298,13 +298,34 @@ module SyntaxTree
       ";;;",
       "# comment",
       "=begin\nfoo\n=end",
-      <<~RUBY
+      <<~RUBY,
         __END__
       RUBY
+      # Method definitions
+      "def foo; end",
+      "def foo(bar); end",
+      "def foo(bar, baz); end",
+      "def foo(bar = 1); end",
+      "def foo(bar = 1, baz = 2); end"
     ]
 
-    CASES.each do |source|
-      define_method(:"test_#{source}") { assert_compiles source }
+    # These are the combinations of instructions that we're going to test.
+    OPTIONS = [
+      {},
+      { frozen_string_literal: true },
+      { operands_unification: false },
+      { specialized_instruction: false },
+      { operands_unification: false, specialized_instruction: false }
+    ]
+
+    OPTIONS.each do |options|
+      suffix = options.inspect
+
+      CASES.each do |source|
+        define_method(:"test_#{source}_#{suffix}") do
+          assert_compiles(source, **options)
+        end
+      end
     end
 
     private
@@ -332,10 +353,12 @@ module SyntaxTree
       serialized
     end
 
-    def assert_compiles(source)
+    def assert_compiles(source, **options)
+      program = SyntaxTree.parse(source)
+
       assert_equal(
-        serialize_iseq(RubyVM::InstructionSequence.compile(source)),
-        serialize_iseq(SyntaxTree.parse(source).accept(Visitor::Compiler.new))
+        serialize_iseq(RubyVM::InstructionSequence.compile(source, **options)),
+        serialize_iseq(program.accept(Visitor::Compiler.new(**options)))
       )
     end
   end
