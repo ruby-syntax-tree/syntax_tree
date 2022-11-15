@@ -346,6 +346,8 @@ module SyntaxTree
             # from the top of the stack where it will be stored.
             index = iseq.local_variables.length - (insn[1] - 3) - 1
             [insn[0], index, *insn[2..]]
+          when :defineclass
+            [insn[0], insn[1], insn[2].to_a, insn[3]]
           when :definemethod
             [insn[0], insn[1], insn[2].to_a]
           when :send
@@ -417,6 +419,11 @@ module SyntaxTree
         def defined(type, name, message)
           stack.change_by(-1 + 1)
           iseq.push([:defined, type, name, message])
+        end
+
+        def defineclass(name, class_iseq, flags)
+          stack.change_by(-2 + 1)
+          iseq.push([:defineclass, name, class_iseq, flags])
         end
 
         def definemethod(name, method_iseq)
@@ -796,6 +803,14 @@ module SyntaxTree
       DEFINED_REF = 15
       DEFINED_FUNC = 16
       DEFINED_CONST_FROM = 17
+
+      # These constants correspond to the value passed in the flags as part of
+      # the defineclass instruction.
+      VM_DEFINECLASS_TYPE_CLASS = 0
+      VM_DEFINECLASS_TYPE_SINGLETON_CLASS = 1
+      VM_DEFINECLASS_TYPE_MODULE = 2
+      VM_DEFINECLASS_FLAG_SCOPED = 8
+      VM_DEFINECLASS_FLAG_HAS_SUPERCLASS = 16
 
       # These options mirror the compilation options that we currently support
       # that can be also passed to RubyVM::InstructionSequence.compile.
@@ -1273,6 +1288,36 @@ module SyntaxTree
 
       def visit_label(node)
         builder.putobject(node.accept(RubyVisitor.new))
+      end
+
+      def visit_module(node)
+        name = node.constant.constant.value.to_sym
+        module_iseq =
+          with_instruction_sequence(
+            :class,
+            "<module:#{name}>",
+            current_iseq,
+            node
+          ) do
+            visit(node.bodystmt)
+            builder.leave
+          end
+
+        flags = VM_DEFINECLASS_TYPE_MODULE
+
+        case node.constant
+        when ConstPathRef
+          flags |= VM_DEFINECLASS_FLAG_SCOPED
+          visit(node.constant.parent)
+        when ConstRef
+          builder.putspecialobject(VM_SPECIAL_OBJECT_CONST_BASE)
+        when TopConstRef
+          flags |= VM_DEFINECLASS_FLAG_SCOPED
+          builder.putobject(Object)
+        end
+
+        builder.putnil
+        builder.defineclass(name, module_iseq, flags)
       end
 
       def visit_not(node)
