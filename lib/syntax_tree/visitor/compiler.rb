@@ -1085,42 +1085,14 @@ module SyntaxTree
       end
 
       def visit_def(node)
-        params = node.params
-        params = params.contents if params.is_a?(Paren)
-
         method_iseq =
           with_instruction_sequence(
             :method,
             node.name.value,
             current_iseq,
             node
-          ) do |iseq|
-            if params
-              params.requireds.each do |required|
-                iseq.local_variables << required.value.to_sym
-                iseq.argument_size += 1
-
-                iseq.argument_options[:lead_num] ||= 0
-                iseq.argument_options[:lead_num] += 1
-              end
-
-              params.optionals.each do |(optional, value)|
-                index = iseq.local_variables.length
-                name = optional.value.to_sym
-
-                iseq.local_variables << name
-                iseq.argument_size += 1
-
-                unless iseq.argument_options.key?(:opt)
-                  iseq.argument_options[:opt] = [builder.label]
-                end
-
-                visit(value)
-                builder.setlocal(index, 0)
-                iseq.argument_options[:opt] << builder.label
-              end
-            end
-
+          ) do
+            visit(node.params) if node.params
             visit(node.bodystmt)
             builder.leave
           end
@@ -1391,6 +1363,49 @@ module SyntaxTree
         end
       end
 
+      def visit_params(node)
+        argument_options = current_iseq.argument_options
+
+        if node.requireds.any?
+          argument_options[:lead_num] = 0
+
+          node.requireds.each do |required|
+            current_iseq.local_variables << required.value.to_sym
+            current_iseq.argument_size += 1
+            argument_options[:lead_num] += 1
+          end
+        end
+
+        node.optionals.each do |(optional, value)|
+          index = current_iseq.local_variables.length
+          name = optional.value.to_sym
+
+          current_iseq.local_variables << name
+          current_iseq.argument_size += 1
+
+          unless argument_options.key?(:opt)
+            argument_options[:opt] = [builder.label]
+          end
+
+          visit(value)
+          builder.setlocal(index, 0)
+          current_iseq.argument_options[:opt] << builder.label
+        end
+
+        visit(node.rest) if node.rest
+
+        if node.posts.any?
+          argument_options[:post_start] = current_iseq.argument_size
+          argument_options[:post_num] = 0
+
+          node.posts.each do |post|
+            current_iseq.local_variables << post.value.to_sym
+            current_iseq.argument_size += 1
+            argument_options[:post_num] += 1
+          end
+        end
+      end
+
       def visit_paren(node)
         visit(node.contents)
       end
@@ -1459,6 +1474,12 @@ module SyntaxTree
 
         flags = RubyVisitor.new.visit_regexp_literal_flags(node)
         builder.toregexp(flags, node.parts.length)
+      end
+
+      def visit_rest_param(node)
+        current_iseq.local_variables << node.name.value.to_sym
+        current_iseq.argument_options[:rest_start] = current_iseq.argument_size
+        current_iseq.argument_size += 1
       end
 
       def visit_statements(node)
@@ -1852,7 +1873,7 @@ module SyntaxTree
               specialized_instruction: specialized_instruction
             )
 
-          yield iseq
+          yield
           iseq
         ensure
           @current_iseq = previous_iseq
