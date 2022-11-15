@@ -750,6 +750,11 @@ module SyntaxTree
           iseq.push([:topn, number])
         end
 
+        def toregexp(options, length)
+          stack.change_by(-length + 1)
+          iseq.push([:toregexp, options, length])
+        end
+
         private
 
         # This creates a call data object that is used as the operand for the

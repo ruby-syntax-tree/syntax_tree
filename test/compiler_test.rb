@@ -270,6 +270,8 @@ module SyntaxTree
       "{ foo => bar, baz => qux }",
       "%s[foo]",
       "[$1, $2, $3, $4, $5, $6, $7, $8, $9]",
+      "/foo \#{bar} baz/",
+      "%r{foo \#{bar} baz}",
       # Core method calls
       "alias foo bar",
       "alias :foo :bar",
