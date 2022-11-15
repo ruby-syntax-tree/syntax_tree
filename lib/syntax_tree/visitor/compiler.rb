@@ -545,6 +545,11 @@ module SyntaxTree
           iseq.push([:newrange, flag])
         end
 
+        def nop
+          stack.change_by(0)
+          iseq.push([:nop])
+        end
+
         def objtostring(method_id, argc, flag)
           stack.change_by(-1 + 1)
           iseq.push([:objtostring, call_data(method_id, argc, flag)])
@@ -1190,13 +1195,9 @@ module SyntaxTree
       def visit_for(node)
         visit(node.collection)
 
-        # Be sure we set up the local table before we start compiling the body
-        # of the for loop.
-        if node.index.is_a?(VarField) && node.index.value.is_a?(Ident)
-          name = node.index.value.value.to_sym
-          unless current_iseq.local_variables.include?(name)
-            current_iseq.local_variables << name
-          end
+        name = node.index.value.value.to_sym
+        unless current_iseq.local_variables.include?(name)
+          current_iseq.local_variables << name
         end
 
         block_iseq =
@@ -1206,6 +1207,19 @@ module SyntaxTree
             current_iseq,
             node.statements
           ) do
+            current_iseq.argument_options[:lead_num] ||= 0
+            current_iseq.argument_options[:lead_num] += 1
+            current_iseq.argument_options[:ambiguous_param0] = true
+
+            current_iseq.argument_size += 1
+            current_iseq.local_variables << 2
+
+            builder.getlocal(0, 0)
+
+            local_variable = current_iseq.local_variable(name)
+            builder.setlocal(local_variable.index, local_variable.level)
+            builder.nop
+
             visit(node.statements)
             builder.leave
           end
