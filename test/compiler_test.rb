@@ -307,6 +307,11 @@ module SyntaxTree
       "def foo(bar, baz); end",
       "def foo(bar = 1); end",
       "def foo(bar = 1, baz = 2); end",
+      "def foo(*bar); end",
+      "def foo(bar, *baz); end",
+      "def foo(*bar, baz, qux); end",
+      "def foo(bar, *baz, qux); end",
+      "def foo(bar, baz, *qux, quaz); end",
       # Class/module definitions
       "module Foo; end",
       "module ::Foo; end",
