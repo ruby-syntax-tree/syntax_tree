@@ -709,6 +709,16 @@ module SyntaxTree
           end
         end
 
+        def opt_str_uminus(value)
+          if specialized_instruction
+            stack.change_by(+1)
+            iseq.push([:opt_str_uminus, value, call_data(:-@, 0, VM_CALL_ARGS_SIMPLE)])
+          else
+            putstring(value)
+            send(:-@, 0, VM_CALL_ARGS_SIMPLE)
+          end
+        end
+
         def pop
           stack.change_by(-1)
           iseq.push([:pop])
@@ -1174,7 +1184,7 @@ module SyntaxTree
         # First we're going to check if we're calling a method on an array
         # literal without any arguments. In that case there are some
         # specializations we might be able to perform.
-        if arg_parts.length == 0 && node.message.is_a?(Ident)
+        if arg_parts.length == 0 && (node.message.is_a?(Ident) || node.message.is_a?(Op))
           case node.receiver
           when ArrayLiteral
             parts = node.receiver.contents&.parts || []
@@ -1194,6 +1204,9 @@ module SyntaxTree
           when StringLiteral
             if RubyVisitor.compile(node.receiver).nil?
               case node.message.value
+              when "-@"
+                builder.opt_str_uminus(node.receiver.parts.first.value)
+                return
               when "freeze"
                 builder.opt_str_freeze(node.receiver.parts.first.value)
                 return
@@ -1277,7 +1290,7 @@ module SyntaxTree
       end
 
       def visit_command(node)
-        call_node =
+        visit_call(
           CallNode.new(
             receiver: nil,
             operator: nil,
@@ -1285,13 +1298,11 @@ module SyntaxTree
             arguments: node.arguments,
             location: node.location
           )
-
-        call_node.comments.concat(node.comments)
-        visit_call(call_node)
+        )
       end
 
       def visit_command_call(node)
-        call_node =
+        visit_call(
           CallNode.new(
             receiver: node.receiver,
             operator: node.operator,
@@ -1299,9 +1310,7 @@ module SyntaxTree
             arguments: node.arguments,
             location: node.location
           )
-
-        call_node.comments.concat(node.comments)
-        visit_call(call_node)
+        )
       end
 
       def visit_const_path_field(node)
@@ -1853,17 +1862,23 @@ module SyntaxTree
       end
 
       def visit_unary(node)
-        visit(node.statement)
-
         method_id =
           case node.operator
           when "+", "-"
-            :"#{node.operator}@"
+            "#{node.operator}@"
           else
-            node.operator.to_sym
+            node.operator
           end
 
-        builder.send(method_id, 0, VM_CALL_ARGS_SIMPLE)
+        visit_call(
+          CallNode.new(
+            receiver: node.statement,
+            operator: nil,
+            message: Ident.new(value: method_id, location: node.location),
+            arguments: nil,
+            location: node.location
+          )
+        )
       end
 
       def visit_undef(node)
