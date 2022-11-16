@@ -1351,6 +1351,12 @@ module SyntaxTree
         builder.putobject(node.accept(RubyVisitor.new))
       end
 
+      def visit_kwrest_param(node)
+        current_iseq.argument_options[:kwrest] = current_iseq.argument_size
+        current_iseq.argument_size += 1
+        current_iseq.local_table.plain(node.name.value.to_sym)
+      end
+
       def visit_label(node)
         builder.putobject(node.accept(RubyVisitor.new))
       end
@@ -1528,13 +1534,15 @@ module SyntaxTree
             end
           end
 
+          name = node.keyword_rest ? 3 : 2
           current_iseq.argument_size += 1
-          current_iseq.local_table.plain(2)
+          current_iseq.local_table.plain(name)
 
-          lookup = current_iseq.local_table.find(2, 0)
+          lookup = current_iseq.local_table.find(name, 0)
           checkkeywords.each { |checkkeyword| checkkeyword[1] = lookup.index }
         end
 
+        visit(node.keyword_rest) if node.keyword_rest
         visit(node.block) if node.block
       end
 
