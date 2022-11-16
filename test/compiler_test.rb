@@ -317,6 +317,8 @@ module SyntaxTree
       "def foo(*bar, baz, qux); end",
       "def foo(bar, *baz, qux); end",
       "def foo(bar, baz, *qux, quaz); end",
+      "def foo(bar, baz, &qux); end",
+      "def foo(bar, *baz, &qux); end",
       # Class/module definitions
       "module Foo; end",
       "module ::Foo; end",

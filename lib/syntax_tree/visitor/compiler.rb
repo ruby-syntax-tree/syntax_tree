@@ -1017,6 +1017,12 @@ module SyntaxTree
         end
       end
 
+      def visit_blockarg(node)
+        current_iseq.argument_options[:block_start] = current_iseq.argument_size
+        current_iseq.local_variables << node.name.value.to_sym
+        current_iseq.argument_size += 1
+      end
+
       def visit_bodystmt(node)
         visit(node.statements)
       end
@@ -1423,6 +1429,8 @@ module SyntaxTree
             argument_options[:post_num] += 1
           end
         end
+
+        visit(node.block) if node.block
       end
 
       def visit_paren(node)
