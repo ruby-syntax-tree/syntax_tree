@@ -699,6 +699,16 @@ module SyntaxTree
           iseq.push([:opt_setinlinecache, inline_storage])
         end
 
+        def opt_str_freeze(value)
+          if specialized_instruction
+            stack.change_by(+1)
+            iseq.push([:opt_str_freeze, value, call_data(:freeze, 0, VM_CALL_ARGS_SIMPLE)])
+          else
+            putstring(value)
+            send(:freeze, 0, VM_CALL_ARGS_SIMPLE)
+          end
+        end
+
         def pop
           stack.change_by(-1)
           iseq.push([:pop])
@@ -1164,15 +1174,12 @@ module SyntaxTree
         # First we're going to check if we're calling a method on an array
         # literal without any arguments. In that case there are some
         # specializations we might be able to perform.
-        if node.receiver.is_a?(ArrayLiteral) && arg_parts.length == 0 && node.message.is_a?(Ident)
-          parts = node.receiver.contents&.parts || []
+        if arg_parts.length == 0 && node.message.is_a?(Ident)
+          case node.receiver
+          when ArrayLiteral
+            parts = node.receiver.contents&.parts || []
 
-          unless parts.any? { |part| part.is_a?(ArgStar) }
-            begin
-              # If we can compile the receiver, then we won't be attempting to
-              # specialize the instruction. Otherwise we will.
-              node.receiver.accept(RubyVisitor.new)
-            rescue RubyVisitor::CompilationError
+            if parts.none? { |part| part.is_a?(ArgStar) } && RubyVisitor.compile(node.receiver).nil?
               case node.message.value
               when "max"
                 visit(node.receiver.contents)
@@ -1181,6 +1188,14 @@ module SyntaxTree
               when "min"
                 visit(node.receiver.contents)
                 builder.opt_newarray_min(parts.length)
+                return
+              end
+            end
+          when StringLiteral
+            if RubyVisitor.compile(node.receiver).nil?
+              case node.message.value
+              when "freeze"
+                builder.opt_str_freeze(node.receiver.parts.first.value)
                 return
               end
             end

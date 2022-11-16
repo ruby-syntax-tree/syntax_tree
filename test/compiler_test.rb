@@ -92,6 +92,8 @@ module SyntaxTree
       "foo.size",
       "foo.succ",
       "/foo/ =~ \"foo\" && $1",
+      "\"foo\".freeze",
+      "\"foo\".freeze(1)",
       # Various method calls
       "foo?",
       "foo.bar",
