@@ -260,6 +260,7 @@ module SyntaxTree
       "foo if bar",
       "foo while bar",
       "for i in [1, 2, 3] do i end",
+      "foo ? bar : baz",
       # Constructed values
       "foo..bar",
       "foo...bar",

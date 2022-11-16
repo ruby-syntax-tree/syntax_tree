@@ -1492,6 +1492,22 @@ module SyntaxTree
         end
       end
 
+      def visit_if_op(node)
+        visit_if(
+          IfNode.new(
+            predicate: node.predicate,
+            statements: node.truthy,
+            consequent:
+              Else.new(
+                keyword: Kw.new(value: "else", location: Location.default),
+                statements: node.falsy,
+                location: Location.default
+              ),
+            location: Location.default
+          )
+        )
+      end
+
       def visit_imaginary(node)
         builder.putobject(node.accept(RubyVisitor.new))
       end
@@ -1874,9 +1890,9 @@ module SyntaxTree
           CallNode.new(
             receiver: node.statement,
             operator: nil,
-            message: Ident.new(value: method_id, location: node.location),
+            message: Ident.new(value: method_id, location: Location.default),
             arguments: nil,
-            location: node.location
+            location: Location.default
           )
         )
       end
