@@ -194,39 +194,86 @@ module SyntaxTree
         end
       end
 
+      # This represents every local variable associated with an instruction
+      # sequence. There are two kinds of locals: plain locals that are what you
+      # expect, and block proxy locals, which represent local variables
+      # associated with blocks that were passed into the current instruction
+      # sequence.
+      class LocalTable
+        # A local representing a block passed into the current instruction
+        # sequence.
+        class BlockProxyLocal
+          attr_reader :name
+
+          def initialize(name)
+            @name = name
+          end
+        end
+
+        # A regular local variable.
+        class PlainLocal
+          attr_reader :name
+
+          def initialize(name)
+            @name = name
+          end
+        end
+
+        # The result of looking up a local variable in the current local table.
+        class Lookup
+          attr_reader :local, :index, :level
+
+          def initialize(local, index, level)
+            @local = local
+            @index = index
+            @level = level
+          end
+        end
+
+        attr_reader :locals
+
+        def initialize
+          @locals = []
+        end
+
+        def find(name, level)
+          index = locals.index { |local| local.name == name }
+          Lookup.new(locals[index], index, level) if index
+        end
+
+        def has?(name)
+          locals.any? { |local| local.name == name }
+        end
+
+        def names
+          locals.map(&:name)
+        end
+
+        def size
+          locals.length
+        end
+
+        # Add a BlockProxyLocal to the local table.
+        def block_proxy(name)
+          locals << BlockProxyLocal.new(name) unless has?(name)
+        end
+
+        # Add a PlainLocal to the local table.
+        def plain(name)
+          locals << PlainLocal.new(name) unless has?(name)
+        end
+
+        # This is the offset from the top of the stack where this local variable
+        # lives.
+        def offset(index)
+          size - (index - 3) - 1
+        end
+      end
+
       # This class is meant to mirror RubyVM::InstructionSequence. It contains a
       # list of instructions along with the metadata pertaining to them. It also
       # functions as a builder for the instruction sequence.
       class InstructionSequence
-        # This is a small data class that captures the level of a local variable
-        # table (the number of scopes to traverse) and the index of the local
-        # variable in that table.
-        class LocalVariableLookup
-          attr_reader :local_variable, :level, :index
-
-          def initialize(local_variable, level, index)
-            @local_variable = local_variable
-            @level = level
-            @index = index
-          end
-        end
-
-        class PlainLocalVariable
-          attr_reader :name
-
-          def initialize(name)
-            @name = name
-          end
-        end
-
-        class BlockProxyLocalVariable
-          attr_reader :name
-
-          def initialize(name)
-            @name = name
-          end
-        end
-
         # The type of the instruction sequence.
         attr_reader :type
 
@@ -247,9 +294,8 @@ module SyntaxTree
         # The list of instructions for this instruction sequence.
         attr_reader :insns
 
-        # The array of symbols corresponding to the local variables of this
-        # instruction sequence.
-        attr_reader :local_variables
+        # The table of local variables.
+        attr_reader :local_table
 
         # The hash of names of instance and class variables pointing to the
         # index of their associated inline storage.
@@ -271,7 +317,7 @@ module SyntaxTree
           @argument_size = 0
           @argument_options = {}
 
-          @local_variables = []
+          @local_table = LocalTable.new
           @inline_storages = {}
           @insns = []
           @storage_index = 0
@@ -279,8 +325,8 @@ module SyntaxTree
         end
 
         def local_variable(name, level = 0)
-          if (index = local_variables.index { |local_variable| local_variable.name == name })
-            LocalVariableLookup.new(local_variables[index], level, index)
+          if (lookup = local_table.find(name, level))
+            lookup
           elsif parent_iseq
             parent_iseq.local_variable(name, level + 1)
           else
@@ -329,7 +375,7 @@ module SyntaxTree
             1,
             {
               arg_size: argument_size,
-              local_size: local_variables.length,
+              local_size: local_table.size,
               stack_max: stack.maximum_size
             },
             name,
@@ -337,7 +383,7 @@ module SyntaxTree
             "<compiled>",
             1,
             type,
-            local_variables.map(&:name),
+            local_table.names,
             argument_options,
             [],
             insns.map { |insn| serialize(insn) }
@@ -361,8 +407,7 @@ module SyntaxTree
 
             # Here we need to map the local variable index to the offset
             # from the top of the stack where it will be stored.
-            index = iseq.local_variables.length - (insn[1] - 3) - 1
-            [insn[0], index, *insn[2..]]
+            [insn[0], iseq.local_table.offset(insn[1]), *insn[2..]]
           when :defineclass
             [insn[0], insn[1], insn[2].to_a, insn[3]]
           when :definemethod
@@ -1041,7 +1086,7 @@ module SyntaxTree
 
       def visit_blockarg(node)
         current_iseq.argument_options[:block_start] = current_iseq.argument_size
-        current_iseq.local_variables << InstructionSequence::BlockProxyLocalVariable.new(node.name.value.to_sym)
+        current_iseq.local_table.block_proxy(node.name.value.to_sym)
         current_iseq.argument_size += 1
       end
 
@@ -1147,10 +1192,7 @@ module SyntaxTree
           # that we put it into the local table.
           if node.value.target.is_a?(VarField) &&
                node.value.target.value.is_a?(Ident)
-            name = node.value.target.value.value.to_sym
-            unless current_iseq.local_variables.any? { |local_variable| local_variable.name == name }
-              current_iseq.local_variables << InstructionSequence::PlainLocalVariable.new(name)
-            end
+            current_iseq.local_table.plain(node.value.target.value.value.to_sym)
           end
 
           builder.putobject("assignment")
@@ -1224,9 +1266,7 @@ module SyntaxTree
         visit(node.collection)
 
         name = node.index.value.value.to_sym
-        unless current_iseq.local_variables.any? { |local_variable| local_variable.name == name }
-          current_iseq.local_variables << InstructionSequence::PlainLocalVariable.new(name)
-        end
+        current_iseq.local_table.plain(name)
 
         block_iseq =
           with_instruction_sequence(
@@ -1240,7 +1280,7 @@ module SyntaxTree
             current_iseq.argument_options[:ambiguous_param0] = true
 
             current_iseq.argument_size += 1
-            current_iseq.local_variables << InstructionSequence::PlainLocalVariable.new(2)
+            current_iseq.local_table.plain(2)
 
             builder.getlocal(0, 0)
 
@@ -1417,17 +1457,17 @@ module SyntaxTree
           argument_options[:lead_num] = 0
 
           node.requireds.each do |required|
-            current_iseq.local_variables << InstructionSequence::PlainLocalVariable.new(required.value.to_sym)
+            current_iseq.local_table.plain(required.value.to_sym)
             current_iseq.argument_size += 1
             argument_options[:lead_num] += 1
           end
         end
 
         node.optionals.each do |(optional, value)|
-          index = current_iseq.local_variables.length
+          index = current_iseq.local_table.size
           name = optional.value.to_sym
 
-          current_iseq.local_variables << InstructionSequence::PlainLocalVariable.new(name)
+          current_iseq.local_table.plain(name)
           current_iseq.argument_size += 1
 
           unless argument_options.key?(:opt)
@@ -1446,7 +1486,7 @@ module SyntaxTree
           argument_options[:post_num] = 0
 
           node.posts.each do |post|
-            current_iseq.local_variables << InstructionSequence::PlainLocalVariable.new(post.value.to_sym)
+            current_iseq.local_table.plain(post.value.to_sym)
             current_iseq.argument_size += 1
             argument_options[:post_num] += 1
           end
@@ -1526,7 +1566,7 @@ module SyntaxTree
       end
 
       def visit_rest_param(node)
-        current_iseq.local_variables << InstructionSequence::PlainLocalVariable.new(node.name.value.to_sym)
+        current_iseq.local_table.plain(node.name.value.to_sym)
         current_iseq.argument_options[:rest_start] = current_iseq.argument_size
         current_iseq.argument_size += 1
       end
@@ -1652,9 +1692,7 @@ module SyntaxTree
           current_iseq.inline_storage_for(name)
         when Ident
           name = node.value.value.to_sym
-          unless current_iseq.local_variables.any? { |local_variable| local_variable.name == name }
-            current_iseq.local_variables << InstructionSequence::PlainLocalVariable.new(name)
-          end
+          current_iseq.local_table.plain(name)
           current_iseq.local_variable(name)
         end
       end
@@ -1669,13 +1707,13 @@ module SyntaxTree
         when GVar
           builder.getglobal(node.value.value.to_sym)
         when Ident
-          local_variable = current_iseq.local_variable(node.value.value.to_sym)
+          lookup = current_iseq.local_variable(node.value.value.to_sym)
 
-          case local_variable.local_variable
-          when InstructionSequence::BlockProxyLocalVariable
-            builder.getblockparamproxy(local_variable.index, local_variable.level)
-          when InstructionSequence::PlainLocalVariable
-            builder.getlocal(local_variable.index, local_variable.level)
+          case lookup.local
+          when LocalTable::BlockProxyLocal
+            builder.getblockparamproxy(lookup.index, lookup.level)
+          when LocalTable::PlainLocal
+            builder.getlocal(lookup.index, lookup.level)
           end
         when IVar
           name = node.value.value.to_sym
