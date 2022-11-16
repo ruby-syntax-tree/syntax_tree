@@ -276,13 +276,14 @@ module SyntaxTree
       # Core method calls
       "alias foo bar",
       "alias :foo :bar",
+      "super",
+      "super(1)",
+      "super(1, 2, 3)",
       "undef foo",
       "undef :foo",
       "undef foo, bar, baz",
       "undef :foo, :bar, :baz",
-      "super",
-      "super(1)",
-      "super(1, 2, 3)",
+      "def foo; yield; end",
       # defined? usage
       "defined?(foo)",
       "defined?(\"foo\")",

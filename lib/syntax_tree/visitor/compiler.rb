@@ -586,6 +586,11 @@ module SyntaxTree
           iseq.push([:intern])
         end
 
+        def invokeblock(method_id, argc, flag)
+          stack.change_by(-argc + 1)
+          iseq.push([:invokeblock, call_data(method_id, argc, flag)])
+        end
+
         def invokesuper(method_id, argc, flag, block_iseq)
           stack.change_by(-(argc + 1) + 1)
 
@@ -1846,6 +1851,10 @@ module SyntaxTree
         visit_string_parts(node)
         builder.concatstrings(node.parts.length) if node.parts.length > 1
         builder.send(:`, 1, VM_CALL_FCALL | VM_CALL_ARGS_SIMPLE)
+      end
+
+      def visit_yield(node)
+        builder.invokeblock(nil, 0, VM_CALL_ARGS_SIMPLE)
       end
 
       def visit_zsuper(_node)
