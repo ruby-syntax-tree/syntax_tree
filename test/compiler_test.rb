@@ -266,6 +266,7 @@ module SyntaxTree
       "%W[foo \#{bar} baz]",
       "%I[foo \#{bar} baz]",
       "[foo, bar] + [baz, qux]",
+      "[foo, bar, *baz, qux]",
       "{ foo: bar, baz: qux }",
       "{ :foo => bar, :baz => qux }",
       "{ foo => bar, baz => qux }",

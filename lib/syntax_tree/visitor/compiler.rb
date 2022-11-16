@@ -479,6 +479,11 @@ module SyntaxTree
           iseq.push([:checkkeyword, index, keyword_index])
         end
 
+        def concatarray
+          stack.change_by(-2 + 1)
+          iseq.push([:concatarray])
+        end
+
         def concatstrings(number)
           stack.change_by(-number + 1)
           iseq.push([:concatstrings, number])
@@ -974,8 +979,25 @@ module SyntaxTree
       def visit_array(node)
         builder.duparray(node.accept(RubyVisitor.new))
       rescue RubyVisitor::CompilationError
-        visit_all(node.contents.parts)
-        builder.newarray(node.contents.parts.length)
+        length = 0
+
+        node.contents.parts.each do |part|
+          if part.is_a?(ArgStar)
+            if length > 0
+              builder.newarray(length)
+              length = 0
+            end
+
+            visit(part.value)
+            builder.concatarray
+          else
+            visit(part)
+            length += 1
+          end
+        end
+
+        builder.newarray(length)
+        builder.concatarray if length != node.contents.parts.length
       end
 
       def visit_assign(node)
