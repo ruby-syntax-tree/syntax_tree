@@ -345,7 +345,18 @@ module SyntaxTree
       "module ::Foo; end",
       "module Foo::Bar; end",
       "module ::Foo::Bar; end",
-      "module Foo; module Bar; end; end"
+      "module Foo; module Bar; end; end",
+      "class Foo; end",
+      "class ::Foo; end",
+      "class Foo::Bar; end",
+      "class ::Foo::Bar; end",
+      "class Foo; class Bar; end; end",
+      "class Foo < Baz; end",
+      "class ::Foo < Baz; end",
+      "class Foo::Bar < Baz; end",
+      "class ::Foo::Bar < Baz; end",
+      "class Foo; class Bar < Baz; end; end",
+      "class Foo < baz; end"
     ]
 
     # These are the combinations of instructions that we're going to test.

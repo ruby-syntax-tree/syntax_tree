@@ -1141,6 +1141,42 @@ module SyntaxTree
         end
       end
 
+      def visit_class(node)
+        name = node.constant.constant.value.to_sym
+        class_iseq =
+          with_instruction_sequence(
+            :class,
+            "<class:#{name}>",
+            current_iseq,
+            node
+          ) do
+            visit(node.bodystmt)
+            builder.leave
+          end
+
+        flags = VM_DEFINECLASS_TYPE_CLASS
+
+        case node.constant
+        when ConstPathRef
+          flags |= VM_DEFINECLASS_FLAG_SCOPED
+          visit(node.constant.parent)
+        when ConstRef
+          builder.putspecialobject(VM_SPECIAL_OBJECT_CONST_BASE)
+        when TopConstRef
+          flags |= VM_DEFINECLASS_FLAG_SCOPED
+          builder.putobject(Object)
+        end
+
+        if node.superclass
+          flags |= VM_DEFINECLASS_FLAG_HAS_SUPERCLASS
+          visit(node.superclass)
+        else
+          builder.putnil
+        end
+
+        builder.defineclass(name, class_iseq, flags)
+      end
+
       def visit_command(node)
         call_node =
           CallNode.new(
