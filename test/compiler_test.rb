@@ -320,6 +320,8 @@ module SyntaxTree
       "def foo(bar, baz, &qux); end",
       "def foo(bar, *baz, &qux); end",
       "def foo(&qux); qux.call; end",
+      "def foo(bar:); end",
+      "def foo(bar:, baz:); end",
       # Class/module definitions
       "module Foo; end",
       "module ::Foo; end",

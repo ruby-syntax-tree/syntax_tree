@@ -1492,6 +1492,24 @@ module SyntaxTree
           end
         end
 
+        if node.keywords.any?
+          argument_options[:kwbits] = 0
+          argument_options[:keyword] = []
+
+          node.keywords.each do |(keyword, value)|
+            name = keyword.value.chomp(":").to_sym
+
+            current_iseq.local_table.plain(name)
+            current_iseq.argument_size += 1
+
+            argument_options[:kwbits] += 1
+            argument_options[:keyword] << name
+          end
+
+          current_iseq.argument_size += 1
+          current_iseq.local_table.plain(2)
+        end
+
         visit(node.block) if node.block
       end
 
