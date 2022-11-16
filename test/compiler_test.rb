@@ -284,6 +284,8 @@ module SyntaxTree
       "undef foo, bar, baz",
       "undef :foo, :bar, :baz",
       "def foo; yield; end",
+      "def foo; yield(1); end",
+      "def foo; yield(1, 2, 3); end",
       # defined? usage
       "defined?(foo)",
       "defined?(\"foo\")",

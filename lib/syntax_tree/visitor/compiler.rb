@@ -1854,7 +1854,9 @@ module SyntaxTree
       end
 
       def visit_yield(node)
-        builder.invokeblock(nil, 0, VM_CALL_ARGS_SIMPLE)
+        parts = argument_parts(node.arguments)
+        visit_all(parts)
+        builder.invokeblock(nil, parts.length, VM_CALL_ARGS_SIMPLE)
       end
 
       def visit_zsuper(_node)
@@ -1880,6 +1882,8 @@ module SyntaxTree
           node.parts
         when ArgParen
           node.arguments.parts
+        when Paren
+          node.contents.parts
         end
       end
 
