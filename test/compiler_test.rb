@@ -274,6 +274,12 @@ module SyntaxTree
       "[$1, $2, $3, $4, $5, $6, $7, $8, $9]",
       "/foo \#{bar} baz/",
       "%r{foo \#{bar} baz}",
+      "[1, 2, 3].max",
+      "[foo, bar, baz].max",
+      "[foo, bar, baz].max(1)",
+      "[1, 2, 3].min",
+      "[foo, bar, baz].min",
+      "[foo, bar, baz].min(1)",
       # Core method calls
       "alias foo bar",
       "alias :foo :bar",

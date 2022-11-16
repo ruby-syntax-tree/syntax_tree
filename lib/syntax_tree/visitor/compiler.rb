@@ -667,6 +667,26 @@ module SyntaxTree
           iseq.push([:opt_getinlinecache, offset, inline_storage])
         end
 
+        def opt_newarray_max(length)
+          if specialized_instruction
+            stack.change_by(-length + 1)
+            iseq.push([:opt_newarray_max, length])
+          else
+            newarray(length)
+            send(:max, 0, VM_CALL_ARGS_SIMPLE)
+          end
+        end
+
+        def opt_newarray_min(length)
+          if specialized_instruction
+            stack.change_by(-length + 1)
+            iseq.push([:opt_newarray_min, length])
+          else
+            newarray(length)
+            send(:min, 0, VM_CALL_ARGS_SIMPLE)
+          end
+        end
+
         def opt_setinlinecache(inline_storage)
           stack.change_by(-1 + 1)
           iseq.push([:opt_setinlinecache, inline_storage])
@@ -996,8 +1016,8 @@ module SyntaxTree
           end
         end
 
-        builder.newarray(length)
-        builder.concatarray if length != node.contents.parts.length
+        builder.newarray(length) if length > 0
+        builder.concatarray if length > 0 && length != node.contents.parts.length
       end
 
       def visit_assign(node)
@@ -1128,10 +1148,41 @@ module SyntaxTree
       end
 
       def visit_call(node)
-        node.receiver ? visit(node.receiver) : builder.putself
+        arg_parts = argument_parts(node.arguments)
+
+        # First we're going to check if we're calling a method on an array
+        # literal without any arguments. In that case there are some
+        # specializations we might be able to perform.
+        if node.receiver.is_a?(ArrayLiteral) && arg_parts.length == 0 && node.message.is_a?(Ident)
+          parts = node.receiver.contents&.parts || []
+
+          unless parts.any? { |part| part.is_a?(ArgStar) }
+            begin
+              # If we can compile the receiver, then we won't be attempting to
+              # specialize the instruction. Otherwise we will.
+              node.receiver.accept(RubyVisitor.new)
+            rescue RubyVisitor::CompilationError
+              case node.message.value
+              when "max"
+                visit(node.receiver.contents)
+                builder.opt_newarray_max(parts.length)
+                return
+              when "min"
+                visit(node.receiver.contents)
+                builder.opt_newarray_min(parts.length)
+                return
+              end
+            end
+          end
+        end
+
+        if node.receiver
+          visit(node.receiver)
+        else
+          builder.putself
+        end
 
         visit(node.arguments)
-        arg_parts = argument_parts(node.arguments)
 
         if arg_parts.last.is_a?(ArgBlock)
           flag = node.receiver.nil? ? VM_CALL_FCALL : 0
