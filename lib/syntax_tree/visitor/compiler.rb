@@ -56,6 +56,13 @@ module SyntaxTree
         class CompilationError < StandardError
         end
 
+        # This will attempt to compile the given node. If it's possible, then
+        # it will return the compiled object. Otherwise it will return nil.
+        def self.compile(node)
+          node.accept(new)
+        rescue CompilationError
+        end
+
         def visit_array(node)
           visit_all(node.contents.parts)
         end
@@ -997,27 +1004,29 @@ module SyntaxTree
       end
 
       def visit_array(node)
-        builder.duparray(node.accept(RubyVisitor.new))
-      rescue RubyVisitor::CompilationError
-        length = 0
+        if compiled = RubyVisitor.compile(node)
+          builder.duparray(compiled)
+        else
+          length = 0
 
-        node.contents.parts.each do |part|
-          if part.is_a?(ArgStar)
-            if length > 0
-              builder.newarray(length)
-              length = 0
+          node.contents.parts.each do |part|
+            if part.is_a?(ArgStar)
+              if length > 0
+                builder.newarray(length)
+                length = 0
+              end
+
+              visit(part.value)
+              builder.concatarray
+            else
+              visit(part)
+              length += 1
             end
-
-            visit(part.value)
-            builder.concatarray
-          else
-            visit(part)
-            length += 1
           end
-        end
 
-        builder.newarray(length) if length > 0
-        builder.concatarray if length > 0 && length != node.contents.parts.length
+          builder.newarray(length) if length > 0
+          builder.concatarray if length > 0 && length != node.contents.parts.length
+        end
       end
 
       def visit_assign(node)
@@ -1105,9 +1114,11 @@ module SyntaxTree
       end
 
       def visit_bare_assoc_hash(node)
-        builder.duphash(node.accept(RubyVisitor.new))
-      rescue RubyVisitor::CompilationError
-        visit_all(node.assocs)
+        if compiled = RubyVisitor.compile(node)
+          builder.duphash(compiled)
+        else
+          visit_all(node.assocs)
+        end
       end
 
       def visit_binary(node)
