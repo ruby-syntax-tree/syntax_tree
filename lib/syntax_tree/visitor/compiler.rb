@@ -1409,6 +1409,17 @@ module SyntaxTree
         builder.pop unless last_statement?
       end
 
+      def visit_elsif(node)
+        visit_if(
+          IfNode.new(
+            predicate: node.predicate,
+            statements: node.statements,
+            consequent: node.consequent,
+            location: node.location
+          )
+        )
+      end
+
       def visit_field(node)
         visit(node.parent)
       end

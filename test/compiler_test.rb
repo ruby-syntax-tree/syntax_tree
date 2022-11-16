@@ -257,6 +257,7 @@ module SyntaxTree
       "foo || bar",
       "if foo then bar end",
       "if foo then bar else baz end",
+      "if foo then bar elsif baz then qux end",
       "foo if bar",
       "foo while bar",
       "for i in [1, 2, 3] do i end",
