@@ -394,8 +394,9 @@ module SyntaxTree
 
         def serialize(insn)
           case insn[0]
-          when :getblockparamproxy, :getlocal_WC_0, :getlocal_WC_1, :getlocal,
-               :setlocal_WC_0, :setlocal_WC_1, :setlocal
+          when :checkkeyword, :getblockparamproxy, :getlocal_WC_0,
+               :getlocal_WC_1, :getlocal, :setlocal_WC_0, :setlocal_WC_1,
+               :setlocal
             iseq = self
 
             case insn[0]
@@ -471,6 +472,11 @@ module SyntaxTree
         def branchunless(index)
           stack.change_by(-1)
           iseq.push([:branchunless, index])
+        end
+
+        def checkkeyword(index, keyword_index)
+          stack.change_by(+1)
+          iseq.push([:checkkeyword, index, keyword_index])
         end
 
         def concatstrings(number)
@@ -1495,19 +1501,38 @@ module SyntaxTree
         if node.keywords.any?
           argument_options[:kwbits] = 0
           argument_options[:keyword] = []
+          checkkeywords = []
 
-          node.keywords.each do |(keyword, value)|
+          node.keywords.each_with_index do |(keyword, value), keyword_index|
             name = keyword.value.chomp(":").to_sym
+            index = current_iseq.local_table.size
 
             current_iseq.local_table.plain(name)
             current_iseq.argument_size += 1
-
             argument_options[:kwbits] += 1
-            argument_options[:keyword] << name
+
+            if value.nil?
+              argument_options[:keyword] << name
+            else
+              begin
+                compiled = value.accept(RubyVisitor.new)
+                argument_options[:keyword] << [name, compiled]
+              rescue RubyVisitor::CompilationError
+                argument_options[:keyword] << [name]
+                checkkeywords << builder.checkkeyword(-1, keyword_index)
+                branchif = builder.branchif(-1)
+                visit(value)
+                builder.setlocal(index, 0)
+                branchif[1] = builder.label
+              end
+            end
           end
 
           current_iseq.argument_size += 1
           current_iseq.local_table.plain(2)
+
+          lookup = current_iseq.local_table.find(2, 0)
+          checkkeywords.each { |checkkeyword| checkkeyword[1] = lookup.index }
         end
 
         visit(node.block) if node.block
