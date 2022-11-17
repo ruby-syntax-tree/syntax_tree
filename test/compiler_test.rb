@@ -370,7 +370,13 @@ module SyntaxTree
       "class Foo::Bar < Baz; end",
       "class ::Foo::Bar < Baz; end",
       "class Foo; class Bar < Baz; end; end",
-      "class Foo < baz; end"
+      "class Foo < baz; end",
+      # Block
+      "foo do end",
+      "foo {}",
+      "foo do |bar| end",
+      "foo { |bar| }",
+      "foo { |bar; baz| }"
     ]
 
     # These are the combinations of instructions that we're going to test.

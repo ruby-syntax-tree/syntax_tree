@@ -702,7 +702,13 @@ module SyntaxTree
         def opt_str_freeze(value)
           if specialized_instruction
             stack.change_by(+1)
-            iseq.push([:opt_str_freeze, value, call_data(:freeze, 0, VM_CALL_ARGS_SIMPLE)])
+            iseq.push(
+              [
+                :opt_str_freeze,
+                value,
+                call_data(:freeze, 0, VM_CALL_ARGS_SIMPLE)
+              ]
+            )
           else
             putstring(value)
             send(:freeze, 0, VM_CALL_ARGS_SIMPLE)
@@ -712,7 +718,9 @@ module SyntaxTree
         def opt_str_uminus(value)
           if specialized_instruction
             stack.change_by(+1)
-            iseq.push([:opt_str_uminus, value, call_data(:-@, 0, VM_CALL_ARGS_SIMPLE)])
+            iseq.push(
+              [:opt_str_uminus, value, call_data(:-@, 0, VM_CALL_ARGS_SIMPLE)]
+            )
           else
             putstring(value)
             send(:-@, 0, VM_CALL_ARGS_SIMPLE)
@@ -1024,7 +1032,7 @@ module SyntaxTree
       end
 
       def visit_array(node)
-        if compiled = RubyVisitor.compile(node)
+        if (compiled = RubyVisitor.compile(node))
           builder.duparray(compiled)
         else
           length = 0
@@ -1045,7 +1053,9 @@ module SyntaxTree
           end
 
           builder.newarray(length) if length > 0
-          builder.concatarray if length > 0 && length != node.contents.parts.length
+          if length > 0 && length != node.contents.parts.length
+            builder.concatarray
+          end
         end
       end
 
@@ -1134,7 +1144,7 @@ module SyntaxTree
       end
 
       def visit_bare_assoc_hash(node)
-        if compiled = RubyVisitor.compile(node)
+        if (compiled = RubyVisitor.compile(node))
           builder.duphash(compiled)
         else
           visit_all(node.assocs)
@@ -1168,6 +1178,35 @@ module SyntaxTree
         end
       end
 
+      def visit_block(node)
+        with_instruction_sequence(
+          :block,
+          "block in #{current_iseq.name}",
+          current_iseq,
+          node
+        ) do
+          visit(node.block_var)
+          visit(node.bodystmt)
+          builder.leave
+        end
+      end
+
+      def visit_block_var(node)
+        params = node.params
+
+        if params.requireds.length == 1 && params.optionals.empty? &&
+             !params.rest && params.posts.empty? && params.keywords.empty? &&
+             !params.keyword_rest && !params.block
+          current_iseq.argument_options[:ambiguous_param0] = true
+        end
+
+        visit(node.params)
+
+        node.locals.each do |local|
+          current_iseq.local_table.plain(local.value.to_sym)
+        end
+      end
+
       def visit_blockarg(node)
         current_iseq.argument_options[:block_start] = current_iseq.argument_size
         current_iseq.local_table.block_proxy(node.name.value.to_sym)
@@ -1184,12 +1223,14 @@ module SyntaxTree
         # First we're going to check if we're calling a method on an array
         # literal without any arguments. In that case there are some
         # specializations we might be able to perform.
-        if arg_parts.length == 0 && (node.message.is_a?(Ident) || node.message.is_a?(Op))
+        if arg_parts.empty? &&
+             (node.message.is_a?(Ident) || node.message.is_a?(Op))
           case node.receiver
           when ArrayLiteral
             parts = node.receiver.contents&.parts || []
 
-            if parts.none? { |part| part.is_a?(ArgStar) } && RubyVisitor.compile(node.receiver).nil?
+            if parts.none? { |part| part.is_a?(ArgStar) } &&
+                 RubyVisitor.compile(node.receiver).nil?
               case node.message.value
               when "max"
                 visit(node.receiver.contents)
@@ -1215,13 +1256,10 @@ module SyntaxTree
           end
         end
 
-        if node.receiver
-          visit(node.receiver)
-        else
-          builder.putself
-        end
+        node.receiver ? visit(node.receiver) : builder.putself
 
         visit(node.arguments)
+        block_iseq = visit(node.block) if node.respond_to?(:block) && node.block
 
         if arg_parts.last.is_a?(ArgBlock)
           flag = node.receiver.nil? ? VM_CALL_FCALL : 0
@@ -1235,7 +1273,12 @@ module SyntaxTree
             flag |= VM_CALL_KW_SPLAT
           end
 
-          builder.send(node.message.value.to_sym, arg_parts.length - 1, flag)
+          builder.send(
+            node.message.value.to_sym,
+            arg_parts.length - 1,
+            flag,
+            block_iseq
+          )
         else
           flag = 0
           arg_parts.each do |arg_part|
@@ -1247,9 +1290,14 @@ module SyntaxTree
             end
           end
 
-          flag |= VM_CALL_ARGS_SIMPLE if flag == 0
+          flag |= VM_CALL_ARGS_SIMPLE if block_iseq.nil? && flag == 0
           flag |= VM_CALL_FCALL if node.receiver.nil?
-          builder.send(node.message.value.to_sym, arg_parts.length, flag)
+          builder.send(
+            node.message.value.to_sym,
+            arg_parts.length,
+            flag,
+            block_iseq
+          )
         end
       end
 
@@ -1291,11 +1339,12 @@ module SyntaxTree
 
       def visit_command(node)
         visit_call(
-          CallNode.new(
+          CommandCall.new(
             receiver: nil,
             operator: nil,
             message: node.message,
             arguments: node.arguments,
+            block: node.block,
             location: node.location
           )
         )
@@ -1303,11 +1352,12 @@ module SyntaxTree
 
       def visit_command_call(node)
         visit_call(
-          CallNode.new(
+          CommandCall.new(
             receiver: node.receiver,
             operator: node.operator,
             message: node.message,
             arguments: node.arguments,
+            block: node.block,
             location: node.location
           )
         )
@@ -1535,6 +1585,19 @@ module SyntaxTree
 
       def visit_label(node)
         builder.putobject(node.accept(RubyVisitor.new))
+      end
+
+      def visit_method_add_block(node)
+        visit_call(
+          CommandCall.new(
+            receiver: node.call.receiver,
+            operator: node.call.operator,
+            message: node.call.message,
+            arguments: node.call.arguments,
+            block: node.block,
+            location: node.location
+          )
+        )
       end
 
       def visit_module(node)
@@ -1898,11 +1961,12 @@ module SyntaxTree
           end
 
         visit_call(
-          CallNode.new(
+          CommandCall.new(
             receiver: node.statement,
             operator: nil,
             message: Ident.new(value: method_id, location: Location.default),
             arguments: nil,
+            block: nil,
             location: Location.default
           )
         )
