@@ -404,8 +404,8 @@ module SyntaxTree
         def serialize(insn)
           case insn[0]
           when :checkkeyword, :getblockparam, :getblockparamproxy,
-               :getlocal_WC_0, :getlocal_WC_1, :getlocal,
-               :setlocal_WC_0, :setlocal_WC_1, :setlocal
+               :getlocal_WC_0, :getlocal_WC_1, :getlocal, :setlocal_WC_0,
+               :setlocal_WC_1, :setlocal
             iseq = self
 
             case insn[0]
@@ -478,6 +478,11 @@ module SyntaxTree
         def branchif(index)
           stack.change_by(-1)
           iseq.push([:branchif, index])
+        end
+
+        def branchnil(index)
+          stack.change_by(-1)
+          iseq.push([:branchnil, index])
         end
 
         def branchunless(index)
@@ -1268,14 +1273,16 @@ module SyntaxTree
 
       def visit_call(node)
         if node.is_a?(CallNode)
-          return visit_call(
-            CommandCall.new(
-              receiver: node.receiver,
-              operator: node.operator,
-              message: node.message,
-              arguments: node.arguments,
-              block: nil,
-              location: node.location
+          return(
+            visit_call(
+              CommandCall.new(
+                receiver: node.receiver,
+                operator: node.operator,
+                message: node.message,
+                arguments: node.arguments,
+                block: nil,
+                location: node.location
+              )
             )
           )
         end
@@ -1319,7 +1326,11 @@ module SyntaxTree
         end
 
         if node.receiver
-          if node.receiver.is_a?(VarRef) && (lookup = current_iseq.local_variable(node.receiver.value.value.to_sym)) && lookup.local.is_a?(LocalTable::BlockLocal)
+          if node.receiver.is_a?(VarRef) &&
+               (
+                 lookup =
+                   current_iseq.local_variable(node.receiver.value.value.to_sym)
+               ) && lookup.local.is_a?(LocalTable::BlockLocal)
             builder.getblockparamproxy(lookup.index, lookup.level)
           else
             visit(node.receiver)
@@ -1327,6 +1338,12 @@ module SyntaxTree
         else
           builder.putself
         end
+
+        branchnil =
+          if node.operator&.value == "&."
+            builder.dup
+            builder.branchnil(-1)
+          end
 
         flag = 0
 
@@ -1361,6 +1378,7 @@ module SyntaxTree
         flag |= VM_CALL_FCALL if node.receiver.nil?
 
         builder.send(node.message.value.to_sym, argc, flag, block_iseq)
+        branchnil[1] = builder.label if branchnil
       end
 
       def visit_case(node)
@@ -1390,11 +1408,7 @@ module SyntaxTree
 
         builder.pop
 
-        if else_clause
-          visit(else_clause)
-        else
-          builder.putnil
-        end
+        else_clause ? visit(else_clause) : builder.putnil
 
         builder.leave
 
@@ -1701,7 +1715,12 @@ module SyntaxTree
 
       def visit_lambda(node)
         lambda_iseq =
-          with_instruction_sequence(:block, "block in #{current_iseq.name}", current_iseq, node) do
+          with_instruction_sequence(
+            :block,
+            "block in #{current_iseq.name}",
+            current_iseq,
+            node
+          ) do
             visit(node.params)
             visit(node.statements)
             builder.leave
@@ -1746,9 +1765,7 @@ module SyntaxTree
 
         builder.expandarray(lookups.length, 0)
 
-        lookups.each do |lookup|
-          builder.setlocal(lookup.index, lookup.level)
-        end
+        lookups.each { |lookup| builder.setlocal(lookup.index, lookup.level) }
       end
 
       def visit_module(node)
@@ -1944,10 +1961,14 @@ module SyntaxTree
         if node.keyword_rest.is_a?(ArgsForward)
           current_iseq.local_table.plain(:*)
           current_iseq.local_table.plain(:&)
-  
-          current_iseq.argument_options[:rest_start] = current_iseq.argument_size
-          current_iseq.argument_options[:block_start] = current_iseq.argument_size + 1
-  
+
+          current_iseq.argument_options[
+            :rest_start
+          ] = current_iseq.argument_size
+          current_iseq.argument_options[
+            :block_start
+          ] = current_iseq.argument_size + 1
+
           current_iseq.argument_size += 2
         elsif node.keyword_rest
           visit(node.keyword_rest)
@@ -2042,12 +2063,21 @@ module SyntaxTree
         builder.putnil
 
         singleton_iseq =
-          with_instruction_sequence(:class, "singleton class", current_iseq, node) do
+          with_instruction_sequence(
+            :class,
+            "singleton class",
+            current_iseq,
+            node
+          ) do
             visit(node.bodystmt)
             builder.leave
           end
 
-        builder.defineclass(:singletonclass, singleton_iseq, VM_DEFINECLASS_TYPE_SINGLETON_CLASS)
+        builder.defineclass(
+          :singletonclass,
+          singleton_iseq,
+          VM_DEFINECLASS_TYPE_SINGLETON_CLASS
+        )
       end
 
       def visit_statements(node)

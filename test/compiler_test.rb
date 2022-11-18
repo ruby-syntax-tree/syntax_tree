@@ -259,6 +259,10 @@ module SyntaxTree
       "Foo::Bar.baz = 1",
       "::Foo::Bar.baz = 1",
       # Control flow
+      "foo&.bar",
+      "foo&.bar(1)",
+      "foo&.bar 1, 2, 3",
+      "foo&.bar {}",
       "foo && bar",
       "foo || bar",
       "if foo then bar end",
