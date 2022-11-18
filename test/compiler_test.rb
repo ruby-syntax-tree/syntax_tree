@@ -2,9 +2,17 @@
 
 return if !defined?(RubyVM::InstructionSequence) || RUBY_VERSION < "3.1"
 require_relative "test_helper"
+require "fiddle"
 
 module SyntaxTree
   class CompilerTest < Minitest::Test
+    ISEQ_LOAD =
+      Fiddle::Function.new(
+        Fiddle::Handle::DEFAULT["rb_iseq_load"],
+        [Fiddle::TYPE_VOIDP] * 3,
+        Fiddle::TYPE_VOIDP
+      )
+
     CASES = [
       # Various literals placed on the stack
       "true",
@@ -130,6 +138,12 @@ module SyntaxTree
       "foo ||= 1",
       "foo <<= 1",
       "foo ^= 1",
+      "foo, bar = 1, 2",
+      "foo, bar, = 1, 2",
+      "foo, bar, baz = 1, 2",
+      "foo, bar = 1, 2, 3",
+      "foo = 1, 2, 3",
+      "foo, * = 1, 2, 3",
       # Instance variables
       "@foo",
       "@foo = 1",
@@ -253,15 +267,27 @@ module SyntaxTree
       "Foo::Bar.baz = 1",
       "::Foo::Bar.baz = 1",
       # Control flow
+      "foo&.bar",
+      "foo&.bar(1)",
+      "foo&.bar 1, 2, 3",
+      "foo&.bar {}",
       "foo && bar",
       "foo || bar",
       "if foo then bar end",
       "if foo then bar else baz end",
       "if foo then bar elsif baz then qux end",
       "foo if bar",
+      "unless foo then bar end",
+      "unless foo then bar else baz end",
+      "foo unless bar",
       "foo while bar",
+      "while foo do bar end",
+      "foo until bar",
+      "until foo do bar end",
       "for i in [1, 2, 3] do i end",
       "foo ? bar : baz",
+      "case foo when bar then 1 end",
+      "case foo when bar then 1 else 2 end",
       # Constructed values
       "foo..bar",
       "foo...bar",
@@ -336,6 +362,7 @@ module SyntaxTree
       "def foo(bar, baz, *qux, quaz); end",
       "def foo(bar, baz, &qux); end",
       "def foo(bar, *baz, &qux); end",
+      "def foo(&qux); qux; end",
       "def foo(&qux); qux.call; end",
       "def foo(bar:); end",
       "def foo(bar:, baz:); end",
@@ -354,6 +381,12 @@ module SyntaxTree
       "def foo(bar: 1, baz: qux, **rest); end",
       "def foo(bar: qux, baz: 1, **rest); end",
       "def foo(bar: baz, qux: qaz, **rest); end",
+      "def foo(...); end",
+      "def foo(bar, ...); end",
+      "def foo(...); bar(...); end",
+      "def foo(bar, ...); baz(1, 2, 3, ...); end",
+      "def self.foo; end",
+      "def foo.bar(baz); end",
       # Class/module definitions
       "module Foo; end",
       "module ::Foo; end",
@@ -371,12 +404,19 @@ module SyntaxTree
       "class ::Foo::Bar < Baz; end",
       "class Foo; class Bar < Baz; end; end",
       "class Foo < baz; end",
+      "class << Object; end",
+      "class << ::String; end",
       # Block
       "foo do end",
       "foo {}",
       "foo do |bar| end",
       "foo { |bar| }",
-      "foo { |bar; baz| }"
+      "foo { |bar; baz| }",
+      "-> do end",
+      "-> {}",
+      "-> (bar) do end",
+      "-> (bar) {}",
+      "-> (bar; baz) { }"
     ]
 
     # These are the combinations of instructions that we're going to test.
@@ -396,6 +436,11 @@ module SyntaxTree
           assert_compiles(source, **options)
         end
       end
+    end
+
+    def test_evaluation
+      assert_evaluates 5, "2 + 3"
+      assert_evaluates 5, "a = 2; b = 3; a + b"
     end
 
     private
@@ -430,6 +475,18 @@ module SyntaxTree
         serialize_iseq(RubyVM::InstructionSequence.compile(source, **options)),
         serialize_iseq(program.accept(Visitor::Compiler.new(**options)))
       )
+    end
+
+    def assert_evaluates(expected, source, **options)
+      program = SyntaxTree.parse(source)
+      compiled = program.accept(Visitor::Compiler.new(**options)).to_a
+
+      # Temporary hack until we get these working.
+      compiled[4][:node_id] = 11
+      compiled[4][:node_ids] = [1, 0, 3, 2, 6, 7, 9, -1]
+
+      iseq = Fiddle.dlunwrap(ISEQ_LOAD.call(Fiddle.dlwrap(compiled), 0, nil))
+      assert_equal expected, iseq.eval
     end
   end
 end
