@@ -453,15 +453,20 @@ module SyntaxTree
       serialized[4].delete(:node_ids)
 
       serialized[13] = serialized[13].filter_map do |insn|
-        next unless insn.is_a?(Array)
-
-        insn.map do |operand|
-          if operand.is_a?(Array) &&
-               operand[0] == "YARVInstructionSequence/SimpleDataFormat"
-            serialize_iseq(operand)
-          else
-            operand
+        case insn
+        when Array
+          insn.map do |operand|
+            if operand.is_a?(Array) &&
+                 operand[0] == Visitor::Compiler::InstructionSequence::MAGIC
+              serialize_iseq(operand)
+            else
+              operand
+            end
           end
+        when Integer, :RUBY_EVENT_LINE
+          # ignore these for now
+        else
+          insn
         end
       end
 

@@ -285,6 +285,8 @@ module SyntaxTree
       # list of instructions along with the metadata pertaining to them. It also
       # functions as a builder for the instruction sequence.
       class InstructionSequence
+        MAGIC = "YARVInstructionSequence/SimpleDataFormat"
+
         # The type of the instruction sequence.
         attr_reader :type
 
@@ -363,7 +365,9 @@ module SyntaxTree
         end
 
         def length
-          insns.sum(&:length)
+          insns.inject(0) do |sum, insn|
+            insn.is_a?(Array) ? sum + insn.length : sum
+          end
         end
 
         def each_child
@@ -378,7 +382,7 @@ module SyntaxTree
           versions = RUBY_VERSION.split(".").map(&:to_i)
 
           [
-            "YARVInstructionSequence/SimpleDataFormat",
+            MAGIC,
             versions[0],
             versions[1],
             1,
@@ -462,7 +466,13 @@ module SyntaxTree
         # This creates a new label at the current length of the instruction
         # sequence. It is used as the operand for jump instructions.
         def label
-          :"label_#{iseq.length}"
+          name = :"label_#{iseq.length}"
+          iseq.insns.last == name ? name : event(name)
+        end
+
+        def event(name)
+          iseq.push(name)
+          name
         end
 
         def adjuststack(number)
@@ -1239,8 +1249,10 @@ module SyntaxTree
           current_iseq,
           node
         ) do
+          builder.event(:RUBY_EVENT_B_CALL)
           visit(node.block_var)
           visit(node.bodystmt)
+          builder.event(:RUBY_EVENT_B_RETURN)
           builder.leave
         end
       end
@@ -1429,7 +1441,9 @@ module SyntaxTree
             current_iseq,
             node
           ) do
+            builder.event(:RUBY_EVENT_CLASS)
             visit(node.bodystmt)
+            builder.event(:RUBY_EVENT_END)
             builder.leave
           end
 
@@ -1500,7 +1514,9 @@ module SyntaxTree
             node
           ) do
             visit(node.params) if node.params
+            builder.event(:RUBY_EVENT_CALL)
             visit(node.bodystmt)
+            builder.event(:RUBY_EVENT_RETURN)
             builder.leave
           end
 
@@ -1628,9 +1644,12 @@ module SyntaxTree
 
             local_variable = current_iseq.local_variable(name)
             builder.setlocal(local_variable.index, local_variable.level)
+
+            builder.event(:RUBY_EVENT_B_CALL)
             builder.nop
 
             visit(node.statements)
+            builder.event(:RUBY_EVENT_B_RETURN)
             builder.leave
           end
 
@@ -1721,8 +1740,10 @@ module SyntaxTree
             current_iseq,
             node
           ) do
+            builder.event(:RUBY_EVENT_B_CALL)
             visit(node.params)
             visit(node.statements)
+            builder.event(:RUBY_EVENT_B_RETURN)
             builder.leave
           end
 
@@ -1777,7 +1798,9 @@ module SyntaxTree
             current_iseq,
             node
           ) do
+            builder.event(:RUBY_EVENT_CLASS)
             visit(node.bodystmt)
+            builder.event(:RUBY_EVENT_END)
             builder.leave
           end
 
@@ -2069,7 +2092,9 @@ module SyntaxTree
             current_iseq,
             node
           ) do
+            builder.event(:RUBY_EVENT_CLASS)
             visit(node.bodystmt)
+            builder.event(:RUBY_EVENT_END)
             builder.leave
           end
 
