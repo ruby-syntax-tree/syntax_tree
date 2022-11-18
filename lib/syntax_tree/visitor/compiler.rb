@@ -336,8 +336,6 @@ module SyntaxTree
             lookup
           elsif parent_iseq
             parent_iseq.local_variable(name, level + 1)
-          else
-            raise "Unknown local variable: #{name}"
           end
         end
 
@@ -388,7 +386,7 @@ module SyntaxTree
             name,
             "<compiled>",
             "<compiled>",
-            1,
+            location.start_line,
             type,
             local_table.names,
             argument_options,
@@ -424,6 +422,8 @@ module SyntaxTree
             # For any instructions that push instruction sequences onto the
             # stack, we need to call #to_a on them as well.
             [insn[0], insn[1], (insn[2].to_a if insn[2])]
+          when :once
+            [insn[0], insn[1].to_a, insn[2]]
           else
             insn
           end
@@ -653,6 +653,11 @@ module SyntaxTree
         def objtostring(method_id, argc, flag)
           stack.change_by(-1 + 1)
           iseq.push([:objtostring, call_data(method_id, argc, flag)])
+        end
+
+        def once(postexe_iseq, inline_storage)
+          stack.change_by(+1)
+          iseq.push([:once, postexe_iseq, inline_storage])
         end
 
         def opt_getconstant_path(names)
@@ -1002,12 +1007,37 @@ module SyntaxTree
         @last_statement = false
       end
 
+      def visit_BEGIN(node)
+        visit(node.statements)
+      end
+
       def visit_CHAR(node)
         if frozen_string_literal
           builder.putobject(node.value[1..])
         else
           builder.putstring(node.value[1..])
         end
+      end
+
+      def visit_END(node)
+        name = "block in #{current_iseq.name}"
+        once_iseq =
+          with_instruction_sequence(:block, name, current_iseq, node) do
+            postexe_iseq =
+              with_instruction_sequence(:block, name, current_iseq, node) do
+                *statements, last_statement = node.statements.body
+                visit_all(statements)
+                with_last_statement { visit(last_statement) }
+                builder.leave
+              end
+
+            builder.putspecialobject(VM_SPECIAL_OBJECT_VMCORE)
+            builder.send(:"core#set_postexe", 0, VM_CALL_FCALL, postexe_iseq)
+            builder.leave
+          end
+
+        builder.once(once_iseq, current_iseq.inline_storage)
+        builder.pop
       end
 
       def visit_alias(node)
@@ -1898,17 +1928,23 @@ module SyntaxTree
           end
         end
 
-        statements =
-          node.statements.body.select do |statement|
-            case statement
-            when Comment, EmbDoc, EndContent, VoidStmt
-              false
-            else
-              true
-            end
+        preexes = []
+        statements = []
+
+        node.statements.body.each do |statement|
+          case statement
+          when Comment, EmbDoc, EndContent, VoidStmt
+            # ignore
+          when BEGINBlock
+            preexes << statement
+          else
+            statements << statement
           end
+        end
 
         with_instruction_sequence(:top, "<compiled>", nil, node) do
+          visit_all(preexes)
+
           if statements.empty?
             builder.putnil
           else
@@ -2144,8 +2180,13 @@ module SyntaxTree
           current_iseq.inline_storage_for(name)
         when Ident
           name = node.value.value.to_sym
-          current_iseq.local_table.plain(name)
-          current_iseq.local_variable(name)
+
+          if (local_variable = current_iseq.local_variable(name))
+            local_variable
+          else
+            current_iseq.local_table.plain(name)
+            current_iseq.local_variable(name)
+          end
         end
       end
 
@@ -2460,12 +2501,13 @@ module SyntaxTree
       # last statement of a scope and allow visit methods to query that
       # information.
       def with_last_statement
+        previous = @last_statement
         @last_statement = true
 
         begin
           yield
         ensure
-          @last_statement = false
+          @last_statement = previous
         end
       end
 
