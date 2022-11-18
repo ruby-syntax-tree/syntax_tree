@@ -1218,13 +1218,26 @@ module SyntaxTree
       end
 
       def visit_call(node)
+        if node.is_a?(CallNode)
+          return visit_call(
+            CommandCall.new(
+              receiver: node.receiver,
+              operator: node.operator,
+              message: node.message,
+              arguments: node.arguments,
+              block: nil,
+              location: node.location
+            )
+          )
+        end
+
         arg_parts = argument_parts(node.arguments)
+        argc = arg_parts.length
 
         # First we're going to check if we're calling a method on an array
         # literal without any arguments. In that case there are some
         # specializations we might be able to perform.
-        if arg_parts.empty? &&
-             (node.message.is_a?(Ident) || node.message.is_a?(Op))
+        if argc == 0 && (node.message.is_a?(Ident) || node.message.is_a?(Op))
           case node.receiver
           when ArrayLiteral
             parts = node.receiver.contents&.parts || []
@@ -1257,48 +1270,39 @@ module SyntaxTree
         end
 
         node.receiver ? visit(node.receiver) : builder.putself
+        flag = 0
 
-        visit(node.arguments)
-        block_iseq = visit(node.block) if node.respond_to?(:block) && node.block
-
-        if arg_parts.last.is_a?(ArgBlock)
-          flag = node.receiver.nil? ? VM_CALL_FCALL : 0
-          flag |= VM_CALL_ARGS_BLOCKARG
-
-          if arg_parts.any? { |part| part.is_a?(ArgStar) }
+        arg_parts.each do |arg_part|
+          case arg_part
+          when ArgBlock
+            argc -= 1
+            flag |= VM_CALL_ARGS_BLOCKARG
+            visit(arg_part)
+          when ArgStar
             flag |= VM_CALL_ARGS_SPLAT
-          end
+            visit(arg_part)
+          when ArgsForward
+            flag |= VM_CALL_ARGS_SPLAT | VM_CALL_ARGS_BLOCKARG
 
-          if arg_parts.any? { |part| part.is_a?(BareAssocHash) }
+            lookup = current_iseq.local_table.find(:*, 0)
+            builder.getlocal(lookup.index, lookup.level)
+            builder.splatarray(arg_parts.length != 1)
+
+            lookup = current_iseq.local_table.find(:&, 0)
+            builder.getblockparamproxy(lookup.index, lookup.level)
+          when BareAssocHash
             flag |= VM_CALL_KW_SPLAT
+            visit(arg_part)
+          else
+            visit(arg_part)
           end
-
-          builder.send(
-            node.message.value.to_sym,
-            arg_parts.length - 1,
-            flag,
-            block_iseq
-          )
-        else
-          flag = 0
-          arg_parts.each do |arg_part|
-            case arg_part
-            when ArgStar
-              flag |= VM_CALL_ARGS_SPLAT
-            when BareAssocHash
-              flag |= VM_CALL_KW_SPLAT
-            end
-          end
-
-          flag |= VM_CALL_ARGS_SIMPLE if block_iseq.nil? && flag == 0
-          flag |= VM_CALL_FCALL if node.receiver.nil?
-          builder.send(
-            node.message.value.to_sym,
-            arg_parts.length,
-            flag,
-            block_iseq
-          )
         end
+
+        block_iseq = visit(node.block) if node.block
+        flag |= VM_CALL_ARGS_SIMPLE if block_iseq.nil? && flag == 0
+        flag |= VM_CALL_FCALL if node.receiver.nil?
+
+        builder.send(node.message.value.to_sym, argc, flag, block_iseq)
       end
 
       def visit_class(node)
@@ -1781,7 +1785,18 @@ module SyntaxTree
           checkkeywords.each { |checkkeyword| checkkeyword[1] = lookup.index }
         end
 
-        visit(node.keyword_rest) if node.keyword_rest
+        if node.keyword_rest.is_a?(ArgsForward)
+          current_iseq.local_table.plain(:*)
+          current_iseq.local_table.plain(:&)
+  
+          current_iseq.argument_options[:rest_start] = current_iseq.argument_size
+          current_iseq.argument_options[:block_start] = current_iseq.argument_size + 1
+  
+          current_iseq.argument_size += 2
+        elsif node.keyword_rest
+          visit(node.keyword_rest)
+        end
+
         visit(node.block) if node.block
       end
 
@@ -2122,7 +2137,11 @@ module SyntaxTree
         when Args
           node.parts
         when ArgParen
-          node.arguments.parts
+          if node.arguments.is_a?(ArgsForward)
+            [node.arguments]
+          else
+            node.arguments.parts
+          end
         when Paren
           node.contents.parts
         end
