@@ -378,6 +378,8 @@ module SyntaxTree
       "class ::Foo::Bar < Baz; end",
       "class Foo; class Bar < Baz; end; end",
       "class Foo < baz; end",
+      "class << Object; end",
+      "class << ::String; end",
       # Block
       "foo do end",
       "foo {}",

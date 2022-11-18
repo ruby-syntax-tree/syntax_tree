@@ -1876,6 +1876,19 @@ module SyntaxTree
         current_iseq.argument_size += 1
       end
 
+      def visit_sclass(node)
+        visit(node.target)
+        builder.putnil
+
+        singleton_iseq =
+          with_instruction_sequence(:class, "singleton class", current_iseq, node) do
+            visit(node.bodystmt)
+            builder.leave
+          end
+
+        builder.defineclass(:singletonclass, singleton_iseq, VM_DEFINECLASS_TYPE_SINGLETON_CLASS)
+      end
+
       def visit_statements(node)
         statements =
           node.body.select do |statement|
