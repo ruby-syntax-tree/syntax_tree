@@ -94,6 +94,10 @@ module SyntaxTree
           node.value.chomp(":").to_sym
         end
 
+        def visit_mrhs(node)
+          visit_all(node.parts)
+        end
+
         def visit_qsymbols(node)
           node.elements.map { |element| visit(element).to_sym }
         end
@@ -534,6 +538,11 @@ module SyntaxTree
         def dupn(number)
           stack.change_by(+number)
           iseq.push([:dupn, number])
+        end
+
+        def expandarray(length, flag)
+          stack.change_by(-1 + length)
+          iseq.push([:expandarray, length, flag])
         end
 
         def getblockparam(index, level)
@@ -1706,6 +1715,12 @@ module SyntaxTree
         visit_block_var(node)
       end
 
+      def visit_massign(node)
+        visit(node.value)
+        builder.dup
+        visit(node.target)
+      end
+
       def visit_method_add_block(node)
         visit_call(
           CommandCall.new(
@@ -1717,6 +1732,23 @@ module SyntaxTree
             location: node.location
           )
         )
+      end
+
+      def visit_mlhs(node)
+        lookups = []
+
+        node.parts.each do |part|
+          case part
+          when VarField
+            lookups << visit(part)
+          end
+        end
+
+        builder.expandarray(lookups.length, 0)
+
+        lookups.each do |lookup|
+          builder.setlocal(lookup.index, lookup.level)
+        end
       end
 
       def visit_module(node)
@@ -1747,6 +1779,15 @@ module SyntaxTree
 
         builder.putnil
         builder.defineclass(name, module_iseq, flags)
+      end
+
+      def visit_mrhs(node)
+        if (compiled = RubyVisitor.compile(node))
+          builder.duparray(compiled)
+        else
+          visit_all(node.parts)
+          builder.newarray(node.parts.length)
+        end
       end
 
       def visit_not(node)
