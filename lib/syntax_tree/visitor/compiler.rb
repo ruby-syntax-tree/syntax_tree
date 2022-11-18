@@ -209,7 +209,7 @@ module SyntaxTree
       class LocalTable
         # A local representing a block passed into the current instruction
         # sequence.
-        class BlockProxyLocal
+        class BlockLocal
           attr_reader :name
 
           def initialize(name)
@@ -260,9 +260,9 @@ module SyntaxTree
           locals.length
         end
 
-        # Add a BlockProxyLocal to the local table.
-        def block_proxy(name)
-          locals << BlockProxyLocal.new(name) unless has?(name)
+        # Add a BlockLocal to the local table.
+        def block(name)
+          locals << BlockLocal.new(name) unless has?(name)
         end
 
         # Add a PlainLocal to the local table.
@@ -401,15 +401,15 @@ module SyntaxTree
 
         def serialize(insn)
           case insn[0]
-          when :checkkeyword, :getblockparamproxy, :getlocal_WC_0,
-               :getlocal_WC_1, :getlocal, :setlocal_WC_0, :setlocal_WC_1,
-               :setlocal
+          when :checkkeyword, :getblockparam, :getblockparamproxy,
+               :getlocal_WC_0, :getlocal_WC_1, :getlocal,
+               :setlocal_WC_0, :setlocal_WC_1, :setlocal
             iseq = self
 
             case insn[0]
             when :getlocal_WC_1, :setlocal_WC_1
               iseq = iseq.parent_iseq
-            when :getblockparamproxy, :getlocal, :setlocal
+            when :getblockparam, :getblockparamproxy, :getlocal, :setlocal
               insn[2].times { iseq = iseq.parent_iseq }
             end
 
@@ -534,6 +534,11 @@ module SyntaxTree
         def dupn(number)
           stack.change_by(+number)
           iseq.push([:dupn, number])
+        end
+
+        def getblockparam(index, level)
+          stack.change_by(+1)
+          iseq.push([:getblockparam, index, level])
         end
 
         def getblockparamproxy(index, level)
@@ -1214,7 +1219,7 @@ module SyntaxTree
 
       def visit_blockarg(node)
         current_iseq.argument_options[:block_start] = current_iseq.argument_size
-        current_iseq.local_table.block_proxy(node.name.value.to_sym)
+        current_iseq.local_table.block(node.name.value.to_sym)
         current_iseq.argument_size += 1
       end
 
@@ -1274,7 +1279,16 @@ module SyntaxTree
           end
         end
 
-        node.receiver ? visit(node.receiver) : builder.putself
+        if node.receiver
+          if node.receiver.is_a?(VarRef) && (lookup = current_iseq.local_variable(node.receiver.value.value.to_sym)) && lookup.local.is_a?(LocalTable::BlockLocal)
+            builder.getblockparamproxy(lookup.index, lookup.level)
+          else
+            visit(node.receiver)
+          end
+        else
+          builder.putself
+        end
+
         flag = 0
 
         arg_parts.each do |arg_part|
@@ -2105,8 +2119,8 @@ module SyntaxTree
           lookup = current_iseq.local_variable(node.value.value.to_sym)
 
           case lookup.local
-          when LocalTable::BlockProxyLocal
-            builder.getblockparamproxy(lookup.index, lookup.level)
+          when LocalTable::BlockLocal
+            builder.getblockparam(lookup.index, lookup.level)
           when LocalTable::PlainLocal
             builder.getlocal(lookup.index, lookup.level)
           end
