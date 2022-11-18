@@ -1324,6 +1324,49 @@ module SyntaxTree
         builder.send(node.message.value.to_sym, argc, flag, block_iseq)
       end
 
+      def visit_case(node)
+        visit(node.value) if node.value
+
+        clauses = []
+        else_clause = nil
+
+        current = node.consequent
+
+        while current
+          clauses << current
+
+          if (current = current.consequent).is_a?(Else)
+            else_clause = current
+            break
+          end
+        end
+
+        branches =
+          clauses.map do |clause|
+            visit(clause.arguments)
+            builder.topn(1)
+            builder.send(:===, 1, VM_CALL_FCALL | VM_CALL_ARGS_SIMPLE)
+            [clause, builder.branchif(:label_00)]
+          end
+
+        builder.pop
+
+        if else_clause
+          visit(else_clause)
+        else
+          builder.putnil
+        end
+
+        builder.leave
+
+        branches.each_with_index do |(clause, branchif), index|
+          builder.leave if index != 0
+          branchif[1] = builder.label
+          builder.pop
+          visit(clause)
+        end
+      end
+
       def visit_class(node)
         name = node.constant.constant.value.to_sym
         class_iseq =
@@ -2146,6 +2189,10 @@ module SyntaxTree
 
         flag = VM_CALL_FCALL | VM_CALL_VCALL | VM_CALL_ARGS_SIMPLE
         builder.send(node.value.value.to_sym, 0, flag)
+      end
+
+      def visit_when(node)
+        visit(node.statements)
       end
 
       def visit_while(node)

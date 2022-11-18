@@ -268,6 +268,8 @@ module SyntaxTree
       "until foo do bar end",
       "for i in [1, 2, 3] do i end",
       "foo ? bar : baz",
+      "case foo when bar then 1 end",
+      "case foo when bar then 1 else 2 end",
       # Constructed values
       "foo..bar",
       "foo...bar",
