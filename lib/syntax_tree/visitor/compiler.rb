@@ -1636,8 +1636,8 @@ module SyntaxTree
         elsif node.parts.length == 1 && node.parts.first.is_a?(TStringContent)
           visit(node.parts.first)
         else
-          visit_string_parts(node)
-          builder.concatstrings(node.parts.length)
+          length = visit_string_parts(node)
+          builder.concatstrings(length)
         end
       end
 
@@ -2026,10 +2026,9 @@ module SyntaxTree
       def visit_regexp_literal(node)
         builder.putobject(node.accept(RubyVisitor.new))
       rescue RubyVisitor::CompilationError
-        visit_string_parts(node)
-
         flags = RubyVisitor.new.visit_regexp_literal_flags(node)
-        builder.toregexp(flags, node.parts.length)
+        length = visit_string_parts(node)
+        builder.toregexp(flags, length)
       end
 
       def visit_rest_param(node)
@@ -2086,8 +2085,8 @@ module SyntaxTree
         if node.parts.length == 1 && node.parts.first.is_a?(TStringContent)
           visit(node.parts.first)
         else
-          visit_string_parts(node)
-          builder.concatstrings(node.parts.length)
+          length = visit_string_parts(node)
+          builder.concatstrings(length)
         end
       end
 
@@ -2114,13 +2113,7 @@ module SyntaxTree
                element.parts.first.is_a?(TStringContent)
             builder.putobject(element.parts.first.value.to_sym)
           else
-            length = element.parts.length
-            unless element.parts.first.is_a?(TStringContent)
-              builder.putobject("")
-              length += 1
-            end
-
-            visit_string_parts(element)
+            length = visit_string_parts(element)
             builder.concatstrings(length)
             builder.intern
           end
@@ -2299,13 +2292,7 @@ module SyntaxTree
         if node.parts.length == 1 && node.parts.first.is_a?(TStringContent)
           visit(node.parts.first)
         else
-          length = node.parts.length
-          unless node.parts.first.is_a?(TStringContent)
-            builder.putobject("")
-            length += 1
-          end
-
-          visit_string_parts(node)
+          length = visit_string_parts(node)
           builder.concatstrings(length)
         end
       end
@@ -2330,8 +2317,8 @@ module SyntaxTree
 
       def visit_xstring_literal(node)
         builder.putself
-        visit_string_parts(node)
-        builder.concatstrings(node.parts.length) if node.parts.length > 1
+        length = visit_string_parts(node)
+        builder.concatstrings(node.parts.length) if length > 1
         builder.send(:`, 1, VM_CALL_FCALL | VM_CALL_ARGS_SIMPLE)
       end
 
@@ -2493,6 +2480,13 @@ module SyntaxTree
       # heredocs, etc. This method will visit all the parts of a string within
       # those containers.
       def visit_string_parts(node)
+        length = 0
+
+        unless node.parts.first.is_a?(TStringContent)
+          builder.putobject("")
+          length += 1
+        end
+
         node.parts.each do |part|
           case part
           when StringDVar
@@ -2504,7 +2498,11 @@ module SyntaxTree
           when TStringContent
             builder.putobject(part.accept(RubyVisitor.new))
           end
+
+          length += 1
         end
+
+        length
       end
 
       # The current instruction sequence that we're compiling is always stored
