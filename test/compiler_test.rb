@@ -260,6 +260,9 @@ module SyntaxTree
       "if foo then bar elsif baz then qux end",
       "foo if bar",
       "foo while bar",
+      "while foo do bar end",
+      "foo until bar",
+      "until foo do bar end",
       "for i in [1, 2, 3] do i end",
       "foo ? bar : baz",
       # Constructed values

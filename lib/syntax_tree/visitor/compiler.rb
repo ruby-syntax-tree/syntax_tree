@@ -1997,6 +1997,24 @@ module SyntaxTree
         end
       end
 
+      def visit_until(node)
+        jumps = []
+
+        jumps << builder.jump(-1)
+        builder.putnil
+        builder.pop
+        jumps << builder.jump(-1)
+
+        label = builder.label
+        visit(node.statements)
+        builder.pop
+        jumps.each { |jump| jump[1] = builder.label }
+
+        visit(node.predicate)
+        builder.branchunless(label)
+        builder.putnil if last_statement?
+      end
+
       def visit_var_field(node)
         case node.value
         when CVar, IVar
