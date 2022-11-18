@@ -2,9 +2,17 @@
 
 return if !defined?(RubyVM::InstructionSequence) || RUBY_VERSION < "3.1"
 require_relative "test_helper"
+require "fiddle"
 
 module SyntaxTree
   class CompilerTest < Minitest::Test
+    ISEQ_LOAD =
+      Fiddle::Function.new(
+        Fiddle::Handle::DEFAULT["rb_iseq_load"],
+        [Fiddle::TYPE_VOIDP] * 3,
+        Fiddle::TYPE_VOIDP
+      )
+
     CASES = [
       # Various literals placed on the stack
       "true",
@@ -430,6 +438,11 @@ module SyntaxTree
       end
     end
 
+    def test_evaluation
+      assert_evaluates 5, "2 + 3"
+      assert_evaluates 5, "a = 2; b = 3; a + b"
+    end
+
     private
 
     def serialize_iseq(iseq)
@@ -462,6 +475,18 @@ module SyntaxTree
         serialize_iseq(RubyVM::InstructionSequence.compile(source, **options)),
         serialize_iseq(program.accept(Visitor::Compiler.new(**options)))
       )
+    end
+
+    def assert_evaluates(expected, source, **options)
+      program = SyntaxTree.parse(source)
+      compiled = program.accept(Visitor::Compiler.new(**options)).to_a
+
+      # Temporary hack until we get these working.
+      compiled[4][:node_id] = 11
+      compiled[4][:node_ids] = [1, 0, 3, 2, 6, 7, 9, -1]
+
+      iseq = Fiddle.dlunwrap(ISEQ_LOAD.call(Fiddle.dlwrap(compiled), 0, nil))
+      assert_equal expected, iseq.eval
     end
   end
 end
