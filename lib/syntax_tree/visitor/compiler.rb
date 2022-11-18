@@ -1591,6 +1591,22 @@ module SyntaxTree
         builder.putobject(node.accept(RubyVisitor.new))
       end
 
+      def visit_lambda(node)
+        lambda_iseq =
+          with_instruction_sequence(:block, "block in #{current_iseq.name}", current_iseq, node) do
+            visit(node.params)
+            visit(node.statements)
+            builder.leave
+          end
+
+        builder.putspecialobject(VM_SPECIAL_OBJECT_VMCORE)
+        builder.send(:lambda, 0, VM_CALL_FCALL, lambda_iseq)
+      end
+
+      def visit_lambda_var(node)
+        visit_block_var(node)
+      end
+
       def visit_method_add_block(node)
         visit_call(
           CommandCall.new(

@@ -385,7 +385,12 @@ module SyntaxTree
       "foo {}",
       "foo do |bar| end",
       "foo { |bar| }",
-      "foo { |bar; baz| }"
+      "foo { |bar; baz| }",
+      "-> do end",
+      "-> {}",
+      "-> (bar) do end",
+      "-> (bar) {}",
+      "-> (bar; baz) { }"
     ]
 
     # These are the combinations of instructions that we're going to test.
