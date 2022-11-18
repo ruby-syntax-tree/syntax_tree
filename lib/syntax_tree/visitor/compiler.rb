@@ -418,7 +418,7 @@ module SyntaxTree
             [insn[0], iseq.local_table.offset(insn[1]), *insn[2..]]
           when :defineclass
             [insn[0], insn[1], insn[2].to_a, insn[3]]
-          when :definemethod
+          when :definemethod, :definesmethod
             [insn[0], insn[1], insn[2].to_a]
           when :send
             # For any instructions that push instruction sequences onto the
@@ -509,6 +509,11 @@ module SyntaxTree
         def definemethod(name, method_iseq)
           stack.change_by(0)
           iseq.push([:definemethod, name, method_iseq])
+        end
+
+        def definesmethod(name, method_iseq)
+          stack.change_by(-1)
+          iseq.push([:definesmethod, name, method_iseq])
         end
 
         def dup
@@ -1390,7 +1395,14 @@ module SyntaxTree
           end
 
         name = node.name.value.to_sym
-        builder.definemethod(name, method_iseq)
+
+        if node.target
+          visit(node.target)
+          builder.definesmethod(name, method_iseq)
+        else
+          builder.definemethod(name, method_iseq)
+        end
+
         builder.putobject(name)
       end
 

@@ -364,6 +364,8 @@ module SyntaxTree
       "def foo(bar, ...); end",
       "def foo(...); bar(...); end",
       "def foo(bar, ...); baz(1, 2, 3, ...); end",
+      "def self.foo; end",
+      "def foo.bar(baz); end",
       # Class/module definitions
       "module Foo; end",
       "module ::Foo; end",
