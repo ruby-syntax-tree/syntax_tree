@@ -2026,6 +2026,30 @@ module SyntaxTree
         end
       end
 
+      def visit_unless(node)
+        visit(node.predicate)
+        branchunless = builder.branchunless(-1)
+        node.consequent ? visit(node.consequent) : builder.putnil
+
+        if last_statement?
+          builder.leave
+          branchunless[1] = builder.label
+
+          visit(node.statements)
+        else
+          builder.pop
+
+          if node.consequent
+            jump = builder.jump(-1)
+            branchunless[1] = builder.label
+            visit(node.consequent)
+            jump[1] = builder.label
+          else
+            branchunless[1] = builder.label
+          end
+        end
+      end
+
       def visit_until(node)
         jumps = []
 
