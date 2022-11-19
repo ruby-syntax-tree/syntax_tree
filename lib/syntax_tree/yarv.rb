@@ -288,6 +288,9 @@ module SyntaxTree
 
         iseq.insns.each do |insn|
           case insn[0]
+          when :getlocal_WC_0
+            value = iseq.local_table.locals[insn[1]].name.to_s
+            stack << VarRef.new(value: Ident.new(value: value, location: Location.default), location: Location.default)
           when :leave
             stack << ReturnNode.new(arguments: Args.new(parts: [stack.pop], location: Location.default), location: Location.default)
           when :opt_mult
@@ -309,6 +312,9 @@ module SyntaxTree
             end
           when :putobject_INT2FIX_1_
             stack << Int.new(value: "1", location: Location.default)
+          when :setlocal_WC_0
+            target = VarField.new(value: Ident.new(value: iseq.local_table.locals[insn[1]].name.to_s, location: Location.default), location: Location.default)
+            stack << Assign.new(target: target, value: stack.pop, location: Location.default)
           else
             raise "Unknown instruction #{insn[0]}"
           end
