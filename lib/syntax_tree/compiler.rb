@@ -192,11 +192,7 @@ module SyntaxTree
                 :specialized_instruction
 
     # The current instruction sequence that is being compiled.
-    attr_reader :current_iseq
-
-    # This is the current builder that is being used to construct the current
-    # instruction sequence.
-    attr_reader :builder
+    attr_reader :iseq
 
     # A boolean to track if we're currently compiling the last statement
     # within a set of statements. This information is necessary to determine
@@ -212,8 +208,7 @@ module SyntaxTree
       @operands_unification = operands_unification
       @specialized_instruction = specialized_instruction
 
-      @current_iseq = nil
-      @builder = nil
+      @iseq = nil
       @last_statement = false
     end
 
@@ -223,45 +218,45 @@ module SyntaxTree
 
     def visit_CHAR(node)
       if frozen_string_literal
-        builder.putobject(node.value[1..])
+        iseq.putobject(node.value[1..])
       else
-        builder.putstring(node.value[1..])
+        iseq.putstring(node.value[1..])
       end
     end
 
     def visit_END(node)
-      name = "block in #{current_iseq.name}"
+      name = "block in #{iseq.name}"
       once_iseq =
-        with_instruction_sequence(:block, name, current_iseq, node) do
+        with_instruction_sequence(:block, name, node) do
           postexe_iseq =
-            with_instruction_sequence(:block, name, current_iseq, node) do
+            with_instruction_sequence(:block, name, node) do
               *statements, last_statement = node.statements.body
               visit_all(statements)
               with_last_statement { visit(last_statement) }
-              builder.leave
+              iseq.leave
             end
 
-          builder.putspecialobject(YARV::VM_SPECIAL_OBJECT_VMCORE)
-          builder.send(:"core#set_postexe", 0, YARV::VM_CALL_FCALL, postexe_iseq)
-          builder.leave
+          iseq.putspecialobject(YARV::VM_SPECIAL_OBJECT_VMCORE)
+          iseq.send(:"core#set_postexe", 0, YARV::VM_CALL_FCALL, postexe_iseq)
+          iseq.leave
         end
 
-      builder.once(once_iseq, current_iseq.inline_storage)
-      builder.pop
+      iseq.once(once_iseq, iseq.inline_storage)
+      iseq.pop
     end
 
     def visit_alias(node)
-      builder.putspecialobject(YARV::VM_SPECIAL_OBJECT_VMCORE)
-      builder.putspecialobject(YARV::VM_SPECIAL_OBJECT_CBASE)
+      iseq.putspecialobject(YARV::VM_SPECIAL_OBJECT_VMCORE)
+      iseq.putspecialobject(YARV::VM_SPECIAL_OBJECT_CBASE)
       visit(node.left)
       visit(node.right)
-      builder.send(:"core#set_method_alias", 3, YARV::VM_CALL_ARGS_SIMPLE)
+      iseq.send(:"core#set_method_alias", 3, YARV::VM_CALL_ARGS_SIMPLE)
     end
 
     def visit_aref(node)
       visit(node.collection)
       visit(node.index)
-      builder.send(:[], 1, YARV::VM_CALL_ARGS_SIMPLE)
+      iseq.send(:[], 1, YARV::VM_CALL_ARGS_SIMPLE)
     end
 
     def visit_arg_block(node)
@@ -274,7 +269,7 @@ module SyntaxTree
 
     def visit_arg_star(node)
       visit(node.value)
-      builder.splatarray(false)
+      iseq.splatarray(false)
     end
 
     def visit_args(node)
@@ -283,99 +278,97 @@ module SyntaxTree
 
     def visit_array(node)
       if (compiled = RubyVisitor.compile(node))
-        builder.duparray(compiled)
+        iseq.duparray(compiled)
       else
         length = 0
 
         node.contents.parts.each do |part|
           if part.is_a?(ArgStar)
             if length > 0
-              builder.newarray(length)
+              iseq.newarray(length)
               length = 0
             end
 
             visit(part.value)
-            builder.concatarray
+            iseq.concatarray
           else
             visit(part)
             length += 1
           end
         end
 
-        builder.newarray(length) if length > 0
-        if length > 0 && length != node.contents.parts.length
-          builder.concatarray
-        end
+        iseq.newarray(length) if length > 0
+        iseq.concatarray if length > 0 && length != node.contents.parts.length
       end
     end
 
     def visit_assign(node)
       case node.target
       when ARefField
-        builder.putnil
+        iseq.putnil
         visit(node.target.collection)
         visit(node.target.index)
         visit(node.value)
-        builder.setn(3)
-        builder.send(:[]=, 2, YARV::VM_CALL_ARGS_SIMPLE)
-        builder.pop
+        iseq.setn(3)
+        iseq.send(:[]=, 2, YARV::VM_CALL_ARGS_SIMPLE)
+        iseq.pop
       when ConstPathField
         names = constant_names(node.target)
         name = names.pop
 
         if RUBY_VERSION >= "3.2"
-          builder.opt_getconstant_path(names)
+          iseq.opt_getconstant_path(names)
           visit(node.value)
-          builder.swap
-          builder.topn(1)
-          builder.swap
-          builder.setconstant(name)
+          iseq.swap
+          iseq.topn(1)
+          iseq.swap
+          iseq.setconstant(name)
         else
           visit(node.value)
-          builder.dup if last_statement?
-          builder.opt_getconstant_path(names)
-          builder.setconstant(name)
+          iseq.dup if last_statement?
+          iseq.opt_getconstant_path(names)
+          iseq.setconstant(name)
         end
       when Field
-        builder.putnil
+        iseq.putnil
         visit(node.target)
         visit(node.value)
-        builder.setn(2)
-        builder.send(:"#{node.target.name.value}=", 1, YARV::VM_CALL_ARGS_SIMPLE)
-        builder.pop
+        iseq.setn(2)
+        iseq.send(:"#{node.target.name.value}=", 1, YARV::VM_CALL_ARGS_SIMPLE)
+        iseq.pop
       when TopConstField
         name = node.target.constant.value.to_sym
 
         if RUBY_VERSION >= "3.2"
-          builder.putobject(Object)
+          iseq.putobject(Object)
           visit(node.value)
-          builder.swap
-          builder.topn(1)
-          builder.swap
-          builder.setconstant(name)
+          iseq.swap
+          iseq.topn(1)
+          iseq.swap
+          iseq.setconstant(name)
         else
           visit(node.value)
-          builder.dup if last_statement?
-          builder.putobject(Object)
-          builder.setconstant(name)
+          iseq.dup if last_statement?
+          iseq.putobject(Object)
+          iseq.setconstant(name)
         end
       when VarField
         visit(node.value)
-        builder.dup if last_statement?
+        iseq.dup if last_statement?
 
         case node.target.value
         when Const
-          builder.putspecialobject(YARV::VM_SPECIAL_OBJECT_CONST_BASE)
-          builder.setconstant(node.target.value.value.to_sym)
+          iseq.putspecialobject(YARV::VM_SPECIAL_OBJECT_CONST_BASE)
+          iseq.setconstant(node.target.value.value.to_sym)
         when CVar
-          builder.setclassvariable(node.target.value.value.to_sym)
+          iseq.setclassvariable(node.target.value.value.to_sym)
         when GVar
-          builder.setglobal(node.target.value.value.to_sym)
+          iseq.setglobal(node.target.value.value.to_sym)
         when Ident
           local_variable = visit(node.target)
-          builder.setlocal(local_variable.index, local_variable.level)
+          iseq.setlocal(local_variable.index, local_variable.level)
         when IVar
-          builder.setinstancevariable(node.target.value.value.to_sym)
+          iseq.setinstancevariable(node.target.value.value.to_sym)
         end
       end
     end
@@ -390,12 +383,12 @@ module SyntaxTree
     end
 
     def visit_backref(node)
-      builder.getspecial(1, 2 * node.value[1..].to_i)
+      iseq.getspecial(1, 2 * node.value[1..].to_i)
     end
 
     def visit_bare_assoc_hash(node)
       if (compiled = RubyVisitor.compile(node))
-        builder.duphash(compiled)
+        iseq.duphash(compiled)
       else
         visit_all(node.assocs)
       end
@@ -405,41 +398,36 @@ module SyntaxTree
       case node.operator
       when :"&&"
         visit(node.left)
-        builder.dup
+        iseq.dup
 
-        branchunless = builder.branchunless(-1)
-        builder.pop
+        branchunless = iseq.branchunless(-1)
+        iseq.pop
 
         visit(node.right)
-        branchunless[1] = builder.label
+        branchunless[1] = iseq.label
       when :"||"
         visit(node.left)
-        builder.dup
+        iseq.dup
 
-        branchif = builder.branchif(-1)
-        builder.pop
+        branchif = iseq.branchif(-1)
+        iseq.pop
 
         visit(node.right)
-        branchif[1] = builder.label
+        branchif[1] = iseq.label
       else
         visit(node.left)
         visit(node.right)
-        builder.send(node.operator, 1, YARV::VM_CALL_ARGS_SIMPLE)
+        iseq.send(node.operator, 1, YARV::VM_CALL_ARGS_SIMPLE)
       end
     end
 
     def visit_block(node)
-      with_instruction_sequence(
-        :block,
-        "block in #{current_iseq.name}",
-        current_iseq,
-        node
-      ) do
-        builder.event(:RUBY_EVENT_B_CALL)
+      with_instruction_sequence(:block, "block in #{iseq.name}", node) do
+        iseq.event(:RUBY_EVENT_B_CALL)
         visit(node.block_var)
         visit(node.bodystmt)
-        builder.event(:RUBY_EVENT_B_RETURN)
-        builder.leave
+        iseq.event(:RUBY_EVENT_B_RETURN)
+        iseq.leave
       end
     end
 
@@ -447,22 +435,20 @@ module SyntaxTree
       params = node.params
 
       if params.requireds.length == 1 && params.optionals.empty? &&
-            !params.rest && params.posts.empty? && params.keywords.empty? &&
-            !params.keyword_rest && !params.block
-        current_iseq.argument_options[:ambiguous_param0] = true
+           !params.rest && params.posts.empty? && params.keywords.empty? &&
+           !params.keyword_rest && !params.block
+        iseq.argument_options[:ambiguous_param0] = true
       end
 
       visit(node.params)
 
-      node.locals.each do |local|
-        current_iseq.local_table.plain(local.value.to_sym)
-      end
+      node.locals.each { |local| iseq.local_table.plain(local.value.to_sym) }
     end
 
     def visit_blockarg(node)
-      current_iseq.argument_options[:block_start] = current_iseq.argument_size
-      current_iseq.local_table.block(node.name.value.to_sym)
-      current_iseq.argument_size += 1
+      iseq.argument_options[:block_start] = iseq.argument_size
+      iseq.local_table.block(node.name.value.to_sym)
+      iseq.argument_size += 1
     end
 
     def visit_bodystmt(node)
@@ -497,15 +483,15 @@ module SyntaxTree
           parts = node.receiver.contents&.parts || []
 
           if parts.none? { |part| part.is_a?(ArgStar) } &&
-                RubyVisitor.compile(node.receiver).nil?
+               RubyVisitor.compile(node.receiver).nil?
             case node.message.value
             when "max"
               visit(node.receiver.contents)
-              builder.opt_newarray_max(parts.length)
+              iseq.opt_newarray_max(parts.length)
               return
             when "min"
               visit(node.receiver.contents)
-              builder.opt_newarray_min(parts.length)
+              iseq.opt_newarray_min(parts.length)
               return
             end
           end
@@ -513,10 +499,10 @@ module SyntaxTree
           if RubyVisitor.compile(node.receiver).nil?
             case node.message.value
             when "-@"
-              builder.opt_str_uminus(node.receiver.parts.first.value)
+              iseq.opt_str_uminus(node.receiver.parts.first.value)
               return
             when "freeze"
-              builder.opt_str_freeze(node.receiver.parts.first.value)
+              iseq.opt_str_freeze(node.receiver.parts.first.value)
               return
             end
           end
@@ -525,10 +511,10 @@ module SyntaxTree
 
       if node.receiver
         if node.receiver.is_a?(VarRef)
-          lookup = current_iseq.local_variable(node.receiver.value.value.to_sym)
+          lookup = iseq.local_variable(node.receiver.value.value.to_sym)
 
           if lookup.local.is_a?(YARV::LocalTable::BlockLocal)
-            builder.getblockparamproxy(lookup.index, lookup.level)
+            iseq.getblockparamproxy(lookup.index, lookup.level)
           else
             visit(node.receiver)
           end
@@ -536,13 +522,13 @@ module SyntaxTree
           visit(node.receiver)
         end
       else
-        builder.putself
+        iseq.putself
       end
 
       branchnil =
         if node.operator&.value == "&."
-          builder.dup
-          builder.branchnil(-1)
+          iseq.dup
+          iseq.branchnil(-1)
         end
 
       flag = 0
@@ -559,12 +545,12 @@ module SyntaxTree
         when ArgsForward
           flag |= YARV::VM_CALL_ARGS_SPLAT | YARV::VM_CALL_ARGS_BLOCKARG
 
-          lookup = current_iseq.local_table.find(:*, 0)
-          builder.getlocal(lookup.index, lookup.level)
-          builder.splatarray(arg_parts.length != 1)
+          lookup = iseq.local_table.find(:*, 0)
+          iseq.getlocal(lookup.index, lookup.level)
+          iseq.splatarray(arg_parts.length != 1)
 
-          lookup = current_iseq.local_table.find(:&, 0)
-          builder.getblockparamproxy(lookup.index, lookup.level)
+          lookup = iseq.local_table.find(:&, 0)
+          iseq.getblockparamproxy(lookup.index, lookup.level)
         when BareAssocHash
           flag |= YARV::VM_CALL_KW_SPLAT
           visit(arg_part)
@@ -577,8 +563,8 @@ module SyntaxTree
       flag |= YARV::VM_CALL_ARGS_SIMPLE if block_iseq.nil? && flag == 0
       flag |= YARV::VM_CALL_FCALL if node.receiver.nil?
 
-      builder.send(node.message.value.to_sym, argc, flag, block_iseq)
-      branchnil[1] = builder.label if branchnil
+      iseq.send(node.message.value.to_sym, argc, flag, block_iseq)
+      branchnil[1] = iseq.label if branchnil
     end
 
     def visit_case(node)
@@ -586,7 +572,6 @@ module SyntaxTree
 
       clauses = []
       else_clause = nil
-
       current = node.consequent
 
       while current
@@ -601,21 +586,19 @@ module SyntaxTree
       branches =
         clauses.map do |clause|
           visit(clause.arguments)
-          builder.topn(1)
-          builder.send(:===, 1, YARV::VM_CALL_FCALL | YARV::VM_CALL_ARGS_SIMPLE)
-          [clause, builder.branchif(:label_00)]
+          iseq.topn(1)
+          iseq.send(:===, 1, YARV::VM_CALL_FCALL | YARV::VM_CALL_ARGS_SIMPLE)
+          [clause, iseq.branchif(:label_00)]
         end
 
-      builder.pop
-
-      else_clause ? visit(else_clause) : builder.putnil
-
-      builder.leave
+      iseq.pop
+      else_clause ? visit(else_clause) : iseq.putnil
+      iseq.leave
 
       branches.each_with_index do |(clause, branchif), index|
-        builder.leave if index != 0
-        branchif[1] = builder.label
-        builder.pop
+        iseq.leave if index != 0
+        branchif[1] = iseq.label
+        iseq.pop
         visit(clause)
       end
     end
@@ -623,16 +606,11 @@ module SyntaxTree
     def visit_class(node)
       name = node.constant.constant.value.to_sym
       class_iseq =
-        with_instruction_sequence(
-          :class,
-          "<class:#{name}>",
-          current_iseq,
-          node
-        ) do
-          builder.event(:RUBY_EVENT_CLASS)
+        with_instruction_sequence(:class, "<class:#{name}>", node) do
+          iseq.event(:RUBY_EVENT_CLASS)
           visit(node.bodystmt)
-          builder.event(:RUBY_EVENT_END)
-          builder.leave
+          iseq.event(:RUBY_EVENT_END)
+          iseq.leave
         end
 
       flags = YARV::VM_DEFINECLASS_TYPE_CLASS
@@ -642,20 +620,20 @@ module SyntaxTree
         flags |= YARV::VM_DEFINECLASS_FLAG_SCOPED
         visit(node.constant.parent)
       when ConstRef
-        builder.putspecialobject(YARV::VM_SPECIAL_OBJECT_CONST_BASE)
+        iseq.putspecialobject(YARV::VM_SPECIAL_OBJECT_CONST_BASE)
       when TopConstRef
         flags |= YARV::VM_DEFINECLASS_FLAG_SCOPED
-        builder.putobject(Object)
+        iseq.putobject(Object)
       end
 
       if node.superclass
         flags |= YARV::VM_DEFINECLASS_FLAG_HAS_SUPERCLASS
         visit(node.superclass)
       else
-        builder.putnil
+        iseq.putnil
       end
 
-      builder.defineclass(name, class_iseq, flags)
+      iseq.defineclass(name, class_iseq, flags)
     end
 
     def visit_command(node)
@@ -690,34 +668,29 @@ module SyntaxTree
 
     def visit_const_path_ref(node)
       names = constant_names(node)
-      builder.opt_getconstant_path(names)
+      iseq.opt_getconstant_path(names)
     end
 
     def visit_def(node)
       method_iseq =
-        with_instruction_sequence(
-          :method,
-          node.name.value,
-          current_iseq,
-          node
-        ) do
+        with_instruction_sequence(:method, node.name.value, node) do
           visit(node.params) if node.params
-          builder.event(:RUBY_EVENT_CALL)
+          iseq.event(:RUBY_EVENT_CALL)
           visit(node.bodystmt)
-          builder.event(:RUBY_EVENT_RETURN)
-          builder.leave
+          iseq.event(:RUBY_EVENT_RETURN)
+          iseq.leave
         end
 
       name = node.name.value.to_sym
 
       if node.target
         visit(node.target)
-        builder.definesmethod(name, method_iseq)
+        iseq.definesmethod(name, method_iseq)
       else
-        builder.definemethod(name, method_iseq)
+        iseq.definemethod(name, method_iseq)
       end
 
-      builder.putobject(name)
+      iseq.putobject(name)
     end
 
     def visit_defined(node)
@@ -726,67 +699,67 @@ module SyntaxTree
         # If we're assigning to a local variable, then we need to make sure
         # that we put it into the local table.
         if node.value.target.is_a?(VarField) &&
-              node.value.target.value.is_a?(Ident)
-          current_iseq.local_table.plain(node.value.target.value.value.to_sym)
+             node.value.target.value.is_a?(Ident)
+          iseq.local_table.plain(node.value.target.value.value.to_sym)
         end
 
-        builder.putobject("assignment")
+        iseq.putobject("assignment")
       when VarRef
         value = node.value.value
         name = value.value.to_sym
 
         case value
         when Const
-          builder.putnil
-          builder.defined(YARV::DEFINED_CONST, name, "constant")
+          iseq.putnil
+          iseq.defined(YARV::DEFINED_CONST, name, "constant")
         when CVar
-          builder.putnil
-          builder.defined(YARV::DEFINED_CVAR, name, "class variable")
+          iseq.putnil
+          iseq.defined(YARV::DEFINED_CVAR, name, "class variable")
         when GVar
-          builder.putnil
-          builder.defined(YARV::DEFINED_GVAR, name, "global-variable")
+          iseq.putnil
+          iseq.defined(YARV::DEFINED_GVAR, name, "global-variable")
         when Ident
-          builder.putobject("local-variable")
+          iseq.putobject("local-variable")
         when IVar
-          builder.putnil
-          builder.defined(YARV::DEFINED_IVAR, name, "instance-variable")
+          iseq.putnil
+          iseq.defined(YARV::DEFINED_IVAR, name, "instance-variable")
         when Kw
           case name
           when :false
-            builder.putobject("false")
+            iseq.putobject("false")
           when :nil
-            builder.putobject("nil")
+            iseq.putobject("nil")
           when :self
-            builder.putobject("self")
+            iseq.putobject("self")
           when :true
-            builder.putobject("true")
+            iseq.putobject("true")
           end
         end
       when VCall
-        builder.putself
+        iseq.putself
 
         name = node.value.value.value.to_sym
-        builder.defined(YARV::DEFINED_FUNC, name, "method")
+        iseq.defined(YARV::DEFINED_FUNC, name, "method")
       when YieldNode
-        builder.putnil
-        builder.defined(YARV::DEFINED_YIELD, false, "yield")
+        iseq.putnil
+        iseq.defined(YARV::DEFINED_YIELD, false, "yield")
       when ZSuper
-        builder.putnil
-        builder.defined(YARV::DEFINED_ZSUPER, false, "super")
+        iseq.putnil
+        iseq.defined(YARV::DEFINED_ZSUPER, false, "super")
       else
-        builder.putobject("expression")
+        iseq.putobject("expression")
       end
     end
 
     def visit_dyna_symbol(node)
       if node.parts.length == 1 && node.parts.first.is_a?(TStringContent)
-        builder.putobject(node.parts.first.value.to_sym)
+        iseq.putobject(node.parts.first.value.to_sym)
       end
     end
 
     def visit_else(node)
       visit(node.statements)
-      builder.pop unless last_statement?
+      iseq.pop unless last_statement?
     end
 
     def visit_elsif(node)
@@ -805,51 +778,50 @@ module SyntaxTree
     end
 
     def visit_float(node)
-      builder.putobject(node.accept(RubyVisitor.new))
+      iseq.putobject(node.accept(RubyVisitor.new))
     end
 
     def visit_for(node)
       visit(node.collection)
 
       name = node.index.value.value.to_sym
-      current_iseq.local_table.plain(name)
+      iseq.local_table.plain(name)
 
       block_iseq =
         with_instruction_sequence(
           :block,
-          "block in #{current_iseq.name}",
-          current_iseq,
+          "block in #{iseq.name}",
           node.statements
         ) do
-          current_iseq.argument_options[:lead_num] ||= 0
-          current_iseq.argument_options[:lead_num] += 1
-          current_iseq.argument_options[:ambiguous_param0] = true
+          iseq.argument_options[:lead_num] ||= 0
+          iseq.argument_options[:lead_num] += 1
+          iseq.argument_options[:ambiguous_param0] = true
 
-          current_iseq.argument_size += 1
-          current_iseq.local_table.plain(2)
+          iseq.argument_size += 1
+          iseq.local_table.plain(2)
 
-          builder.getlocal(0, 0)
+          iseq.getlocal(0, 0)
 
-          local_variable = current_iseq.local_variable(name)
-          builder.setlocal(local_variable.index, local_variable.level)
+          local_variable = iseq.local_variable(name)
+          iseq.setlocal(local_variable.index, local_variable.level)
 
-          builder.event(:RUBY_EVENT_B_CALL)
-          builder.nop
+          iseq.event(:RUBY_EVENT_B_CALL)
+          iseq.nop
 
           visit(node.statements)
-          builder.event(:RUBY_EVENT_B_RETURN)
-          builder.leave
+          iseq.event(:RUBY_EVENT_B_RETURN)
+          iseq.leave
         end
 
-      builder.send(:each, 0, 0, block_iseq)
+      iseq.send(:each, 0, 0, block_iseq)
     end
 
     def visit_hash(node)
       if (compiled = RubyVisitor.compile(node))
-        builder.duphash(compiled)
+        iseq.duphash(compiled)
       else
         visit_all(node.assocs)
-        builder.newhash(node.assocs.length * 2)
+        iseq.newhash(node.assocs.length * 2)
       end
     end
 
@@ -860,30 +832,30 @@ module SyntaxTree
         visit(node.parts.first)
       else
         length = visit_string_parts(node)
-        builder.concatstrings(length)
+        iseq.concatstrings(length)
       end
     end
 
     def visit_if(node)
       visit(node.predicate)
-      branchunless = builder.branchunless(-1)
+      branchunless = iseq.branchunless(-1)
       visit(node.statements)
 
       if last_statement?
-        builder.leave
-        branchunless[1] = builder.label
+        iseq.leave
+        branchunless[1] = iseq.label
 
-        node.consequent ? visit(node.consequent) : builder.putnil
+        node.consequent ? visit(node.consequent) : iseq.putnil
       else
-        builder.pop
+        iseq.pop
 
         if node.consequent
-          jump = builder.jump(-1)
-          branchunless[1] = builder.label
+          jump = iseq.jump(-1)
+          branchunless[1] = iseq.label
           visit(node.consequent)
-          jump[1] = builder.label
+          jump[1] = iseq.label
         else
-          branchunless[1] = builder.label
+          branchunless[1] = iseq.label
         end
       end
     end
@@ -905,40 +877,35 @@ module SyntaxTree
     end
 
     def visit_imaginary(node)
-      builder.putobject(node.accept(RubyVisitor.new))
+      iseq.putobject(node.accept(RubyVisitor.new))
     end
 
     def visit_int(node)
-      builder.putobject(node.accept(RubyVisitor.new))
+      iseq.putobject(node.accept(RubyVisitor.new))
     end
 
     def visit_kwrest_param(node)
-      current_iseq.argument_options[:kwrest] = current_iseq.argument_size
-      current_iseq.argument_size += 1
-      current_iseq.local_table.plain(node.name.value.to_sym)
+      iseq.argument_options[:kwrest] = iseq.argument_size
+      iseq.argument_size += 1
+      iseq.local_table.plain(node.name.value.to_sym)
     end
 
     def visit_label(node)
-      builder.putobject(node.accept(RubyVisitor.new))
+      iseq.putobject(node.accept(RubyVisitor.new))
     end
 
     def visit_lambda(node)
       lambda_iseq =
-        with_instruction_sequence(
-          :block,
-          "block in #{current_iseq.name}",
-          current_iseq,
-          node
-        ) do
-          builder.event(:RUBY_EVENT_B_CALL)
+        with_instruction_sequence(:block, "block in #{iseq.name}", node) do
+          iseq.event(:RUBY_EVENT_B_CALL)
           visit(node.params)
           visit(node.statements)
-          builder.event(:RUBY_EVENT_B_RETURN)
-          builder.leave
+          iseq.event(:RUBY_EVENT_B_RETURN)
+          iseq.leave
         end
 
-      builder.putspecialobject(YARV::VM_SPECIAL_OBJECT_VMCORE)
-      builder.send(:lambda, 0, YARV::VM_CALL_FCALL, lambda_iseq)
+      iseq.putspecialobject(YARV::VM_SPECIAL_OBJECT_VMCORE)
+      iseq.send(:lambda, 0, YARV::VM_CALL_FCALL, lambda_iseq)
     end
 
     def visit_lambda_var(node)
@@ -947,7 +914,7 @@ module SyntaxTree
 
     def visit_massign(node)
       visit(node.value)
-      builder.dup
+      iseq.dup
       visit(node.target)
     end
 
@@ -966,7 +933,6 @@ module SyntaxTree
 
     def visit_mlhs(node)
       lookups = []
-
       node.parts.each do |part|
         case part
         when VarField
@@ -974,24 +940,18 @@ module SyntaxTree
         end
       end
 
-      builder.expandarray(lookups.length, 0)
-
-      lookups.each { |lookup| builder.setlocal(lookup.index, lookup.level) }
+      iseq.expandarray(lookups.length, 0)
+      lookups.each { |lookup| iseq.setlocal(lookup.index, lookup.level) }
     end
 
     def visit_module(node)
       name = node.constant.constant.value.to_sym
       module_iseq =
-        with_instruction_sequence(
-          :class,
-          "<module:#{name}>",
-          current_iseq,
-          node
-        ) do
-          builder.event(:RUBY_EVENT_CLASS)
+        with_instruction_sequence(:class, "<module:#{name}>", node) do
+          iseq.event(:RUBY_EVENT_CLASS)
           visit(node.bodystmt)
-          builder.event(:RUBY_EVENT_END)
-          builder.leave
+          iseq.event(:RUBY_EVENT_END)
+          iseq.leave
         end
 
       flags = YARV::VM_DEFINECLASS_TYPE_MODULE
@@ -1001,28 +961,28 @@ module SyntaxTree
         flags |= YARV::VM_DEFINECLASS_FLAG_SCOPED
         visit(node.constant.parent)
       when ConstRef
-        builder.putspecialobject(YARV::VM_SPECIAL_OBJECT_CONST_BASE)
+        iseq.putspecialobject(YARV::VM_SPECIAL_OBJECT_CONST_BASE)
       when TopConstRef
         flags |= YARV::VM_DEFINECLASS_FLAG_SCOPED
-        builder.putobject(Object)
+        iseq.putobject(Object)
       end
 
-      builder.putnil
-      builder.defineclass(name, module_iseq, flags)
+      iseq.putnil
+      iseq.defineclass(name, module_iseq, flags)
     end
 
     def visit_mrhs(node)
       if (compiled = RubyVisitor.compile(node))
-        builder.duparray(compiled)
+        iseq.duparray(compiled)
       else
         visit_all(node.parts)
-        builder.newarray(node.parts.length)
+        iseq.newarray(node.parts.length)
       end
     end
 
     def visit_not(node)
       visit(node.statement)
-      builder.send(:!, 0, YARV::VM_CALL_ARGS_SIMPLE)
+      iseq.send(:!, 0, YARV::VM_CALL_ARGS_SIMPLE)
     end
 
     def visit_opassign(node)
@@ -1036,31 +996,30 @@ module SyntaxTree
         branchunless = nil
 
         with_opassign(node) do
-          builder.dup
-          branchunless = builder.branchunless(-1)
-          builder.pop
+          iseq.dup
+          branchunless = iseq.branchunless(-1)
+          iseq.pop
           visit(node.value)
         end
 
         case node.target
         when ARefField
-          builder.leave
-          branchunless[1] = builder.label
-          builder.setn(3)
-          builder.adjuststack(3)
+          iseq.leave
+          branchunless[1] = iseq.label
+          iseq.setn(3)
+          iseq.adjuststack(3)
         when ConstPathField, TopConstField
-          branchunless[1] = builder.label
-          builder.swap
-          builder.pop
+          branchunless[1] = iseq.label
+          iseq.swap
+          iseq.pop
         else
-          branchunless[1] = builder.label
+          branchunless[1] = iseq.label
         end
       when :"||"
-        if node.target.is_a?(ConstPathField) ||
-              node.target.is_a?(TopConstField)
+        if node.target.is_a?(ConstPathField) || node.target.is_a?(TopConstField)
           opassign_defined(node)
-          builder.swap
-          builder.pop
+          iseq.swap
+          iseq.pop
         elsif node.target.is_a?(VarField) &&
               [Const, CVar, GVar].include?(node.target.value.class)
           opassign_defined(node)
@@ -1068,67 +1027,65 @@ module SyntaxTree
           branchif = nil
 
           with_opassign(node) do
-            builder.dup
-            branchif = builder.branchif(-1)
-            builder.pop
+            iseq.dup
+            branchif = iseq.branchif(-1)
+            iseq.pop
             visit(node.value)
           end
 
           if node.target.is_a?(ARefField)
-            builder.leave
-            branchif[1] = builder.label
-            builder.setn(3)
-            builder.adjuststack(3)
+            iseq.leave
+            branchif[1] = iseq.label
+            iseq.setn(3)
+            iseq.adjuststack(3)
           else
-            branchif[1] = builder.label
+            branchif[1] = iseq.label
           end
         end
       else
         with_opassign(node) do
           visit(node.value)
-          builder.send(operator, 1, flag)
+          iseq.send(operator, 1, flag)
         end
       end
     end
 
     def visit_params(node)
-      argument_options = current_iseq.argument_options
+      argument_options = iseq.argument_options
 
       if node.requireds.any?
         argument_options[:lead_num] = 0
 
         node.requireds.each do |required|
-          current_iseq.local_table.plain(required.value.to_sym)
-          current_iseq.argument_size += 1
+          iseq.local_table.plain(required.value.to_sym)
+          iseq.argument_size += 1
           argument_options[:lead_num] += 1
         end
       end
 
       node.optionals.each do |(optional, value)|
-        index = current_iseq.local_table.size
+        index = iseq.local_table.size
         name = optional.value.to_sym
 
-        current_iseq.local_table.plain(name)
-        current_iseq.argument_size += 1
+        iseq.local_table.plain(name)
+        iseq.argument_size += 1
 
-        unless argument_options.key?(:opt)
-          argument_options[:opt] = [builder.label]
-        end
+        argument_options[:opt] = [iseq.label] unless argument_options.key?(:opt)
 
         visit(value)
-        builder.setlocal(index, 0)
-        current_iseq.argument_options[:opt] << builder.label
+        iseq.setlocal(index, 0)
+        iseq.argument_options[:opt] << iseq.label
       end
 
       visit(node.rest) if node.rest
 
       if node.posts.any?
-        argument_options[:post_start] = current_iseq.argument_size
+        argument_options[:post_start] = iseq.argument_size
         argument_options[:post_num] = 0
 
         node.posts.each do |post|
-          current_iseq.local_table.plain(post.value.to_sym)
-          current_iseq.argument_size += 1
+          iseq.local_table.plain(post.value.to_sym)
+          iseq.argument_size += 1
           argument_options[:post_num] += 1
         end
       end
@@ -1140,10 +1097,10 @@ module SyntaxTree
 
         node.keywords.each_with_index do |(keyword, value), keyword_index|
           name = keyword.value.chomp(":").to_sym
-          index = current_iseq.local_table.size
+          index = iseq.local_table.size
 
-          current_iseq.local_table.plain(name)
-          current_iseq.argument_size += 1
+          iseq.local_table.plain(name)
+          iseq.argument_size += 1
           argument_options[:kwbits] += 1
 
           if value.nil?
@@ -1153,34 +1110,30 @@ module SyntaxTree
             argument_options[:keyword] << [name, compiled]
           else
             argument_options[:keyword] << [name]
-            checkkeywords << builder.checkkeyword(-1, keyword_index)
-            branchif = builder.branchif(-1)
+            checkkeywords << iseq.checkkeyword(-1, keyword_index)
+            branchif = iseq.branchif(-1)
             visit(value)
-            builder.setlocal(index, 0)
-            branchif[1] = builder.label
+            iseq.setlocal(index, 0)
+            branchif[1] = iseq.label
           end
         end
 
         name = node.keyword_rest ? 3 : 2
-        current_iseq.argument_size += 1
-        current_iseq.local_table.plain(name)
+        iseq.argument_size += 1
+        iseq.local_table.plain(name)
 
-        lookup = current_iseq.local_table.find(name, 0)
+        lookup = iseq.local_table.find(name, 0)
         checkkeywords.each { |checkkeyword| checkkeyword[1] = lookup.index }
       end
 
       if node.keyword_rest.is_a?(ArgsForward)
-        current_iseq.local_table.plain(:*)
-        current_iseq.local_table.plain(:&)
+        iseq.local_table.plain(:*)
+        iseq.local_table.plain(:&)
 
-        current_iseq.argument_options[
-          :rest_start
-        ] = current_iseq.argument_size
-        current_iseq.argument_options[
-          :block_start
-        ] = current_iseq.argument_size + 1
+        iseq.argument_options[:rest_start] = iseq.argument_size
+        iseq.argument_options[:block_start] = iseq.argument_size + 1
 
-        current_iseq.argument_size += 2
+        iseq.argument_size += 2
       elsif node.keyword_rest
         visit(node.keyword_rest)
       end
@@ -1215,82 +1168,77 @@ module SyntaxTree
         end
       end
 
-      with_instruction_sequence(:top, "<compiled>", nil, node) do
+      with_instruction_sequence(:top, "<compiled>", node) do
         visit_all(preexes)
 
         if statements.empty?
-          builder.putnil
+          iseq.putnil
         else
           *statements, last_statement = statements
           visit_all(statements)
           with_last_statement { visit(last_statement) }
         end
 
-        builder.leave
+        iseq.leave
       end
     end
 
     def visit_qsymbols(node)
-      builder.duparray(node.accept(RubyVisitor.new))
+      iseq.duparray(node.accept(RubyVisitor.new))
     end
 
     def visit_qwords(node)
       if frozen_string_literal
-        builder.duparray(node.accept(RubyVisitor.new))
+        iseq.duparray(node.accept(RubyVisitor.new))
       else
         visit_all(node.elements)
-        builder.newarray(node.elements.length)
+        iseq.newarray(node.elements.length)
       end
     end
 
     def visit_range(node)
       if (compiled = RubyVisitor.compile(node))
-        builder.putobject(compiled)
+        iseq.putobject(compiled)
       else
         visit(node.left)
         visit(node.right)
-        builder.newrange(node.operator.value == ".." ? 0 : 1)
+        iseq.newrange(node.operator.value == ".." ? 0 : 1)
       end
     end
 
     def visit_rational(node)
-      builder.putobject(node.accept(RubyVisitor.new))
+      iseq.putobject(node.accept(RubyVisitor.new))
     end
 
     def visit_regexp_literal(node)
       if (compiled = RubyVisitor.compile(node))
-        builder.putobject(compiled)
+        iseq.putobject(compiled)
       else
         flags = RubyVisitor.new.visit_regexp_literal_flags(node)
         length = visit_string_parts(node)
-        builder.toregexp(flags, length)
+        iseq.toregexp(flags, length)
       end
     end
 
     def visit_rest_param(node)
-      current_iseq.local_table.plain(node.name.value.to_sym)
-      current_iseq.argument_options[:rest_start] = current_iseq.argument_size
-      current_iseq.argument_size += 1
+      iseq.local_table.plain(node.name.value.to_sym)
+      iseq.argument_options[:rest_start] = iseq.argument_size
+      iseq.argument_size += 1
     end
 
     def visit_sclass(node)
       visit(node.target)
-      builder.putnil
+      iseq.putnil
 
       singleton_iseq =
-        with_instruction_sequence(
-          :class,
-          "singleton class",
-          current_iseq,
-          node
-        ) do
-          builder.event(:RUBY_EVENT_CLASS)
+        with_instruction_sequence(:class, "singleton class", node) do
+          iseq.event(:RUBY_EVENT_CLASS)
           visit(node.bodystmt)
-          builder.event(:RUBY_EVENT_END)
-          builder.leave
+          iseq.event(:RUBY_EVENT_END)
+          iseq.leave
         end
 
-      builder.defineclass(
+      iseq.defineclass(
         :singletonclass,
         singleton_iseq,
         YARV::VM_DEFINECLASS_TYPE_SINGLETON_CLASS
@@ -1308,20 +1256,19 @@ module SyntaxTree
           end
         end
 
-      statements.empty? ? builder.putnil : visit_all(statements)
+      statements.empty? ? iseq.putnil : visit_all(statements)
     end
 
     def visit_string_concat(node)
       value = node.left.parts.first.value + node.right.parts.first.value
-      content = TStringContent.new(value: value, location: node.location)
 
-      literal =
+      visit_string_literal(
         StringLiteral.new(
-          parts: [content],
+          parts: [TStringContent.new(value: value, location: node.location)],
           quote: node.left.quote,
           location: node.location
         )
-      visit_string_literal(literal)
+      )
     end
 
     def visit_string_embexpr(node)
@@ -1333,14 +1280,14 @@ module SyntaxTree
         visit(node.parts.first)
       else
         length = visit_string_parts(node)
-        builder.concatstrings(length)
+        iseq.concatstrings(length)
       end
     end
 
     def visit_super(node)
-      builder.putself
+      iseq.putself
       visit(node.arguments)
-      builder.invokesuper(
+      iseq.invokesuper(
         nil,
         argument_parts(node.arguments).length,
         YARV::VM_CALL_FCALL | YARV::VM_CALL_ARGS_SIMPLE | YARV::VM_CALL_SUPER,
@@ -1349,37 +1296,37 @@ module SyntaxTree
     end
 
     def visit_symbol_literal(node)
-      builder.putobject(node.accept(RubyVisitor.new))
+      iseq.putobject(node.accept(RubyVisitor.new))
     end
 
     def visit_symbols(node)
       if (compiled = RubyVisitor.compile(node))
-        builder.duparray(compiled)
+        iseq.duparray(compiled)
       else
         node.elements.each do |element|
           if element.parts.length == 1 &&
-                element.parts.first.is_a?(TStringContent)
-            builder.putobject(element.parts.first.value.to_sym)
+               element.parts.first.is_a?(TStringContent)
+            iseq.putobject(element.parts.first.value.to_sym)
           else
             length = visit_string_parts(element)
-            builder.concatstrings(length)
-            builder.intern
+            iseq.concatstrings(length)
+            iseq.intern
           end
         end
 
-        builder.newarray(node.elements.length)
+        iseq.newarray(node.elements.length)
       end
     end
 
     def visit_top_const_ref(node)
-      builder.opt_getconstant_path(constant_names(node))
+      iseq.opt_getconstant_path(constant_names(node))
     end
 
     def visit_tstring_content(node)
       if frozen_string_literal
-        builder.putobject(node.accept(RubyVisitor.new))
+        iseq.putobject(node.accept(RubyVisitor.new))
       else
-        builder.putstring(node.accept(RubyVisitor.new))
+        iseq.putstring(node.accept(RubyVisitor.new))
       end
     end
 
@@ -1406,34 +1353,34 @@ module SyntaxTree
 
     def visit_undef(node)
       node.symbols.each_with_index do |symbol, index|
-        builder.pop if index != 0
-        builder.putspecialobject(YARV::VM_SPECIAL_OBJECT_VMCORE)
-        builder.putspecialobject(YARV::VM_SPECIAL_OBJECT_CBASE)
+        iseq.pop if index != 0
+        iseq.putspecialobject(YARV::VM_SPECIAL_OBJECT_VMCORE)
+        iseq.putspecialobject(YARV::VM_SPECIAL_OBJECT_CBASE)
         visit(symbol)
-        builder.send(:"core#undef_method", 2, YARV::VM_CALL_ARGS_SIMPLE)
+        iseq.send(:"core#undef_method", 2, YARV::VM_CALL_ARGS_SIMPLE)
       end
     end
 
     def visit_unless(node)
       visit(node.predicate)
-      branchunless = builder.branchunless(-1)
-      node.consequent ? visit(node.consequent) : builder.putnil
+      branchunless = iseq.branchunless(-1)
+      node.consequent ? visit(node.consequent) : iseq.putnil
 
       if last_statement?
-        builder.leave
-        branchunless[1] = builder.label
+        iseq.leave
+        branchunless[1] = iseq.label
 
         visit(node.statements)
       else
-        builder.pop
+        iseq.pop
 
         if node.consequent
-          jump = builder.jump(-1)
-          branchunless[1] = builder.label
+          jump = iseq.jump(-1)
+          branchunless[1] = iseq.label
           visit(node.consequent)
-          jump[1] = builder.label
+          jump[1] = iseq.label
         else
-          branchunless[1] = builder.label
+          branchunless[1] = iseq.label
         end
       end
     end
@@ -1441,34 +1388,34 @@ module SyntaxTree
     def visit_until(node)
       jumps = []
 
-      jumps << builder.jump(-1)
-      builder.putnil
-      builder.pop
-      jumps << builder.jump(-1)
+      jumps << iseq.jump(-1)
+      iseq.putnil
+      iseq.pop
+      jumps << iseq.jump(-1)
 
-      label = builder.label
+      label = iseq.label
       visit(node.statements)
-      builder.pop
-      jumps.each { |jump| jump[1] = builder.label }
+      iseq.pop
+      jumps.each { |jump| jump[1] = iseq.label }
 
       visit(node.predicate)
-      builder.branchunless(label)
-      builder.putnil if last_statement?
+      iseq.branchunless(label)
+      iseq.putnil if last_statement?
     end
 
     def visit_var_field(node)
       case node.value
       when CVar, IVar
         name = node.value.value.to_sym
-        current_iseq.inline_storage_for(name)
+        iseq.inline_storage_for(name)
       when Ident
         name = node.value.value.to_sym
 
-        if (local_variable = current_iseq.local_variable(name))
+        if (local_variable = iseq.local_variable(name))
           local_variable
         else
-          current_iseq.local_table.plain(name)
-          current_iseq.local_variable(name)
+          iseq.local_table.plain(name)
+          iseq.local_variable(name)
         end
       end
     end
@@ -1476,43 +1423,44 @@ module SyntaxTree
     def visit_var_ref(node)
       case node.value
       when Const
-        builder.opt_getconstant_path(constant_names(node))
+        iseq.opt_getconstant_path(constant_names(node))
       when CVar
         name = node.value.value.to_sym
-        builder.getclassvariable(name)
+        iseq.getclassvariable(name)
       when GVar
-        builder.getglobal(node.value.value.to_sym)
+        iseq.getglobal(node.value.value.to_sym)
       when Ident
-        lookup = current_iseq.local_variable(node.value.value.to_sym)
+        lookup = iseq.local_variable(node.value.value.to_sym)
 
         case lookup.local
         when YARV::LocalTable::BlockLocal
-          builder.getblockparam(lookup.index, lookup.level)
+          iseq.getblockparam(lookup.index, lookup.level)
         when YARV::LocalTable::PlainLocal
-          builder.getlocal(lookup.index, lookup.level)
+          iseq.getlocal(lookup.index, lookup.level)
         end
       when IVar
         name = node.value.value.to_sym
-        builder.getinstancevariable(name)
+        iseq.getinstancevariable(name)
       when Kw
         case node.value.value
         when "false"
-          builder.putobject(false)
+          iseq.putobject(false)
         when "nil"
-          builder.putnil
+          iseq.putnil
         when "self"
-          builder.putself
+          iseq.putself
         when "true"
-          builder.putobject(true)
+          iseq.putobject(true)
         end
       end
     end
 
     def visit_vcall(node)
-      builder.putself
+      iseq.putself
 
-      flag = YARV::VM_CALL_FCALL | YARV::VM_CALL_VCALL | YARV::VM_CALL_ARGS_SIMPLE
-      builder.send(node.value.value.to_sym, 0, flag)
+      flag =
+        YARV::VM_CALL_FCALL | YARV::VM_CALL_VCALL | YARV::VM_CALL_ARGS_SIMPLE
+      iseq.send(node.value.value.to_sym, 0, flag)
     end
 
     def visit_when(node)
@@ -1522,19 +1470,19 @@ module SyntaxTree
     def visit_while(node)
       jumps = []
 
-      jumps << builder.jump(-1)
-      builder.putnil
-      builder.pop
-      jumps << builder.jump(-1)
+      jumps << iseq.jump(-1)
+      iseq.putnil
+      iseq.pop
+      jumps << iseq.jump(-1)
 
-      label = builder.label
+      label = iseq.label
       visit(node.statements)
-      builder.pop
-      jumps.each { |jump| jump[1] = builder.label }
+      iseq.pop
+      jumps.each { |jump| jump[1] = iseq.label }
 
       visit(node.predicate)
-      builder.branchif(label)
-      builder.putnil if last_statement?
+      iseq.branchif(label)
+      iseq.putnil if last_statement?
     end
 
     def visit_word(node)
@@ -1542,38 +1490,39 @@ module SyntaxTree
         visit(node.parts.first)
       else
         length = visit_string_parts(node)
-        builder.concatstrings(length)
+        iseq.concatstrings(length)
       end
     end
 
     def visit_words(node)
       if frozen_string_literal && (compiled = RubyVisitor.compile(node))
-        builder.duparray(compiled)
+        iseq.duparray(compiled)
       else
         visit_all(node.elements)
-        builder.newarray(node.elements.length)
+        iseq.newarray(node.elements.length)
       end
     end
 
     def visit_xstring_literal(node)
-      builder.putself
+      iseq.putself
       length = visit_string_parts(node)
-      builder.concatstrings(node.parts.length) if length > 1
-      builder.send(:`, 1, YARV::VM_CALL_FCALL | YARV::VM_CALL_ARGS_SIMPLE)
+      iseq.concatstrings(node.parts.length) if length > 1
+      iseq.send(:`, 1, YARV::VM_CALL_FCALL | YARV::VM_CALL_ARGS_SIMPLE)
     end
 
     def visit_yield(node)
       parts = argument_parts(node.arguments)
       visit_all(parts)
-      builder.invokeblock(nil, parts.length, YARV::VM_CALL_ARGS_SIMPLE)
+      iseq.invokeblock(nil, parts.length, YARV::VM_CALL_ARGS_SIMPLE)
     end
 
     def visit_zsuper(_node)
-      builder.putself
-      builder.invokesuper(
+      iseq.putself
+      iseq.invokesuper(
         nil,
         0,
-        YARV::VM_CALL_FCALL | YARV::VM_CALL_ARGS_SIMPLE | YARV::VM_CALL_SUPER | YARV::VM_CALL_ZSUPER,
+        YARV::VM_CALL_FCALL | YARV::VM_CALL_ARGS_SIMPLE | YARV::VM_CALL_SUPER |
+          YARV::VM_CALL_ZSUPER,
         nil
       )
     end
@@ -1638,81 +1587,85 @@ module SyntaxTree
         visit(node.target.parent)
         name = node.target.constant.value.to_sym
 
-        builder.dup
-        builder.defined(YARV::DEFINED_CONST_FROM, name, true)
+        iseq.dup
+        iseq.defined(YARV::DEFINED_CONST_FROM, name, true)
       when TopConstField
         name = node.target.constant.value.to_sym
 
-        builder.putobject(Object)
-        builder.dup
-        builder.defined(YARV::DEFINED_CONST_FROM, name, true)
+        iseq.putobject(Object)
+        iseq.dup
+        iseq.defined(YARV::DEFINED_CONST_FROM, name, true)
       when VarField
         name = node.target.value.value.to_sym
-        builder.putnil
+        iseq.putnil
 
         case node.target.value
         when Const
-          builder.defined(YARV::DEFINED_CONST, name, true)
+          iseq.defined(YARV::DEFINED_CONST, name, true)
         when CVar
-          builder.defined(YARV::DEFINED_CVAR, name, true)
+          iseq.defined(YARV::DEFINED_CVAR, name, true)
         when GVar
-          builder.defined(YARV::DEFINED_GVAR, name, true)
+          iseq.defined(YARV::DEFINED_GVAR, name, true)
         end
       end
 
-      branchunless = builder.branchunless(-1)
+      branchunless = iseq.branchunless(-1)
 
       case node.target
       when ConstPathField, TopConstField
-        builder.dup
-        builder.putobject(true)
-        builder.getconstant(name)
+        iseq.dup
+        iseq.putobject(true)
+        iseq.getconstant(name)
       when VarField
         case node.target.value
         when Const
-          builder.opt_getconstant_path(constant_names(node.target))
+          iseq.opt_getconstant_path(constant_names(node.target))
         when CVar
-          builder.getclassvariable(name)
+          iseq.getclassvariable(name)
         when GVar
-          builder.getglobal(name)
+          iseq.getglobal(name)
         end
       end
 
-      builder.dup
-      branchif = builder.branchif(-1)
-      builder.pop
+      iseq.dup
+      branchif = iseq.branchif(-1)
+      iseq.pop
 
-      branchunless[1] = builder.label
+      branchunless[1] = iseq.label
       visit(node.value)
 
       case node.target
       when ConstPathField, TopConstField
-        builder.dupn(2)
-        builder.swap
-        builder.setconstant(name)
+        iseq.dupn(2)
+        iseq.swap
+        iseq.setconstant(name)
       when VarField
-        builder.dup
+        iseq.dup
 
         case node.target.value
         when Const
-          builder.putspecialobject(YARV::VM_SPECIAL_OBJECT_CONST_BASE)
-          builder.setconstant(name)
+          iseq.putspecialobject(YARV::VM_SPECIAL_OBJECT_CONST_BASE)
+          iseq.setconstant(name)
         when CVar
-          builder.setclassvariable(name)
+          iseq.setclassvariable(name)
         when GVar
-          builder.setglobal(name)
+          iseq.setglobal(name)
         end
       end
 
-      branchif[1] = builder.label
+      branchif[1] = iseq.label
     end
 
     # Whenever a value is interpolated into a string-like structure, these
     # three instructions are pushed.
     def push_interpolate
-      builder.dup
-      builder.objtostring(:to_s, 0, YARV::VM_CALL_FCALL | YARV::VM_CALL_ARGS_SIMPLE)
-      builder.anytostring
+      iseq.dup
+      iseq.objtostring(
+        :to_s,
+        0,
+        YARV::VM_CALL_FCALL | YARV::VM_CALL_ARGS_SIMPLE
+      )
+      iseq.anytostring
     end
 
     # There are a lot of nodes in the AST that act as contains of parts of
@@ -1723,7 +1676,7 @@ module SyntaxTree
       length = 0
 
       unless node.parts.first.is_a?(TStringContent)
-        builder.putobject("")
+        iseq.putobject("")
         length += 1
       end
 
@@ -1736,7 +1689,7 @@ module SyntaxTree
           visit(part)
           push_interpolate
         when TStringContent
-          builder.putobject(part.accept(RubyVisitor.new))
+          iseq.putobject(part.accept(RubyVisitor.new))
         end
 
         length += 1
@@ -1749,27 +1702,26 @@ module SyntaxTree
     # on the compiler. When we descend into a node that has its own
     # instruction sequence, this method can be called to temporarily set the
     # new value of the instruction sequence, yield, and then set it back.
-    def with_instruction_sequence(type, name, parent_iseq, node)
-      previous_iseq = current_iseq
-      previous_builder = builder
+    def with_instruction_sequence(type, name, node)
+      parent_iseq = iseq
 
       begin
-        iseq = YARV::InstructionSequence.new(type, name, parent_iseq, node.location)
-
-        @current_iseq = iseq
-        @builder =
-          YARV::Builder.new(
-            iseq,
+        iseq =
+          YARV::InstructionSequence.new(
+            type,
+            name,
+            parent_iseq,
+            node.location,
             frozen_string_literal: frozen_string_literal,
             operands_unification: operands_unification,
             specialized_instruction: specialized_instruction
           )
 
+        @iseq = iseq
         yield
         iseq
       ensure
-        @current_iseq = previous_iseq
-        @builder = previous_builder
+        @iseq = parent_iseq
       end
     end
 
@@ -1803,99 +1755,99 @@ module SyntaxTree
     def with_opassign(node)
       case node.target
       when ARefField
-        builder.putnil
+        iseq.putnil
         visit(node.target.collection)
         visit(node.target.index)
 
-        builder.dupn(2)
-        builder.send(:[], 1, YARV::VM_CALL_ARGS_SIMPLE)
+        iseq.dupn(2)
+        iseq.send(:[], 1, YARV::VM_CALL_ARGS_SIMPLE)
 
         yield
 
-        builder.setn(3)
-        builder.send(:[]=, 2, YARV::VM_CALL_ARGS_SIMPLE)
-        builder.pop
+        iseq.setn(3)
+        iseq.send(:[]=, 2, YARV::VM_CALL_ARGS_SIMPLE)
+        iseq.pop
       when ConstPathField
         name = node.target.constant.value.to_sym
 
         visit(node.target.parent)
-        builder.dup
-        builder.putobject(true)
-        builder.getconstant(name)
+        iseq.dup
+        iseq.putobject(true)
+        iseq.getconstant(name)
 
         yield
 
         if node.operator.value == "&&="
-          builder.dupn(2)
+          iseq.dupn(2)
         else
-          builder.swap
-          builder.topn(1)
+          iseq.swap
+          iseq.topn(1)
         end
 
-        builder.swap
-        builder.setconstant(name)
+        iseq.swap
+        iseq.setconstant(name)
       when TopConstField
         name = node.target.constant.value.to_sym
 
-        builder.putobject(Object)
-        builder.dup
-        builder.putobject(true)
-        builder.getconstant(name)
+        iseq.putobject(Object)
+        iseq.dup
+        iseq.putobject(true)
+        iseq.getconstant(name)
 
         yield
 
         if node.operator.value == "&&="
-          builder.dupn(2)
+          iseq.dupn(2)
         else
-          builder.swap
-          builder.topn(1)
+          iseq.swap
+          iseq.topn(1)
         end
 
-        builder.swap
-        builder.setconstant(name)
+        iseq.swap
+        iseq.setconstant(name)
       when VarField
         case node.target.value
         when Const
           names = constant_names(node.target)
-          builder.opt_getconstant_path(names)
+          iseq.opt_getconstant_path(names)
 
           yield
 
-          builder.dup
-          builder.putspecialobject(YARV::VM_SPECIAL_OBJECT_CONST_BASE)
-          builder.setconstant(names.last)
+          iseq.dup
+          iseq.putspecialobject(YARV::VM_SPECIAL_OBJECT_CONST_BASE)
+          iseq.setconstant(names.last)
         when CVar
           name = node.target.value.value.to_sym
-          builder.getclassvariable(name)
+          iseq.getclassvariable(name)
 
           yield
 
-          builder.dup
-          builder.setclassvariable(name)
+          iseq.dup
+          iseq.setclassvariable(name)
         when GVar
           name = node.target.value.value.to_sym
-          builder.getglobal(name)
+          iseq.getglobal(name)
 
           yield
 
-          builder.dup
-          builder.setglobal(name)
+          iseq.dup
+          iseq.setglobal(name)
         when Ident
           local_variable = visit(node.target)
-          builder.getlocal(local_variable.index, local_variable.level)
+          iseq.getlocal(local_variable.index, local_variable.level)
 
           yield
 
-          builder.dup
-          builder.setlocal(local_variable.index, local_variable.level)
+          iseq.dup
+          iseq.setlocal(local_variable.index, local_variable.level)
         when IVar
           name = node.target.value.value.to_sym
-          builder.getinstancevariable(name)
+          iseq.getinstancevariable(name)
 
           yield
 
-          builder.dup
-          builder.setinstancevariable(name)
+          iseq.dup
+          iseq.setinstancevariable(name)
         end
       end
     end

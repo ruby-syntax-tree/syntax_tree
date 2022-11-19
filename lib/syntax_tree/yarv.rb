@@ -147,7 +147,20 @@ module SyntaxTree
       # maximum size of the stack for this instruction sequence.
       attr_reader :stack
 
-      def initialize(type, name, parent_iseq, location)
+      # These are various compilation options provided.
+      attr_reader :frozen_string_literal,
+                  :operands_unification,
+                  :specialized_instruction
+
+      def initialize(
+        type,
+        name,
+        parent_iseq,
+        location,
+        frozen_string_literal: false,
+        operands_unification: true,
+        specialized_instruction: true
+      )
         @type = type
         @name = name
         @parent_iseq = parent_iseq
@@ -161,7 +174,15 @@ module SyntaxTree
         @insns = []
         @storage_index = 0
         @stack = Stack.new
+
+        @frozen_string_literal = frozen_string_literal
+        @operands_unification = operands_unification
+        @specialized_instruction = specialized_instruction
       end
+
+      ##########################################################################
+      # Query methods
+      ##########################################################################
 
       def local_variable(name, level = 0)
         if (lookup = local_table.find(name, level))
@@ -171,11 +192,6 @@ module SyntaxTree
         end
       end
 
-      def push(insn)
-        insns << insn
-        insn
-      end
-
       def inline_storage
         storage = storage_index
         @storage_index += 1
@@ -183,9 +199,7 @@ module SyntaxTree
       end
 
       def inline_storage_for(name)
-        unless inline_storages.key?(name)
-          inline_storages[name] = inline_storage
-        end
+        inline_storages[name] = inline_storage unless inline_storages.key?(name)
 
         inline_storages[name]
       end
@@ -239,13 +253,494 @@ module SyntaxTree
         ]
       end
 
+      ##########################################################################
+      # Instruction push methods
+      ##########################################################################
+
+      def push(insn)
+        insns << insn
+        insn
+      end
+
+      # This creates a new label at the current length of the instruction
+      # sequence. It is used as the operand for jump instructions.
+      def label
+        name = :"label_#{length}"
+        insns.last == name ? name : event(name)
+      end
+
+      def event(name)
+        push(name)
+      end
+
+      def adjuststack(number)
+        stack.change_by(-number)
+        push([:adjuststack, number])
+      end
+
+      def anytostring
+        stack.change_by(-2 + 1)
+        push([:anytostring])
+      end
+
+      def branchif(index)
+        stack.change_by(-1)
+        push([:branchif, index])
+      end
+
+      def branchnil(index)
+        stack.change_by(-1)
+        push([:branchnil, index])
+      end
+
+      def branchunless(index)
+        stack.change_by(-1)
+        push([:branchunless, index])
+      end
+
+      def checkkeyword(index, keyword_index)
+        stack.change_by(+1)
+        push([:checkkeyword, index, keyword_index])
+      end
+
+      def concatarray
+        stack.change_by(-2 + 1)
+        push([:concatarray])
+      end
+
+      def concatstrings(number)
+        stack.change_by(-number + 1)
+        push([:concatstrings, number])
+      end
+
+      def defined(type, name, message)
+        stack.change_by(-1 + 1)
+        push([:defined, type, name, message])
+      end
+
+      def defineclass(name, class_iseq, flags)
+        stack.change_by(-2 + 1)
+        push([:defineclass, name, class_iseq, flags])
+      end
+
+      def definemethod(name, method_iseq)
+        stack.change_by(0)
+        push([:definemethod, name, method_iseq])
+      end
+
+      def definesmethod(name, method_iseq)
+        stack.change_by(-1)
+        push([:definesmethod, name, method_iseq])
+      end
+
+      def dup
+        stack.change_by(-1 + 2)
+        push([:dup])
+      end
+
+      def duparray(object)
+        stack.change_by(+1)
+        push([:duparray, object])
+      end
+
+      def duphash(object)
+        stack.change_by(+1)
+        push([:duphash, object])
+      end
+
+      def dupn(number)
+        stack.change_by(+number)
+        push([:dupn, number])
+      end
+
+      def expandarray(length, flag)
+        stack.change_by(-1 + length)
+        push([:expandarray, length, flag])
+      end
+
+      def getblockparam(index, level)
+        stack.change_by(+1)
+        push([:getblockparam, index, level])
+      end
+
+      def getblockparamproxy(index, level)
+        stack.change_by(+1)
+        push([:getblockparamproxy, index, level])
+      end
+
+      def getclassvariable(name)
+        stack.change_by(+1)
+
+        if RUBY_VERSION >= "3.0"
+          push([:getclassvariable, name, inline_storage_for(name)])
+        else
+          push([:getclassvariable, name])
+        end
+      end
+
+      def getconstant(name)
+        stack.change_by(-2 + 1)
+        push([:getconstant, name])
+      end
+
+      def getglobal(name)
+        stack.change_by(+1)
+        push([:getglobal, name])
+      end
+
+      def getinstancevariable(name)
+        stack.change_by(+1)
+
+        if RUBY_VERSION >= "3.2"
+          push([:getinstancevariable, name, inline_storage])
+        else
+          inline_storage = inline_storage_for(name)
+          push([:getinstancevariable, name, inline_storage])
+        end
+      end
+
+      def getlocal(index, level)
+        stack.change_by(+1)
+
+        if operands_unification
+          # Specialize the getlocal instruction based on the level of the
+          # local variable. If it's 0 or 1, then there's a specialized
+          # instruction that will look at the current scope or the parent
+          # scope, respectively, and requires fewer operands.
+          case level
+          when 0
+            push([:getlocal_WC_0, index])
+          when 1
+            push([:getlocal_WC_1, index])
+          else
+            push([:getlocal, index, level])
+          end
+        else
+          push([:getlocal, index, level])
+        end
+      end
+
+      def getspecial(key, type)
+        stack.change_by(-0 + 1)
+        push([:getspecial, key, type])
+      end
+
+      def intern
+        stack.change_by(-1 + 1)
+        push([:intern])
+      end
+
+      def invokeblock(method_id, argc, flag)
+        stack.change_by(-argc + 1)
+        push([:invokeblock, call_data(method_id, argc, flag)])
+      end
+
+      def invokesuper(method_id, argc, flag, block_iseq)
+        stack.change_by(-(argc + 1) + 1)
+
+        cdata = call_data(method_id, argc, flag)
+        push([:invokesuper, cdata, block_iseq])
+      end
+
+      def jump(index)
+        stack.change_by(0)
+        push([:jump, index])
+      end
+
+      def leave
+        stack.change_by(-1)
+        push([:leave])
+      end
+
+      def newarray(length)
+        stack.change_by(-length + 1)
+        push([:newarray, length])
+      end
+
+      def newhash(length)
+        stack.change_by(-length + 1)
+        push([:newhash, length])
+      end
+
+      def newrange(flag)
+        stack.change_by(-2 + 1)
+        push([:newrange, flag])
+      end
+
+      def nop
+        stack.change_by(0)
+        push([:nop])
+      end
+
+      def objtostring(method_id, argc, flag)
+        stack.change_by(-1 + 1)
+        push([:objtostring, call_data(method_id, argc, flag)])
+      end
+
+      def once(postexe_iseq, inline_storage)
+        stack.change_by(+1)
+        push([:once, postexe_iseq, inline_storage])
+      end
+
+      def opt_getconstant_path(names)
+        if RUBY_VERSION >= "3.2"
+          stack.change_by(+1)
+          push([:opt_getconstant_path, names])
+        else
+          const_inline_storage = inline_storage
+          getinlinecache = opt_getinlinecache(-1, const_inline_storage)
+
+          if names[0] == :""
+            names.shift
+            pop
+            putobject(Object)
+          end
+
+          names.each_with_index do |name, index|
+            putobject(index == 0)
+            getconstant(name)
+          end
+
+          opt_setinlinecache(const_inline_storage)
+          getinlinecache[1] = label
+        end
+      end
+
+      def opt_getinlinecache(offset, inline_storage)
+        stack.change_by(+1)
+        push([:opt_getinlinecache, offset, inline_storage])
+      end
+
+      def opt_newarray_max(length)
+        if specialized_instruction
+          stack.change_by(-length + 1)
+          push([:opt_newarray_max, length])
+        else
+          newarray(length)
+          send(:max, 0, VM_CALL_ARGS_SIMPLE)
+        end
+      end
+
+      def opt_newarray_min(length)
+        if specialized_instruction
+          stack.change_by(-length + 1)
+          push([:opt_newarray_min, length])
+        else
+          newarray(length)
+          send(:min, 0, VM_CALL_ARGS_SIMPLE)
+        end
+      end
+
+      def opt_setinlinecache(inline_storage)
+        stack.change_by(-1 + 1)
+        push([:opt_setinlinecache, inline_storage])
+      end
+
+      def opt_str_freeze(value)
+        if specialized_instruction
+          stack.change_by(+1)
+          push(
+            [:opt_str_freeze, value, call_data(:freeze, 0, VM_CALL_ARGS_SIMPLE)]
+          )
+        else
+          putstring(value)
+          send(:freeze, 0, VM_CALL_ARGS_SIMPLE)
+        end
+      end
+
+      def opt_str_uminus(value)
+        if specialized_instruction
+          stack.change_by(+1)
+          push([:opt_str_uminus, value, call_data(:-@, 0, VM_CALL_ARGS_SIMPLE)])
+        else
+          putstring(value)
+          send(:-@, 0, VM_CALL_ARGS_SIMPLE)
+        end
+      end
+
+      def pop
+        stack.change_by(-1)
+        push([:pop])
+      end
+
+      def putnil
+        stack.change_by(+1)
+        push([:putnil])
+      end
+
+      def putobject(object)
+        stack.change_by(+1)
+
+        if operands_unification
+          # Specialize the putobject instruction based on the value of the
+          # object. If it's 0 or 1, then there's a specialized instruction
+          # that will push the object onto the stack and requires fewer
+          # operands.
+          if object.eql?(0)
+            push([:putobject_INT2FIX_0_])
+          elsif object.eql?(1)
+            push([:putobject_INT2FIX_1_])
+          else
+            push([:putobject, object])
+          end
+        else
+          push([:putobject, object])
+        end
+      end
+
+      def putself
+        stack.change_by(+1)
+        push([:putself])
+      end
+
+      def putspecialobject(object)
+        stack.change_by(+1)
+        push([:putspecialobject, object])
+      end
+
+      def putstring(object)
+        stack.change_by(+1)
+        push([:putstring, object])
+      end
+
+      def send(method_id, argc, flag, block_iseq = nil)
+        stack.change_by(-(argc + 1) + 1)
+        cdata = call_data(method_id, argc, flag)
+
+        if specialized_instruction
+          # Specialize the send instruction. If it doesn't have a block
+          # attached, then we will replace it with an opt_send_without_block
+          # and do further specializations based on the called method and the
+          # number of arguments.
+
+          # stree-ignore
+          if !block_iseq && (flag & VM_CALL_ARGS_BLOCKARG) == 0
+            case [method_id, argc]
+            when [:length, 0] then push([:opt_length, cdata])
+            when [:size, 0]   then push([:opt_size, cdata])
+            when [:empty?, 0] then push([:opt_empty_p, cdata])
+            when [:nil?, 0]   then push([:opt_nil_p, cdata])
+            when [:succ, 0]   then push([:opt_succ, cdata])
+            when [:!, 0]      then push([:opt_not, cdata])
+            when [:+, 1]      then push([:opt_plus, cdata])
+            when [:-, 1]      then push([:opt_minus, cdata])
+            when [:*, 1]      then push([:opt_mult, cdata])
+            when [:/, 1]      then push([:opt_div, cdata])
+            when [:%, 1]      then push([:opt_mod, cdata])
+            when [:==, 1]     then push([:opt_eq, cdata])
+            when [:=~, 1]     then push([:opt_regexpmatch2, cdata])
+            when [:<, 1]      then push([:opt_lt, cdata])
+            when [:<=, 1]     then push([:opt_le, cdata])
+            when [:>, 1]      then push([:opt_gt, cdata])
+            when [:>=, 1]     then push([:opt_ge, cdata])
+            when [:<<, 1]     then push([:opt_ltlt, cdata])
+            when [:[], 1]     then push([:opt_aref, cdata])
+            when [:&, 1]      then push([:opt_and, cdata])
+            when [:|, 1]      then push([:opt_or, cdata])
+            when [:[]=, 2]    then push([:opt_aset, cdata])
+            when [:!=, 1]
+              eql_data = call_data(:==, 1, VM_CALL_ARGS_SIMPLE)
+              push([:opt_neq, eql_data, cdata])
+            else
+              push([:opt_send_without_block, cdata])
+            end
+          else
+            push([:send, cdata, block_iseq])
+          end
+        else
+          push([:send, cdata, block_iseq])
+        end
+      end
+
+      def setclassvariable(name)
+        stack.change_by(-1)
+
+        if RUBY_VERSION >= "3.0"
+          push([:setclassvariable, name, inline_storage_for(name)])
+        else
+          push([:setclassvariable, name])
+        end
+      end
+
+      def setconstant(name)
+        stack.change_by(-2)
+        push([:setconstant, name])
+      end
+
+      def setglobal(name)
+        stack.change_by(-1)
+        push([:setglobal, name])
+      end
+
+      def setinstancevariable(name)
+        stack.change_by(-1)
+
+        if RUBY_VERSION >= "3.2"
+          push([:setinstancevariable, name, inline_storage])
+        else
+          push([:setinstancevariable, name, inline_storage_for(name)])
+        end
+      end
+
+      def setlocal(index, level)
+        stack.change_by(-1)
+
+        if operands_unification
+          # Specialize the setlocal instruction based on the level of the
+          # local variable. If it's 0 or 1, then there's a specialized
+          # instruction that will write to the current scope or the parent
+          # scope, respectively, and requires fewer operands.
+          case level
+          when 0
+            push([:setlocal_WC_0, index])
+          when 1
+            push([:setlocal_WC_1, index])
+          else
+            push([:setlocal, index, level])
+          end
+        else
+          push([:setlocal, index, level])
+        end
+      end
+
+      def setn(number)
+        stack.change_by(-1 + 1)
+        push([:setn, number])
+      end
+
+      def splatarray(flag)
+        stack.change_by(-1 + 1)
+        push([:splatarray, flag])
+      end
+
+      def swap
+        stack.change_by(-2 + 2)
+        push([:swap])
+      end
+
+      def topn(number)
+        stack.change_by(+1)
+        push([:topn, number])
+      end
+
+      def toregexp(options, length)
+        stack.change_by(-length + 1)
+        push([:toregexp, options, length])
+      end
+
       private
+
+      # This creates a call data object that is used as the operand for the
+      # send, invokesuper, and objtostring instructions.
+      def call_data(method_id, argc, flag)
+        { mid: method_id, flag: flag, orig_argc: argc }
+      end
 
       def serialize(insn)
         case insn[0]
-        when :checkkeyword, :getblockparam, :getblockparamproxy,
-              :getlocal_WC_0, :getlocal_WC_1, :getlocal, :setlocal_WC_0,
-              :setlocal_WC_1, :setlocal
+        when :checkkeyword, :getblockparam, :getblockparamproxy, :getlocal_WC_0,
+             :getlocal_WC_1, :getlocal, :setlocal_WC_0, :setlocal_WC_1,
+             :setlocal
           iseq = self
 
           case insn[0]
@@ -290,545 +785,75 @@ module SyntaxTree
           case insn[0]
           when :getlocal_WC_0
             value = iseq.local_table.locals[insn[1]].name.to_s
-            stack << VarRef.new(value: Ident.new(value: value, location: Location.default), location: Location.default)
+            stack << VarRef.new(
+              value: Ident.new(value: value, location: Location.default),
+              location: Location.default
+            )
           when :leave
-            stack << ReturnNode.new(arguments: Args.new(parts: [stack.pop], location: Location.default), location: Location.default)
+            stack << ReturnNode.new(
+              arguments:
+                Args.new(parts: [stack.pop], location: Location.default),
+              location: Location.default
+            )
           when :opt_mult
             left, right = stack.pop(2)
-            stack << Binary.new(left: left, operator: :*, right: right, location: Location.default)
+            stack << Binary.new(
+              left: left,
+              operator: :*,
+              right: right,
+              location: Location.default
+            )
           when :opt_plus
             left, right = stack.pop(2)
-            stack << Binary.new(left: left, operator: :+, right: right, location: Location.default)
+            stack << Binary.new(
+              left: left,
+              operator: :+,
+              right: right,
+              location: Location.default
+            )
           when :putobject
             case insn[1]
             when Float
-              stack << FloatLiteral.new(value: insn[1].inspect, location: Location.default)
+              stack << FloatLiteral.new(
+                value: insn[1].inspect,
+                location: Location.default
+              )
             when Integer
-              stack << Int.new(value: insn[1].inspect, location: Location.default)
+              stack << Int.new(
+                value: insn[1].inspect,
+                location: Location.default
+              )
             when Rational
-              stack << RationalLiteral.new(value: insn[1].inspect, location: Location.default)
+              stack << RationalLiteral.new(
+                value: insn[1].inspect,
+                location: Location.default
+              )
             else
               raise "Unknown object type: #{insn[1].class.name}"
             end
           when :putobject_INT2FIX_1_
             stack << Int.new(value: "1", location: Location.default)
           when :setlocal_WC_0
-            target = VarField.new(value: Ident.new(value: iseq.local_table.locals[insn[1]].name.to_s, location: Location.default), location: Location.default)
-            stack << Assign.new(target: target, value: stack.pop, location: Location.default)
+            target =
+              VarField.new(
+                value:
+                  Ident.new(
+                    value: iseq.local_table.locals[insn[1]].name.to_s,
+                    location: Location.default
+                  ),
+                location: Location.default
+              )
+            stack << Assign.new(
+              target: target,
+              value: stack.pop,
+              location: Location.default
+            )
           else
             raise "Unknown instruction #{insn[0]}"
           end
         end
 
         Statements.new(nil, body: stack, location: Location.default)
-      end
-    end
-
-    # This class serves as a layer of indirection between the instruction
-    # sequence and the compiler. It allows us to provide different behavior
-    # for certain instructions depending on the Ruby version. For example,
-    # class variable reads and writes gained an inline cache in Ruby 3.0. So
-    # we place the logic for checking the Ruby version in this class.
-    class Builder
-      attr_reader :iseq, :stack
-      attr_reader :frozen_string_literal,
-                  :operands_unification,
-                  :specialized_instruction
-
-      def initialize(
-        iseq,
-        frozen_string_literal: false,
-        operands_unification: true,
-        specialized_instruction: true
-      )
-        @iseq = iseq
-        @stack = iseq.stack
-
-        @frozen_string_literal = frozen_string_literal
-        @operands_unification = operands_unification
-        @specialized_instruction = specialized_instruction
-      end
-
-      # This creates a new label at the current length of the instruction
-      # sequence. It is used as the operand for jump instructions.
-      def label
-        name = :"label_#{iseq.length}"
-        iseq.insns.last == name ? name : event(name)
-      end
-
-      def event(name)
-        iseq.push(name)
-        name
-      end
-
-      def adjuststack(number)
-        stack.change_by(-number)
-        iseq.push([:adjuststack, number])
-      end
-
-      def anytostring
-        stack.change_by(-2 + 1)
-        iseq.push([:anytostring])
-      end
-
-      def branchif(index)
-        stack.change_by(-1)
-        iseq.push([:branchif, index])
-      end
-
-      def branchnil(index)
-        stack.change_by(-1)
-        iseq.push([:branchnil, index])
-      end
-
-      def branchunless(index)
-        stack.change_by(-1)
-        iseq.push([:branchunless, index])
-      end
-
-      def checkkeyword(index, keyword_index)
-        stack.change_by(+1)
-        iseq.push([:checkkeyword, index, keyword_index])
-      end
-
-      def concatarray
-        stack.change_by(-2 + 1)
-        iseq.push([:concatarray])
-      end
-
-      def concatstrings(number)
-        stack.change_by(-number + 1)
-        iseq.push([:concatstrings, number])
-      end
-
-      def defined(type, name, message)
-        stack.change_by(-1 + 1)
-        iseq.push([:defined, type, name, message])
-      end
-
-      def defineclass(name, class_iseq, flags)
-        stack.change_by(-2 + 1)
-        iseq.push([:defineclass, name, class_iseq, flags])
-      end
-
-      def definemethod(name, method_iseq)
-        stack.change_by(0)
-        iseq.push([:definemethod, name, method_iseq])
-      end
-
-      def definesmethod(name, method_iseq)
-        stack.change_by(-1)
-        iseq.push([:definesmethod, name, method_iseq])
-      end
-
-      def dup
-        stack.change_by(-1 + 2)
-        iseq.push([:dup])
-      end
-
-      def duparray(object)
-        stack.change_by(+1)
-        iseq.push([:duparray, object])
-      end
-
-      def duphash(object)
-        stack.change_by(+1)
-        iseq.push([:duphash, object])
-      end
-
-      def dupn(number)
-        stack.change_by(+number)
-        iseq.push([:dupn, number])
-      end
-
-      def expandarray(length, flag)
-        stack.change_by(-1 + length)
-        iseq.push([:expandarray, length, flag])
-      end
-
-      def getblockparam(index, level)
-        stack.change_by(+1)
-        iseq.push([:getblockparam, index, level])
-      end
-
-      def getblockparamproxy(index, level)
-        stack.change_by(+1)
-        iseq.push([:getblockparamproxy, index, level])
-      end
-
-      def getclassvariable(name)
-        stack.change_by(+1)
-
-        if RUBY_VERSION >= "3.0"
-          iseq.push([:getclassvariable, name, iseq.inline_storage_for(name)])
-        else
-          iseq.push([:getclassvariable, name])
-        end
-      end
-
-      def getconstant(name)
-        stack.change_by(-2 + 1)
-        iseq.push([:getconstant, name])
-      end
-
-      def getglobal(name)
-        stack.change_by(+1)
-        iseq.push([:getglobal, name])
-      end
-
-      def getinstancevariable(name)
-        stack.change_by(+1)
-
-        if RUBY_VERSION >= "3.2"
-          iseq.push([:getinstancevariable, name, iseq.inline_storage])
-        else
-          inline_storage = iseq.inline_storage_for(name)
-          iseq.push([:getinstancevariable, name, inline_storage])
-        end
-      end
-
-      def getlocal(index, level)
-        stack.change_by(+1)
-
-        if operands_unification
-          # Specialize the getlocal instruction based on the level of the
-          # local variable. If it's 0 or 1, then there's a specialized
-          # instruction that will look at the current scope or the parent
-          # scope, respectively, and requires fewer operands.
-          case level
-          when 0
-            iseq.push([:getlocal_WC_0, index])
-          when 1
-            iseq.push([:getlocal_WC_1, index])
-          else
-            iseq.push([:getlocal, index, level])
-          end
-        else
-          iseq.push([:getlocal, index, level])
-        end
-      end
-
-      def getspecial(key, type)
-        stack.change_by(-0 + 1)
-        iseq.push([:getspecial, key, type])
-      end
-
-      def intern
-        stack.change_by(-1 + 1)
-        iseq.push([:intern])
-      end
-
-      def invokeblock(method_id, argc, flag)
-        stack.change_by(-argc + 1)
-        iseq.push([:invokeblock, call_data(method_id, argc, flag)])
-      end
-
-      def invokesuper(method_id, argc, flag, block_iseq)
-        stack.change_by(-(argc + 1) + 1)
-
-        cdata = call_data(method_id, argc, flag)
-        iseq.push([:invokesuper, cdata, block_iseq])
-      end
-
-      def jump(index)
-        stack.change_by(0)
-        iseq.push([:jump, index])
-      end
-
-      def leave
-        stack.change_by(-1)
-        iseq.push([:leave])
-      end
-
-      def newarray(length)
-        stack.change_by(-length + 1)
-        iseq.push([:newarray, length])
-      end
-
-      def newhash(length)
-        stack.change_by(-length + 1)
-        iseq.push([:newhash, length])
-      end
-
-      def newrange(flag)
-        stack.change_by(-2 + 1)
-        iseq.push([:newrange, flag])
-      end
-
-      def nop
-        stack.change_by(0)
-        iseq.push([:nop])
-      end
-
-      def objtostring(method_id, argc, flag)
-        stack.change_by(-1 + 1)
-        iseq.push([:objtostring, call_data(method_id, argc, flag)])
-      end
-
-      def once(postexe_iseq, inline_storage)
-        stack.change_by(+1)
-        iseq.push([:once, postexe_iseq, inline_storage])
-      end
-
-      def opt_getconstant_path(names)
-        if RUBY_VERSION >= "3.2"
-          stack.change_by(+1)
-          iseq.push([:opt_getconstant_path, names])
-        else
-          inline_storage = iseq.inline_storage
-          getinlinecache = opt_getinlinecache(-1, inline_storage)
-
-          if names[0] == :""
-            names.shift
-            pop
-            putobject(Object)
-          end
-
-          names.each_with_index do |name, index|
-            putobject(index == 0)
-            getconstant(name)
-          end
-
-          opt_setinlinecache(inline_storage)
-          getinlinecache[1] = label
-        end
-      end
-
-      def opt_getinlinecache(offset, inline_storage)
-        stack.change_by(+1)
-        iseq.push([:opt_getinlinecache, offset, inline_storage])
-      end
-
-      def opt_newarray_max(length)
-        if specialized_instruction
-          stack.change_by(-length + 1)
-          iseq.push([:opt_newarray_max, length])
-        else
-          newarray(length)
-          send(:max, 0, VM_CALL_ARGS_SIMPLE)
-        end
-      end
-
-      def opt_newarray_min(length)
-        if specialized_instruction
-          stack.change_by(-length + 1)
-          iseq.push([:opt_newarray_min, length])
-        else
-          newarray(length)
-          send(:min, 0, VM_CALL_ARGS_SIMPLE)
-        end
-      end
-
-      def opt_setinlinecache(inline_storage)
-        stack.change_by(-1 + 1)
-        iseq.push([:opt_setinlinecache, inline_storage])
-      end
-
-      def opt_str_freeze(value)
-        if specialized_instruction
-          stack.change_by(+1)
-          iseq.push(
-            [
-              :opt_str_freeze,
-              value,
-              call_data(:freeze, 0, VM_CALL_ARGS_SIMPLE)
-            ]
-          )
-        else
-          putstring(value)
-          send(:freeze, 0, VM_CALL_ARGS_SIMPLE)
-        end
-      end
-
-      def opt_str_uminus(value)
-        if specialized_instruction
-          stack.change_by(+1)
-          iseq.push(
-            [:opt_str_uminus, value, call_data(:-@, 0, VM_CALL_ARGS_SIMPLE)]
-          )
-        else
-          putstring(value)
-          send(:-@, 0, VM_CALL_ARGS_SIMPLE)
-        end
-      end
-
-      def pop
-        stack.change_by(-1)
-        iseq.push([:pop])
-      end
-
-      def putnil
-        stack.change_by(+1)
-        iseq.push([:putnil])
-      end
-
-      def putobject(object)
-        stack.change_by(+1)
-
-        if operands_unification
-          # Specialize the putobject instruction based on the value of the
-          # object. If it's 0 or 1, then there's a specialized instruction
-          # that will push the object onto the stack and requires fewer
-          # operands.
-          if object.eql?(0)
-            iseq.push([:putobject_INT2FIX_0_])
-          elsif object.eql?(1)
-            iseq.push([:putobject_INT2FIX_1_])
-          else
-            iseq.push([:putobject, object])
-          end
-        else
-          iseq.push([:putobject, object])
-        end
-      end
-
-      def putself
-        stack.change_by(+1)
-        iseq.push([:putself])
-      end
-
-      def putspecialobject(object)
-        stack.change_by(+1)
-        iseq.push([:putspecialobject, object])
-      end
-
-      def putstring(object)
-        stack.change_by(+1)
-        iseq.push([:putstring, object])
-      end
-
-      def send(method_id, argc, flag, block_iseq = nil)
-        stack.change_by(-(argc + 1) + 1)
-        cdata = call_data(method_id, argc, flag)
-
-        if specialized_instruction
-          # Specialize the send instruction. If it doesn't have a block
-          # attached, then we will replace it with an opt_send_without_block
-          # and do further specializations based on the called method and the
-          # number of arguments.
-
-          # stree-ignore
-          if !block_iseq && (flag & VM_CALL_ARGS_BLOCKARG) == 0
-            case [method_id, argc]
-            when [:length, 0] then iseq.push([:opt_length, cdata])
-            when [:size, 0]   then iseq.push([:opt_size, cdata])
-            when [:empty?, 0] then iseq.push([:opt_empty_p, cdata])
-            when [:nil?, 0]   then iseq.push([:opt_nil_p, cdata])
-            when [:succ, 0]   then iseq.push([:opt_succ, cdata])
-            when [:!, 0]      then iseq.push([:opt_not, cdata])
-            when [:+, 1]      then iseq.push([:opt_plus, cdata])
-            when [:-, 1]      then iseq.push([:opt_minus, cdata])
-            when [:*, 1]      then iseq.push([:opt_mult, cdata])
-            when [:/, 1]      then iseq.push([:opt_div, cdata])
-            when [:%, 1]      then iseq.push([:opt_mod, cdata])
-            when [:==, 1]     then iseq.push([:opt_eq, cdata])
-            when [:=~, 1]     then iseq.push([:opt_regexpmatch2, cdata])
-            when [:<, 1]      then iseq.push([:opt_lt, cdata])
-            when [:<=, 1]     then iseq.push([:opt_le, cdata])
-            when [:>, 1]      then iseq.push([:opt_gt, cdata])
-            when [:>=, 1]     then iseq.push([:opt_ge, cdata])
-            when [:<<, 1]     then iseq.push([:opt_ltlt, cdata])
-            when [:[], 1]     then iseq.push([:opt_aref, cdata])
-            when [:&, 1]      then iseq.push([:opt_and, cdata])
-            when [:|, 1]      then iseq.push([:opt_or, cdata])
-            when [:[]=, 2]    then iseq.push([:opt_aset, cdata])
-            when [:!=, 1]
-              eql_data = call_data(:==, 1, VM_CALL_ARGS_SIMPLE)
-              iseq.push([:opt_neq, eql_data, cdata])
-            else
-              iseq.push([:opt_send_without_block, cdata])
-            end
-          else
-            iseq.push([:send, cdata, block_iseq])
-          end
-        else
-          iseq.push([:send, cdata, block_iseq])
-        end
-      end
-
-      def setclassvariable(name)
-        stack.change_by(-1)
-
-        if RUBY_VERSION >= "3.0"
-          iseq.push([:setclassvariable, name, iseq.inline_storage_for(name)])
-        else
-          iseq.push([:setclassvariable, name])
-        end
-      end
-
-      def setconstant(name)
-        stack.change_by(-2)
-        iseq.push([:setconstant, name])
-      end
-
-      def setglobal(name)
-        stack.change_by(-1)
-        iseq.push([:setglobal, name])
-      end
-
-      def setinstancevariable(name)
-        stack.change_by(-1)
-
-        if RUBY_VERSION >= "3.2"
-          iseq.push([:setinstancevariable, name, iseq.inline_storage])
-        else
-          inline_storage = iseq.inline_storage_for(name)
-          iseq.push([:setinstancevariable, name, inline_storage])
-        end
-      end
-
-      def setlocal(index, level)
-        stack.change_by(-1)
-
-        if operands_unification
-          # Specialize the setlocal instruction based on the level of the
-          # local variable. If it's 0 or 1, then there's a specialized
-          # instruction that will write to the current scope or the parent
-          # scope, respectively, and requires fewer operands.
-          case level
-          when 0
-            iseq.push([:setlocal_WC_0, index])
-          when 1
-            iseq.push([:setlocal_WC_1, index])
-          else
-            iseq.push([:setlocal, index, level])
-          end
-        else
-          iseq.push([:setlocal, index, level])
-        end
-      end
-
-      def setn(number)
-        stack.change_by(-1 + 1)
-        iseq.push([:setn, number])
-      end
-
-      def splatarray(flag)
-        stack.change_by(-1 + 1)
-        iseq.push([:splatarray, flag])
-      end
-
-      def swap
-        stack.change_by(-2 + 2)
-        iseq.push([:swap])
-      end
-
-      def topn(number)
-        stack.change_by(+1)
-        iseq.push([:topn, number])
-      end
-
-      def toregexp(options, length)
-        stack.change_by(-length + 1)
-        iseq.push([:toregexp, options, length])
-      end
-
-      private
-
-      # This creates a call data object that is used as the operand for the
-      # send, invokesuper, and objtostring instructions.
-      def call_data(method_id, argc, flag)
-        { mid: method_id, flag: flag, orig_argc: argc }
       end
     end
 
