@@ -449,7 +449,7 @@ module SyntaxTree
         when Array
           insn.map do |operand|
             if operand.is_a?(Array) &&
-                 operand[0] == Compiler::InstructionSequence::MAGIC
+                 operand[0] == YARV::InstructionSequence::MAGIC
               serialize_iseq(operand)
             else
               operand

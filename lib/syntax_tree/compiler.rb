@@ -185,839 +185,6 @@ module SyntaxTree
       end
     end
 
-    # This object is used to track the size of the stack at any given time. It
-    # is effectively a mini symbolic interpreter. It's necessary because when
-    # instruction sequences get serialized they include a :stack_max field on
-    # them. This field is used to determine how much stack space to allocate
-    # for the instruction sequence.
-    class Stack
-      attr_reader :current_size, :maximum_size
-
-      def initialize
-        @current_size = 0
-        @maximum_size = 0
-      end
-
-      def change_by(value)
-        @current_size += value
-        @maximum_size = @current_size if @current_size > @maximum_size
-      end
-    end
-
-    # This represents every local variable associated with an instruction
-    # sequence. There are two kinds of locals: plain locals that are what you
-    # expect, and block proxy locals, which represent local variables
-    # associated with blocks that were passed into the current instruction
-    # sequence.
-    class LocalTable
-      # A local representing a block passed into the current instruction
-      # sequence.
-      class BlockLocal
-        attr_reader :name
-
-        def initialize(name)
-          @name = name
-        end
-      end
-
-      # A regular local variable.
-      class PlainLocal
-        attr_reader :name
-
-        def initialize(name)
-          @name = name
-        end
-      end
-
-      # The result of looking up a local variable in the current local table.
-      class Lookup
-        attr_reader :local, :index, :level
-
-        def initialize(local, index, level)
-          @local = local
-          @index = index
-          @level = level
-        end
-      end
-
-      attr_reader :locals
-
-      def initialize
-        @locals = []
-      end
-
-      def find(name, level)
-        index = locals.index { |local| local.name == name }
-        Lookup.new(locals[index], index, level) if index
-      end
-
-      def has?(name)
-        locals.any? { |local| local.name == name }
-      end
-
-      def names
-        locals.map(&:name)
-      end
-
-      def size
-        locals.length
-      end
-
-      # Add a BlockLocal to the local table.
-      def block(name)
-        locals << BlockLocal.new(name) unless has?(name)
-      end
-
-      # Add a PlainLocal to the local table.
-      def plain(name)
-        locals << PlainLocal.new(name) unless has?(name)
-      end
-
-      # This is the offset from the top of the stack where this local variable
-      # lives.
-      def offset(index)
-        size - (index - 3) - 1
-      end
-    end
-
-    # This class is meant to mirror RubyVM::InstructionSequence. It contains a
-    # list of instructions along with the metadata pertaining to them. It also
-    # functions as a builder for the instruction sequence.
-    class InstructionSequence
-      MAGIC = "YARVInstructionSequence/SimpleDataFormat"
-
-      # This provides a handle to the rb_iseq_load function, which allows you to
-      # pass a serialized iseq to Ruby and have it return a
-      # RubyVM::InstructionSequence object.
-      ISEQ_LOAD =
-        Fiddle::Function.new(
-          Fiddle::Handle::DEFAULT["rb_iseq_load"],
-          [Fiddle::TYPE_VOIDP] * 3,
-          Fiddle::TYPE_VOIDP
-        )
-
-      # The type of the instruction sequence.
-      attr_reader :type
-
-      # The name of the instruction sequence.
-      attr_reader :name
-
-      # The parent instruction sequence, if there is one.
-      attr_reader :parent_iseq
-
-      # The location of the root node of this instruction sequence.
-      attr_reader :location
-
-      # This is the list of information about the arguments to this
-      # instruction sequence.
-      attr_accessor :argument_size
-      attr_reader :argument_options
-
-      # The list of instructions for this instruction sequence.
-      attr_reader :insns
-
-      # The table of local variables.
-      attr_reader :local_table
-
-      # The hash of names of instance and class variables pointing to the
-      # index of their associated inline storage.
-      attr_reader :inline_storages
-
-      # The index of the next inline storage that will be created.
-      attr_reader :storage_index
-
-      # An object that will track the current size of the stack and the
-      # maximum size of the stack for this instruction sequence.
-      attr_reader :stack
-
-      def initialize(type, name, parent_iseq, location)
-        @type = type
-        @name = name
-        @parent_iseq = parent_iseq
-        @location = location
-
-        @argument_size = 0
-        @argument_options = {}
-
-        @local_table = LocalTable.new
-        @inline_storages = {}
-        @insns = []
-        @storage_index = 0
-        @stack = Stack.new
-      end
-
-      def local_variable(name, level = 0)
-        if (lookup = local_table.find(name, level))
-          lookup
-        elsif parent_iseq
-          parent_iseq.local_variable(name, level + 1)
-        end
-      end
-
-      def push(insn)
-        insns << insn
-        insn
-      end
-
-      def inline_storage
-        storage = storage_index
-        @storage_index += 1
-        storage
-      end
-
-      def inline_storage_for(name)
-        unless inline_storages.key?(name)
-          inline_storages[name] = inline_storage
-        end
-
-        inline_storages[name]
-      end
-
-      def length
-        insns.inject(0) do |sum, insn|
-          insn.is_a?(Array) ? sum + insn.length : sum
-        end
-      end
-
-      def each_child
-        insns.each do |insn|
-          insn[1..].each do |operand|
-            yield operand if operand.is_a?(InstructionSequence)
-          end
-        end
-      end
-
-      def eval
-        compiled = to_a
-
-        # Temporary hack until we get these working.
-        compiled[4][:node_id] = 11
-        compiled[4][:node_ids] = [1, 0, 3, 2, 6, 7, 9, -1]
-
-        Fiddle.dlunwrap(ISEQ_LOAD.call(Fiddle.dlwrap(compiled), 0, nil)).eval
-      end
-
-      def to_a
-        versions = RUBY_VERSION.split(".").map(&:to_i)
-
-        [
-          MAGIC,
-          versions[0],
-          versions[1],
-          1,
-          {
-            arg_size: argument_size,
-            local_size: local_table.size,
-            stack_max: stack.maximum_size
-          },
-          name,
-          "<compiled>",
-          "<compiled>",
-          location.start_line,
-          type,
-          local_table.names,
-          argument_options,
-          [],
-          insns.map { |insn| serialize(insn) }
-        ]
-      end
-
-      private
-
-      def serialize(insn)
-        case insn[0]
-        when :checkkeyword, :getblockparam, :getblockparamproxy,
-              :getlocal_WC_0, :getlocal_WC_1, :getlocal, :setlocal_WC_0,
-              :setlocal_WC_1, :setlocal
-          iseq = self
-
-          case insn[0]
-          when :getlocal_WC_1, :setlocal_WC_1
-            iseq = iseq.parent_iseq
-          when :getblockparam, :getblockparamproxy, :getlocal, :setlocal
-            insn[2].times { iseq = iseq.parent_iseq }
-          end
-
-          # Here we need to map the local variable index to the offset
-          # from the top of the stack where it will be stored.
-          [insn[0], iseq.local_table.offset(insn[1]), *insn[2..]]
-        when :defineclass
-          [insn[0], insn[1], insn[2].to_a, insn[3]]
-        when :definemethod, :definesmethod
-          [insn[0], insn[1], insn[2].to_a]
-        when :send
-          # For any instructions that push instruction sequences onto the
-          # stack, we need to call #to_a on them as well.
-          [insn[0], insn[1], (insn[2].to_a if insn[2])]
-        when :once
-          [insn[0], insn[1].to_a, insn[2]]
-        else
-          insn
-        end
-      end
-    end
-
-    # This class serves as a layer of indirection between the instruction
-    # sequence and the compiler. It allows us to provide different behavior
-    # for certain instructions depending on the Ruby version. For example,
-    # class variable reads and writes gained an inline cache in Ruby 3.0. So
-    # we place the logic for checking the Ruby version in this class.
-    class Builder
-      attr_reader :iseq, :stack
-      attr_reader :frozen_string_literal,
-                  :operands_unification,
-                  :specialized_instruction
-
-      def initialize(
-        iseq,
-        frozen_string_literal: false,
-        operands_unification: true,
-        specialized_instruction: true
-      )
-        @iseq = iseq
-        @stack = iseq.stack
-
-        @frozen_string_literal = frozen_string_literal
-        @operands_unification = operands_unification
-        @specialized_instruction = specialized_instruction
-      end
-
-      # This creates a new label at the current length of the instruction
-      # sequence. It is used as the operand for jump instructions.
-      def label
-        name = :"label_#{iseq.length}"
-        iseq.insns.last == name ? name : event(name)
-      end
-
-      def event(name)
-        iseq.push(name)
-        name
-      end
-
-      def adjuststack(number)
-        stack.change_by(-number)
-        iseq.push([:adjuststack, number])
-      end
-
-      def anytostring
-        stack.change_by(-2 + 1)
-        iseq.push([:anytostring])
-      end
-
-      def branchif(index)
-        stack.change_by(-1)
-        iseq.push([:branchif, index])
-      end
-
-      def branchnil(index)
-        stack.change_by(-1)
-        iseq.push([:branchnil, index])
-      end
-
-      def branchunless(index)
-        stack.change_by(-1)
-        iseq.push([:branchunless, index])
-      end
-
-      def checkkeyword(index, keyword_index)
-        stack.change_by(+1)
-        iseq.push([:checkkeyword, index, keyword_index])
-      end
-
-      def concatarray
-        stack.change_by(-2 + 1)
-        iseq.push([:concatarray])
-      end
-
-      def concatstrings(number)
-        stack.change_by(-number + 1)
-        iseq.push([:concatstrings, number])
-      end
-
-      def defined(type, name, message)
-        stack.change_by(-1 + 1)
-        iseq.push([:defined, type, name, message])
-      end
-
-      def defineclass(name, class_iseq, flags)
-        stack.change_by(-2 + 1)
-        iseq.push([:defineclass, name, class_iseq, flags])
-      end
-
-      def definemethod(name, method_iseq)
-        stack.change_by(0)
-        iseq.push([:definemethod, name, method_iseq])
-      end
-
-      def definesmethod(name, method_iseq)
-        stack.change_by(-1)
-        iseq.push([:definesmethod, name, method_iseq])
-      end
-
-      def dup
-        stack.change_by(-1 + 2)
-        iseq.push([:dup])
-      end
-
-      def duparray(object)
-        stack.change_by(+1)
-        iseq.push([:duparray, object])
-      end
-
-      def duphash(object)
-        stack.change_by(+1)
-        iseq.push([:duphash, object])
-      end
-
-      def dupn(number)
-        stack.change_by(+number)
-        iseq.push([:dupn, number])
-      end
-
-      def expandarray(length, flag)
-        stack.change_by(-1 + length)
-        iseq.push([:expandarray, length, flag])
-      end
-
-      def getblockparam(index, level)
-        stack.change_by(+1)
-        iseq.push([:getblockparam, index, level])
-      end
-
-      def getblockparamproxy(index, level)
-        stack.change_by(+1)
-        iseq.push([:getblockparamproxy, index, level])
-      end
-
-      def getclassvariable(name)
-        stack.change_by(+1)
-
-        if RUBY_VERSION >= "3.0"
-          iseq.push([:getclassvariable, name, iseq.inline_storage_for(name)])
-        else
-          iseq.push([:getclassvariable, name])
-        end
-      end
-
-      def getconstant(name)
-        stack.change_by(-2 + 1)
-        iseq.push([:getconstant, name])
-      end
-
-      def getglobal(name)
-        stack.change_by(+1)
-        iseq.push([:getglobal, name])
-      end
-
-      def getinstancevariable(name)
-        stack.change_by(+1)
-
-        if RUBY_VERSION >= "3.2"
-          iseq.push([:getinstancevariable, name, iseq.inline_storage])
-        else
-          inline_storage = iseq.inline_storage_for(name)
-          iseq.push([:getinstancevariable, name, inline_storage])
-        end
-      end
-
-      def getlocal(index, level)
-        stack.change_by(+1)
-
-        if operands_unification
-          # Specialize the getlocal instruction based on the level of the
-          # local variable. If it's 0 or 1, then there's a specialized
-          # instruction that will look at the current scope or the parent
-          # scope, respectively, and requires fewer operands.
-          case level
-          when 0
-            iseq.push([:getlocal_WC_0, index])
-          when 1
-            iseq.push([:getlocal_WC_1, index])
-          else
-            iseq.push([:getlocal, index, level])
-          end
-        else
-          iseq.push([:getlocal, index, level])
-        end
-      end
-
-      def getspecial(key, type)
-        stack.change_by(-0 + 1)
-        iseq.push([:getspecial, key, type])
-      end
-
-      def intern
-        stack.change_by(-1 + 1)
-        iseq.push([:intern])
-      end
-
-      def invokeblock(method_id, argc, flag)
-        stack.change_by(-argc + 1)
-        iseq.push([:invokeblock, call_data(method_id, argc, flag)])
-      end
-
-      def invokesuper(method_id, argc, flag, block_iseq)
-        stack.change_by(-(argc + 1) + 1)
-
-        cdata = call_data(method_id, argc, flag)
-        iseq.push([:invokesuper, cdata, block_iseq])
-      end
-
-      def jump(index)
-        stack.change_by(0)
-        iseq.push([:jump, index])
-      end
-
-      def leave
-        stack.change_by(-1)
-        iseq.push([:leave])
-      end
-
-      def newarray(length)
-        stack.change_by(-length + 1)
-        iseq.push([:newarray, length])
-      end
-
-      def newhash(length)
-        stack.change_by(-length + 1)
-        iseq.push([:newhash, length])
-      end
-
-      def newrange(flag)
-        stack.change_by(-2 + 1)
-        iseq.push([:newrange, flag])
-      end
-
-      def nop
-        stack.change_by(0)
-        iseq.push([:nop])
-      end
-
-      def objtostring(method_id, argc, flag)
-        stack.change_by(-1 + 1)
-        iseq.push([:objtostring, call_data(method_id, argc, flag)])
-      end
-
-      def once(postexe_iseq, inline_storage)
-        stack.change_by(+1)
-        iseq.push([:once, postexe_iseq, inline_storage])
-      end
-
-      def opt_getconstant_path(names)
-        if RUBY_VERSION >= "3.2"
-          stack.change_by(+1)
-          iseq.push([:opt_getconstant_path, names])
-        else
-          inline_storage = iseq.inline_storage
-          getinlinecache = opt_getinlinecache(-1, inline_storage)
-
-          if names[0] == :""
-            names.shift
-            pop
-            putobject(Object)
-          end
-
-          names.each_with_index do |name, index|
-            putobject(index == 0)
-            getconstant(name)
-          end
-
-          opt_setinlinecache(inline_storage)
-          getinlinecache[1] = label
-        end
-      end
-
-      def opt_getinlinecache(offset, inline_storage)
-        stack.change_by(+1)
-        iseq.push([:opt_getinlinecache, offset, inline_storage])
-      end
-
-      def opt_newarray_max(length)
-        if specialized_instruction
-          stack.change_by(-length + 1)
-          iseq.push([:opt_newarray_max, length])
-        else
-          newarray(length)
-          send(:max, 0, VM_CALL_ARGS_SIMPLE)
-        end
-      end
-
-      def opt_newarray_min(length)
-        if specialized_instruction
-          stack.change_by(-length + 1)
-          iseq.push([:opt_newarray_min, length])
-        else
-          newarray(length)
-          send(:min, 0, VM_CALL_ARGS_SIMPLE)
-        end
-      end
-
-      def opt_setinlinecache(inline_storage)
-        stack.change_by(-1 + 1)
-        iseq.push([:opt_setinlinecache, inline_storage])
-      end
-
-      def opt_str_freeze(value)
-        if specialized_instruction
-          stack.change_by(+1)
-          iseq.push(
-            [
-              :opt_str_freeze,
-              value,
-              call_data(:freeze, 0, VM_CALL_ARGS_SIMPLE)
-            ]
-          )
-        else
-          putstring(value)
-          send(:freeze, 0, VM_CALL_ARGS_SIMPLE)
-        end
-      end
-
-      def opt_str_uminus(value)
-        if specialized_instruction
-          stack.change_by(+1)
-          iseq.push(
-            [:opt_str_uminus, value, call_data(:-@, 0, VM_CALL_ARGS_SIMPLE)]
-          )
-        else
-          putstring(value)
-          send(:-@, 0, VM_CALL_ARGS_SIMPLE)
-        end
-      end
-
-      def pop
-        stack.change_by(-1)
-        iseq.push([:pop])
-      end
-
-      def putnil
-        stack.change_by(+1)
-        iseq.push([:putnil])
-      end
-
-      def putobject(object)
-        stack.change_by(+1)
-
-        if operands_unification
-          # Specialize the putobject instruction based on the value of the
-          # object. If it's 0 or 1, then there's a specialized instruction
-          # that will push the object onto the stack and requires fewer
-          # operands.
-          if object.eql?(0)
-            iseq.push([:putobject_INT2FIX_0_])
-          elsif object.eql?(1)
-            iseq.push([:putobject_INT2FIX_1_])
-          else
-            iseq.push([:putobject, object])
-          end
-        else
-          iseq.push([:putobject, object])
-        end
-      end
-
-      def putself
-        stack.change_by(+1)
-        iseq.push([:putself])
-      end
-
-      def putspecialobject(object)
-        stack.change_by(+1)
-        iseq.push([:putspecialobject, object])
-      end
-
-      def putstring(object)
-        stack.change_by(+1)
-        iseq.push([:putstring, object])
-      end
-
-      def send(method_id, argc, flag, block_iseq = nil)
-        stack.change_by(-(argc + 1) + 1)
-        cdata = call_data(method_id, argc, flag)
-
-        if specialized_instruction
-          # Specialize the send instruction. If it doesn't have a block
-          # attached, then we will replace it with an opt_send_without_block
-          # and do further specializations based on the called method and the
-          # number of arguments.
-
-          # stree-ignore
-          if !block_iseq && (flag & VM_CALL_ARGS_BLOCKARG) == 0
-            case [method_id, argc]
-            when [:length, 0] then iseq.push([:opt_length, cdata])
-            when [:size, 0]   then iseq.push([:opt_size, cdata])
-            when [:empty?, 0] then iseq.push([:opt_empty_p, cdata])
-            when [:nil?, 0]   then iseq.push([:opt_nil_p, cdata])
-            when [:succ, 0]   then iseq.push([:opt_succ, cdata])
-            when [:!, 0]      then iseq.push([:opt_not, cdata])
-            when [:+, 1]      then iseq.push([:opt_plus, cdata])
-            when [:-, 1]      then iseq.push([:opt_minus, cdata])
-            when [:*, 1]      then iseq.push([:opt_mult, cdata])
-            when [:/, 1]      then iseq.push([:opt_div, cdata])
-            when [:%, 1]      then iseq.push([:opt_mod, cdata])
-            when [:==, 1]     then iseq.push([:opt_eq, cdata])
-            when [:=~, 1]     then iseq.push([:opt_regexpmatch2, cdata])
-            when [:<, 1]      then iseq.push([:opt_lt, cdata])
-            when [:<=, 1]     then iseq.push([:opt_le, cdata])
-            when [:>, 1]      then iseq.push([:opt_gt, cdata])
-            when [:>=, 1]     then iseq.push([:opt_ge, cdata])
-            when [:<<, 1]     then iseq.push([:opt_ltlt, cdata])
-            when [:[], 1]     then iseq.push([:opt_aref, cdata])
-            when [:&, 1]      then iseq.push([:opt_and, cdata])
-            when [:|, 1]      then iseq.push([:opt_or, cdata])
-            when [:[]=, 2]    then iseq.push([:opt_aset, cdata])
-            when [:!=, 1]
-              eql_data = call_data(:==, 1, VM_CALL_ARGS_SIMPLE)
-              iseq.push([:opt_neq, eql_data, cdata])
-            else
-              iseq.push([:opt_send_without_block, cdata])
-            end
-          else
-            iseq.push([:send, cdata, block_iseq])
-          end
-        else
-          iseq.push([:send, cdata, block_iseq])
-        end
-      end
-
-      def setclassvariable(name)
-        stack.change_by(-1)
-
-        if RUBY_VERSION >= "3.0"
-          iseq.push([:setclassvariable, name, iseq.inline_storage_for(name)])
-        else
-          iseq.push([:setclassvariable, name])
-        end
-      end
-
-      def setconstant(name)
-        stack.change_by(-2)
-        iseq.push([:setconstant, name])
-      end
-
-      def setglobal(name)
-        stack.change_by(-1)
-        iseq.push([:setglobal, name])
-      end
-
-      def setinstancevariable(name)
-        stack.change_by(-1)
-
-        if RUBY_VERSION >= "3.2"
-          iseq.push([:setinstancevariable, name, iseq.inline_storage])
-        else
-          inline_storage = iseq.inline_storage_for(name)
-          iseq.push([:setinstancevariable, name, inline_storage])
-        end
-      end
-
-      def setlocal(index, level)
-        stack.change_by(-1)
-
-        if operands_unification
-          # Specialize the setlocal instruction based on the level of the
-          # local variable. If it's 0 or 1, then there's a specialized
-          # instruction that will write to the current scope or the parent
-          # scope, respectively, and requires fewer operands.
-          case level
-          when 0
-            iseq.push([:setlocal_WC_0, index])
-          when 1
-            iseq.push([:setlocal_WC_1, index])
-          else
-            iseq.push([:setlocal, index, level])
-          end
-        else
-          iseq.push([:setlocal, index, level])
-        end
-      end
-
-      def setn(number)
-        stack.change_by(-1 + 1)
-        iseq.push([:setn, number])
-      end
-
-      def splatarray(flag)
-        stack.change_by(-1 + 1)
-        iseq.push([:splatarray, flag])
-      end
-
-      def swap
-        stack.change_by(-2 + 2)
-        iseq.push([:swap])
-      end
-
-      def topn(number)
-        stack.change_by(+1)
-        iseq.push([:topn, number])
-      end
-
-      def toregexp(options, length)
-        stack.change_by(-length + 1)
-        iseq.push([:toregexp, options, length])
-      end
-
-      private
-
-      # This creates a call data object that is used as the operand for the
-      # send, invokesuper, and objtostring instructions.
-      def call_data(method_id, argc, flag)
-        { mid: method_id, flag: flag, orig_argc: argc }
-      end
-    end
-
-    # These constants correspond to the putspecialobject instruction. They are
-    # used to represent special objects that are pushed onto the stack.
-    VM_SPECIAL_OBJECT_VMCORE = 1
-    VM_SPECIAL_OBJECT_CBASE = 2
-    VM_SPECIAL_OBJECT_CONST_BASE = 3
-
-    # These constants correspond to the flag passed as part of the call data
-    # structure on the send instruction. They are used to represent various
-    # metadata about the callsite (e.g., were keyword arguments used?, was a
-    # block given?, etc.).
-    VM_CALL_ARGS_SPLAT = 1 << 0
-    VM_CALL_ARGS_BLOCKARG = 1 << 1
-    VM_CALL_FCALL = 1 << 2
-    VM_CALL_VCALL = 1 << 3
-    VM_CALL_ARGS_SIMPLE = 1 << 4
-    VM_CALL_BLOCKISEQ = 1 << 5
-    VM_CALL_KWARG = 1 << 6
-    VM_CALL_KW_SPLAT = 1 << 7
-    VM_CALL_TAILCALL = 1 << 8
-    VM_CALL_SUPER = 1 << 9
-    VM_CALL_ZSUPER = 1 << 10
-    VM_CALL_OPT_SEND = 1 << 11
-    VM_CALL_KW_SPLAT_MUT = 1 << 12
-
-    # These constants correspond to the value passed as part of the defined
-    # instruction. It's an enum defined in the CRuby codebase that tells that
-    # instruction what kind of defined check to perform.
-    DEFINED_NIL = 1
-    DEFINED_IVAR = 2
-    DEFINED_LVAR = 3
-    DEFINED_GVAR = 4
-    DEFINED_CVAR = 5
-    DEFINED_CONST = 6
-    DEFINED_METHOD = 7
-    DEFINED_YIELD = 8
-    DEFINED_ZSUPER = 9
-    DEFINED_SELF = 10
-    DEFINED_TRUE = 11
-    DEFINED_FALSE = 12
-    DEFINED_ASGN = 13
-    DEFINED_EXPR = 14
-    DEFINED_REF = 15
-    DEFINED_FUNC = 16
-    DEFINED_CONST_FROM = 17
-
-    # These constants correspond to the value passed in the flags as part of
-    # the defineclass instruction.
-    VM_DEFINECLASS_TYPE_CLASS = 0
-    VM_DEFINECLASS_TYPE_SINGLETON_CLASS = 1
-    VM_DEFINECLASS_TYPE_MODULE = 2
-    VM_DEFINECLASS_FLAG_SCOPED = 8
-    VM_DEFINECLASS_FLAG_HAS_SUPERCLASS = 16
-
     # These options mirror the compilation options that we currently support
     # that can be also passed to RubyVM::InstructionSequence.compile.
     attr_reader :frozen_string_literal,
@@ -1074,8 +241,8 @@ module SyntaxTree
               builder.leave
             end
 
-          builder.putspecialobject(VM_SPECIAL_OBJECT_VMCORE)
-          builder.send(:"core#set_postexe", 0, VM_CALL_FCALL, postexe_iseq)
+          builder.putspecialobject(YARV::VM_SPECIAL_OBJECT_VMCORE)
+          builder.send(:"core#set_postexe", 0, YARV::VM_CALL_FCALL, postexe_iseq)
           builder.leave
         end
 
@@ -1084,17 +251,17 @@ module SyntaxTree
     end
 
     def visit_alias(node)
-      builder.putspecialobject(VM_SPECIAL_OBJECT_VMCORE)
-      builder.putspecialobject(VM_SPECIAL_OBJECT_CBASE)
+      builder.putspecialobject(YARV::VM_SPECIAL_OBJECT_VMCORE)
+      builder.putspecialobject(YARV::VM_SPECIAL_OBJECT_CBASE)
       visit(node.left)
       visit(node.right)
-      builder.send(:"core#set_method_alias", 3, VM_CALL_ARGS_SIMPLE)
+      builder.send(:"core#set_method_alias", 3, YARV::VM_CALL_ARGS_SIMPLE)
     end
 
     def visit_aref(node)
       visit(node.collection)
       visit(node.index)
-      builder.send(:[], 1, VM_CALL_ARGS_SIMPLE)
+      builder.send(:[], 1, YARV::VM_CALL_ARGS_SIMPLE)
     end
 
     def visit_arg_block(node)
@@ -1150,7 +317,7 @@ module SyntaxTree
         visit(node.target.index)
         visit(node.value)
         builder.setn(3)
-        builder.send(:[]=, 2, VM_CALL_ARGS_SIMPLE)
+        builder.send(:[]=, 2, YARV::VM_CALL_ARGS_SIMPLE)
         builder.pop
       when ConstPathField
         names = constant_names(node.target)
@@ -1174,7 +341,7 @@ module SyntaxTree
         visit(node.target)
         visit(node.value)
         builder.setn(2)
-        builder.send(:"#{node.target.name.value}=", 1, VM_CALL_ARGS_SIMPLE)
+        builder.send(:"#{node.target.name.value}=", 1, YARV::VM_CALL_ARGS_SIMPLE)
         builder.pop
       when TopConstField
         name = node.target.constant.value.to_sym
@@ -1198,7 +365,7 @@ module SyntaxTree
 
         case node.target.value
         when Const
-          builder.putspecialobject(VM_SPECIAL_OBJECT_CONST_BASE)
+          builder.putspecialobject(YARV::VM_SPECIAL_OBJECT_CONST_BASE)
           builder.setconstant(node.target.value.value.to_sym)
         when CVar
           builder.setclassvariable(node.target.value.value.to_sym)
@@ -1257,7 +424,7 @@ module SyntaxTree
       else
         visit(node.left)
         visit(node.right)
-        builder.send(node.operator, 1, VM_CALL_ARGS_SIMPLE)
+        builder.send(node.operator, 1, YARV::VM_CALL_ARGS_SIMPLE)
       end
     end
 
@@ -1357,12 +524,14 @@ module SyntaxTree
       end
 
       if node.receiver
-        if node.receiver.is_a?(VarRef) &&
-              (
-                lookup =
-                  current_iseq.local_variable(node.receiver.value.value.to_sym)
-              ) && lookup.local.is_a?(LocalTable::BlockLocal)
-          builder.getblockparamproxy(lookup.index, lookup.level)
+        if node.receiver.is_a?(VarRef)
+          lookup = current_iseq.local_variable(node.receiver.value.value.to_sym)
+
+          if lookup.local.is_a?(YARV::LocalTable::BlockLocal)
+            builder.getblockparamproxy(lookup.index, lookup.level)
+          else
+            visit(node.receiver)
+          end
         else
           visit(node.receiver)
         end
@@ -1382,13 +551,13 @@ module SyntaxTree
         case arg_part
         when ArgBlock
           argc -= 1
-          flag |= VM_CALL_ARGS_BLOCKARG
+          flag |= YARV::VM_CALL_ARGS_BLOCKARG
           visit(arg_part)
         when ArgStar
-          flag |= VM_CALL_ARGS_SPLAT
+          flag |= YARV::VM_CALL_ARGS_SPLAT
           visit(arg_part)
         when ArgsForward
-          flag |= VM_CALL_ARGS_SPLAT | VM_CALL_ARGS_BLOCKARG
+          flag |= YARV::VM_CALL_ARGS_SPLAT | YARV::VM_CALL_ARGS_BLOCKARG
 
           lookup = current_iseq.local_table.find(:*, 0)
           builder.getlocal(lookup.index, lookup.level)
@@ -1397,7 +566,7 @@ module SyntaxTree
           lookup = current_iseq.local_table.find(:&, 0)
           builder.getblockparamproxy(lookup.index, lookup.level)
         when BareAssocHash
-          flag |= VM_CALL_KW_SPLAT
+          flag |= YARV::VM_CALL_KW_SPLAT
           visit(arg_part)
         else
           visit(arg_part)
@@ -1405,8 +574,8 @@ module SyntaxTree
       end
 
       block_iseq = visit(node.block) if node.block
-      flag |= VM_CALL_ARGS_SIMPLE if block_iseq.nil? && flag == 0
-      flag |= VM_CALL_FCALL if node.receiver.nil?
+      flag |= YARV::VM_CALL_ARGS_SIMPLE if block_iseq.nil? && flag == 0
+      flag |= YARV::VM_CALL_FCALL if node.receiver.nil?
 
       builder.send(node.message.value.to_sym, argc, flag, block_iseq)
       branchnil[1] = builder.label if branchnil
@@ -1433,7 +602,7 @@ module SyntaxTree
         clauses.map do |clause|
           visit(clause.arguments)
           builder.topn(1)
-          builder.send(:===, 1, VM_CALL_FCALL | VM_CALL_ARGS_SIMPLE)
+          builder.send(:===, 1, YARV::VM_CALL_FCALL | YARV::VM_CALL_ARGS_SIMPLE)
           [clause, builder.branchif(:label_00)]
         end
 
@@ -1466,21 +635,21 @@ module SyntaxTree
           builder.leave
         end
 
-      flags = VM_DEFINECLASS_TYPE_CLASS
+      flags = YARV::VM_DEFINECLASS_TYPE_CLASS
 
       case node.constant
       when ConstPathRef
-        flags |= VM_DEFINECLASS_FLAG_SCOPED
+        flags |= YARV::VM_DEFINECLASS_FLAG_SCOPED
         visit(node.constant.parent)
       when ConstRef
-        builder.putspecialobject(VM_SPECIAL_OBJECT_CONST_BASE)
+        builder.putspecialobject(YARV::VM_SPECIAL_OBJECT_CONST_BASE)
       when TopConstRef
-        flags |= VM_DEFINECLASS_FLAG_SCOPED
+        flags |= YARV::VM_DEFINECLASS_FLAG_SCOPED
         builder.putobject(Object)
       end
 
       if node.superclass
-        flags |= VM_DEFINECLASS_FLAG_HAS_SUPERCLASS
+        flags |= YARV::VM_DEFINECLASS_FLAG_HAS_SUPERCLASS
         visit(node.superclass)
       else
         builder.putnil
@@ -1569,18 +738,18 @@ module SyntaxTree
         case value
         when Const
           builder.putnil
-          builder.defined(DEFINED_CONST, name, "constant")
+          builder.defined(YARV::DEFINED_CONST, name, "constant")
         when CVar
           builder.putnil
-          builder.defined(DEFINED_CVAR, name, "class variable")
+          builder.defined(YARV::DEFINED_CVAR, name, "class variable")
         when GVar
           builder.putnil
-          builder.defined(DEFINED_GVAR, name, "global-variable")
+          builder.defined(YARV::DEFINED_GVAR, name, "global-variable")
         when Ident
           builder.putobject("local-variable")
         when IVar
           builder.putnil
-          builder.defined(DEFINED_IVAR, name, "instance-variable")
+          builder.defined(YARV::DEFINED_IVAR, name, "instance-variable")
         when Kw
           case name
           when :false
@@ -1597,13 +766,13 @@ module SyntaxTree
         builder.putself
 
         name = node.value.value.value.to_sym
-        builder.defined(DEFINED_FUNC, name, "method")
+        builder.defined(YARV::DEFINED_FUNC, name, "method")
       when YieldNode
         builder.putnil
-        builder.defined(DEFINED_YIELD, false, "yield")
+        builder.defined(YARV::DEFINED_YIELD, false, "yield")
       when ZSuper
         builder.putnil
-        builder.defined(DEFINED_ZSUPER, false, "super")
+        builder.defined(YARV::DEFINED_ZSUPER, false, "super")
       else
         builder.putobject("expression")
       end
@@ -1676,10 +845,12 @@ module SyntaxTree
     end
 
     def visit_hash(node)
-      builder.duphash(node.accept(RubyVisitor.new))
-    rescue RubyVisitor::CompilationError
-      visit_all(node.assocs)
-      builder.newhash(node.assocs.length * 2)
+      if (compiled = RubyVisitor.compile(node))
+        builder.duphash(compiled)
+      else
+        visit_all(node.assocs)
+        builder.newhash(node.assocs.length * 2)
+      end
     end
 
     def visit_heredoc(node)
@@ -1766,8 +937,8 @@ module SyntaxTree
           builder.leave
         end
 
-      builder.putspecialobject(VM_SPECIAL_OBJECT_VMCORE)
-      builder.send(:lambda, 0, VM_CALL_FCALL, lambda_iseq)
+      builder.putspecialobject(YARV::VM_SPECIAL_OBJECT_VMCORE)
+      builder.send(:lambda, 0, YARV::VM_CALL_FCALL, lambda_iseq)
     end
 
     def visit_lambda_var(node)
@@ -1823,16 +994,16 @@ module SyntaxTree
           builder.leave
         end
 
-      flags = VM_DEFINECLASS_TYPE_MODULE
+      flags = YARV::VM_DEFINECLASS_TYPE_MODULE
 
       case node.constant
       when ConstPathRef
-        flags |= VM_DEFINECLASS_FLAG_SCOPED
+        flags |= YARV::VM_DEFINECLASS_FLAG_SCOPED
         visit(node.constant.parent)
       when ConstRef
-        builder.putspecialobject(VM_SPECIAL_OBJECT_CONST_BASE)
+        builder.putspecialobject(YARV::VM_SPECIAL_OBJECT_CONST_BASE)
       when TopConstRef
-        flags |= VM_DEFINECLASS_FLAG_SCOPED
+        flags |= YARV::VM_DEFINECLASS_FLAG_SCOPED
         builder.putobject(Object)
       end
 
@@ -1851,13 +1022,13 @@ module SyntaxTree
 
     def visit_not(node)
       visit(node.statement)
-      builder.send(:!, 0, VM_CALL_ARGS_SIMPLE)
+      builder.send(:!, 0, YARV::VM_CALL_ARGS_SIMPLE)
     end
 
     def visit_opassign(node)
-      flag = VM_CALL_ARGS_SIMPLE
+      flag = YARV::VM_CALL_ARGS_SIMPLE
       if node.target.is_a?(ConstPathField) || node.target.is_a?(TopConstField)
-        flag |= VM_CALL_FCALL
+        flag |= YARV::VM_CALL_FCALL
       end
 
       case (operator = node.operator.value.chomp("=").to_sym)
@@ -1977,18 +1148,16 @@ module SyntaxTree
 
           if value.nil?
             argument_options[:keyword] << name
+          elsif (compiled = RubyVisitor.compile(value))
+            compiled = value.accept(RubyVisitor.new)
+            argument_options[:keyword] << [name, compiled]
           else
-            begin
-              compiled = value.accept(RubyVisitor.new)
-              argument_options[:keyword] << [name, compiled]
-            rescue RubyVisitor::CompilationError
-              argument_options[:keyword] << [name]
-              checkkeywords << builder.checkkeyword(-1, keyword_index)
-              branchif = builder.branchif(-1)
-              visit(value)
-              builder.setlocal(index, 0)
-              branchif[1] = builder.label
-            end
+            argument_options[:keyword] << [name]
+            checkkeywords << builder.checkkeyword(-1, keyword_index)
+            branchif = builder.branchif(-1)
+            visit(value)
+            builder.setlocal(index, 0)
+            branchif[1] = builder.label
           end
         end
 
@@ -2075,11 +1244,13 @@ module SyntaxTree
     end
 
     def visit_range(node)
-      builder.putobject(node.accept(RubyVisitor.new))
-    rescue RubyVisitor::CompilationError
-      visit(node.left)
-      visit(node.right)
-      builder.newrange(node.operator.value == ".." ? 0 : 1)
+      if (compiled = RubyVisitor.compile(node))
+        builder.putobject(compiled)
+      else
+        visit(node.left)
+        visit(node.right)
+        builder.newrange(node.operator.value == ".." ? 0 : 1)
+      end
     end
 
     def visit_rational(node)
@@ -2087,11 +1258,13 @@ module SyntaxTree
     end
 
     def visit_regexp_literal(node)
-      builder.putobject(node.accept(RubyVisitor.new))
-    rescue RubyVisitor::CompilationError
-      flags = RubyVisitor.new.visit_regexp_literal_flags(node)
-      length = visit_string_parts(node)
-      builder.toregexp(flags, length)
+      if (compiled = RubyVisitor.compile(node))
+        builder.putobject(compiled)
+      else
+        flags = RubyVisitor.new.visit_regexp_literal_flags(node)
+        length = visit_string_parts(node)
+        builder.toregexp(flags, length)
+      end
     end
 
     def visit_rest_param(node)
@@ -2120,7 +1293,7 @@ module SyntaxTree
       builder.defineclass(
         :singletonclass,
         singleton_iseq,
-        VM_DEFINECLASS_TYPE_SINGLETON_CLASS
+        YARV::VM_DEFINECLASS_TYPE_SINGLETON_CLASS
       )
     end
 
@@ -2170,7 +1343,7 @@ module SyntaxTree
       builder.invokesuper(
         nil,
         argument_parts(node.arguments).length,
-        VM_CALL_FCALL | VM_CALL_ARGS_SIMPLE | VM_CALL_SUPER,
+        YARV::VM_CALL_FCALL | YARV::VM_CALL_ARGS_SIMPLE | YARV::VM_CALL_SUPER,
         nil
       )
     end
@@ -2180,20 +1353,22 @@ module SyntaxTree
     end
 
     def visit_symbols(node)
-      builder.duparray(node.accept(RubyVisitor.new))
-    rescue RubyVisitor::CompilationError
-      node.elements.each do |element|
-        if element.parts.length == 1 &&
-              element.parts.first.is_a?(TStringContent)
-          builder.putobject(element.parts.first.value.to_sym)
-        else
-          length = visit_string_parts(element)
-          builder.concatstrings(length)
-          builder.intern
+      if (compiled = RubyVisitor.compile(node))
+        builder.duparray(compiled)
+      else
+        node.elements.each do |element|
+          if element.parts.length == 1 &&
+                element.parts.first.is_a?(TStringContent)
+            builder.putobject(element.parts.first.value.to_sym)
+          else
+            length = visit_string_parts(element)
+            builder.concatstrings(length)
+            builder.intern
+          end
         end
-      end
 
-      builder.newarray(node.elements.length)
+        builder.newarray(node.elements.length)
+      end
     end
 
     def visit_top_const_ref(node)
@@ -2232,10 +1407,10 @@ module SyntaxTree
     def visit_undef(node)
       node.symbols.each_with_index do |symbol, index|
         builder.pop if index != 0
-        builder.putspecialobject(VM_SPECIAL_OBJECT_VMCORE)
-        builder.putspecialobject(VM_SPECIAL_OBJECT_CBASE)
+        builder.putspecialobject(YARV::VM_SPECIAL_OBJECT_VMCORE)
+        builder.putspecialobject(YARV::VM_SPECIAL_OBJECT_CBASE)
         visit(symbol)
-        builder.send(:"core#undef_method", 2, VM_CALL_ARGS_SIMPLE)
+        builder.send(:"core#undef_method", 2, YARV::VM_CALL_ARGS_SIMPLE)
       end
     end
 
@@ -2311,9 +1486,9 @@ module SyntaxTree
         lookup = current_iseq.local_variable(node.value.value.to_sym)
 
         case lookup.local
-        when LocalTable::BlockLocal
+        when YARV::LocalTable::BlockLocal
           builder.getblockparam(lookup.index, lookup.level)
-        when LocalTable::PlainLocal
+        when YARV::LocalTable::PlainLocal
           builder.getlocal(lookup.index, lookup.level)
         end
       when IVar
@@ -2336,7 +1511,7 @@ module SyntaxTree
     def visit_vcall(node)
       builder.putself
 
-      flag = VM_CALL_FCALL | VM_CALL_VCALL | VM_CALL_ARGS_SIMPLE
+      flag = YARV::VM_CALL_FCALL | YARV::VM_CALL_VCALL | YARV::VM_CALL_ARGS_SIMPLE
       builder.send(node.value.value.to_sym, 0, flag)
     end
 
@@ -2372,17 +1547,8 @@ module SyntaxTree
     end
 
     def visit_words(node)
-      converted = nil
-
-      if frozen_string_literal
-        begin
-          converted = node.accept(RubyVisitor.new)
-        rescue RubyVisitor::CompilationError
-        end
-      end
-
-      if converted
-        builder.duparray(converted)
+      if frozen_string_literal && (compiled = RubyVisitor.compile(node))
+        builder.duparray(compiled)
       else
         visit_all(node.elements)
         builder.newarray(node.elements.length)
@@ -2393,13 +1559,13 @@ module SyntaxTree
       builder.putself
       length = visit_string_parts(node)
       builder.concatstrings(node.parts.length) if length > 1
-      builder.send(:`, 1, VM_CALL_FCALL | VM_CALL_ARGS_SIMPLE)
+      builder.send(:`, 1, YARV::VM_CALL_FCALL | YARV::VM_CALL_ARGS_SIMPLE)
     end
 
     def visit_yield(node)
       parts = argument_parts(node.arguments)
       visit_all(parts)
-      builder.invokeblock(nil, parts.length, VM_CALL_ARGS_SIMPLE)
+      builder.invokeblock(nil, parts.length, YARV::VM_CALL_ARGS_SIMPLE)
     end
 
     def visit_zsuper(_node)
@@ -2407,7 +1573,7 @@ module SyntaxTree
       builder.invokesuper(
         nil,
         0,
-        VM_CALL_FCALL | VM_CALL_ARGS_SIMPLE | VM_CALL_SUPER | VM_CALL_ZSUPER,
+        YARV::VM_CALL_FCALL | YARV::VM_CALL_ARGS_SIMPLE | YARV::VM_CALL_SUPER | YARV::VM_CALL_ZSUPER,
         nil
       )
     end
@@ -2473,24 +1639,24 @@ module SyntaxTree
         name = node.target.constant.value.to_sym
 
         builder.dup
-        builder.defined(DEFINED_CONST_FROM, name, true)
+        builder.defined(YARV::DEFINED_CONST_FROM, name, true)
       when TopConstField
         name = node.target.constant.value.to_sym
 
         builder.putobject(Object)
         builder.dup
-        builder.defined(DEFINED_CONST_FROM, name, true)
+        builder.defined(YARV::DEFINED_CONST_FROM, name, true)
       when VarField
         name = node.target.value.value.to_sym
         builder.putnil
 
         case node.target.value
         when Const
-          builder.defined(DEFINED_CONST, name, true)
+          builder.defined(YARV::DEFINED_CONST, name, true)
         when CVar
-          builder.defined(DEFINED_CVAR, name, true)
+          builder.defined(YARV::DEFINED_CVAR, name, true)
         when GVar
-          builder.defined(DEFINED_GVAR, name, true)
+          builder.defined(YARV::DEFINED_GVAR, name, true)
         end
       end
 
@@ -2529,7 +1695,7 @@ module SyntaxTree
 
         case node.target.value
         when Const
-          builder.putspecialobject(VM_SPECIAL_OBJECT_CONST_BASE)
+          builder.putspecialobject(YARV::VM_SPECIAL_OBJECT_CONST_BASE)
           builder.setconstant(name)
         when CVar
           builder.setclassvariable(name)
@@ -2545,7 +1711,7 @@ module SyntaxTree
     # three instructions are pushed.
     def push_interpolate
       builder.dup
-      builder.objtostring(:to_s, 0, VM_CALL_FCALL | VM_CALL_ARGS_SIMPLE)
+      builder.objtostring(:to_s, 0, YARV::VM_CALL_FCALL | YARV::VM_CALL_ARGS_SIMPLE)
       builder.anytostring
     end
 
@@ -2588,11 +1754,11 @@ module SyntaxTree
       previous_builder = builder
 
       begin
-        iseq = InstructionSequence.new(type, name, parent_iseq, node.location)
+        iseq = YARV::InstructionSequence.new(type, name, parent_iseq, node.location)
 
         @current_iseq = iseq
         @builder =
-          Builder.new(
+          YARV::Builder.new(
             iseq,
             frozen_string_literal: frozen_string_literal,
             operands_unification: operands_unification,
@@ -2642,12 +1808,12 @@ module SyntaxTree
         visit(node.target.index)
 
         builder.dupn(2)
-        builder.send(:[], 1, VM_CALL_ARGS_SIMPLE)
+        builder.send(:[], 1, YARV::VM_CALL_ARGS_SIMPLE)
 
         yield
 
         builder.setn(3)
-        builder.send(:[]=, 2, VM_CALL_ARGS_SIMPLE)
+        builder.send(:[]=, 2, YARV::VM_CALL_ARGS_SIMPLE)
         builder.pop
       when ConstPathField
         name = node.target.constant.value.to_sym
@@ -2696,7 +1862,7 @@ module SyntaxTree
           yield
 
           builder.dup
-          builder.putspecialobject(VM_SPECIAL_OBJECT_CONST_BASE)
+          builder.putspecialobject(YARV::VM_SPECIAL_OBJECT_CONST_BASE)
           builder.setconstant(names.last)
         when CVar
           name = node.target.value.value.to_sym
