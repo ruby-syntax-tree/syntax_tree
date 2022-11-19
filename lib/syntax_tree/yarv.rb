@@ -290,13 +290,20 @@ module SyntaxTree
           case insn[0]
           when :leave
             stack << ReturnNode.new(arguments: Args.new(parts: [stack.pop], location: Location.default), location: Location.default)
+          when :opt_mult
+            left, right = stack.pop(2)
+            stack << Binary.new(left: left, operator: :*, right: right, location: Location.default)
           when :opt_plus
             left, right = stack.pop(2)
             stack << Binary.new(left: left, operator: :+, right: right, location: Location.default)
           when :putobject
             case insn[1]
+            when Float
+              stack << FloatLiteral.new(value: insn[1].inspect, location: Location.default)
             when Integer
               stack << Int.new(value: insn[1].inspect, location: Location.default)
+            when Rational
+              stack << RationalLiteral.new(value: insn[1].inspect, location: Location.default)
             else
               raise "Unknown object type: #{insn[1].class.name}"
             end
