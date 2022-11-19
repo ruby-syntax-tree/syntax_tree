@@ -274,6 +274,43 @@ module SyntaxTree
       end
     end
 
+    # This class is responsible for taking a compiled instruction sequence and
+    # walking through it to generate equivalent Ruby code.
+    class Disassembler
+      attr_reader :iseq
+
+      def initialize(iseq)
+        @iseq = iseq
+      end
+
+      def to_ruby
+        stack = []
+
+        iseq.insns.each do |insn|
+          case insn[0]
+          when :leave
+            stack << ReturnNode.new(arguments: Args.new(parts: [stack.pop], location: Location.default), location: Location.default)
+          when :opt_plus
+            left, right = stack.pop(2)
+            stack << Binary.new(left: left, operator: :+, right: right, location: Location.default)
+          when :putobject
+            case insn[1]
+            when Integer
+              stack << Int.new(value: insn[1].inspect, location: Location.default)
+            else
+              raise "Unknown object type: #{insn[1].class.name}"
+            end
+          when :putobject_INT2FIX_1_
+            stack << Int.new(value: "1", location: Location.default)
+          else
+            raise "Unknown instruction #{insn[0]}"
+          end
+        end
+
+        Statements.new(nil, body: stack, location: Location.default)
+      end
+    end
+
     # This class serves as a layer of indirection between the instruction
     # sequence and the compiler. It allows us to provide different behavior
     # for certain instructions depending on the Ruby version. For example,
