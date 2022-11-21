@@ -460,7 +460,7 @@ module SyntaxTree
         push([:intern])
       end
 
-      def invokeblock(method_id, argc, flag)
+      def invokeblock(method_id, argc, flag = VM_CALL_ARGS_SIMPLE)
         stack.change_by(-argc + 1)
         push([:invokeblock, call_data(method_id, argc, flag)])
       end
@@ -547,7 +547,7 @@ module SyntaxTree
           push([:opt_newarray_max, length])
         else
           newarray(length)
-          send(:max, 0, VM_CALL_ARGS_SIMPLE)
+          send(:max, 0)
         end
       end
 
@@ -557,7 +557,7 @@ module SyntaxTree
           push([:opt_newarray_min, length])
         else
           newarray(length)
-          send(:min, 0, VM_CALL_ARGS_SIMPLE)
+          send(:min, 0)
         end
       end
 
@@ -569,22 +569,20 @@ module SyntaxTree
       def opt_str_freeze(value)
         if specialized_instruction
           stack.change_by(+1)
-          push(
-            [:opt_str_freeze, value, call_data(:freeze, 0, VM_CALL_ARGS_SIMPLE)]
-          )
+          push([:opt_str_freeze, value, call_data(:freeze, 0)])
         else
           putstring(value)
-          send(:freeze, 0, VM_CALL_ARGS_SIMPLE)
+          send(:freeze, 0)
         end
       end
 
       def opt_str_uminus(value)
         if specialized_instruction
           stack.change_by(+1)
-          push([:opt_str_uminus, value, call_data(:-@, 0, VM_CALL_ARGS_SIMPLE)])
+          push([:opt_str_uminus, value, call_data(:-@, 0)])
         else
           putstring(value)
-          send(:-@, 0, VM_CALL_ARGS_SIMPLE)
+          send(:-@, 0)
         end
       end
 
@@ -633,7 +631,7 @@ module SyntaxTree
         push([:putstring, object])
       end
 
-      def send(method_id, argc, flag, block_iseq = nil)
+      def send(method_id, argc, flag = VM_CALL_ARGS_SIMPLE, block_iseq = nil)
         stack.change_by(-(argc + 1) + 1)
         cdata = call_data(method_id, argc, flag)
 
@@ -669,8 +667,7 @@ module SyntaxTree
             when [:|, 1]      then push([:opt_or, cdata])
             when [:[]=, 2]    then push([:opt_aset, cdata])
             when [:!=, 1]
-              eql_data = call_data(:==, 1, VM_CALL_ARGS_SIMPLE)
-              push([:opt_neq, eql_data, cdata])
+              push([:opt_neq, call_data(:==, 1), cdata])
             else
               push([:opt_send_without_block, cdata])
             end
@@ -762,7 +759,7 @@ module SyntaxTree
 
       # This creates a call data object that is used as the operand for the
       # send, invokesuper, and objtostring instructions.
-      def call_data(method_id, argc, flag)
+      def call_data(method_id, argc, flag = VM_CALL_ARGS_SIMPLE)
         { mid: method_id, flag: flag, orig_argc: argc }
       end
 

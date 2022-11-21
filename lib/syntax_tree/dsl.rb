@@ -38,6 +38,10 @@ module SyntaxTree
       BodyStmt.new(statements: statements, rescue_clause: rescue_clause, else_keyword: else_keyword, else_clause: else_clause, ensure_clause: ensure_clause, location: Location.default)
     end
 
+    def Break(arguments)
+      Break.new(arguments: arguments, location: Location.default)
+    end
+
     def CallNode(receiver, operator, message, arguments)
       CallNode.new(receiver: receiver, operator: operator, message: message, arguments: arguments, location: Location.default)
     end

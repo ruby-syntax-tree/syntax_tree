@@ -260,9 +260,9 @@ module SyntaxTree
           iseq.getglobal(:$tape)
           iseq.getglobal(:$cursor)
           iseq.getglobal(:$stdin)
-          iseq.send(:getc, 0, VM_CALL_ARGS_SIMPLE)
-          iseq.send(:ord, 0, VM_CALL_ARGS_SIMPLE)
-          iseq.send(:[]=, 2, VM_CALL_ARGS_SIMPLE)
+          iseq.send(:getc, 0)
+          iseq.send(:ord, 0)
+          iseq.send(:[]=, 2)
         end
 
         def visit_loop(node)
@@ -273,9 +273,9 @@ module SyntaxTree
           # the loop.
           iseq.getglobal(:$tape)
           iseq.getglobal(:$cursor)
-          iseq.send(:[], 1, VM_CALL_ARGS_SIMPLE)
+          iseq.send(:[], 1)
           iseq.putobject(0)
-          iseq.send(:==, 1, VM_CALL_ARGS_SIMPLE)
+          iseq.send(:==, 1)
           branchunless = iseq.branchunless(-1)
 
           # Otherwise, here we'll execute the loop.
@@ -294,9 +294,9 @@ module SyntaxTree
           iseq.getglobal(:$stdout)
           iseq.getglobal(:$tape)
           iseq.getglobal(:$cursor)
-          iseq.send(:[], 1, VM_CALL_ARGS_SIMPLE)
-          iseq.send(:chr, 0, VM_CALL_ARGS_SIMPLE)
-          iseq.send(:putc, 1, VM_CALL_ARGS_SIMPLE)
+          iseq.send(:[], 1)
+          iseq.send(:chr, 0)
+          iseq.send(:putc, 1)
         end
 
         def visit_root(node)
@@ -304,15 +304,14 @@ module SyntaxTree
           iseq.setglobal(:$tape)
           iseq.getglobal(:$tape)
           iseq.putobject(0)
-          iseq.send(:default=, 1, VM_CALL_ARGS_SIMPLE)
+          iseq.send(:default=, 1)
 
           iseq.putobject(0)
           iseq.setglobal(:$cursor)
 
           visit_nodes(node.nodes)
 
-          iseq.putself
-          iseq.send(:exit, 0, VM_CALL_ARGS_SIMPLE)
+          iseq.leave
           iseq
         end
 
@@ -331,17 +330,17 @@ module SyntaxTree
           iseq.getglobal(:$cursor)
           iseq.getglobal(:$tape)
           iseq.getglobal(:$cursor)
-          iseq.send(:[], 1, VM_CALL_ARGS_SIMPLE)
+          iseq.send(:[], 1)
 
           if value < 0
             iseq.putobject(-value)
-            iseq.send(:-, 1, VM_CALL_ARGS_SIMPLE)
+            iseq.send(:-, 1)
           else
             iseq.putobject(value)
-            iseq.send(:+, 1, VM_CALL_ARGS_SIMPLE)
+            iseq.send(:+, 1)
           end
 
-          iseq.send(:[]=, 2, VM_CALL_ARGS_SIMPLE)
+          iseq.send(:[]=, 2)
         end
 
         def shift_by(value)
@@ -349,10 +348,10 @@ module SyntaxTree
 
           if value < 0
             iseq.putobject(-value)
-            iseq.send(:-, 1, VM_CALL_ARGS_SIMPLE)
+            iseq.send(:-, 1)
           else
             iseq.putobject(value)
-            iseq.send(:+, 1, VM_CALL_ARGS_SIMPLE)
+            iseq.send(:+, 1)
           end
 
           iseq.setglobal(:$cursor)

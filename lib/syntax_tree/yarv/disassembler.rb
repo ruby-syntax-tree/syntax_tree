@@ -17,7 +17,7 @@ module SyntaxTree
       end
 
       def to_ruby
-        Program(Statements(disassemble(iseq.insns)))
+        Program(disassemble(iseq))
       end
 
       private
@@ -31,12 +31,12 @@ module SyntaxTree
         end
       end
 
-      def disassemble(insns)
+      def disassemble(iseq)
         label = :label_0
         clauses = {}
         clause = []
 
-        insns.each do |insn|
+        iseq.insns.each do |insn|
           if insn.is_a?(Symbol) && insn.start_with?("label_")
             clause << Assign(label_field, node_for(insn)) unless clause.last.is_a?(Next)
             clauses[label] = clause
@@ -61,7 +61,8 @@ module SyntaxTree
             clause << Assign(label_field, node_for(insn[1]))
             clause << Next(Args([]))
           when :leave
-            clause << ReturnNode(Args([clause.pop]))
+            value = Args([clause.pop])
+            clause << (iseq.type == :top ? Break(value) : ReturnNode(value))
           when :opt_and
             left, right = clause.pop(2)
             clause << Binary(left, :&, right)
@@ -116,14 +117,27 @@ module SyntaxTree
             left, right = clause.pop(2)
             clause << Binary(left, :+, right)
           when :opt_send_without_block
-            if insn[1][:orig_argc] == 0
-              clause << CallNode(clause.pop, Period("."), Ident(insn[1][:mid]), nil)
-            elsif insn[1][:orig_argc] == 1 && insn[1][:mid].end_with?("=")
-              receiver, argument = clause.pop(2)
-              clause << Assign(CallNode(receiver, Period("."), Ident(insn[1][:mid][0..-2]), nil), argument)
+            if insn[1][:flag] & VM_CALL_FCALL > 0
+              if insn[1][:orig_argc] == 0
+                clause.pop
+                clause << CallNode(nil, nil, Ident(insn[1][:mid]), Args([]))
+              elsif insn[1][:orig_argc] == 1 && insn[1][:mid].end_with?("=")
+                _receiver, argument = clause.pop(2)
+                clause << Assign(CallNode(nil, nil, Ident(insn[1][:mid][0..-2]), nil), argument)
+              else
+                _receiver, *arguments = clause.pop(insn[1][:orig_argc] + 1)
+                clause << CallNode(nil, nil, Ident(insn[1][:mid]), ArgParen(Args(arguments)))
+              end
             else
-              receiver, *arguments = clause.pop(insn[1][:orig_argc] + 1)
-              clause << CallNode(receiver, Period("."), Ident(insn[1][:mid]), ArgParen(Args(arguments)))
+              if insn[1][:orig_argc] == 0
+                clause << CallNode(clause.pop, Period("."), Ident(insn[1][:mid]), nil)
+              elsif insn[1][:orig_argc] == 1 && insn[1][:mid].end_with?("=")
+                receiver, argument = clause.pop(2)
+                clause << Assign(CallNode(receiver, Period("."), Ident(insn[1][:mid][0..-2]), nil), argument)
+              else
+                receiver, *arguments = clause.pop(insn[1][:orig_argc] + 1)
+                clause << CallNode(receiver, Period("."), Ident(insn[1][:mid]), ArgParen(Args(arguments)))
+              end
             end
           when :putobject
             case insn[1]
@@ -166,7 +180,7 @@ module SyntaxTree
         # If there's only one clause, then we don't need a case statement, and
         # we can just disassemble the first clause.
         clauses[label] = clause
-        return clauses.values.first if clauses.size == 1
+        return Statements(clauses.values.first) if clauses.size == 1
 
         # Here we're going to build up a big case statement that will handle all
         # of the different labels.
@@ -196,7 +210,7 @@ module SyntaxTree
         # statement.
         stack << Assign(label_field, node_for(:label_0))
         stack << MethodAddBlock(CallNode(nil, nil, Ident("loop"), Args([])), BlockNode(Kw("do"), nil, BodyStmt(Statements([switch]), nil, nil, nil, nil)))
-        stack
+        Statements(stack)
       end
 
       def local_name(index, level)

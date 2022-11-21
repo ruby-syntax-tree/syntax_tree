@@ -253,13 +253,13 @@ module SyntaxTree
       iseq.putspecialobject(YARV::VM_SPECIAL_OBJECT_CBASE)
       visit(node.left)
       visit(node.right)
-      iseq.send(:"core#set_method_alias", 3, YARV::VM_CALL_ARGS_SIMPLE)
+      iseq.send(:"core#set_method_alias", 3)
     end
 
     def visit_aref(node)
       visit(node.collection)
       visit(node.index)
-      iseq.send(:[], 1, YARV::VM_CALL_ARGS_SIMPLE)
+      iseq.send(:[], 1)
     end
 
     def visit_arg_block(node)
@@ -313,7 +313,7 @@ module SyntaxTree
         visit(node.target.index)
         visit(node.value)
         iseq.setn(3)
-        iseq.send(:[]=, 2, YARV::VM_CALL_ARGS_SIMPLE)
+        iseq.send(:[]=, 2)
         iseq.pop
       when ConstPathField
         names = constant_names(node.target)
@@ -337,7 +337,7 @@ module SyntaxTree
         visit(node.target)
         visit(node.value)
         iseq.setn(2)
-        iseq.send(:"#{node.target.name.value}=", 1, YARV::VM_CALL_ARGS_SIMPLE)
+        iseq.send(:"#{node.target.name.value}=", 1)
         iseq.pop
       when TopConstField
         name = node.target.constant.value.to_sym
@@ -420,7 +420,7 @@ module SyntaxTree
       else
         visit(node.left)
         visit(node.right)
-        iseq.send(node.operator, 1, YARV::VM_CALL_ARGS_SIMPLE)
+        iseq.send(node.operator, 1)
       end
     end
 
@@ -981,7 +981,7 @@ module SyntaxTree
 
     def visit_not(node)
       visit(node.statement)
-      iseq.send(:!, 0, YARV::VM_CALL_ARGS_SIMPLE)
+      iseq.send(:!, 0)
     end
 
     def visit_opassign(node)
@@ -1367,7 +1367,7 @@ module SyntaxTree
         iseq.putspecialobject(YARV::VM_SPECIAL_OBJECT_VMCORE)
         iseq.putspecialobject(YARV::VM_SPECIAL_OBJECT_CBASE)
         visit(symbol)
-        iseq.send(:"core#undef_method", 2, YARV::VM_CALL_ARGS_SIMPLE)
+        iseq.send(:"core#undef_method", 2)
       end
     end
 
@@ -1523,7 +1523,7 @@ module SyntaxTree
     def visit_yield(node)
       parts = argument_parts(node.arguments)
       visit_all(parts)
-      iseq.invokeblock(nil, parts.length, YARV::VM_CALL_ARGS_SIMPLE)
+      iseq.invokeblock(nil, parts.length)
     end
 
     def visit_zsuper(_node)
@@ -1759,12 +1759,12 @@ module SyntaxTree
         visit(node.target.index)
 
         iseq.dupn(2)
-        iseq.send(:[], 1, YARV::VM_CALL_ARGS_SIMPLE)
+        iseq.send(:[], 1)
 
         yield
 
         iseq.setn(3)
-        iseq.send(:[]=, 2, YARV::VM_CALL_ARGS_SIMPLE)
+        iseq.send(:[]=, 2)
         iseq.pop
       when ConstPathField
         name = node.target.constant.value.to_sym
