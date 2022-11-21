@@ -407,7 +407,7 @@ module SyntaxTree
         iseq.pop
 
         visit(node.right)
-        branchunless[1] = iseq.label
+        branchunless.patch!(iseq)
       when :"||"
         visit(node.left)
         iseq.dup
@@ -416,7 +416,7 @@ module SyntaxTree
         iseq.pop
 
         visit(node.right)
-        branchif[1] = iseq.label
+        branchif.patch!(iseq)
       else
         visit(node.left)
         visit(node.right)
@@ -567,7 +567,7 @@ module SyntaxTree
       flag |= YARV::VM_CALL_FCALL if node.receiver.nil?
 
       iseq.send(node.message.value.to_sym, argc, flag, block_iseq)
-      branchnil[1] = iseq.label if branchnil
+      branchnil.patch!(iseq) if branchnil
     end
 
     def visit_case(node)
@@ -600,7 +600,7 @@ module SyntaxTree
 
       branches.each_with_index do |(clause, branchif), index|
         iseq.leave if index != 0
-        branchif[1] = iseq.label
+        branchif.patch!(iseq)
         iseq.pop
         visit(clause)
       end
@@ -616,21 +616,21 @@ module SyntaxTree
           iseq.leave
         end
 
-      flags = YARV::VM_DEFINECLASS_TYPE_CLASS
+      flags = YARV::DefineClass::TYPE_CLASS
 
       case node.constant
       when ConstPathRef
-        flags |= YARV::VM_DEFINECLASS_FLAG_SCOPED
+        flags |= YARV::DefineClass::FLAG_SCOPED
         visit(node.constant.parent)
       when ConstRef
         iseq.putspecialobject(YARV::VM_SPECIAL_OBJECT_CONST_BASE)
       when TopConstRef
-        flags |= YARV::VM_DEFINECLASS_FLAG_SCOPED
+        flags |= YARV::DefineClass::FLAG_SCOPED
         iseq.putobject(Object)
       end
 
       if node.superclass
-        flags |= YARV::VM_DEFINECLASS_FLAG_HAS_SUPERCLASS
+        flags |= YARV::DefineClass::FLAG_HAS_SUPERCLASS
         visit(node.superclass)
       else
         iseq.putnil
@@ -675,16 +675,16 @@ module SyntaxTree
     end
 
     def visit_def(node)
-      method_iseq =
-        with_child_iseq(iseq.method_child_iseq(node.name.value, node.location)) do
-          visit(node.params) if node.params
-          iseq.event(:RUBY_EVENT_CALL)
-          visit(node.bodystmt)
-          iseq.event(:RUBY_EVENT_RETURN)
-          iseq.leave
-        end
-
       name = node.name.value.to_sym
+      method_iseq = iseq.method_child_iseq(name.to_s, node.location)
+
+      with_child_iseq(method_iseq) do
+        visit(node.params) if node.params
+        iseq.event(:RUBY_EVENT_CALL)
+        visit(node.bodystmt)
+        iseq.event(:RUBY_EVENT_RETURN)
+        iseq.leave
+      end
 
       if node.target
         visit(node.target)
@@ -714,18 +714,18 @@ module SyntaxTree
         case value
         when Const
           iseq.putnil
-          iseq.defined(YARV::DEFINED_CONST, name, "constant")
+          iseq.defined(YARV::Defined::CONST, name, "constant")
         when CVar
           iseq.putnil
-          iseq.defined(YARV::DEFINED_CVAR, name, "class variable")
+          iseq.defined(YARV::Defined::CVAR, name, "class variable")
         when GVar
           iseq.putnil
-          iseq.defined(YARV::DEFINED_GVAR, name, "global-variable")
+          iseq.defined(YARV::Defined::GVAR, name, "global-variable")
         when Ident
           iseq.putobject("local-variable")
         when IVar
           iseq.putnil
-          iseq.defined(YARV::DEFINED_IVAR, name, "instance-variable")
+          iseq.defined(YARV::Defined::IVAR, name, "instance-variable")
         when Kw
           case name
           when :false
@@ -742,13 +742,13 @@ module SyntaxTree
         iseq.putself
 
         name = node.value.value.value.to_sym
-        iseq.defined(YARV::DEFINED_FUNC, name, "method")
+        iseq.defined(YARV::Defined::FUNC, name, "method")
       when YieldNode
         iseq.putnil
-        iseq.defined(YARV::DEFINED_YIELD, false, "yield")
+        iseq.defined(YARV::Defined::YIELD, false, "yield")
       when ZSuper
         iseq.putnil
-        iseq.defined(YARV::DEFINED_ZSUPER, false, "super")
+        iseq.defined(YARV::Defined::ZSUPER, false, "super")
       else
         iseq.putobject("expression")
       end
@@ -842,7 +842,7 @@ module SyntaxTree
 
       if last_statement?
         iseq.leave
-        branchunless[1] = iseq.label
+        branchunless.patch!(iseq)
 
         node.consequent ? visit(node.consequent) : iseq.putnil
       else
@@ -850,11 +850,11 @@ module SyntaxTree
 
         if node.consequent
           jump = iseq.jump(-1)
-          branchunless[1] = iseq.label
+          branchunless.patch!(iseq)
           visit(node.consequent)
           jump[1] = iseq.label
         else
-          branchunless[1] = iseq.label
+          branchunless.patch!(iseq)
         end
       end
     end
@@ -953,16 +953,16 @@ module SyntaxTree
           iseq.leave
         end
 
-      flags = YARV::VM_DEFINECLASS_TYPE_MODULE
+      flags = YARV::DefineClass::TYPE_MODULE
 
       case node.constant
       when ConstPathRef
-        flags |= YARV::VM_DEFINECLASS_FLAG_SCOPED
+        flags |= YARV::DefineClass::FLAG_SCOPED
         visit(node.constant.parent)
       when ConstRef
         iseq.putspecialobject(YARV::VM_SPECIAL_OBJECT_CONST_BASE)
       when TopConstRef
-        flags |= YARV::VM_DEFINECLASS_FLAG_SCOPED
+        flags |= YARV::DefineClass::FLAG_SCOPED
         iseq.putobject(Object)
       end
 
@@ -1004,15 +1004,15 @@ module SyntaxTree
         case node.target
         when ARefField
           iseq.leave
-          branchunless[1] = iseq.label
+          branchunless.patch!(iseq)
           iseq.setn(3)
           iseq.adjuststack(3)
         when ConstPathField, TopConstField
-          branchunless[1] = iseq.label
+          branchunless.patch!(iseq)
           iseq.swap
           iseq.pop
         else
-          branchunless[1] = iseq.label
+          branchunless.patch!(iseq)
         end
       when :"||"
         if node.target.is_a?(ConstPathField) || node.target.is_a?(TopConstField)
@@ -1034,11 +1034,11 @@ module SyntaxTree
 
           if node.target.is_a?(ARefField)
             iseq.leave
-            branchif[1] = iseq.label
+            branchif.patch!(iseq)
             iseq.setn(3)
             iseq.adjuststack(3)
           else
-            branchif[1] = iseq.label
+            branchif.patch!(iseq)
           end
         end
       else
@@ -1092,7 +1092,10 @@ module SyntaxTree
       if node.keywords.any?
         argument_options[:kwbits] = 0
         argument_options[:keyword] = []
-        checkkeywords = []
+
+        keyword_bits_name = node.keyword_rest ? 3 : 2
+        iseq.argument_size += 1
+        keyword_bits_index = iseq.local_table.locals.size + node.keywords.size
 
         node.keywords.each_with_index do |(keyword, value), keyword_index|
           name = keyword.value.chomp(":").to_sym
@@ -1105,24 +1108,18 @@ module SyntaxTree
           if value.nil?
             argument_options[:keyword] << name
           elsif (compiled = RubyVisitor.compile(value))
-            compiled = value.accept(RubyVisitor.new)
             argument_options[:keyword] << [name, compiled]
           else
             argument_options[:keyword] << [name]
-            checkkeywords << iseq.checkkeyword(-1, keyword_index)
+            iseq.checkkeyword(keyword_bits_index, keyword_index)
             branchif = iseq.branchif(-1)
             visit(value)
             iseq.setlocal(index, 0)
-            branchif[1] = iseq.label
+            branchif.patch!(iseq)
           end
         end
 
-        name = node.keyword_rest ? 3 : 2
-        iseq.argument_size += 1
-        iseq.local_table.plain(name)
-
-        lookup = iseq.local_table.find(name, 0)
-        checkkeywords.each { |checkkeyword| checkkeyword[1] = lookup.index }
+        iseq.local_table.plain(keyword_bits_name)
       end
 
       if node.keyword_rest.is_a?(ArgsForward)
@@ -1251,7 +1248,7 @@ module SyntaxTree
       iseq.defineclass(
         :singletonclass,
         singleton_iseq,
-        YARV::VM_DEFINECLASS_TYPE_SINGLETON_CLASS
+        YARV::DefineClass::TYPE_SINGLETON_CLASS
       )
     end
 
@@ -1378,7 +1375,7 @@ module SyntaxTree
 
       if last_statement?
         iseq.leave
-        branchunless[1] = iseq.label
+        branchunless.patch!(iseq)
 
         visit(node.statements)
       else
@@ -1386,11 +1383,11 @@ module SyntaxTree
 
         if node.consequent
           jump = iseq.jump(-1)
-          branchunless[1] = iseq.label
+          branchunless.patch!(iseq)
           visit(node.consequent)
           jump[1] = iseq.label
         else
-          branchunless[1] = iseq.label
+          branchunless.patch!(iseq)
         end
       end
     end
@@ -1598,24 +1595,24 @@ module SyntaxTree
         name = node.target.constant.value.to_sym
 
         iseq.dup
-        iseq.defined(YARV::DEFINED_CONST_FROM, name, true)
+        iseq.defined(YARV::Defined::CONST_FROM, name, true)
       when TopConstField
         name = node.target.constant.value.to_sym
 
         iseq.putobject(Object)
         iseq.dup
-        iseq.defined(YARV::DEFINED_CONST_FROM, name, true)
+        iseq.defined(YARV::Defined::CONST_FROM, name, true)
       when VarField
         name = node.target.value.value.to_sym
         iseq.putnil
 
         case node.target.value
         when Const
-          iseq.defined(YARV::DEFINED_CONST, name, true)
+          iseq.defined(YARV::Defined::CONST, name, true)
         when CVar
-          iseq.defined(YARV::DEFINED_CVAR, name, true)
+          iseq.defined(YARV::Defined::CVAR, name, true)
         when GVar
-          iseq.defined(YARV::DEFINED_GVAR, name, true)
+          iseq.defined(YARV::Defined::GVAR, name, true)
         end
       end
 
@@ -1641,7 +1638,7 @@ module SyntaxTree
       branchif = iseq.branchif(-1)
       iseq.pop
 
-      branchunless[1] = iseq.label
+      branchunless.patch!(iseq)
       visit(node.value)
 
       case node.target
@@ -1663,7 +1660,7 @@ module SyntaxTree
         end
       end
 
-      branchif[1] = iseq.label
+      branchif.patch!(iseq)
     end
 
     # Whenever a value is interpolated into a string-like structure, these

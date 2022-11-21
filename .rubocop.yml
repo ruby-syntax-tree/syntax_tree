@@ -94,6 +94,9 @@ Style/MutableConstant:
 Style/NegatedIfElseCondition:
   Enabled: false
 
+Style/Next:
+  Enabled: false
+
 Style/NumericPredicate:
   Enabled: false
 

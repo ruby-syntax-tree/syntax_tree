@@ -206,7 +206,12 @@ module SyntaxTree
 
       def length
         insns.inject(0) do |sum, insn|
-          insn.is_a?(Array) ? sum + insn.length : sum
+          case insn
+          when Integer, Symbol
+            sum
+          else
+            sum + insn.length
+          end
         end
       end
 
@@ -241,7 +246,38 @@ module SyntaxTree
           local_table.names,
           argument_options,
           [],
-          insns.map { |insn| serialize(insn) }
+          insns.map do |insn|
+            case insn
+            when Integer, Symbol
+              insn
+            when Array
+              case insn[0]
+              when :setlocal_WC_0, :setlocal_WC_1, :setlocal
+                iseq = self
+
+                case insn[0]
+                when :setlocal_WC_1
+                  iseq = iseq.parent_iseq
+                when :setlocal
+                  insn[2].times { iseq = iseq.parent_iseq }
+                end
+
+                # Here we need to map the local variable index to the offset
+                # from the top of the stack where it will be stored.
+                [insn[0], iseq.local_table.offset(insn[1]), *insn[2..]]
+              when :send
+                # For any instructions that push instruction sequences onto the
+                # stack, we need to call #to_a on them as well.
+                [insn[0], insn[1], (insn[2].to_a if insn[2])]
+              when :once
+                [insn[0], insn[1].to_a, insn[2]]
+              else
+                insn
+              end
+            else
+              insn.to_a(self)
+            end
+          end
         ]
       end
 
@@ -289,7 +325,14 @@ module SyntaxTree
 
       def push(insn)
         insns << insn
-        insn
+
+        case insn
+        when Integer, Symbol, Array
+          insn
+        else
+          stack.change_by(-insn.pops + insn.pushes)
+          insn
+        end
       end
 
       # This creates a new label at the current length of the instruction
@@ -304,134 +347,106 @@ module SyntaxTree
       end
 
       def adjuststack(number)
-        stack.change_by(-number)
-        push([:adjuststack, number])
+        push(AdjustStack.new(number))
       end
 
       def anytostring
-        stack.change_by(-2 + 1)
-        push([:anytostring])
+        push(AnyToString.new)
       end
 
-      def branchif(index)
-        stack.change_by(-1)
-        push([:branchif, index])
+      def branchif(label)
+        push(BranchIf.new(label))
       end
 
-      def branchnil(index)
-        stack.change_by(-1)
-        push([:branchnil, index])
+      def branchnil(label)
+        push(BranchNil.new(label))
       end
 
-      def branchunless(index)
-        stack.change_by(-1)
-        push([:branchunless, index])
+      def branchunless(label)
+        push(BranchUnless.new(label))
       end
 
-      def checkkeyword(index, keyword_index)
-        stack.change_by(+1)
-        push([:checkkeyword, index, keyword_index])
+      def checkkeyword(keyword_bits_index, keyword_index)
+        push(CheckKeyword.new(keyword_bits_index, keyword_index))
       end
 
       def concatarray
-        stack.change_by(-2 + 1)
-        push([:concatarray])
+        push(ConcatArray.new)
       end
 
       def concatstrings(number)
-        stack.change_by(-number + 1)
-        push([:concatstrings, number])
+        push(ConcatStrings.new(number))
       end
 
       def defined(type, name, message)
-        stack.change_by(-1 + 1)
-        push([:defined, type, name, message])
+        push(Defined.new(type, name, message))
       end
 
       def defineclass(name, class_iseq, flags)
-        stack.change_by(-2 + 1)
-        push([:defineclass, name, class_iseq, flags])
+        push(DefineClass.new(name, class_iseq, flags))
       end
 
       def definemethod(name, method_iseq)
-        stack.change_by(0)
-        push([:definemethod, name, method_iseq])
+        push(DefineMethod.new(name, method_iseq))
       end
 
       def definesmethod(name, method_iseq)
-        stack.change_by(-1)
-        push([:definesmethod, name, method_iseq])
+        push(DefineSMethod.new(name, method_iseq))
       end
 
       def dup
-        stack.change_by(-1 + 2)
-        push([:dup])
+        push(Dup.new)
       end
 
       def duparray(object)
-        stack.change_by(+1)
-        push([:duparray, object])
+        push(DupArray.new(object))
       end
 
       def duphash(object)
-        stack.change_by(+1)
-        push([:duphash, object])
+        push(DupHash.new(object))
       end
 
       def dupn(number)
-        stack.change_by(+number)
-        push([:dupn, number])
+        push(DupN.new(number))
       end
 
-      def expandarray(length, flag)
-        stack.change_by(-1 + length)
-        push([:expandarray, length, flag])
+      def expandarray(length, flags)
+        push(ExpandArray.new(length, flags))
       end
 
       def getblockparam(index, level)
-        stack.change_by(+1)
-        push([:getblockparam, index, level])
+        push(GetBlockParam.new(index, level))
       end
 
       def getblockparamproxy(index, level)
-        stack.change_by(+1)
-        push([:getblockparamproxy, index, level])
+        push(GetBlockParamProxy.new(index, level))
       end
 
       def getclassvariable(name)
-        stack.change_by(+1)
-
-        if RUBY_VERSION >= "3.0"
-          push([:getclassvariable, name, inline_storage_for(name)])
+        if RUBY_VERSION < "3.0"
+          push(GetClassVariableUncached.new(name))
         else
-          push([:getclassvariable, name])
+          push(GetClassVariable.new(name, inline_storage_for(name)))
         end
       end
 
       def getconstant(name)
-        stack.change_by(-2 + 1)
-        push([:getconstant, name])
+        push(GetConstant.new(name))
       end
 
       def getglobal(name)
-        stack.change_by(+1)
-        push([:getglobal, name])
+        push(GetGlobal.new(name))
       end
 
       def getinstancevariable(name)
-        stack.change_by(+1)
-
-        if RUBY_VERSION >= "3.2"
-          push([:getinstancevariable, name, inline_storage])
+        if RUBY_VERSION < "3.2"
+          push(GetInstanceVariable.new(name, inline_storage_for(name)))
         else
-          inline_storage = inline_storage_for(name)
-          push([:getinstancevariable, name, inline_storage])
+          push(GetInstanceVariable.new(name, inline_storage))
         end
       end
 
       def getlocal(index, level)
-        stack.change_by(+1)
-
         if operands_unification
           # Specialize the getlocal instruction based on the level of the
           # local variable. If it's 0 or 1, then there's a specialized
@@ -439,14 +454,14 @@ module SyntaxTree
           # scope, respectively, and requires fewer operands.
           case level
           when 0
-            push([:getlocal_WC_0, index])
+            push(GetLocalWC0.new(index))
           when 1
-            push([:getlocal_WC_1, index])
+            push(GetLocalWC1.new(index))
           else
-            push([:getlocal, index, level])
+            push(GetLocal.new(index, level))
           end
         else
-          push([:getlocal, index, level])
+          push(GetLocal.new(index, level))
         end
       end
 
@@ -762,38 +777,6 @@ module SyntaxTree
       def call_data(method_id, argc, flag = VM_CALL_ARGS_SIMPLE)
         { mid: method_id, flag: flag, orig_argc: argc }
       end
-
-      def serialize(insn)
-        case insn[0]
-        when :checkkeyword, :getblockparam, :getblockparamproxy, :getlocal_WC_0,
-             :getlocal_WC_1, :getlocal, :setlocal_WC_0, :setlocal_WC_1,
-             :setlocal
-          iseq = self
-
-          case insn[0]
-          when :getlocal_WC_1, :setlocal_WC_1
-            iseq = iseq.parent_iseq
-          when :getblockparam, :getblockparamproxy, :getlocal, :setlocal
-            insn[2].times { iseq = iseq.parent_iseq }
-          end
-
-          # Here we need to map the local variable index to the offset
-          # from the top of the stack where it will be stored.
-          [insn[0], iseq.local_table.offset(insn[1]), *insn[2..]]
-        when :defineclass
-          [insn[0], insn[1], insn[2].to_a, insn[3]]
-        when :definemethod, :definesmethod
-          [insn[0], insn[1], insn[2].to_a]
-        when :send
-          # For any instructions that push instruction sequences onto the
-          # stack, we need to call #to_a on them as well.
-          [insn[0], insn[1], (insn[2].to_a if insn[2])]
-        when :once
-          [insn[0], insn[1].to_a, insn[2]]
-        else
-          insn
-        end
-      end
     end
 
     # These constants correspond to the putspecialobject instruction. They are
@@ -819,34 +802,5 @@ module SyntaxTree
     VM_CALL_ZSUPER = 1 << 10
     VM_CALL_OPT_SEND = 1 << 11
     VM_CALL_KW_SPLAT_MUT = 1 << 12
-
-    # These constants correspond to the value passed as part of the defined
-    # instruction. It's an enum defined in the CRuby codebase that tells that
-    # instruction what kind of defined check to perform.
-    DEFINED_NIL = 1
-    DEFINED_IVAR = 2
-    DEFINED_LVAR = 3
-    DEFINED_GVAR = 4
-    DEFINED_CVAR = 5
-    DEFINED_CONST = 6
-    DEFINED_METHOD = 7
-    DEFINED_YIELD = 8
-    DEFINED_ZSUPER = 9
-    DEFINED_SELF = 10
-    DEFINED_TRUE = 11
-    DEFINED_FALSE = 12
-    DEFINED_ASGN = 13
-    DEFINED_EXPR = 14
-    DEFINED_REF = 15
-    DEFINED_FUNC = 16
-    DEFINED_CONST_FROM = 17
-
-    # These constants correspond to the value passed in the flags as part of
-    # the defineclass instruction.
-    VM_DEFINECLASS_TYPE_CLASS = 0
-    VM_DEFINECLASS_TYPE_SINGLETON_CLASS = 1
-    VM_DEFINECLASS_TYPE_MODULE = 2
-    VM_DEFINECLASS_FLAG_SCOPED = 8
-    VM_DEFINECLASS_FLAG_HAS_SUPERCLASS = 16
   end
 end

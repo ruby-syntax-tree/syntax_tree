@@ -26,13 +26,22 @@ module SyntaxTree
       "1 << 2" => "break 1 << 2\n",
       "1 >> 2" => "break 1.>>(2)\n",
       "1 ** 2" => "break 1.**(2)\n",
-      "a = 1; a" => "a = 1\nbreak a\n",
+      "a = 1; a" => "a = 1\nbreak a\n"
     }.freeze
 
     CASES.each do |source, expected|
       define_method("test_disassemble_#{source}") do
         assert_disassembles(expected, source)
       end
+    end
+
+    def test_bf
+      hello_world =
+        "++++++++[>++++[>++>+++>+++>+<<<<-]>+>+>->>+[<]<-]" \
+          ">>.>---.+++++++..+++.>>.<-.<.+++.------.--------.>>+.>++."
+
+      iseq = YARV::Bf.new(hello_world).compile
+      Formatter.format(hello_world, YARV::Disassembler.new(iseq).to_ruby)
     end
 
     private
