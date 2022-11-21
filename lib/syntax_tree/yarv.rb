@@ -802,6 +802,65 @@ module SyntaxTree
     # This class is responsible for taking a compiled instruction sequence and
     # walking through it to generate equivalent Ruby code.
     class Disassembler
+      module DSL
+        def Args(parts)
+          Args.new(parts: parts, location: Location.default)
+        end
+
+        def ArgParen(arguments)
+          ArgParen.new(arguments: arguments, location: Location.default)
+        end
+
+        def Assign(target, value)
+          Assign.new(target: target, value: value, location: Location.default)
+        end
+
+        def Binary(left, operator, right)
+          Binary.new(left: left, operator: operator, right: right, location: Location.default)
+        end
+
+        def CallNode(receiver, operator, message, arguments)
+          CallNode.new(receiver: receiver, operator: operator, message: message, arguments: arguments, location: Location.default)
+        end
+
+        def FloatLiteral(value)
+          FloatLiteral.new(value: value, location: Location.default)
+        end
+
+        def Ident(value)
+          Ident.new(value: value, location: Location.default)
+        end
+
+        def Int(value)
+          Int.new(value: value, location: Location.default)
+        end
+
+        def Period(value)
+          Period.new(value: value, location: Location.default)
+        end
+
+        def Program(statements)
+          Program.new(statements: statements, location: Location.default)
+        end
+
+        def ReturnNode(arguments)
+          ReturnNode.new(arguments: arguments, location: Location.default)
+        end
+
+        def Statements(body)
+          Statements.new(nil, body: body, location: Location.default)
+        end
+
+        def VarField(value)
+          VarField.new(value: value, location: Location.default)
+        end
+
+        def VarRef(value)
+          VarRef.new(value: value, location: Location.default)
+        end
+      end
+
+      include DSL
       attr_reader :iseq
 
       def initialize(iseq)
@@ -812,78 +871,88 @@ module SyntaxTree
         stack = []
 
         iseq.insns.each do |insn|
+          # skip line numbers and events
+          next unless insn.is_a?(Array)
+
           case insn[0]
           when :getlocal_WC_0
-            value = iseq.local_table.locals[insn[1]].name.to_s
-            stack << VarRef.new(
-              value: Ident.new(value: value, location: Location.default),
-              location: Location.default
-            )
+            stack << VarRef(Ident(local_name(insn[1], 0)))
           when :leave
-            stack << ReturnNode.new(
-              arguments:
-                Args.new(parts: [stack.pop], location: Location.default),
-              location: Location.default
-            )
+            stack << ReturnNode(Args([stack.pop]))
+          when :opt_and
+            left, right = stack.pop(2)
+            stack << Binary(left, :&, right)
+          when :opt_div
+            left, right = stack.pop(2)
+            stack << Binary(left, :/, right)
+          when :opt_eq
+            left, right = stack.pop(2)
+            stack << Binary(left, :==, right)
+          when :opt_ge
+            left, right = stack.pop(2)
+            stack << Binary(left, :>=, right)
+          when :opt_gt
+            left, right = stack.pop(2)
+            stack << Binary(left, :>, right)
+          when :opt_le
+            left, right = stack.pop(2)
+            stack << Binary(left, :<=, right)
+          when :opt_lt
+            left, right = stack.pop(2)
+            stack << Binary(left, :<, right)
+          when :opt_ltlt
+            left, right = stack.pop(2)
+            stack << Binary(left, :<<, right)
+          when :opt_minus
+            left, right = stack.pop(2)
+            stack << Binary(left, :-, right)
+          when :opt_mod
+            left, right = stack.pop(2)
+            stack << Binary(left, :%, right)
           when :opt_mult
             left, right = stack.pop(2)
-            stack << Binary.new(
-              left: left,
-              operator: :*,
-              right: right,
-              location: Location.default
-            )
+            stack << Binary(left, :*, right)
+          when :opt_neq
+            left, right = stack.pop(2)
+            stack << Binary(left, :"!=", right)
+          when :opt_or
+            left, right = stack.pop(2)
+            stack << Binary(left, :|, right)
           when :opt_plus
             left, right = stack.pop(2)
-            stack << Binary.new(
-              left: left,
-              operator: :+,
-              right: right,
-              location: Location.default
-            )
+            stack << Binary(left, :+, right)
+          when :opt_send_without_block
+            receiver, *arguments = stack.pop(insn[1][:orig_argc] + 1)
+            stack << CallNode(receiver, Period("."), Ident(insn[1][:mid]), ArgParen(Args(arguments)))
           when :putobject
             case insn[1]
             when Float
-              stack << FloatLiteral.new(
-                value: insn[1].inspect,
-                location: Location.default
-              )
+              stack << FloatLiteral(insn[1].inspect)
             when Integer
-              stack << Int.new(
-                value: insn[1].inspect,
-                location: Location.default
-              )
-            when Rational
-              stack << RationalLiteral.new(
-                value: insn[1].inspect,
-                location: Location.default
-              )
+              stack << Int(insn[1].inspect)
             else
               raise "Unknown object type: #{insn[1].class.name}"
             end
+          when :putobject_INT2FIX_0_
+            stack << Int("0")
           when :putobject_INT2FIX_1_
-            stack << Int.new(value: "1", location: Location.default)
+            stack << Int("1")
           when :setlocal_WC_0
-            target =
-              VarField.new(
-                value:
-                  Ident.new(
-                    value: iseq.local_table.locals[insn[1]].name.to_s,
-                    location: Location.default
-                  ),
-                location: Location.default
-              )
-            stack << Assign.new(
-              target: target,
-              value: stack.pop,
-              location: Location.default
-            )
+            stack << Assign(VarField(Ident(local_name(insn[1], 0))), stack.pop)
           else
             raise "Unknown instruction #{insn[0]}"
           end
         end
 
-        Statements.new(nil, body: stack, location: Location.default)
+        Program(Statements(stack))
+      end
+
+      private
+
+      def local_name(index, level)
+        current = iseq
+        level.times { current = current.parent_iseq }
+        current.local_table.locals[index].name.to_s
       end
     end
 
