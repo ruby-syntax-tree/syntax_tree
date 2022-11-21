@@ -6,6 +6,9 @@ require_relative "test_helper"
 module SyntaxTree
   class CompilerTest < Minitest::Test
     CASES = [
+      # Hooks
+      "BEGIN { a = 1 }",
+      "a = 1; END { a = 1 }; a",
       # Various literals placed on the stack
       "true",
       "false",

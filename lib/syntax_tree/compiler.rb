@@ -225,14 +225,17 @@ module SyntaxTree
     end
 
     def visit_END(node)
-      name = "block in #{iseq.name}"
       once_iseq =
-        with_instruction_sequence(:block, name, node) do
+        with_child_iseq(iseq.block_child_iseq(node.location)) do
           postexe_iseq =
-            with_instruction_sequence(:block, name, node) do
+            with_child_iseq(iseq.block_child_iseq(node.location)) do
+              iseq.event(:RUBY_EVENT_B_CALL)
+
               *statements, last_statement = node.statements.body
               visit_all(statements)
               with_last_statement { visit(last_statement) }
+
+              iseq.event(:RUBY_EVENT_B_RETURN)
               iseq.leave
             end
 
@@ -422,7 +425,7 @@ module SyntaxTree
     end
 
     def visit_block(node)
-      with_instruction_sequence(:block, "block in #{iseq.name}", node) do
+      with_child_iseq(iseq.block_child_iseq(node.location)) do
         iseq.event(:RUBY_EVENT_B_CALL)
         visit(node.block_var)
         visit(node.bodystmt)
@@ -606,7 +609,7 @@ module SyntaxTree
     def visit_class(node)
       name = node.constant.constant.value.to_sym
       class_iseq =
-        with_instruction_sequence(:class, "<class:#{name}>", node) do
+        with_child_iseq(iseq.class_child_iseq(name, node.location)) do
           iseq.event(:RUBY_EVENT_CLASS)
           visit(node.bodystmt)
           iseq.event(:RUBY_EVENT_END)
@@ -673,7 +676,7 @@ module SyntaxTree
 
     def visit_def(node)
       method_iseq =
-        with_instruction_sequence(:method, node.name.value, node) do
+        with_child_iseq(iseq.method_child_iseq(node.name.value, node.location)) do
           visit(node.params) if node.params
           iseq.event(:RUBY_EVENT_CALL)
           visit(node.bodystmt)
@@ -788,11 +791,7 @@ module SyntaxTree
       iseq.local_table.plain(name)
 
       block_iseq =
-        with_instruction_sequence(
-          :block,
-          "block in #{iseq.name}",
-          node.statements
-        ) do
+        with_child_iseq(iseq.block_child_iseq(node.statements.location)) do
           iseq.argument_options[:lead_num] ||= 0
           iseq.argument_options[:lead_num] += 1
           iseq.argument_options[:ambiguous_param0] = true
@@ -896,7 +895,7 @@ module SyntaxTree
 
     def visit_lambda(node)
       lambda_iseq =
-        with_instruction_sequence(:block, "block in #{iseq.name}", node) do
+        with_child_iseq(iseq.block_child_iseq(node.location)) do
           iseq.event(:RUBY_EVENT_B_CALL)
           visit(node.params)
           visit(node.statements)
@@ -947,7 +946,7 @@ module SyntaxTree
     def visit_module(node)
       name = node.constant.constant.value.to_sym
       module_iseq =
-        with_instruction_sequence(:class, "<module:#{name}>", node) do
+        with_child_iseq(iseq.module_child_iseq(name, node.location)) do
           iseq.event(:RUBY_EVENT_CLASS)
           visit(node.bodystmt)
           iseq.event(:RUBY_EVENT_END)
@@ -1168,7 +1167,18 @@ module SyntaxTree
         end
       end
 
-      with_instruction_sequence(:top, "<compiled>", node) do
+      top_iseq =
+        YARV::InstructionSequence.new(
+          :top,
+          "<compiled>",
+          nil,
+          node.location,
+          frozen_string_literal: frozen_string_literal,
+          operands_unification: operands_unification,
+          specialized_instruction: specialized_instruction
+        )
+
+      with_child_iseq(top_iseq) do
         visit_all(preexes)
 
         if statements.empty?
@@ -1231,7 +1241,7 @@ module SyntaxTree
       iseq.putnil
 
       singleton_iseq =
-        with_instruction_sequence(:class, "singleton class", node) do
+        with_child_iseq(iseq.singleton_class_child_iseq(node.location)) do
           iseq.event(:RUBY_EVENT_CLASS)
           visit(node.bodystmt)
           iseq.event(:RUBY_EVENT_END)
@@ -1702,24 +1712,13 @@ module SyntaxTree
     # on the compiler. When we descend into a node that has its own
     # instruction sequence, this method can be called to temporarily set the
     # new value of the instruction sequence, yield, and then set it back.
-    def with_instruction_sequence(type, name, node)
+    def with_child_iseq(child_iseq)
       parent_iseq = iseq
 
       begin
-        iseq =
-          YARV::InstructionSequence.new(
-            type,
-            name,
-            parent_iseq,
-            node.location,
-            frozen_string_literal: frozen_string_literal,
-            operands_unification: operands_unification,
-            specialized_instruction: specialized_instruction
-          )
-
-        @iseq = iseq
+        @iseq = child_iseq
         yield
-        iseq
+        child_iseq
       ensure
         @iseq = parent_iseq
       end

@@ -210,14 +210,6 @@ module SyntaxTree
         end
       end
 
-      def each_child
-        insns.each do |insn|
-          insn[1..].each do |operand|
-            yield operand if operand.is_a?(InstructionSequence)
-          end
-        end
-      end
-
       def eval
         compiled = to_a
 
@@ -251,6 +243,44 @@ module SyntaxTree
           [],
           insns.map { |insn| serialize(insn) }
         ]
+      end
+
+      ##########################################################################
+      # Child instruction sequence methods
+      ##########################################################################
+
+      def child_iseq(type, name, location)
+        InstructionSequence.new(
+          type,
+          name,
+          self,
+          location,
+          frozen_string_literal: frozen_string_literal,
+          operands_unification: operands_unification,
+          specialized_instruction: specialized_instruction
+        )
+      end
+
+      def block_child_iseq(location)
+        current = self
+        current = current.parent_iseq while current.type == :block
+        child_iseq(:block, "block in #{current.name}", location)
+      end
+
+      def class_child_iseq(name, location)
+        child_iseq(:class, "<class:#{name}>", location)
+      end
+
+      def method_child_iseq(name, location)
+        child_iseq(:method, name, location)
+      end
+
+      def module_child_iseq(name, location)
+        child_iseq(:class, "<module:#{name}>", location)
+      end
+
+      def singleton_class_child_iseq(location)
+        child_iseq(:class, "singleton class", location)
       end
 
       ##########################################################################
