@@ -201,6 +201,7 @@ module SyntaxTree
       "foo[bar] ||= 1",
       "foo[bar] <<= 1",
       "foo[bar] ^= 1",
+      "foo['true']",
       # Constants (single)
       "Foo",
       "Foo = 1",

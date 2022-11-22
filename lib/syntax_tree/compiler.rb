@@ -158,6 +158,21 @@ module SyntaxTree
         node.value
       end
 
+      def visit_var_ref(node)
+        raise CompilationError unless node.value.is_a?(Kw)
+
+        case node.value.value
+        when "nil"
+          nil
+        when "true"
+          true
+        when "false"
+          false
+        else
+          raise CompilationError
+        end
+      end
+
       def visit_word(node)
         if node.parts.length == 1 && node.parts.first.is_a?(TStringContent)
           node.parts.first.value
@@ -258,6 +273,20 @@ module SyntaxTree
 
     def visit_aref(node)
       visit(node.collection)
+
+      if !frozen_string_literal && specialized_instruction && (node.index.parts.length == 1)
+        arg = node.index.parts.first
+
+        if arg.is_a?(StringLiteral) && (arg.parts.length == 1)
+          string_part = arg.parts.first
+
+          if string_part.is_a?(TStringContent)
+            iseq.opt_aref_with(string_part.value, :[], 1)
+            return
+          end
+        end
+      end
+
       visit(node.index)
       iseq.send(:[], 1)
     end

@@ -527,6 +527,11 @@ module SyntaxTree
         push([:once, postexe_iseq, inline_storage])
       end
 
+      def opt_aref_with(object, method_id, argc, flag = VM_CALL_ARGS_SIMPLE)
+        stack.change_by(-1 + 1)
+        push([:opt_aref_with, object, call_data(method_id, argc, flag)])
+      end
+
       def opt_getconstant_path(names)
         if RUBY_VERSION >= "3.2"
           stack.change_by(+1)
