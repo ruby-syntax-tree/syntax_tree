@@ -311,6 +311,7 @@ module SyntaxTree
       "[1, 2, 3].min",
       "[foo, bar, baz].min",
       "[foo, bar, baz].min(1)",
+      "[**{ x: true }][0][:x]",
       # Core method calls
       "alias foo bar",
       "alias :foo :bar",

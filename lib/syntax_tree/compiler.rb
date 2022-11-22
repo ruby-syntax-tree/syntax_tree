@@ -311,6 +311,15 @@ module SyntaxTree
     def visit_array(node)
       if (compiled = RubyVisitor.compile(node))
         iseq.duparray(compiled)
+      elsif node.contents && node.contents.parts.length == 1 &&
+            node.contents.parts.first.is_a?(BareAssocHash) &&
+            node.contents.parts.first.assocs.length == 1 &&
+            node.contents.parts.first.assocs.first.is_a?(AssocSplat)
+        iseq.putspecialobject(YARV::VM_SPECIAL_OBJECT_VMCORE)
+        iseq.newhash(0)
+        visit(node.contents.parts.first)
+        iseq.send(:"core#hash_merge_kwd", 2)
+        iseq.newarraykwsplat(1)
       else
         length = 0
 

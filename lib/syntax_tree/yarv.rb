@@ -502,6 +502,11 @@ module SyntaxTree
         push([:newarray, length])
       end
 
+      def newarraykwsplat(length)
+        stack.change_by(-length + 1)
+        push([:newarraykwsplat, length])
+      end
+
       def newhash(length)
         stack.change_by(-length + 1)
         push([:newhash, length])
