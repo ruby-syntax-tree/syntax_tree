@@ -434,14 +434,14 @@ module SyntaxTree
 
       def getclassvariable(name)
         if RUBY_VERSION < "3.0"
-          push(GetClassVariableUncached.new(name))
+          push(Legacy::GetClassVariable.new(name))
         else
           push(GetClassVariable.new(name, inline_storage_for(name)))
         end
       end
 
       def getconstant(name)
-        push(GetConstant.new(name))
+        push(Legacy::GetConstant.new(name))
       end
 
       def getglobal(name)

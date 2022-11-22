@@ -333,61 +333,6 @@ module SyntaxTree
 
     # ### Summary
     #
-    # `defined` checks if the top value of the stack is defined. If it is, it
-    # pushes its value onto the stack. Otherwise it pushes `nil`.
-    #
-    # ### Usage
-    #
-    # ~~~ruby
-    # defined?(x)
-    # ~~~
-    #
-    class Defined
-      NIL = 1
-      IVAR = 2
-      LVAR = 3
-      GVAR = 4
-      CVAR = 5
-      CONST = 6
-      METHOD = 7
-      YIELD = 8
-      ZSUPER = 9
-      SELF = 10
-      TRUE = 11
-      FALSE = 12
-      ASGN = 13
-      EXPR = 14
-      REF = 15
-      FUNC = 16
-      CONST_FROM = 17
-
-      attr_reader :type, :name, :message
-
-      def initialize(type, name, message)
-        @type = type
-        @name = name
-        @message = message
-      end
-
-      def to_a(_iseq)
-        [:defined, type, name, message]
-      end
-
-      def length
-        4
-      end
-
-      def pops
-        1
-      end
-
-      def pushes
-        1
-      end
-    end
-
-    # ### Summary
-    #
     # `defineclass` defines a class. First it pops the superclass off the
     # stack, then it pops the object off the stack that the class should be
     # defined under. It has three arguments: the name of the constant, the
@@ -426,6 +371,61 @@ module SyntaxTree
 
       def pops
         2
+      end
+
+      def pushes
+        1
+      end
+    end
+
+    # ### Summary
+    #
+    # `defined` checks if the top value of the stack is defined. If it is, it
+    # pushes its value onto the stack. Otherwise it pushes `nil`.
+    #
+    # ### Usage
+    #
+    # ~~~ruby
+    # defined?(x)
+    # ~~~
+    #
+    class Defined
+      TYPE_NIL = 1
+      TYPE_IVAR = 2
+      TYPE_LVAR = 3
+      TYPE_GVAR = 4
+      TYPE_CVAR = 5
+      TYPE_CONST = 6
+      TYPE_METHOD = 7
+      TYPE_YIELD = 8
+      TYPE_ZSUPER = 9
+      TYPE_SELF = 10
+      TYPE_TRUE = 11
+      TYPE_FALSE = 12
+      TYPE_ASGN = 13
+      TYPE_EXPR = 14
+      TYPE_REF = 15
+      TYPE_FUNC = 16
+      TYPE_CONST_FROM = 17
+
+      attr_reader :type, :name, :message
+
+      def initialize(type, name, message)
+        @type = type
+        @name = name
+        @message = message
+      end
+
+      def to_a(_iseq)
+        [:defined, type, name, message]
+      end
+
+      def length
+        4
+      end
+
+      def pops
+        1
       end
 
       def pushes
@@ -802,83 +802,6 @@ module SyntaxTree
 
     # ### Summary
     #
-    # `getclassvariable` looks for a class variable in the current class and
-    # pushes its value onto the stack.
-    #
-    # This version of the `getclassvariable` instruction is no longer used since
-    # in Ruby 3.0 it gained an inline cache.`
-    #
-    # ### Usage
-    #
-    # ~~~ruby
-    # @@class_variable
-    # ~~~
-    #
-    class GetClassVariableUncached
-      attr_reader :name
-
-      def initialize(name)
-        @name = name
-      end
-
-      def to_a(_iseq)
-        [:getclassvariable, name]
-      end
-
-      def length
-        2
-      end
-
-      def pops
-        0
-      end
-
-      def pushes
-        1
-      end
-    end
-
-    # ### Summary
-    #
-    # `getconstant` performs a constant lookup and pushes the value of the
-    # constant onto the stack. It pops both the class it should look in and
-    # whether or not it should look globally as well.
-    #
-    # This instruction is no longer used since in Ruby 3.2 it was replaced by
-    # the consolidated `opt_getconstant_path` instruction.
-    #
-    # ### Usage
-    #
-    # ~~~ruby
-    # Constant
-    # ~~~
-    #
-    class GetConstant
-      attr_reader :name
-
-      def initialize(name)
-        @name = name
-      end
-
-      def to_a(_iseq)
-        [:getconstant, name]
-      end
-
-      def length
-        2
-      end
-
-      def pops
-        2
-      end
-
-      def pushes
-        1
-      end
-    end
-
-    # ### Summary
-    #
     # `getglobal` pushes the value of a global variables onto the stack.
     #
     # ### Usage
@@ -1065,6 +988,87 @@ module SyntaxTree
 
       def pushes
         1
+      end
+    end
+
+    # This module contains the instructions that used to be a part of YARV but
+    # have been replaced or removed in more recent versions.
+    module Legacy
+      # ### Summary
+      #
+      # `getclassvariable` looks for a class variable in the current class and
+      # pushes its value onto the stack.
+      #
+      # This version of the `getclassvariable` instruction is no longer used
+      # since in Ruby 3.0 it gained an inline cache.`
+      #
+      # ### Usage
+      #
+      # ~~~ruby
+      # @@class_variable
+      # ~~~
+      #
+      class GetClassVariable
+        attr_reader :name
+
+        def initialize(name)
+          @name = name
+        end
+
+        def to_a(_iseq)
+          [:getclassvariable, name]
+        end
+
+        def length
+          2
+        end
+
+        def pops
+          0
+        end
+
+        def pushes
+          1
+        end
+      end
+
+      # ### Summary
+      #
+      # `getconstant` performs a constant lookup and pushes the value of the
+      # constant onto the stack. It pops both the class it should look in and
+      # whether or not it should look globally as well.
+      #
+      # This instruction is no longer used since in Ruby 3.2 it was replaced by
+      # the consolidated `opt_getconstant_path` instruction.
+      #
+      # ### Usage
+      #
+      # ~~~ruby
+      # Constant
+      # ~~~
+      #
+      class GetConstant
+        attr_reader :name
+
+        def initialize(name)
+          @name = name
+        end
+
+        def to_a(_iseq)
+          [:getconstant, name]
+        end
+
+        def length
+          2
+        end
+
+        def pops
+          2
+        end
+
+        def pushes
+          1
+        end
       end
     end
   end

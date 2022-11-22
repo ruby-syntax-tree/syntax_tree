@@ -870,18 +870,18 @@ module SyntaxTree
         case value
         when Const
           iseq.putnil
-          iseq.defined(YARV::Defined::CONST, name, "constant")
+          iseq.defined(YARV::Defined::TYPE_CONST, name, "constant")
         when CVar
           iseq.putnil
-          iseq.defined(YARV::Defined::CVAR, name, "class variable")
+          iseq.defined(YARV::Defined::TYPE_CVAR, name, "class variable")
         when GVar
           iseq.putnil
-          iseq.defined(YARV::Defined::GVAR, name, "global-variable")
+          iseq.defined(YARV::Defined::TYPE_GVAR, name, "global-variable")
         when Ident
           iseq.putobject("local-variable")
         when IVar
           iseq.putnil
-          iseq.defined(YARV::Defined::IVAR, name, "instance-variable")
+          iseq.defined(YARV::Defined::TYPE_IVAR, name, "instance-variable")
         when Kw
           case name
           when :false
@@ -898,13 +898,13 @@ module SyntaxTree
         iseq.putself
 
         name = node.value.value.value.to_sym
-        iseq.defined(YARV::Defined::FUNC, name, "method")
+        iseq.defined(YARV::Defined::TYPE_FUNC, name, "method")
       when YieldNode
         iseq.putnil
-        iseq.defined(YARV::Defined::YIELD, false, "yield")
+        iseq.defined(YARV::Defined::TYPE_YIELD, false, "yield")
       when ZSuper
         iseq.putnil
-        iseq.defined(YARV::Defined::ZSUPER, false, "super")
+        iseq.defined(YARV::Defined::TYPE_ZSUPER, false, "super")
       else
         iseq.putobject("expression")
       end
@@ -1875,24 +1875,24 @@ module SyntaxTree
         name = node.target.constant.value.to_sym
 
         iseq.dup
-        iseq.defined(YARV::Defined::CONST_FROM, name, true)
+        iseq.defined(YARV::Defined::TYPE_CONST_FROM, name, true)
       when TopConstField
         name = node.target.constant.value.to_sym
 
         iseq.putobject(Object)
         iseq.dup
-        iseq.defined(YARV::Defined::CONST_FROM, name, true)
+        iseq.defined(YARV::Defined::TYPE_CONST_FROM, name, true)
       when VarField
         name = node.target.value.value.to_sym
         iseq.putnil
 
         case node.target.value
         when Const
-          iseq.defined(YARV::Defined::CONST, name, true)
+          iseq.defined(YARV::Defined::TYPE_CONST, name, true)
         when CVar
-          iseq.defined(YARV::Defined::CVAR, name, true)
+          iseq.defined(YARV::Defined::TYPE_CVAR, name, true)
         when GVar
-          iseq.defined(YARV::Defined::GVAR, name, true)
+          iseq.defined(YARV::Defined::TYPE_GVAR, name, true)
         end
       end
 
