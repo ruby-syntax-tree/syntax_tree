@@ -13,11 +13,14 @@ module SyntaxTree
       # pass a serialized iseq to Ruby and have it return a
       # RubyVM::InstructionSequence object.
       ISEQ_LOAD =
-        Fiddle::Function.new(
-          Fiddle::Handle::DEFAULT["rb_iseq_load"],
-          [Fiddle::TYPE_VOIDP] * 3,
-          Fiddle::TYPE_VOIDP
-        )
+        begin
+          Fiddle::Function.new(
+            Fiddle::Handle::DEFAULT["rb_iseq_load"],
+            [Fiddle::TYPE_VOIDP] * 3,
+            Fiddle::TYPE_VOIDP
+          )
+        rescue NameError
+        end
 
       # This object is used to track the size of the stack at any given time. It
       # is effectively a mini symbolic interpreter. It's necessary because when
@@ -141,6 +144,7 @@ module SyntaxTree
       end
 
       def eval
+        raise "Unsupported platform" if ISEQ_LOAD.nil?
         compiled = to_a
 
         # Temporary hack until we get these working.
