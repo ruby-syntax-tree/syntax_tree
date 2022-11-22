@@ -337,6 +337,24 @@ module SyntaxTree
     def visit_assign(node)
       case node.target
       when ARefField
+        if !frozen_string_literal && specialized_instruction && (node.target.index.parts.length == 1)
+          arg = node.target.index.parts.first
+  
+          if arg.is_a?(StringLiteral) && (arg.parts.length == 1)
+            string_part = arg.parts.first
+  
+            if string_part.is_a?(TStringContent)
+              visit(node.target.collection)
+              visit(node.value)
+              iseq.swap
+              iseq.topn(1)
+              iseq.opt_aset_with(string_part.value, :[]=, 2)
+              iseq.pop
+              return
+            end
+          end
+        end
+
         iseq.putnil
         visit(node.target.collection)
         visit(node.target.index)
