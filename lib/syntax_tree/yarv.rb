@@ -252,13 +252,13 @@ module SyntaxTree
               insn
             when Array
               case insn[0]
-              when :setlocal_WC_0, :setlocal_WC_1, :setlocal
+              when :setlocal_WC_0, :setlocal_WC_1, :setlocal, :setblockparam
                 iseq = self
 
                 case insn[0]
                 when :setlocal_WC_1
                   iseq = iseq.parent_iseq
-                when :setlocal
+                when :setlocal, :setblockparam
                   insn[2].times { iseq = iseq.parent_iseq }
                 end
 
@@ -702,6 +702,11 @@ module SyntaxTree
         else
           push([:send, cdata, block_iseq])
         end
+      end
+
+      def setblockparam(index, level)
+        stack.change_by(-1)
+        push([:setblockparam, index, level])
       end
 
       def setclassvariable(name)

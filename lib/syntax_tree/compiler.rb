@@ -415,8 +415,13 @@ module SyntaxTree
         when GVar
           iseq.setglobal(node.target.value.value.to_sym)
         when Ident
-          local_variable = visit(node.target)
-          iseq.setlocal(local_variable.index, local_variable.level)
+          lookup = visit(node.target)
+
+          if lookup.local.is_a?(YARV::LocalTable::BlockLocal)
+            iseq.setblockparam(lookup.index, lookup.level)
+          else
+            iseq.setlocal(lookup.index, lookup.level)
+          end
         when IVar
           iseq.setinstancevariable(node.target.value.value.to_sym)
         end

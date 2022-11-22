@@ -361,6 +361,7 @@ module SyntaxTree
       "def foo(bar, *baz, &qux); end",
       "def foo(&qux); qux; end",
       "def foo(&qux); qux.call; end",
+      "def foo(&qux); qux = bar; end",
       "def foo(bar:); end",
       "def foo(bar:, baz:); end",
       "def foo(bar: 1); end",
