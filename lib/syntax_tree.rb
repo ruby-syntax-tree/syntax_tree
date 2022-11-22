@@ -10,6 +10,7 @@ require "stringio"
 
 require_relative "syntax_tree/formatter"
 require_relative "syntax_tree/node"
+require_relative "syntax_tree/dsl"
 require_relative "syntax_tree/version"
 
 require_relative "syntax_tree/basic_visitor"
@@ -26,12 +27,14 @@ require_relative "syntax_tree/parser"
 require_relative "syntax_tree/pattern"
 require_relative "syntax_tree/search"
 
-require_relative "syntax_tree/dsl"
 require_relative "syntax_tree/yarv"
-require_relative "syntax_tree/compiler"
 require_relative "syntax_tree/yarv/bf"
+require_relative "syntax_tree/yarv/compiler"
 require_relative "syntax_tree/yarv/disassembler"
+require_relative "syntax_tree/yarv/instruction_sequence"
 require_relative "syntax_tree/yarv/instructions"
+require_relative "syntax_tree/yarv/legacy"
+require_relative "syntax_tree/yarv/local_table"
 
 # Syntax Tree is a suite of tools built on top of the internal CRuby parser. It
 # provides the ability to generate a syntax tree from source, as well as the

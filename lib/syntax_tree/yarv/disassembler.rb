@@ -87,166 +87,113 @@ module SyntaxTree
           when GetLocalWC0
             local = iseq.local_table.locals[insn.index]
             clause << VarRef(Ident(local.name.to_s))
-          when Array
-            case insn[0]
-            when :jump
-              clause << Assign(disasm_label.field, node_for(insn[1]))
-              clause << Next(Args([]))
-            when :leave
-              value = Args([clause.pop])
-              clause << (iseq.type == :top ? Break(value) : ReturnNode(value))
-            when :opt_and
-              left, right = clause.pop(2)
-              clause << Binary(left, :&, right)
-            when :opt_aref
-              collection, arg = clause.pop(2)
-              clause << ARef(collection, Args([arg]))
-            when :opt_aset
-              collection, arg, value = clause.pop(3)
+          when Jump
+            clause << Assign(disasm_label.field, node_for(insn.label))
+            clause << Next(Args([]))
+          when Leave
+            value = Args([clause.pop])
+            clause << (iseq.type == :top ? Break(value) : ReturnNode(value))
+          when OptAnd, OptDiv, OptEq, OptGE, OptGT, OptLE, OptLT, OptLTLT,
+               OptMinus, OptMod, OptMult, OptOr, OptPlus
+            left, right = clause.pop(2)
+            clause << Binary(left, insn.calldata.method, right)
+          when OptAref
+            collection, arg = clause.pop(2)
+            clause << ARef(collection, Args([arg]))
+          when OptAset
+            collection, arg, value = clause.pop(3)
 
-              clause << if value.is_a?(Binary) && value.left.is_a?(ARef) &&
-                   collection === value.left.collection &&
-                   arg === value.left.index.parts[0]
-                OpAssign(
-                  ARefField(collection, Args([arg])),
-                  Op("#{value.operator}="),
-                  value.right
+            clause << if value.is_a?(Binary) && value.left.is_a?(ARef) &&
+                 collection === value.left.collection &&
+                 arg === value.left.index.parts[0]
+              OpAssign(
+                ARefField(collection, Args([arg])),
+                Op("#{value.operator}="),
+                value.right
+              )
+            else
+              Assign(ARefField(collection, Args([arg])), value)
+            end
+          when OptNEq
+            left, right = clause.pop(2)
+            clause << Binary(left, :"!=", right)
+          when OptSendWithoutBlock
+            method = insn.calldata.method.to_s
+            argc = insn.calldata.argc
+
+            if insn.calldata.flag?(CallData::CALL_FCALL)
+              if argc == 0
+                clause.pop
+                clause << CallNode(nil, nil, Ident(method), Args([]))
+              elsif argc == 1 && method.end_with?("=")
+                _receiver, argument = clause.pop(2)
+                clause << Assign(
+                  CallNode(nil, nil, Ident(method[0..-2]), nil),
+                  argument
                 )
               else
-                Assign(ARefField(collection, Args([arg])), value)
-              end
-            when :opt_div
-              left, right = clause.pop(2)
-              clause << Binary(left, :/, right)
-            when :opt_eq
-              left, right = clause.pop(2)
-              clause << Binary(left, :==, right)
-            when :opt_ge
-              left, right = clause.pop(2)
-              clause << Binary(left, :>=, right)
-            when :opt_gt
-              left, right = clause.pop(2)
-              clause << Binary(left, :>, right)
-            when :opt_le
-              left, right = clause.pop(2)
-              clause << Binary(left, :<=, right)
-            when :opt_lt
-              left, right = clause.pop(2)
-              clause << Binary(left, :<, right)
-            when :opt_ltlt
-              left, right = clause.pop(2)
-              clause << Binary(left, :<<, right)
-            when :opt_minus
-              left, right = clause.pop(2)
-              clause << Binary(left, :-, right)
-            when :opt_mod
-              left, right = clause.pop(2)
-              clause << Binary(left, :%, right)
-            when :opt_mult
-              left, right = clause.pop(2)
-              clause << Binary(left, :*, right)
-            when :opt_neq
-              left, right = clause.pop(2)
-              clause << Binary(left, :"!=", right)
-            when :opt_or
-              left, right = clause.pop(2)
-              clause << Binary(left, :|, right)
-            when :opt_plus
-              left, right = clause.pop(2)
-              clause << Binary(left, :+, right)
-            when :opt_send_without_block
-              if insn[1][:flag] & VM_CALL_FCALL > 0
-                if insn[1][:orig_argc] == 0
-                  clause.pop
-                  clause << CallNode(nil, nil, Ident(insn[1][:mid]), Args([]))
-                elsif insn[1][:orig_argc] == 1 && insn[1][:mid].end_with?("=")
-                  _receiver, argument = clause.pop(2)
-                  clause << Assign(
-                    CallNode(nil, nil, Ident(insn[1][:mid][0..-2]), nil),
-                    argument
-                  )
-                else
-                  _receiver, *arguments = clause.pop(insn[1][:orig_argc] + 1)
-                  clause << CallNode(
-                    nil,
-                    nil,
-                    Ident(insn[1][:mid]),
-                    ArgParen(Args(arguments))
-                  )
-                end
-              else
-                if insn[1][:orig_argc] == 0
-                  clause << CallNode(
-                    clause.pop,
-                    Period("."),
-                    Ident(insn[1][:mid]),
-                    nil
-                  )
-                elsif insn[1][:orig_argc] == 1 && insn[1][:mid].end_with?("=")
-                  receiver, argument = clause.pop(2)
-                  clause << Assign(
-                    CallNode(
-                      receiver,
-                      Period("."),
-                      Ident(insn[1][:mid][0..-2]),
-                      nil
-                    ),
-                    argument
-                  )
-                else
-                  receiver, *arguments = clause.pop(insn[1][:orig_argc] + 1)
-                  clause << CallNode(
-                    receiver,
-                    Period("."),
-                    Ident(insn[1][:mid]),
-                    ArgParen(Args(arguments))
-                  )
-                end
-              end
-            when :putobject
-              case insn[1]
-              when Float
-                clause << FloatLiteral(insn[1].inspect)
-              when Integer
-                clause << Int(insn[1].inspect)
-              else
-                raise "Unknown object type: #{insn[1].class.name}"
-              end
-            when :putobject_INT2FIX_0_
-              clause << Int("0")
-            when :putobject_INT2FIX_1_
-              clause << Int("1")
-            when :putself
-              clause << VarRef(Kw("self"))
-            when :setglobal
-              target = GVar(insn[1].to_s)
-              value = clause.pop
-
-              clause << if value.is_a?(Binary) && VarRef(target) === value.left
-                OpAssign(
-                  VarField(target),
-                  Op("#{value.operator}="),
-                  value.right
+                _receiver, *arguments = clause.pop(argc + 1)
+                clause << CallNode(
+                  nil,
+                  nil,
+                  Ident(method),
+                  ArgParen(Args(arguments))
                 )
-              else
-                Assign(VarField(target), value)
-              end
-            when :setlocal_WC_0
-              target = Ident(local_name(insn[1], 0))
-              value = clause.pop
-
-              clause << if value.is_a?(Binary) && VarRef(target) === value.left
-                OpAssign(
-                  VarField(target),
-                  Op("#{value.operator}="),
-                  value.right
-                )
-              else
-                Assign(VarField(target), value)
               end
             else
-              raise "Unknown instruction #{insn[0]}"
+              if argc == 0
+                clause << CallNode(clause.pop, Period("."), Ident(method), nil)
+              elsif argc == 1 && method.end_with?("=")
+                receiver, argument = clause.pop(2)
+                clause << Assign(
+                  CallNode(receiver, Period("."), Ident(method[0..-2]), nil),
+                  argument
+                )
+              else
+                receiver, *arguments = clause.pop(argc + 1)
+                clause << CallNode(
+                  receiver,
+                  Period("."),
+                  Ident(method),
+                  ArgParen(Args(arguments))
+                )
+              end
             end
+          when PutObject
+            case insn.object
+            when Float
+              clause << FloatLiteral(insn.object.inspect)
+            when Integer
+              clause << Int(insn.object.inspect)
+            else
+              raise "Unknown object type: #{insn.object.class.name}"
+            end
+          when PutObjectInt2Fix0
+            clause << Int("0")
+          when PutObjectInt2Fix1
+            clause << Int("1")
+          when PutSelf
+            clause << VarRef(Kw("self"))
+          when SetGlobal
+            target = GVar(insn.name.to_s)
+            value = clause.pop
+
+            clause << if value.is_a?(Binary) && VarRef(target) === value.left
+              OpAssign(VarField(target), Op("#{value.operator}="), value.right)
+            else
+              Assign(VarField(target), value)
+            end
+          when SetLocalWC0
+            target = Ident(local_name(insn.index, 0))
+            value = clause.pop
+
+            clause << if value.is_a?(Binary) && VarRef(target) === value.left
+              OpAssign(VarField(target), Op("#{value.operator}="), value.right)
+            else
+              Assign(VarField(target), value)
+            end
+          else
+            raise "Unknown instruction #{insn[0]}"
           end
         end
 

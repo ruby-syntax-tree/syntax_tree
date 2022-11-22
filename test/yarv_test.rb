@@ -47,8 +47,8 @@ module SyntaxTree
     private
 
     def assert_disassembles(expected, source)
-      iseq = SyntaxTree.parse(source).accept(Compiler.new)
-      actual = Formatter.format(source, YARV::Disassembler.new(iseq).to_ruby)
+      ruby = YARV::Disassembler.new(YARV.compile(source)).to_ruby
+      actual = Formatter.format(source, ruby)
       assert_equal expected, actual
     end
   end

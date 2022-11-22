@@ -64,6 +64,9 @@ Style/CaseEquality:
 Style/CaseLikeIf:
   Enabled: false
 
+Style/Documentation:
+  Enabled: false
+
 Style/ExplicitBlockArgument:
   Enabled: false
 

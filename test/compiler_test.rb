@@ -485,13 +485,12 @@ module SyntaxTree
 
       assert_equal(
         serialize_iseq(RubyVM::InstructionSequence.compile(source, **options)),
-        serialize_iseq(program.accept(Compiler.new(**options)))
+        serialize_iseq(program.accept(YARV::Compiler.new(**options)))
       )
     end
 
     def assert_evaluates(expected, source, **options)
-      program = SyntaxTree.parse(source)
-      assert_equal expected, program.accept(Compiler.new(**options)).eval
+      assert_equal expected, YARV.compile(source, **options).eval
     end
   end
 end

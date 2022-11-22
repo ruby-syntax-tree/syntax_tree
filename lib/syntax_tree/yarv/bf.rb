@@ -20,7 +20,7 @@ module SyntaxTree
         iseq.setglobal(:$tape)
         iseq.getglobal(:$tape)
         iseq.putobject(0)
-        iseq.send(:default=, 1)
+        iseq.send(YARV.calldata(:default=, 1))
 
         # Set up the $cursor global variable that will hold the current position
         # in the tape.
@@ -99,17 +99,17 @@ module SyntaxTree
 
         iseq.getglobal(:$tape)
         iseq.getglobal(:$cursor)
-        iseq.send(:[], 1)
+        iseq.send(YARV.calldata(:[], 1))
 
         if value < 0
           iseq.putobject(-value)
-          iseq.send(:-, 1)
+          iseq.send(YARV.calldata(:-, 1))
         else
           iseq.putobject(value)
-          iseq.send(:+, 1)
+          iseq.send(YARV.calldata(:+, 1))
         end
 
-        iseq.send(:[]=, 2)
+        iseq.send(YARV.calldata(:[]=, 2))
       end
 
       # $cursor += value
@@ -118,10 +118,10 @@ module SyntaxTree
 
         if value < 0
           iseq.putobject(-value)
-          iseq.send(:-, 1)
+          iseq.send(YARV.calldata(:-, 1))
         else
           iseq.putobject(value)
-          iseq.send(:+, 1)
+          iseq.send(YARV.calldata(:+, 1))
         end
 
         iseq.setglobal(:$cursor)
@@ -133,10 +133,10 @@ module SyntaxTree
 
         iseq.getglobal(:$tape)
         iseq.getglobal(:$cursor)
-        iseq.send(:[], 1)
-        iseq.send(:chr, 0)
+        iseq.send(YARV.calldata(:[], 1))
+        iseq.send(YARV.calldata(:chr))
 
-        iseq.send(:putc, 1)
+        iseq.send(YARV.calldata(:putc, 1))
       end
 
       # $tape[$cursor] = $stdin.getc.ord
@@ -145,10 +145,10 @@ module SyntaxTree
         iseq.getglobal(:$cursor)
 
         iseq.getglobal(:$stdin)
-        iseq.send(:getc, 0)
-        iseq.send(:ord, 0)
+        iseq.send(YARV.calldata(:getc))
+        iseq.send(YARV.calldata(:ord))
 
-        iseq.send(:[]=, 2)
+        iseq.send(YARV.calldata(:[]=, 2))
       end
 
       # unless $tape[$cursor] == 0
@@ -157,10 +157,10 @@ module SyntaxTree
 
         iseq.getglobal(:$tape)
         iseq.getglobal(:$cursor)
-        iseq.send(:[], 1)
+        iseq.send(YARV.calldata(:[], 1))
 
         iseq.putobject(0)
-        iseq.send(:==, 1)
+        iseq.send(YARV.calldata(:==, 1))
 
         branchunless = iseq.branchunless(-1)
         [start_label, branchunless]
