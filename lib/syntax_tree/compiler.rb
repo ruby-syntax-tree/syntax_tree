@@ -1394,11 +1394,13 @@ module SyntaxTree
     end
 
     def visit_rassign(node)
+      iseq.putnil
+
       if node.operator.is_a?(Kw)
-        iseq.putnil
+        jumps = []
+
         visit(node.value)
         iseq.dup
-        jumps = []
 
         case node.pattern
         when VarField
@@ -1417,6 +1419,77 @@ module SyntaxTree
         jumps.each { |jump| jump[1] = iseq.label }
         iseq.adjuststack(2)
         iseq.putobject(true)
+      else
+        jumps_to_match = []
+
+        iseq.putnil
+        iseq.putobject(false)
+        iseq.putnil
+        iseq.putnil
+        visit(node.value)
+        iseq.dup
+
+        # Visit the pattern. If it matches, 
+        case node.pattern
+        when VarField
+          lookup = visit(node.pattern)
+          iseq.setlocal(lookup.index, lookup.level)
+          jumps_to_match << iseq.jump(-1)
+        else
+          jumps_to_match.concat(visit(node.pattern))
+        end
+
+        # First we're going to push the core onto the stack, then we'll check if
+        # the value to match is truthy. If it is, we'll jump down to raise
+        # NoMatchingPatternKeyError. Otherwise we'll raise
+        # NoMatchingPatternError.
+        iseq.putspecialobject(YARV::VM_SPECIAL_OBJECT_VMCORE)
+        iseq.topn(4)
+        branchif_no_key = iseq.branchif(-1)
+        
+        # Here we're going to raise NoMatchingPatternError.
+        iseq.putobject(NoMatchingPatternError)
+        iseq.putspecialobject(YARV::VM_SPECIAL_OBJECT_VMCORE)
+        iseq.putobject("%p: %s")
+        iseq.topn(4)
+        iseq.topn(7)
+        iseq.send(:"core#sprintf", 3)
+        iseq.send(:"core#raise", 2)
+        jump_to_exit = iseq.jump(-1)
+
+        # Here we're going to raise NoMatchingPatternKeyError.
+        branchif_no_key.patch!(iseq)
+        iseq.putobject(NoMatchingPatternKeyError)
+        iseq.putspecialobject(YARV::VM_SPECIAL_OBJECT_VMCORE)
+        iseq.putobject("%p: %s")
+        iseq.topn(4)
+        iseq.topn(7)
+        iseq.send(:"core#sprintf", 3)
+        iseq.topn(7)
+        iseq.topn(9)
+
+        # Super special behavior here because of the weird kw_arg handling.
+        iseq.stack.change_by(-(1 + 1) + 1)
+        call_data = { mid: :new, flag: YARV::VM_CALL_KWARG, orig_argc: 1, kw_arg: [:matchee, :key] }
+
+        if specialized_instruction
+          iseq.push([:opt_send_without_block, call_data])
+        else
+          iseq.push([:send, call_data, nil])
+        end
+
+        iseq.send(:"core#raise", 1)
+
+        # This runs when the pattern fails to match.
+        jump_to_exit[1] = iseq.label
+        iseq.adjuststack(7)
+        iseq.putnil
+        iseq.leave
+
+        # This runs when the pattern matches successfully.
+        jumps_to_match.each { |jump| jump[1] = iseq.label }
+        iseq.adjuststack(6)
+        iseq.putnil
       end
     end
 

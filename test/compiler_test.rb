@@ -423,6 +423,7 @@ module SyntaxTree
       "foo in [bar, baz]",
       "foo in [1, 2, 3, bar, 4, 5, 6, baz]",
       "foo in Foo[1, 2, 3, bar, 4, 5, 6, baz]",
+      "foo => bar"
     ]
 
     # These are the combinations of instructions that we're going to test.
