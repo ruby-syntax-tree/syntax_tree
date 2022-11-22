@@ -285,6 +285,7 @@ module SyntaxTree
       "foo ? bar : baz",
       "case foo when bar then 1 end",
       "case foo when bar then 1 else 2 end",
+      "baz if (foo == 1) .. (bar == 1)",
       # Constructed values
       "foo..bar",
       "foo...bar",

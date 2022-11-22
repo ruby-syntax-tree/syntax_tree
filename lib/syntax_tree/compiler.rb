@@ -438,7 +438,7 @@ module SyntaxTree
     end
 
     def visit_backref(node)
-      iseq.getspecial(1, 2 * node.value[1..].to_i)
+      iseq.getspecial(YARV::VM_SVAR_BACKREF, 2 * node.value[1..].to_i)
     end
 
     def visit_bare_assoc_hash(node)
@@ -888,25 +888,49 @@ module SyntaxTree
     end
 
     def visit_if(node)
-      visit(node.predicate)
-      branchunless = iseq.branchunless(-1)
-      visit(node.statements)
+      if node.predicate.is_a?(RangeNode)
+        iseq.getspecial(YARV::VM_SVAR_FLIPFLOP_START, 0)
+        branchif = iseq.branchif(-1)
 
-      if last_statement?
+        visit(node.predicate.left)
+        branchunless_true = iseq.branchunless(-1)
+
+        iseq.putobject(true)
+        iseq.setspecial(YARV::VM_SVAR_FLIPFLOP_START)
+        branchif.patch!(iseq)
+
+        visit(node.predicate.right)
+        branchunless_false = iseq.branchunless(-1)
+
+        iseq.putobject(false)
+        iseq.setspecial(YARV::VM_SVAR_FLIPFLOP_START)
+        branchunless_false.patch!(iseq)
+
+        visit(node.statements)
         iseq.leave
-        branchunless.patch!(iseq)
-
-        node.consequent ? visit(node.consequent) : iseq.putnil
+        branchunless_true.patch!(iseq)
+        iseq.putnil
       else
-        iseq.pop
+        visit(node.predicate)
+        branchunless = iseq.branchunless(-1)
+        visit(node.statements)
 
-        if node.consequent
-          jump = iseq.jump(-1)
+        if last_statement?
+          iseq.leave
           branchunless.patch!(iseq)
-          visit(node.consequent)
-          jump[1] = iseq.label
+
+          node.consequent ? visit(node.consequent) : iseq.putnil
         else
-          branchunless.patch!(iseq)
+          iseq.pop
+
+          if node.consequent
+            jump = iseq.jump(-1)
+            branchunless.patch!(iseq)
+            visit(node.consequent)
+            jump[1] = iseq.label
+          else
+            branchunless.patch!(iseq)
+          end
         end
       end
     end

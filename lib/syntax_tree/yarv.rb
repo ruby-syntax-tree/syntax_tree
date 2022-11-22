@@ -765,6 +765,11 @@ module SyntaxTree
         push([:setn, number])
       end
 
+      def setspecial(key)
+        stack.change_by(-1)
+        push([:setspecial, key])
+      end
+
       def splatarray(flag)
         stack.change_by(-1 + 1)
         push([:splatarray, flag])
@@ -817,5 +822,10 @@ module SyntaxTree
     VM_CALL_ZSUPER = 1 << 10
     VM_CALL_OPT_SEND = 1 << 11
     VM_CALL_KW_SPLAT_MUT = 1 << 12
+
+    # These constants correspond to the setspecial instruction.
+    VM_SVAR_LASTLINE = 0       # $_
+    VM_SVAR_BACKREF = 1        # $~
+    VM_SVAR_FLIPFLOP_START = 2 # flipflop
   end
 end
