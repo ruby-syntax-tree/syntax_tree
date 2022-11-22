@@ -77,6 +77,7 @@ module SyntaxTree
 
       # These are various compilation options provided.
       attr_reader :frozen_string_literal,
+                  :inline_const_cache,
                   :operands_unification,
                   :specialized_instruction
 
@@ -86,6 +87,7 @@ module SyntaxTree
         parent_iseq,
         location,
         frozen_string_literal: false,
+        inline_const_cache: true,
         operands_unification: true,
         specialized_instruction: true
       )
@@ -104,6 +106,7 @@ module SyntaxTree
         @stack = Stack.new
 
         @frozen_string_literal = frozen_string_literal
+        @inline_const_cache = inline_const_cache
         @operands_unification = operands_unification
         @specialized_instruction = specialized_instruction
       end
@@ -192,6 +195,7 @@ module SyntaxTree
           self,
           location,
           frozen_string_literal: frozen_string_literal,
+          inline_const_cache: inline_const_cache,
           operands_unification: operands_unification,
           specialized_instruction: specialized_instruction
         )
@@ -434,14 +438,24 @@ module SyntaxTree
       end
 
       def opt_getconstant_path(names)
-        if RUBY_VERSION < "3.2"
-          cache = inline_storage
-          getinlinecache = opt_getinlinecache(-1, cache)
+        if RUBY_VERSION < "3.2" || !inline_const_cache
+          cache = nil
+          getinlinecache = nil
 
-          if names[0] == :""
+          if inline_const_cache
+            cache = inline_storage
+            getinlinecache = opt_getinlinecache(-1, cache)
+
+            if names[0] == :""
+              names.shift
+              pop
+              putobject(Object)
+            end
+          elsif names[0] == :""
             names.shift
-            pop
             putobject(Object)
+          else
+            putnil
           end
 
           names.each_with_index do |name, index|
@@ -449,8 +463,10 @@ module SyntaxTree
             getconstant(name)
           end
 
-          opt_setinlinecache(cache)
-          getinlinecache.patch!(self)
+          if inline_const_cache
+            opt_setinlinecache(cache)
+            getinlinecache.patch!(self)
+          end
         else
           push(OptGetConstantPath.new(names))
         end

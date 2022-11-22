@@ -204,6 +204,7 @@ module SyntaxTree
       # These options mirror the compilation options that we currently support
       # that can be also passed to RubyVM::InstructionSequence.compile.
       attr_reader :frozen_string_literal,
+                  :inline_const_cache,
                   :operands_unification,
                   :specialized_instruction
 
@@ -217,10 +218,12 @@ module SyntaxTree
 
       def initialize(
         frozen_string_literal: false,
+        inline_const_cache: true,
         operands_unification: true,
         specialized_instruction: true
       )
         @frozen_string_literal = frozen_string_literal
+        @inline_const_cache = inline_const_cache
         @operands_unification = operands_unification
         @specialized_instruction = specialized_instruction
 
@@ -1374,6 +1377,7 @@ module SyntaxTree
             nil,
             node.location,
             frozen_string_literal: frozen_string_literal,
+            inline_const_cache: inline_const_cache,
             operands_unification: operands_unification,
             specialized_instruction: specialized_instruction
           )

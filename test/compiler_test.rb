@@ -432,6 +432,7 @@ module SyntaxTree
       { frozen_string_literal: true },
       { operands_unification: false },
       { specialized_instruction: false },
+      { inline_const_cache: false },
       { operands_unification: false, specialized_instruction: false }
     ]
 
