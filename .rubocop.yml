@@ -64,6 +64,9 @@ Style/CaseEquality:
 Style/CaseLikeIf:
   Enabled: false
 
+Style/Documentation:
+  Enabled: false
+
 Style/ExplicitBlockArgument:
   Enabled: false
 
@@ -92,6 +95,9 @@ Style/MutableConstant:
   Enabled: false
 
 Style/NegatedIfElseCondition:
+  Enabled: false
+
+Style/Next:
   Enabled: false
 
 Style/NumericPredicate:

@@ -2,18 +2,13 @@
 
 return if !defined?(RubyVM::InstructionSequence) || RUBY_VERSION < "3.1"
 require_relative "test_helper"
-require "fiddle"
 
 module SyntaxTree
   class CompilerTest < Minitest::Test
-    ISEQ_LOAD =
-      Fiddle::Function.new(
-        Fiddle::Handle::DEFAULT["rb_iseq_load"],
-        [Fiddle::TYPE_VOIDP] * 3,
-        Fiddle::TYPE_VOIDP
-      )
-
     CASES = [
+      # Hooks
+      "BEGIN { a = 1 }",
+      "a = 1; END { a = 1 }; a",
       # Various literals placed on the stack
       "true",
       "false",
@@ -206,6 +201,8 @@ module SyntaxTree
       "foo[bar] ||= 1",
       "foo[bar] <<= 1",
       "foo[bar] ^= 1",
+      "foo['true']",
+      "foo['true'] = 1",
       # Constants (single)
       "Foo",
       "Foo = 1",
@@ -288,6 +285,7 @@ module SyntaxTree
       "foo ? bar : baz",
       "case foo when bar then 1 end",
       "case foo when bar then 1 else 2 end",
+      "baz if (foo == 1) .. (bar == 1)",
       # Constructed values
       "foo..bar",
       "foo...bar",
@@ -313,6 +311,7 @@ module SyntaxTree
       "[1, 2, 3].min",
       "[foo, bar, baz].min",
       "[foo, bar, baz].min(1)",
+      "[**{ x: true }][0][:x]",
       # Core method calls
       "alias foo bar",
       "alias :foo :bar",
@@ -364,6 +363,7 @@ module SyntaxTree
       "def foo(bar, *baz, &qux); end",
       "def foo(&qux); qux; end",
       "def foo(&qux); qux.call; end",
+      "def foo(&qux); qux = bar; end",
       "def foo(bar:); end",
       "def foo(bar:, baz:); end",
       "def foo(bar: 1); end",
@@ -416,7 +416,14 @@ module SyntaxTree
       "-> {}",
       "-> (bar) do end",
       "-> (bar) {}",
-      "-> (bar; baz) { }"
+      "-> (bar; baz) { }",
+      # Pattern matching
+      "foo in bar",
+      "foo in [bar]",
+      "foo in [bar, baz]",
+      "foo in [1, 2, 3, bar, 4, 5, 6, baz]",
+      "foo in Foo[1, 2, 3, bar, 4, 5, 6, baz]",
+      "foo => bar"
     ]
 
     # These are the combinations of instructions that we're going to test.
@@ -457,7 +464,7 @@ module SyntaxTree
         when Array
           insn.map do |operand|
             if operand.is_a?(Array) &&
-                 operand[0] == Visitor::Compiler::InstructionSequence::MAGIC
+                 operand[0] == YARV::InstructionSequence::MAGIC
               serialize_iseq(operand)
             else
               operand
@@ -478,20 +485,12 @@ module SyntaxTree
 
       assert_equal(
         serialize_iseq(RubyVM::InstructionSequence.compile(source, **options)),
-        serialize_iseq(program.accept(Visitor::Compiler.new(**options)))
+        serialize_iseq(program.accept(YARV::Compiler.new(**options)))
       )
     end
 
     def assert_evaluates(expected, source, **options)
-      program = SyntaxTree.parse(source)
-      compiled = program.accept(Visitor::Compiler.new(**options)).to_a
-
-      # Temporary hack until we get these working.
-      compiled[4][:node_id] = 11
-      compiled[4][:node_ids] = [1, 0, 3, 2, 6, 7, 9, -1]
-
-      iseq = Fiddle.dlunwrap(ISEQ_LOAD.call(Fiddle.dlwrap(compiled), 0, nil))
-      assert_equal expected, iseq.eval
+      assert_equal expected, YARV.compile(source, **options).eval
     end
   end
 end
