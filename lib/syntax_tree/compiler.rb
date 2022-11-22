@@ -343,6 +343,101 @@ module SyntaxTree
       end
     end
 
+    def visit_aryptn(node)
+      match_failures = []
+      jumps_to_exit = []
+
+      # If there's a constant, then check if we match against that constant or
+      # not first. Branch to failure if we don't.
+      if node.constant
+        iseq.dup
+        visit(node.constant)
+        iseq.checkmatch(YARV::VM_CHECKMATCH_TYPE_CASE)
+        match_failures << iseq.branchunless(-1)
+      end
+
+      # First, check if the #deconstruct cache is nil. If it is, we're going to
+      # call #deconstruct on the object and cache the result.
+      iseq.topn(2)
+      branchnil = iseq.branchnil(-1)
+
+      # Next, ensure that the cached value was cached correctly, otherwise fail
+      # the match.
+      iseq.topn(2)
+      match_failures << iseq.branchunless(-1)
+
+      # Since we have a valid cached value, we can skip past the part where we
+      # call #deconstruct on the object.
+      iseq.pop
+      iseq.topn(1)
+      jump = iseq.jump(-1)
+
+      # Check if the object responds to #deconstruct, fail the match otherwise.
+      branchnil.patch!(iseq)
+      iseq.dup
+      iseq.putobject(:deconstruct)
+      iseq.send(:respond_to?, 1)
+      iseq.setn(3)
+      match_failures << iseq.branchunless(-1)
+
+      # Call #deconstruct and ensure that it's an array, raise an error
+      # otherwise.
+      iseq.send(:deconstruct, 0)
+      iseq.setn(2)
+      iseq.dup
+      iseq.checktype(YARV::VM_CHECKTYPE_ARRAY)
+      match_error = iseq.branchunless(-1)
+
+      # Ensure that the deconstructed array has the correct size, fail the match
+      # otherwise.
+      jump[1] = iseq.label
+      iseq.dup
+      iseq.send(:length, 0)
+      iseq.putobject(node.requireds.length)
+      iseq.send(:==, 1)
+      match_failures << iseq.branchunless(-1)
+
+      # For each required element, check if the deconstructed array contains the
+      # element, otherwise jump out to the top-level match failure.
+      iseq.dup
+      node.requireds.each_with_index do |required, index|
+        iseq.putobject(index)
+        iseq.send(:[], 1)
+
+        case required
+        when VarField
+          lookup = visit(required)
+          iseq.setlocal(lookup.index, lookup.level)
+        else
+          visit(required)
+          iseq.checkmatch(YARV::VM_CHECKMATCH_TYPE_CASE)
+          match_failures << iseq.branchunless(-1)
+        end
+
+        if index < node.requireds.length - 1
+          iseq.dup
+        else
+          iseq.pop
+          jumps_to_exit << iseq.jump(-1)
+        end
+      end
+
+      # Set up the routine here to raise an error to indicate that the type of
+      # the deconstructed array was incorrect.
+      match_error.patch!(iseq)
+      iseq.putspecialobject(YARV::VM_SPECIAL_OBJECT_VMCORE)
+      iseq.putobject(TypeError)
+      iseq.putobject("deconstruct must return Array")
+      iseq.send(:"core#raise", 2)
+      iseq.pop
+
+      # Patch all of the match failures to jump here so that we pop a final
+      # value before returning to the parent node.
+      match_failures.each { |match_failure| match_failure.patch!(iseq) }
+      iseq.pop
+      jumps_to_exit
+    end
+
     def visit_assign(node)
       case node.target
       when ARefField
@@ -1295,6 +1390,33 @@ module SyntaxTree
         visit(node.left)
         visit(node.right)
         iseq.newrange(node.operator.value == ".." ? 0 : 1)
+      end
+    end
+
+    def visit_rassign(node)
+      if node.operator.is_a?(Kw)
+        iseq.putnil
+        visit(node.value)
+        iseq.dup
+        jumps = []
+
+        case node.pattern
+        when VarField
+          lookup = visit(node.pattern)
+          iseq.setlocal(lookup.index, lookup.level)
+          jumps << iseq.jump(-1)
+        else
+          jumps.concat(visit(node.pattern))
+        end
+
+        iseq.pop
+        iseq.pop
+        iseq.putobject(false)
+        iseq.leave
+
+        jumps.each { |jump| jump[1] = iseq.label }
+        iseq.adjuststack(2)
+        iseq.putobject(true)
       end
     end
 

@@ -370,6 +370,16 @@ module SyntaxTree
         push(CheckKeyword.new(keyword_bits_index, keyword_index))
       end
 
+      def checkmatch(flag)
+        stack.change_by(-2 + 1)
+        push([:checkmatch, flag])
+      end
+
+      def checktype(type)
+        stack.change_by(-1 + 2)
+        push([:checktype, type])
+      end
+
       def concatarray
         push(ConcatArray.new)
       end
@@ -832,5 +842,13 @@ module SyntaxTree
     VM_SVAR_LASTLINE = 0       # $_
     VM_SVAR_BACKREF = 1        # $~
     VM_SVAR_FLIPFLOP_START = 2 # flipflop
+
+    # These constants correspond to the checktype instruction.
+    VM_CHECKTYPE_ARRAY = 7
+
+    # These constants correspond to the checkmatch instruction.
+    VM_CHECKMATCH_TYPE_WHEN = 1
+    VM_CHECKMATCH_TYPE_CASE = 2
+    VM_CHECKMATCH_TYPE_RESCUE = 3
   end
 end

@@ -416,7 +416,13 @@ module SyntaxTree
       "-> {}",
       "-> (bar) do end",
       "-> (bar) {}",
-      "-> (bar; baz) { }"
+      "-> (bar; baz) { }",
+      # Pattern matching
+      "foo in bar",
+      "foo in [bar]",
+      "foo in [bar, baz]",
+      "foo in [1, 2, 3, bar, 4, 5, 6, baz]",
+      "foo in Foo[1, 2, 3, bar, 4, 5, 6, baz]",
     ]
 
     # These are the combinations of instructions that we're going to test.

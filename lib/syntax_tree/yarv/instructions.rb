@@ -632,11 +632,11 @@ module SyntaxTree
       end
 
       def pops
-        number
+        0
       end
 
       def pushes
-        number * 2
+        number
       end
     end
 
