@@ -240,12 +240,8 @@ module SyntaxTree
         @label = label
       end
 
-      def patch!(iseq)
-        @label = iseq.label_at_index
-      end
-
       def to_a(_iseq)
-        [:branchunless, label]
+        [:branchunless, label.name]
       end
 
       def length
@@ -286,10 +282,6 @@ module SyntaxTree
       def initialize(keyword_bits_index, keyword_index)
         @keyword_bits_index = keyword_bits_index
         @keyword_index = keyword_index
-      end
-
-      def patch!(iseq)
-        @label = iseq.label_at_index
       end
 
       def to_a(iseq)
@@ -1351,12 +1343,8 @@ module SyntaxTree
         @label = label
       end
 
-      def patch!(iseq)
-        @label = iseq.label_at_index
-      end
-
       def to_a(_iseq)
-        [:jump, label]
+        [:jump, label.name]
       end
 
       def length

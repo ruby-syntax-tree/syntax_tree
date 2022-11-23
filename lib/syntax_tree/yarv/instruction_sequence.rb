@@ -464,11 +464,12 @@ module SyntaxTree
       def opt_getconstant_path(names)
         if RUBY_VERSION < "3.2" || !options.inline_const_cache?
           cache = nil
-          getinlinecache = nil
+          cache_filled_label = nil
 
           if options.inline_const_cache?
             cache = inline_storage
-            getinlinecache = opt_getinlinecache(-1, cache)
+            cache_filled_label = label
+            opt_getinlinecache(cache_filled_label, cache)
 
             if names[0] == :""
               names.shift
@@ -489,7 +490,7 @@ module SyntaxTree
 
           if options.inline_const_cache?
             opt_setinlinecache(cache)
-            getinlinecache.patch!(self)
+            push(cache_filled_label)
           end
         else
           push(OptGetConstantPath.new(names))
@@ -762,7 +763,7 @@ module SyntaxTree
           when :branchnil
             iseq.branchnil(labels[opnds[0]])
           when :branchunless
-            iseq.branchunless(opnds[0])
+            iseq.branchunless(labels[opnds[0]])
           when :checkkeyword
             iseq.checkkeyword(iseq.local_table.size - opnds[0] + 2, opnds[1])
           when :checkmatch
@@ -838,7 +839,7 @@ module SyntaxTree
             block_iseq = opnds[1] ? from(opnds[1], options, iseq) : nil
             iseq.invokesuper(CallData.from(opnds[0]), block_iseq)
           when :jump
-            iseq.jump(opnds[0])
+            iseq.jump(labels[opnds[0]])
           when :leave
             iseq.leave
           when :newarray
@@ -866,11 +867,11 @@ module SyntaxTree
           when :opt_aset_with
             iseq.opt_aset_with(opnds[0], CallData.from(opnds[1]))
           when :opt_case_dispatch
-            iseq.opt_case_dispatch(opnds[0], opnds[1])
+            iseq.opt_case_dispatch(opnds[0], labels[opnds[1]])
           when :opt_getconstant_path
             iseq.opt_getconstant_path(opnds[0])
           when :opt_getinlinecache
-            iseq.opt_getinlinecache(opnds[0], opnds[1])
+            iseq.opt_getinlinecache(labels[opnds[0]], opnds[1])
           when :opt_newarray_max
             iseq.opt_newarray_max(opnds[0])
           when :opt_newarray_min

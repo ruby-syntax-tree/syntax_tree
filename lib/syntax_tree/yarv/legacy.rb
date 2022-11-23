@@ -67,12 +67,8 @@ module SyntaxTree
           @cache = cache
         end
 
-        def patch!(iseq)
-          @label = iseq.label_at_index
-        end
-
         def to_a(_iseq)
-          [:opt_getinlinecache, label, cache]
+          [:opt_getinlinecache, label.name, cache]
         end
 
         def length

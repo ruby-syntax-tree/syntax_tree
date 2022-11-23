@@ -54,21 +54,20 @@ module SyntaxTree
         clauses = {}
         clause = []
 
+        iseq.to_a
         iseq.insns.each do |insn|
           case insn
-          when Symbol
-            if insn.start_with?("label_")
-              unless clause.last.is_a?(Next)
-                clause << Assign(disasm_label.field, node_for(insn))
-              end
-
-              clauses[label] = clause
-              clause = []
-              label = insn
+          when InstructionSequence::Label
+            unless clause.last.is_a?(Next)
+              clause << Assign(disasm_label.field, node_for(insn.name))
             end
+
+            clauses[label] = clause
+            clause = []
+            label = insn.name
           when BranchUnless
             body = [
-              Assign(disasm_label.field, node_for(insn.label)),
+              Assign(disasm_label.field, node_for(insn.label.name)),
               Next(Args([]))
             ]
 
@@ -88,7 +87,7 @@ module SyntaxTree
             local = iseq.local_table.locals[insn.index]
             clause << VarRef(Ident(local.name.to_s))
           when Jump
-            clause << Assign(disasm_label.field, node_for(insn.label))
+            clause << Assign(disasm_label.field, node_for(insn.label.name))
             clause << Next(Args([]))
           when Leave
             value = Args([clause.pop])
