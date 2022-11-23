@@ -439,11 +439,15 @@ module SyntaxTree
     ]
 
     OPTIONS.each do |options|
-      suffix = options.to_hash.map { |k, v| "#{k}=#{v}" }.join("&")
+      suffix = options.to_hash.map { |key, value| "#{key}=#{value}" }.join("&")
 
       CASES.each do |source|
-        define_method(:"test_#{source}_(#{suffix})") do
+        define_method(:"test_compiles_#{source}_(#{suffix})") do
           assert_compiles(source, options)
+        end
+
+        define_method(:"test_loads_#{source}_(#{suffix})") do
+          assert_loads(source, options)
         end
       end
     end
@@ -483,12 +487,23 @@ module SyntaxTree
       serialized
     end
 
+    # Check that the compiled instruction sequence matches the expected
+    # instruction sequence.
     def assert_compiles(source, options)
-      program = SyntaxTree.parse(source)
-
       assert_equal(
         serialize_iseq(RubyVM::InstructionSequence.compile(source, **options)),
-        serialize_iseq(program.accept(YARV::Compiler.new(options)))
+        serialize_iseq(YARV.compile(source, options))
+      )
+    end
+
+    # Check that the compiled instruction sequence matches the instruction
+    # sequence created directly from the compiled instruction sequence.
+    def assert_loads(source, options)
+      compiled = RubyVM::InstructionSequence.compile(source, **options)
+
+      assert_equal(
+        serialize_iseq(compiled),
+        serialize_iseq(YARV::InstructionSequence.from(compiled.to_a, options))
       )
     end
 

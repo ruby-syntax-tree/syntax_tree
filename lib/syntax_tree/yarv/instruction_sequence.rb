@@ -78,7 +78,13 @@ module SyntaxTree
       # These are various compilation options provided.
       attr_reader :options
 
-      def initialize(type, name, parent_iseq, location, options = Compiler::Options.new)
+      def initialize(
+        type,
+        name,
+        parent_iseq,
+        location,
+        options = Compiler::Options.new
+      )
         @type = type
         @name = name
         @parent_iseq = parent_iseq
@@ -413,6 +419,10 @@ module SyntaxTree
         push(OptAsetWith.new(object, calldata))
       end
 
+      def opt_case_dispatch(case_dispatch_hash, else_label)
+        push(OptCaseDispatch.new(case_dispatch_hash, else_label))
+      end
+
       def opt_getconstant_path(names)
         if RUBY_VERSION < "3.2" || !options.inline_const_cache?
           cache = nil
@@ -655,12 +665,224 @@ module SyntaxTree
         push(Swap.new)
       end
 
+      def throw(type)
+        push(Throw.new(type))
+      end
+
       def topn(number)
         push(TopN.new(number))
       end
 
       def toregexp(options, length)
         push(ToRegExp.new(options, length))
+      end
+
+      # This method will create a new instruction sequence from a serialized
+      # RubyVM::InstructionSequence object.
+      def self.from(source, options = Compiler::Options.new, parent_iseq = nil)
+        iseq = new(source[9], source[5], parent_iseq, Location.default, options)
+
+        # set up the correct argument size
+        iseq.argument_size = source[4][:arg_size]
+
+        # set up all of the locals
+        source[10].each { |local| iseq.local_table.plain(local) }
+
+        # set up the argument options
+        iseq.argument_options.merge!(source[11])
+
+        # set up all of the instructions
+        source[13].each do |insn|
+          # skip line numbers
+          next if insn.is_a?(Integer)
+
+          # put events into the array and then continue
+          if insn.is_a?(Symbol)
+            iseq.event(insn)
+            next
+          end
+
+          type, *opnds = insn
+          case type
+          when :adjuststack
+            iseq.adjuststack(opnds[0])
+          when :anytostring
+            iseq.anytostring
+          when :branchif
+            iseq.branchif(opnds[0])
+          when :branchnil
+            iseq.branchnil(opnds[0])
+          when :branchunless
+            iseq.branchunless(opnds[0])
+          when :checkkeyword
+            iseq.checkkeyword(iseq.local_table.size - opnds[0] + 2, opnds[1])
+          when :checkmatch
+            iseq.checkmatch(opnds[0])
+          when :checktype
+            iseq.checktype(opnds[0])
+          when :concatarray
+            iseq.concatarray
+          when :concatstrings
+            iseq.concatstrings(opnds[0])
+          when :defineclass
+            iseq.defineclass(opnds[0], from(opnds[1], options, iseq), opnds[2])
+          when :defined
+            iseq.defined(opnds[0], opnds[1], opnds[2])
+          when :definemethod
+            iseq.definemethod(opnds[0], from(opnds[1], options, iseq))
+          when :definesmethod
+            iseq.definesmethod(opnds[0], from(opnds[1], options, iseq))
+          when :dup
+            iseq.dup
+          when :duparray
+            iseq.duparray(opnds[0])
+          when :duphash
+            iseq.duphash(opnds[0])
+          when :dupn
+            iseq.dupn(opnds[0])
+          when :expandarray
+            iseq.expandarray(opnds[0], opnds[1])
+          when :getblockparam, :getblockparamproxy, :getlocal, :getlocal_WC_0,
+               :getlocal_WC_1, :setblockparam, :setlocal, :setlocal_WC_0,
+               :setlocal_WC_1
+            current = iseq
+            level = 0
+
+            case type
+            when :getlocal_WC_1, :setlocal_WC_1
+              level = 1
+            when :getblockparam, :getblockparamproxy, :getlocal, :setblockparam,
+                 :setlocal
+              level = opnds[1]
+            end
+
+            level.times { current = current.parent_iseq }
+            index = current.local_table.size - opnds[0] + 2
+
+            case type
+            when :getblockparam
+              iseq.getblockparam(index, level)
+            when :getblockparamproxy
+              iseq.getblockparamproxy(index, level)
+            when :getlocal, :getlocal_WC_0, :getlocal_WC_1
+              iseq.getlocal(index, level)
+            when :setblockparam
+              iseq.setblockparam(index, level)
+            when :setlocal, :setlocal_WC_0, :setlocal_WC_1
+              iseq.setlocal(index, level)
+            end
+          when :getclassvariable
+            iseq.push(GetClassVariable.new(opnds[0], opnds[1]))
+          when :getconstant
+            iseq.getconstant(opnds[0])
+          when :getglobal
+            iseq.getglobal(opnds[0])
+          when :getinstancevariable
+            iseq.push(GetInstanceVariable.new(opnds[0], opnds[1]))
+          when :getspecial
+            iseq.getspecial(opnds[0], opnds[1])
+          when :intern
+            iseq.intern
+          when :invokeblock
+            iseq.invokeblock(CallData.from(opnds[0]))
+          when :invokesuper
+            block_iseq = opnds[1] ? from(opnds[1], options, iseq) : nil
+            iseq.invokesuper(CallData.from(opnds[0]), block_iseq)
+          when :jump
+            iseq.jump(opnds[0])
+          when :leave
+            iseq.leave
+          when :newarray
+            iseq.newarray(opnds[0])
+          when :newarraykwsplat
+            iseq.newarraykwsplat(opnds[0])
+          when :newhash
+            iseq.newhash(opnds[0])
+          when :newrange
+            iseq.newrange(opnds[0])
+          when :nop
+            iseq.nop
+          when :objtostring
+            iseq.objtostring(CallData.from(opnds[0]))
+          when :once
+            iseq.once(from(opnds[0], options, iseq), opnds[1])
+          when :opt_and, :opt_aref, :opt_aset, :opt_div, :opt_empty_p, :opt_eq,
+               :opt_ge, :opt_gt, :opt_le, :opt_length, :opt_lt, :opt_ltlt,
+               :opt_minus, :opt_mod, :opt_mult, :opt_nil_p, :opt_not, :opt_or,
+               :opt_plus, :opt_regexpmatch2, :opt_send_without_block, :opt_size,
+               :opt_succ
+            iseq.send(CallData.from(opnds[0]), nil)
+          when :opt_aref_with
+            iseq.opt_aref_with(opnds[0], CallData.from(opnds[1]))
+          when :opt_aset_with
+            iseq.opt_aset_with(opnds[0], CallData.from(opnds[1]))
+          when :opt_case_dispatch
+            iseq.opt_case_dispatch(opnds[0], opnds[1])
+          when :opt_getconstant_path
+            iseq.opt_getconstant_path(opnds[0])
+          when :opt_getinlinecache
+            iseq.opt_getinlinecache(opnds[0], opnds[1])
+          when :opt_newarray_max
+            iseq.opt_newarray_max(opnds[0])
+          when :opt_newarray_min
+            iseq.opt_newarray_min(opnds[0])
+          when :opt_neq
+            iseq.push(
+              OptNEq.new(CallData.from(opnds[0]), CallData.from(opnds[1]))
+            )
+          when :opt_setinlinecache
+            iseq.opt_setinlinecache(opnds[0])
+          when :opt_str_freeze
+            iseq.opt_str_freeze(opnds[0])
+          when :opt_str_uminus
+            iseq.opt_str_uminus(opnds[0])
+          when :pop
+            iseq.pop
+          when :putnil
+            iseq.putnil
+          when :putobject
+            iseq.putobject(opnds[0])
+          when :putobject_INT2FIX_0_
+            iseq.putobject(0)
+          when :putobject_INT2FIX_1_
+            iseq.putobject(1)
+          when :putself
+            iseq.putself
+          when :putstring
+            iseq.putstring(opnds[0])
+          when :putspecialobject
+            iseq.putspecialobject(opnds[0])
+          when :send
+            block_iseq = opnds[1] ? from(opnds[1], options, iseq) : nil
+            iseq.send(CallData.from(opnds[0]), block_iseq)
+          when :setclassvariable
+            iseq.push(SetClassVariable.new(opnds[0], opnds[1]))
+          when :setconstant
+            iseq.setconstant(opnds[0])
+          when :setglobal
+            iseq.setglobal(opnds[0])
+          when :setinstancevariable
+            iseq.push(SetInstanceVariable.new(opnds[0], opnds[1]))
+          when :setn
+            iseq.setn(opnds[0])
+          when :setspecial
+            iseq.setspecial(opnds[0])
+          when :splatarray
+            iseq.splatarray(opnds[0])
+          when :swap
+            iseq.swap
+          when :throw
+            iseq.throw(opnds[0])
+          when :topn
+            iseq.topn(opnds[0])
+          when :toregexp
+            iseq.toregexp(opnds[0], opnds[1])
+          else
+            raise "Unknown instruction type: #{type}"
+          end
+        end
+
+        iseq
       end
     end
   end

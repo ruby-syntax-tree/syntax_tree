@@ -331,8 +331,8 @@ module SyntaxTree
         calldata = YARV.calldata(:[], 1)
         visit(node.collection)
 
-        if !options.frozen_string_literal? && options.specialized_instruction? &&
-             (node.index.parts.length == 1)
+        if !options.frozen_string_literal? &&
+             options.specialized_instruction? && (node.index.parts.length == 1)
           arg = node.index.parts.first
 
           if arg.is_a?(StringLiteral) && (arg.parts.length == 1)
@@ -502,7 +502,8 @@ module SyntaxTree
         when ARefField
           calldata = YARV.calldata(:[]=, 2)
 
-          if !options.frozen_string_literal? && options.specialized_instruction? &&
+          if !options.frozen_string_literal? &&
+               options.specialized_instruction? &&
                (node.target.index.parts.length == 1)
             arg = node.target.index.parts.first
 
@@ -1085,7 +1086,7 @@ module SyntaxTree
 
       def visit_hshptn(node)
       end
-      
+
       def visit_heredoc(node)
         if node.beginning.value.end_with?("`")
           visit_xstring_literal(node)
@@ -1465,7 +1466,14 @@ module SyntaxTree
           end
         end
 
-        top_iseq = InstructionSequence.new(:top, "<compiled>", nil, node.location, options)
+        top_iseq =
+          InstructionSequence.new(
+            :top,
+            "<compiled>",
+            nil,
+            node.location,
+            options
+          )
         with_child_iseq(top_iseq) do
           visit_all(preexes)
 
@@ -1910,7 +1918,8 @@ module SyntaxTree
       end
 
       def visit_words(node)
-        if options.frozen_string_literal? && (compiled = RubyVisitor.compile(node))
+        if options.frozen_string_literal? &&
+             (compiled = RubyVisitor.compile(node))
           iseq.duparray(compiled)
         else
           visit_all(node.elements)

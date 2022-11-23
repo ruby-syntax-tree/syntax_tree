@@ -42,6 +42,15 @@ module SyntaxTree
         result[:kw_arg] = kw_arg if kw_arg
         result
       end
+
+      def self.from(serialized)
+        new(
+          serialized[:mid],
+          serialized[:orig_argc],
+          serialized[:flag],
+          serialized[:kw_arg]
+        )
+      end
     end
 
     # A convenience method for creating a CallData object.
