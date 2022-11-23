@@ -45,6 +45,67 @@ module SyntaxTree
     #     RubyVM::InstructionSequence.compile("1 + 2").to_a
     #
     class Compiler < BasicVisitor
+      # This represents a set of options that can be passed to the compiler to
+      # control how it compiles the code. It mirrors the options that can be
+      # passed to RubyVM::InstructionSequence.compile, except it only includes
+      # options that actually change the behavior.
+      class Options
+        def initialize(
+          frozen_string_literal: false,
+          inline_const_cache: true,
+          operands_unification: true,
+          peephole_optimization: true,
+          specialized_instruction: true,
+          tailcall_optimization: false
+        )
+          @frozen_string_literal = frozen_string_literal
+          @inline_const_cache = inline_const_cache
+          @operands_unification = operands_unification
+          @peephole_optimization = peephole_optimization
+          @specialized_instruction = specialized_instruction
+          @tailcall_optimization = tailcall_optimization
+        end
+
+        def to_hash
+          {
+            frozen_string_literal: @frozen_string_literal,
+            inline_const_cache: @inline_const_cache,
+            operands_unification: @operands_unification,
+            peephole_optimization: @peephole_optimization,
+            specialized_instruction: @specialized_instruction,
+            tailcall_optimization: @tailcall_optimization
+          }
+        end
+
+        def frozen_string_literal!
+          @frozen_string_literal = true
+        end
+
+        def frozen_string_literal?
+          @frozen_string_literal
+        end
+
+        def inline_const_cache?
+          @inline_const_cache
+        end
+
+        def operands_unification?
+          @operands_unification
+        end
+
+        def peephole_optimization?
+          @peephole_optimization
+        end
+
+        def specialized_instruction?
+          @specialized_instruction
+        end
+
+        def tailcall_optimization?
+          @tailcall_optimization
+        end
+      end
+
       # This visitor is responsible for converting Syntax Tree nodes into their
       # corresponding Ruby structures. This is used to convert the operands of
       # some instructions like putobject that push a Ruby object directly onto
@@ -203,9 +264,7 @@ module SyntaxTree
 
       # These options mirror the compilation options that we currently support
       # that can be also passed to RubyVM::InstructionSequence.compile.
-      attr_reader :frozen_string_literal,
-                  :operands_unification,
-                  :specialized_instruction
+      attr_reader :options
 
       # The current instruction sequence that is being compiled.
       attr_reader :iseq
@@ -215,15 +274,8 @@ module SyntaxTree
       # if we need to return the value of the last statement.
       attr_reader :last_statement
 
-      def initialize(
-        frozen_string_literal: false,
-        operands_unification: true,
-        specialized_instruction: true
-      )
-        @frozen_string_literal = frozen_string_literal
-        @operands_unification = operands_unification
-        @specialized_instruction = specialized_instruction
-
+      def initialize(options)
+        @options = options
         @iseq = nil
         @last_statement = false
       end
@@ -233,7 +285,7 @@ module SyntaxTree
       end
 
       def visit_CHAR(node)
-        if frozen_string_literal
+        if options.frozen_string_literal?
           iseq.putobject(node.value[1..])
         else
           iseq.putstring(node.value[1..])
@@ -279,8 +331,8 @@ module SyntaxTree
         calldata = YARV.calldata(:[], 1)
         visit(node.collection)
 
-        if !frozen_string_literal && specialized_instruction &&
-             (node.index.parts.length == 1)
+        if !options.frozen_string_literal? &&
+             options.specialized_instruction? && (node.index.parts.length == 1)
           arg = node.index.parts.first
 
           if arg.is_a?(StringLiteral) && (arg.parts.length == 1)
@@ -450,7 +502,8 @@ module SyntaxTree
         when ARefField
           calldata = YARV.calldata(:[]=, 2)
 
-          if !frozen_string_literal && specialized_instruction &&
+          if !options.frozen_string_literal? &&
+               options.specialized_instruction? &&
                (node.target.index.parts.length == 1)
             arg = node.target.index.parts.first
 
@@ -563,6 +616,9 @@ module SyntaxTree
         end
       end
 
+      def visit_begin(node)
+      end
+
       def visit_binary(node)
         case node.operator
         when :"&&"
@@ -624,6 +680,9 @@ module SyntaxTree
         visit(node.statements)
       end
 
+      def visit_break(node)
+      end
+
       def visit_call(node)
         if node.is_a?(CallNode)
           return(
@@ -678,12 +737,17 @@ module SyntaxTree
           end
         end
 
+        # Track whether or not this is a method call on a block proxy receiver.
+        # If it is, we can potentially do tailcall optimizations on it.
+        block_receiver = false
+
         if node.receiver
           if node.receiver.is_a?(VarRef)
             lookup = iseq.local_variable(node.receiver.value.value.to_sym)
 
             if lookup.local.is_a?(LocalTable::BlockLocal)
               iseq.getblockparamproxy(lookup.index, lookup.level)
+              block_receiver = true
             else
               visit(node.receiver)
             end
@@ -714,6 +778,7 @@ module SyntaxTree
           when ArgsForward
             flag |= CallData::CALL_ARGS_SPLAT
             flag |= CallData::CALL_ARGS_BLOCKARG
+            flag |= CallData::CALL_TAILCALL if options.tailcall_optimization?
 
             lookup = iseq.local_table.find(:*)
             iseq.getlocal(lookup.index, lookup.level)
@@ -730,8 +795,21 @@ module SyntaxTree
         end
 
         block_iseq = visit(node.block) if node.block
+
+        # If there's no block and we don't already have any special flags set,
+        # then we can safely call this simple arguments. Note that has to be the
+        # first flag we set after looking at the arguments to get the flags
+        # correct.
         flag |= CallData::CALL_ARGS_SIMPLE if block_iseq.nil? && flag == 0
+
+        # If there's no receiver, then this is an "fcall".
         flag |= CallData::CALL_FCALL if node.receiver.nil?
+
+        # If we're calling a method on the passed block object and we have
+        # tailcall optimizations turned on, then we can set the tailcall flag.
+        if block_receiver && options.tailcall_optimization?
+          flag |= CallData::CALL_TAILCALL
+        end
 
         iseq.send(
           YARV.calldata(node.message.value.to_sym, argc, flag),
@@ -952,12 +1030,18 @@ module SyntaxTree
         )
       end
 
+      def visit_ensure(node)
+      end
+
       def visit_field(node)
         visit(node.parent)
       end
 
       def visit_float(node)
         iseq.putobject(node.accept(RubyVisitor.new))
+      end
+
+      def visit_fndptn(node)
       end
 
       def visit_for(node)
@@ -998,6 +1082,9 @@ module SyntaxTree
           visit_all(node.assocs)
           iseq.newhash(node.assocs.length * 2)
         end
+      end
+
+      def visit_hshptn(node)
       end
 
       def visit_heredoc(node)
@@ -1077,6 +1164,9 @@ module SyntaxTree
 
       def visit_imaginary(node)
         iseq.putobject(node.accept(RubyVisitor.new))
+      end
+
+      def visit_in(node)
       end
 
       def visit_int(node)
@@ -1177,6 +1267,9 @@ module SyntaxTree
           visit_all(node.parts)
           iseq.newarray(node.parts.length)
         end
+      end
+
+      def visit_next(node)
       end
 
       def visit_not(node)
@@ -1344,12 +1437,18 @@ module SyntaxTree
         visit(node.contents)
       end
 
+      def visit_pinned_begin(node)
+      end
+
+      def visit_pinned_var_ref(node)
+      end
+
       def visit_program(node)
         node.statements.body.each do |statement|
           break unless statement.is_a?(Comment)
 
           if statement.value == "# frozen_string_literal: true"
-            @frozen_string_literal = true
+            options.frozen_string_literal!
           end
         end
 
@@ -1373,11 +1472,8 @@ module SyntaxTree
             "<compiled>",
             nil,
             node.location,
-            frozen_string_literal: frozen_string_literal,
-            operands_unification: operands_unification,
-            specialized_instruction: specialized_instruction
+            options
           )
-
         with_child_iseq(top_iseq) do
           visit_all(preexes)
 
@@ -1398,7 +1494,7 @@ module SyntaxTree
       end
 
       def visit_qwords(node)
-        if frozen_string_literal
+        if options.frozen_string_literal?
           iseq.duparray(node.accept(RubyVisitor.new))
         else
           visit_all(node.elements)
@@ -1512,6 +1608,9 @@ module SyntaxTree
         iseq.putobject(node.accept(RubyVisitor.new))
       end
 
+      def visit_redo(node)
+      end
+
       def visit_regexp_literal(node)
         if (compiled = RubyVisitor.compile(node))
           iseq.putobject(compiled)
@@ -1522,10 +1621,25 @@ module SyntaxTree
         end
       end
 
+      def visit_rescue(node)
+      end
+
+      def visit_rescue_ex(node)
+      end
+
+      def visit_rescue_mod(node)
+      end
+
       def visit_rest_param(node)
         iseq.local_table.plain(node.name.value.to_sym)
         iseq.argument_options[:rest_start] = iseq.argument_size
         iseq.argument_size += 1
+      end
+
+      def visit_retry(node)
+      end
+
+      def visit_return(node)
       end
 
       def visit_sclass(node)
@@ -1628,7 +1742,7 @@ module SyntaxTree
       end
 
       def visit_tstring_content(node)
-        if frozen_string_literal
+        if options.frozen_string_literal?
           iseq.putobject(node.accept(RubyVisitor.new))
         else
           iseq.putstring(node.accept(RubyVisitor.new))
@@ -1804,7 +1918,8 @@ module SyntaxTree
       end
 
       def visit_words(node)
-        if frozen_string_literal && (compiled = RubyVisitor.compile(node))
+        if options.frozen_string_literal? &&
+             (compiled = RubyVisitor.compile(node))
           iseq.duparray(compiled)
         else
           visit_all(node.elements)

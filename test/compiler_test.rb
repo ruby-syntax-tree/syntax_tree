@@ -428,19 +428,26 @@ module SyntaxTree
 
     # These are the combinations of instructions that we're going to test.
     OPTIONS = [
-      {},
-      { frozen_string_literal: true },
-      { operands_unification: false },
-      { specialized_instruction: false },
-      { operands_unification: false, specialized_instruction: false }
+      YARV::Compiler::Options.new,
+      YARV::Compiler::Options.new(frozen_string_literal: true),
+      YARV::Compiler::Options.new(operands_unification: false),
+      # TODO: have this work when peephole optimizations are turned off.
+      # YARV::Compiler::Options.new(peephole_optimization: false),
+      YARV::Compiler::Options.new(specialized_instruction: false),
+      YARV::Compiler::Options.new(inline_const_cache: false),
+      YARV::Compiler::Options.new(tailcall_optimization: true)
     ]
 
     OPTIONS.each do |options|
-      suffix = options.inspect
+      suffix = options.to_hash.map { |key, value| "#{key}=#{value}" }.join("&")
 
       CASES.each do |source|
-        define_method(:"test_#{source}_#{suffix}") do
-          assert_compiles(source, **options)
+        define_method(:"test_compiles_#{source}_(#{suffix})") do
+          assert_compiles(source, options)
+        end
+
+        define_method(:"test_loads_#{source}_(#{suffix})") do
+          assert_loads(source, options)
         end
       end
     end
@@ -480,17 +487,28 @@ module SyntaxTree
       serialized
     end
 
-    def assert_compiles(source, **options)
-      program = SyntaxTree.parse(source)
-
+    # Check that the compiled instruction sequence matches the expected
+    # instruction sequence.
+    def assert_compiles(source, options)
       assert_equal(
         serialize_iseq(RubyVM::InstructionSequence.compile(source, **options)),
-        serialize_iseq(program.accept(YARV::Compiler.new(**options)))
+        serialize_iseq(YARV.compile(source, options))
       )
     end
 
-    def assert_evaluates(expected, source, **options)
-      assert_equal expected, YARV.compile(source, **options).eval
+    # Check that the compiled instruction sequence matches the instruction
+    # sequence created directly from the compiled instruction sequence.
+    def assert_loads(source, options)
+      compiled = RubyVM::InstructionSequence.compile(source, **options)
+
+      assert_equal(
+        serialize_iseq(compiled),
+        serialize_iseq(YARV::InstructionSequence.from(compiled.to_a, options))
+      )
+    end
+
+    def assert_evaluates(expected, source)
+      assert_equal expected, YARV.compile(source).eval
     end
   end
 end
