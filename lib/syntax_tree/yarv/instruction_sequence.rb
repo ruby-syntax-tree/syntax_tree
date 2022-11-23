@@ -41,6 +41,21 @@ module SyntaxTree
         end
       end
 
+      # This represents the destination of instructions that jump. Initially it
+      # does not track its position so that when we perform optimizations the
+      # indices don't get messed up.
+      class Label
+        attr_reader :name
+
+        def initialize(name = nil)
+          @name = name
+        end
+
+        def patch!(name)
+          @name = name
+        end
+      end
+
       # The type of the instruction sequence.
       attr_reader :type
 
@@ -129,7 +144,7 @@ module SyntaxTree
       def length
         insns.inject(0) do |sum, insn|
           case insn
-          when Integer, Symbol
+          when Integer, Label, Symbol
             sum
           else
             sum + insn.length
@@ -151,6 +166,20 @@ module SyntaxTree
       def to_a
         versions = RUBY_VERSION.split(".").map(&:to_i)
 
+        # First, set it up so that all of the labels get their correct name.
+        insns.inject(0) do |length, insn|
+          case insn
+          when Integer, Symbol
+            length
+          when Label
+            insn.patch!(:"label_#{length}")
+            length
+          else
+            length + insn.length
+          end
+        end
+
+        # Next, return the instruction sequence as an array.
         [
           MAGIC,
           versions[0],
@@ -170,7 +199,14 @@ module SyntaxTree
           argument_options,
           [],
           insns.map do |insn|
-            insn.is_a?(Integer) || insn.is_a?(Symbol) ? insn : insn.to_a(self)
+            case insn
+            when Integer, Symbol
+              insn
+            when Label
+              insn.name
+            else
+              insn.to_a(self)
+            end
           end
         ]
       end
@@ -209,11 +245,15 @@ module SyntaxTree
       # Instruction push methods
       ##########################################################################
 
+      def label
+        Label.new
+      end
+
       def push(insn)
         insns << insn
 
         case insn
-        when Integer, Symbol, Array
+        when Array, Integer, Label, Symbol
           insn
         else
           stack.change_by(-insn.pops + insn.pushes)
@@ -221,9 +261,7 @@ module SyntaxTree
         end
       end
 
-      # This creates a new label at the current length of the instruction
-      # sequence. It is used as the operand for jump instructions.
-      def label
+      def label_at_index
         name = :"label_#{length}"
         insns.last == name ? name : event(name)
       end
@@ -691,27 +729,38 @@ module SyntaxTree
         # set up the argument options
         iseq.argument_options.merge!(source[11])
 
+        # set up the labels object so that the labels are shared between the
+        # location in the instruction sequence and the instructions that
+        # reference them
+        labels = Hash.new { |hash, name| hash[name] = Label.new(name) }
+
         # set up all of the instructions
         source[13].each do |insn|
           # skip line numbers
           next if insn.is_a?(Integer)
 
-          # put events into the array and then continue
+          # add events and labels
           if insn.is_a?(Symbol)
-            iseq.event(insn)
+            if insn.start_with?("label_")
+              iseq.push(labels[insn])
+            else
+              iseq.push(insn)
+            end
             next
           end
 
+          # add instructions, mapped to our own instruction classes
           type, *opnds = insn
+
           case type
           when :adjuststack
             iseq.adjuststack(opnds[0])
           when :anytostring
             iseq.anytostring
           when :branchif
-            iseq.branchif(opnds[0])
+            iseq.branchif(labels[opnds[0]])
           when :branchnil
-            iseq.branchnil(opnds[0])
+            iseq.branchnil(labels[opnds[0]])
           when :branchunless
             iseq.branchunless(opnds[0])
           when :checkkeyword

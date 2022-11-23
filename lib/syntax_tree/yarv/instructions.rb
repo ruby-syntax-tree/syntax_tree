@@ -159,12 +159,8 @@ module SyntaxTree
         @label = label
       end
 
-      def patch!(iseq)
-        @label = iseq.label
-      end
-
       def to_a(_iseq)
-        [:branchif, label]
+        [:branchif, label.name]
       end
 
       def length
@@ -204,12 +200,8 @@ module SyntaxTree
         @label = label
       end
 
-      def patch!(iseq)
-        @label = iseq.label
-      end
-
       def to_a(_iseq)
-        [:branchnil, label]
+        [:branchnil, label.name]
       end
 
       def length
@@ -249,7 +241,7 @@ module SyntaxTree
       end
 
       def patch!(iseq)
-        @label = iseq.label
+        @label = iseq.label_at_index
       end
 
       def to_a(_iseq)
@@ -297,7 +289,7 @@ module SyntaxTree
       end
 
       def patch!(iseq)
-        @label = iseq.label
+        @label = iseq.label_at_index
       end
 
       def to_a(iseq)
@@ -1360,7 +1352,7 @@ module SyntaxTree
       end
 
       def patch!(iseq)
-        @label = iseq.label
+        @label = iseq.label_at_index
       end
 
       def to_a(_iseq)

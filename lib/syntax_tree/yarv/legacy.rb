@@ -68,7 +68,7 @@ module SyntaxTree
         end
 
         def patch!(iseq)
-          @label = iseq.label
+          @label = iseq.label_at_index
         end
 
         def to_a(_iseq)

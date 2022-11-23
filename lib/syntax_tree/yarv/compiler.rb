@@ -417,7 +417,8 @@ module SyntaxTree
         # First, check if the #deconstruct cache is nil. If it is, we're going
         # to call #deconstruct on the object and cache the result.
         iseq.topn(2)
-        branchnil = iseq.branchnil(-1)
+        deconstruct_label = iseq.label
+        iseq.branchnil(deconstruct_label)
 
         # Next, ensure that the cached value was cached correctly, otherwise
         # fail the match.
@@ -432,7 +433,7 @@ module SyntaxTree
 
         # Check if the object responds to #deconstruct, fail the match
         # otherwise.
-        branchnil.patch!(iseq)
+        iseq.event(deconstruct_label)
         iseq.dup
         iseq.putobject(:deconstruct)
         iseq.send(YARV.calldata(:respond_to?, 1))
@@ -634,11 +635,12 @@ module SyntaxTree
           visit(node.left)
           iseq.dup
 
-          branchif = iseq.branchif(-1)
+          skip_right_label = iseq.label
+          iseq.branchif(skip_right_label)
           iseq.pop
 
           visit(node.right)
-          branchif.patch!(iseq)
+          iseq.push(skip_right_label)
         else
           visit(node.left)
           visit(node.right)
@@ -758,11 +760,12 @@ module SyntaxTree
           iseq.putself
         end
 
-        branchnil =
-          if node.operator&.value == "&."
-            iseq.dup
-            iseq.branchnil(-1)
-          end
+        after_call_label = nil
+        if node.operator&.value == "&."
+          iseq.dup
+          after_call_label = iseq.label
+          iseq.branchnil(after_call_label)
+        end
 
         flag = 0
 
@@ -815,7 +818,7 @@ module SyntaxTree
           YARV.calldata(node.message.value.to_sym, argc, flag),
           block_iseq
         )
-        branchnil.patch!(iseq) if branchnil
+        iseq.event(after_call_label) if after_call_label
       end
 
       def visit_case(node)
@@ -845,16 +848,19 @@ module SyntaxTree
                 CallData::CALL_FCALL | CallData::CALL_ARGS_SIMPLE
               )
             )
-            [clause, iseq.branchif(:label_00)]
+
+            label = iseq.label
+            iseq.branchif(label)
+            [clause, label]
           end
 
         iseq.pop
         else_clause ? visit(else_clause) : iseq.putnil
         iseq.leave
 
-        branches.each_with_index do |(clause, branchif), index|
+        branches.each_with_index do |(clause, label), index|
           iseq.leave if index != 0
-          branchif.patch!(iseq)
+          iseq.push(label)
           iseq.pop
           visit(clause)
         end
@@ -1100,26 +1106,28 @@ module SyntaxTree
 
       def visit_if(node)
         if node.predicate.is_a?(RangeNode)
+          true_label = iseq.label
+
           iseq.getspecial(GetSpecial::SVAR_FLIPFLOP_START, 0)
-          branchif = iseq.branchif(-1)
+          iseq.branchif(true_label)
 
           visit(node.predicate.left)
-          branchunless_true = iseq.branchunless(-1)
+          end_branch = iseq.branchunless(-1)
 
           iseq.putobject(true)
           iseq.setspecial(GetSpecial::SVAR_FLIPFLOP_START)
-          branchif.patch!(iseq)
 
+          iseq.push(true_label)
           visit(node.predicate.right)
-          branchunless_false = iseq.branchunless(-1)
+          false_branch = iseq.branchunless(-1)
 
           iseq.putobject(false)
           iseq.setspecial(GetSpecial::SVAR_FLIPFLOP_START)
-          branchunless_false.patch!(iseq)
 
+          false_branch.patch!(iseq)
           visit(node.statements)
           iseq.leave
-          branchunless_true.patch!(iseq)
+          end_branch.patch!(iseq)
           iseq.putnil
         else
           visit(node.predicate)
@@ -1317,22 +1325,22 @@ module SyntaxTree
                 [Const, CVar, GVar].include?(node.target.value.class)
             opassign_defined(node)
           else
-            branchif = nil
+            skip_value_label = iseq.label
 
             with_opassign(node) do
               iseq.dup
-              branchif = iseq.branchif(-1)
+              iseq.branchif(skip_value_label)
               iseq.pop
               visit(node.value)
             end
 
             if node.target.is_a?(ARefField)
               iseq.leave
-              branchif.patch!(iseq)
+              iseq.push(skip_value_label)
               iseq.setn(3)
               iseq.adjuststack(3)
             else
-              branchif.patch!(iseq)
+              iseq.push(skip_value_label)
             end
           end
         else
@@ -1363,13 +1371,11 @@ module SyntaxTree
           iseq.local_table.plain(name)
           iseq.argument_size += 1
 
-          argument_options[:opt] = [iseq.label] unless argument_options.key?(
-            :opt
-          )
+          argument_options[:opt] = [iseq.label_at_index] unless argument_options.key?(:opt)
 
           visit(value)
           iseq.setlocal(index, 0)
-          iseq.argument_options[:opt] << iseq.label
+          iseq.argument_options[:opt] << iseq.label_at_index
         end
 
         visit(node.rest) if node.rest
@@ -1406,12 +1412,14 @@ module SyntaxTree
             elsif (compiled = RubyVisitor.compile(value))
               argument_options[:keyword] << [name, compiled]
             else
+              skip_value_label = iseq.label
+
               argument_options[:keyword] << [name]
               iseq.checkkeyword(keyword_bits_index, keyword_index)
-              branchif = iseq.branchif(-1)
+              iseq.branchif(skip_value_label)
               visit(value)
               iseq.setlocal(index, 0)
-              branchif.patch!(iseq)
+              iseq.push(skip_value_label)
             end
           end
 
@@ -1558,13 +1566,15 @@ module SyntaxTree
             jumps_to_match.concat(visit(node.pattern))
           end
 
+          no_key_label = iseq.label
+
           # First we're going to push the core onto the stack, then we'll check
           # if the value to match is truthy. If it is, we'll jump down to raise
           # NoMatchingPatternKeyError. Otherwise we'll raise
           # NoMatchingPatternError.
           iseq.putspecialobject(PutSpecialObject::OBJECT_VMCORE)
           iseq.topn(4)
-          branchif_no_key = iseq.branchif(-1)
+          iseq.branchif(no_key_label)
 
           # Here we're going to raise NoMatchingPatternError.
           iseq.putobject(NoMatchingPatternError)
@@ -1577,7 +1587,7 @@ module SyntaxTree
           jump_to_exit = iseq.jump(-1)
 
           # Here we're going to raise NoMatchingPatternKeyError.
-          branchif_no_key.patch!(iseq)
+          iseq.push(no_key_label)
           iseq.putobject(NoMatchingPatternKeyError)
           iseq.putspecialobject(PutSpecialObject::OBJECT_VMCORE)
           iseq.putobject("%p: %s")
@@ -1797,7 +1807,7 @@ module SyntaxTree
             jump = iseq.jump(-1)
             branchunless.patch!(iseq)
             visit(node.consequent)
-            jump.patch!(iseq.label)
+            jump.patch!(iseq.label_at_index)
           else
             branchunless.patch!(iseq)
           end
@@ -1812,7 +1822,7 @@ module SyntaxTree
         iseq.pop
         jumps << iseq.jump(-1)
 
-        label = iseq.label
+        label = iseq.label_at_index
         visit(node.statements)
         iseq.pop
         jumps.each { |jump| jump.patch!(iseq) }
@@ -1891,6 +1901,7 @@ module SyntaxTree
       end
 
       def visit_while(node)
+        repeat_label = iseq.label
         jumps = []
 
         jumps << iseq.jump(-1)
@@ -1898,13 +1909,13 @@ module SyntaxTree
         iseq.pop
         jumps << iseq.jump(-1)
 
-        label = iseq.label
+        iseq.push(repeat_label)
         visit(node.statements)
         iseq.pop
         jumps.each { |jump| jump.patch!(iseq) }
 
         visit(node.predicate)
-        iseq.branchif(label)
+        iseq.branchif(repeat_label)
         iseq.putnil if last_statement?
       end
 
@@ -2060,7 +2071,8 @@ module SyntaxTree
         end
 
         iseq.dup
-        branchif = iseq.branchif(-1)
+        skip_value_label = iseq.label
+        iseq.branchif(skip_value_label)
         iseq.pop
 
         branchunless.patch!(iseq)
@@ -2085,7 +2097,7 @@ module SyntaxTree
           end
         end
 
-        branchif.patch!(iseq)
+        iseq.push(skip_value_label)
       end
 
       # Whenever a value is interpolated into a string-like structure, these

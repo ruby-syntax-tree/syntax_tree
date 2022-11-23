@@ -153,7 +153,7 @@ module SyntaxTree
 
       # unless $tape[$cursor] == 0
       def loop_start(iseq)
-        start_label = iseq.label
+        start_label = iseq.label_at_index
 
         iseq.getglobal(:$tape)
         iseq.getglobal(:$cursor)
