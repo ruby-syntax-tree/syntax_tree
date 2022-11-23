@@ -54,12 +54,14 @@ module SyntaxTree
           frozen_string_literal: false,
           inline_const_cache: true,
           operands_unification: true,
-          specialized_instruction: true
+          specialized_instruction: true,
+          tailcall_optimization: false
         )
           @frozen_string_literal = frozen_string_literal
           @inline_const_cache = inline_const_cache
           @operands_unification = operands_unification
           @specialized_instruction = specialized_instruction
+          @tailcall_optimization = tailcall_optimization
         end
 
         def to_hash
@@ -67,7 +69,8 @@ module SyntaxTree
             frozen_string_literal: @frozen_string_literal,
             inline_const_cache: @inline_const_cache,
             operands_unification: @operands_unification,
-            specialized_instruction: @specialized_instruction
+            specialized_instruction: @specialized_instruction,
+            tailcall_optimization: @tailcall_optimization
           }
         end
 
@@ -89,6 +92,10 @@ module SyntaxTree
 
         def specialized_instruction?
           @specialized_instruction
+        end
+
+        def tailcall_optimization?
+          @tailcall_optimization
         end
       end
 
@@ -716,12 +723,17 @@ module SyntaxTree
           end
         end
 
+        # Track whether or not this is a method call on a block proxy receiver.
+        # If it is, we can potentially do tailcall optimizations on it.
+        block_receiver = false
+
         if node.receiver
           if node.receiver.is_a?(VarRef)
             lookup = iseq.local_variable(node.receiver.value.value.to_sym)
 
             if lookup.local.is_a?(LocalTable::BlockLocal)
               iseq.getblockparamproxy(lookup.index, lookup.level)
+              block_receiver = true
             else
               visit(node.receiver)
             end
@@ -752,6 +764,7 @@ module SyntaxTree
           when ArgsForward
             flag |= CallData::CALL_ARGS_SPLAT
             flag |= CallData::CALL_ARGS_BLOCKARG
+            flag |= CallData::CALL_TAILCALL if options.tailcall_optimization?
 
             lookup = iseq.local_table.find(:*)
             iseq.getlocal(lookup.index, lookup.level)
@@ -768,8 +781,21 @@ module SyntaxTree
         end
 
         block_iseq = visit(node.block) if node.block
+
+        # If there's no block and we don't already have any special flags set,
+        # then we can safely call this simple arguments. Note that has to be the
+        # first flag we set after looking at the arguments to get the flags
+        # correct.
         flag |= CallData::CALL_ARGS_SIMPLE if block_iseq.nil? && flag == 0
+
+        # If there's no receiver, then this is an "fcall".
         flag |= CallData::CALL_FCALL if node.receiver.nil?
+
+        # If we're calling a method on the passed block object and we have
+        # tailcall optimizations turned on, then we can set the tailcall flag.
+        if block_receiver && options.tailcall_optimization?
+          flag |= CallData::CALL_TAILCALL
+        end
 
         iseq.send(
           YARV.calldata(node.message.value.to_sym, argc, flag),

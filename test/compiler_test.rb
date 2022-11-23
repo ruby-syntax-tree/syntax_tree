@@ -433,14 +433,14 @@ module SyntaxTree
       YARV::Compiler::Options.new(operands_unification: false),
       YARV::Compiler::Options.new(specialized_instruction: false),
       YARV::Compiler::Options.new(inline_const_cache: false),
-      YARV::Compiler::Options.new(operands_unification: false, specialized_instruction: false)
+      YARV::Compiler::Options.new(tailcall_optimization: true)
     ]
 
     OPTIONS.each do |options|
-      suffix = options.inspect
+      suffix = options.to_hash.map { |k, v| "#{k}=#{v}" }.join("&")
 
       CASES.each do |source|
-        define_method(:"test_#{source}_#{suffix}") do
+        define_method(:"test_#{source}_(#{suffix})") do
           assert_compiles(source, options)
         end
       end
