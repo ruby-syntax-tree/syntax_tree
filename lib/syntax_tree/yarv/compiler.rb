@@ -45,6 +45,53 @@ module SyntaxTree
     #     RubyVM::InstructionSequence.compile("1 + 2").to_a
     #
     class Compiler < BasicVisitor
+      # This represents a set of options that can be passed to the compiler to
+      # control how it compiles the code. It mirrors the options that can be
+      # passed to RubyVM::InstructionSequence.compile, except it only includes
+      # options that actually change the behavior.
+      class Options
+        def initialize(
+          frozen_string_literal: false,
+          inline_const_cache: true,
+          operands_unification: true,
+          specialized_instruction: true
+        )
+          @frozen_string_literal = frozen_string_literal
+          @inline_const_cache = inline_const_cache
+          @operands_unification = operands_unification
+          @specialized_instruction = specialized_instruction
+        end
+
+        def to_hash
+          {
+            frozen_string_literal: @frozen_string_literal,
+            inline_const_cache: @inline_const_cache,
+            operands_unification: @operands_unification,
+            specialized_instruction: @specialized_instruction
+          }
+        end
+
+        def frozen_string_literal!
+          @frozen_string_literal = true
+        end
+
+        def frozen_string_literal?
+          @frozen_string_literal
+        end
+
+        def inline_const_cache?
+          @inline_const_cache
+        end
+
+        def operands_unification?
+          @operands_unification
+        end
+
+        def specialized_instruction?
+          @specialized_instruction
+        end
+      end
+
       # This visitor is responsible for converting Syntax Tree nodes into their
       # corresponding Ruby structures. This is used to convert the operands of
       # some instructions like putobject that push a Ruby object directly onto
@@ -203,10 +250,7 @@ module SyntaxTree
 
       # These options mirror the compilation options that we currently support
       # that can be also passed to RubyVM::InstructionSequence.compile.
-      attr_reader :frozen_string_literal,
-                  :inline_const_cache,
-                  :operands_unification,
-                  :specialized_instruction
+      attr_reader :options
 
       # The current instruction sequence that is being compiled.
       attr_reader :iseq
@@ -216,17 +260,8 @@ module SyntaxTree
       # if we need to return the value of the last statement.
       attr_reader :last_statement
 
-      def initialize(
-        frozen_string_literal: false,
-        inline_const_cache: true,
-        operands_unification: true,
-        specialized_instruction: true
-      )
-        @frozen_string_literal = frozen_string_literal
-        @inline_const_cache = inline_const_cache
-        @operands_unification = operands_unification
-        @specialized_instruction = specialized_instruction
-
+      def initialize(options)
+        @options = options
         @iseq = nil
         @last_statement = false
       end
@@ -236,7 +271,7 @@ module SyntaxTree
       end
 
       def visit_CHAR(node)
-        if frozen_string_literal
+        if options.frozen_string_literal?
           iseq.putobject(node.value[1..])
         else
           iseq.putstring(node.value[1..])
@@ -282,7 +317,7 @@ module SyntaxTree
         calldata = YARV.calldata(:[], 1)
         visit(node.collection)
 
-        if !frozen_string_literal && specialized_instruction &&
+        if !options.frozen_string_literal? && options.specialized_instruction? &&
              (node.index.parts.length == 1)
           arg = node.index.parts.first
 
@@ -453,7 +488,7 @@ module SyntaxTree
         when ARefField
           calldata = YARV.calldata(:[]=, 2)
 
-          if !frozen_string_literal && specialized_instruction &&
+          if !options.frozen_string_literal? && options.specialized_instruction? &&
                (node.target.index.parts.length == 1)
             arg = node.target.index.parts.first
 
@@ -1352,7 +1387,7 @@ module SyntaxTree
           break unless statement.is_a?(Comment)
 
           if statement.value == "# frozen_string_literal: true"
-            @frozen_string_literal = true
+            options.frozen_string_literal!
           end
         end
 
@@ -1370,18 +1405,7 @@ module SyntaxTree
           end
         end
 
-        top_iseq =
-          InstructionSequence.new(
-            :top,
-            "<compiled>",
-            nil,
-            node.location,
-            frozen_string_literal: frozen_string_literal,
-            inline_const_cache: inline_const_cache,
-            operands_unification: operands_unification,
-            specialized_instruction: specialized_instruction
-          )
-
+        top_iseq = InstructionSequence.new(:top, "<compiled>", nil, node.location, options)
         with_child_iseq(top_iseq) do
           visit_all(preexes)
 
@@ -1402,7 +1426,7 @@ module SyntaxTree
       end
 
       def visit_qwords(node)
-        if frozen_string_literal
+        if options.frozen_string_literal?
           iseq.duparray(node.accept(RubyVisitor.new))
         else
           visit_all(node.elements)
@@ -1632,7 +1656,7 @@ module SyntaxTree
       end
 
       def visit_tstring_content(node)
-        if frozen_string_literal
+        if options.frozen_string_literal?
           iseq.putobject(node.accept(RubyVisitor.new))
         else
           iseq.putstring(node.accept(RubyVisitor.new))
@@ -1808,7 +1832,7 @@ module SyntaxTree
       end
 
       def visit_words(node)
-        if frozen_string_literal && (compiled = RubyVisitor.compile(node))
+        if options.frozen_string_literal? && (compiled = RubyVisitor.compile(node))
           iseq.duparray(compiled)
         else
           visit_all(node.elements)

@@ -428,12 +428,12 @@ module SyntaxTree
 
     # These are the combinations of instructions that we're going to test.
     OPTIONS = [
-      {},
-      { frozen_string_literal: true },
-      { operands_unification: false },
-      { specialized_instruction: false },
-      { inline_const_cache: false },
-      { operands_unification: false, specialized_instruction: false }
+      YARV::Compiler::Options.new,
+      YARV::Compiler::Options.new(frozen_string_literal: true),
+      YARV::Compiler::Options.new(operands_unification: false),
+      YARV::Compiler::Options.new(specialized_instruction: false),
+      YARV::Compiler::Options.new(inline_const_cache: false),
+      YARV::Compiler::Options.new(operands_unification: false, specialized_instruction: false)
     ]
 
     OPTIONS.each do |options|
@@ -441,7 +441,7 @@ module SyntaxTree
 
       CASES.each do |source|
         define_method(:"test_#{source}_#{suffix}") do
-          assert_compiles(source, **options)
+          assert_compiles(source, options)
         end
       end
     end
@@ -481,17 +481,17 @@ module SyntaxTree
       serialized
     end
 
-    def assert_compiles(source, **options)
+    def assert_compiles(source, options)
       program = SyntaxTree.parse(source)
 
       assert_equal(
         serialize_iseq(RubyVM::InstructionSequence.compile(source, **options)),
-        serialize_iseq(program.accept(YARV::Compiler.new(**options)))
+        serialize_iseq(program.accept(YARV::Compiler.new(options)))
       )
     end
 
-    def assert_evaluates(expected, source, **options)
-      assert_equal expected, YARV.compile(source, **options).eval
+    def assert_evaluates(expected, source)
+      assert_equal expected, YARV.compile(source).eval
     end
   end
 end

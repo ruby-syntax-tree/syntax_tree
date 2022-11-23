@@ -76,21 +76,9 @@ module SyntaxTree
       attr_reader :stack
 
       # These are various compilation options provided.
-      attr_reader :frozen_string_literal,
-                  :inline_const_cache,
-                  :operands_unification,
-                  :specialized_instruction
+      attr_reader :options
 
-      def initialize(
-        type,
-        name,
-        parent_iseq,
-        location,
-        frozen_string_literal: false,
-        inline_const_cache: true,
-        operands_unification: true,
-        specialized_instruction: true
-      )
+      def initialize(type, name, parent_iseq, location, options = Compiler::Options.new)
         @type = type
         @name = name
         @parent_iseq = parent_iseq
@@ -105,10 +93,7 @@ module SyntaxTree
         @storage_index = 0
         @stack = Stack.new
 
-        @frozen_string_literal = frozen_string_literal
-        @inline_const_cache = inline_const_cache
-        @operands_unification = operands_unification
-        @specialized_instruction = specialized_instruction
+        @options = options
       end
 
       ##########################################################################
@@ -189,16 +174,7 @@ module SyntaxTree
       ##########################################################################
 
       def child_iseq(type, name, location)
-        InstructionSequence.new(
-          type,
-          name,
-          self,
-          location,
-          frozen_string_literal: frozen_string_literal,
-          inline_const_cache: inline_const_cache,
-          operands_unification: operands_unification,
-          specialized_instruction: specialized_instruction
-        )
+        InstructionSequence.new(type, name, self, location, options)
       end
 
       def block_child_iseq(location)
@@ -359,7 +335,7 @@ module SyntaxTree
       end
 
       def getlocal(index, level)
-        if operands_unification
+        if options.operands_unification?
           # Specialize the getlocal instruction based on the level of the
           # local variable. If it's 0 or 1, then there's a specialized
           # instruction that will look at the current scope or the parent
@@ -438,11 +414,11 @@ module SyntaxTree
       end
 
       def opt_getconstant_path(names)
-        if RUBY_VERSION < "3.2" || !inline_const_cache
+        if RUBY_VERSION < "3.2" || !options.inline_const_cache?
           cache = nil
           getinlinecache = nil
 
-          if inline_const_cache
+          if options.inline_const_cache?
             cache = inline_storage
             getinlinecache = opt_getinlinecache(-1, cache)
 
@@ -463,7 +439,7 @@ module SyntaxTree
             getconstant(name)
           end
 
-          if inline_const_cache
+          if options.inline_const_cache?
             opt_setinlinecache(cache)
             getinlinecache.patch!(self)
           end
@@ -477,7 +453,7 @@ module SyntaxTree
       end
 
       def opt_newarray_max(length)
-        if specialized_instruction
+        if options.specialized_instruction?
           push(OptNewArrayMax.new(length))
         else
           newarray(length)
@@ -486,7 +462,7 @@ module SyntaxTree
       end
 
       def opt_newarray_min(length)
-        if specialized_instruction
+        if options.specialized_instruction?
           push(OptNewArrayMin.new(length))
         else
           newarray(length)
@@ -499,7 +475,7 @@ module SyntaxTree
       end
 
       def opt_str_freeze(object)
-        if specialized_instruction
+        if options.specialized_instruction?
           push(OptStrFreeze.new(object, YARV.calldata(:freeze)))
         else
           putstring(object)
@@ -508,7 +484,7 @@ module SyntaxTree
       end
 
       def opt_str_uminus(object)
-        if specialized_instruction
+        if options.specialized_instruction?
           push(OptStrUMinus.new(object, YARV.calldata(:-@)))
         else
           putstring(object)
@@ -525,7 +501,7 @@ module SyntaxTree
       end
 
       def putobject(object)
-        if operands_unification
+        if options.operands_unification?
           # Specialize the putobject instruction based on the value of the
           # object. If it's 0 or 1, then there's a specialized instruction
           # that will push the object onto the stack and requires fewer
@@ -555,7 +531,7 @@ module SyntaxTree
       end
 
       def send(calldata, block_iseq = nil)
-        if specialized_instruction && !block_iseq &&
+        if options.specialized_instruction? && !block_iseq &&
              !calldata.flag?(CallData::CALL_ARGS_BLOCKARG)
           # Specialize the send instruction. If it doesn't have a block
           # attached, then we will replace it with an opt_send_without_block
@@ -645,7 +621,7 @@ module SyntaxTree
       end
 
       def setlocal(index, level)
-        if operands_unification
+        if options.operands_unification?
           # Specialize the setlocal instruction based on the level of the
           # local variable. If it's 0 or 1, then there's a specialized
           # instruction that will write to the current scope or the parent
