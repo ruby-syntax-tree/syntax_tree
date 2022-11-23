@@ -1842,6 +1842,54 @@ module SyntaxTree
 
     # ### Summary
     #
+    # `opt_case_dispatch` is a branch instruction that moves the control flow
+    # for case statements that have clauses where they can all be used as hash
+    # keys for an internal hash.
+    #
+    # It has two arguments: the `case_dispatch_hash` and an `else_label`. It
+    # pops one value off the stack: a hash key. `opt_case_dispatch` looks up the
+    # key in the `case_dispatch_hash` and jumps to the corresponding label if
+    # there is one. If there is no value in the `case_dispatch_hash`,
+    # `opt_case_dispatch` jumps to the `else_label` index.
+    #
+    # ### Usage
+    #
+    # ~~~ruby
+    # case 1
+    # when 1
+    #   puts "foo"
+    # else
+    #   puts "bar"
+    # end
+    # ~~~
+    #
+    class OptCaseDispatch
+      attr_reader :case_dispatch_hash, :else_label
+
+      def initialize(case_dispatch_hash, else_label)
+        @case_dispatch_hash = case_dispatch_hash
+        @else_label = else_label
+      end
+
+      def to_a(_iseq)
+        [:opt_case_dispatch, case_dispatch_hash, else_label]
+      end
+
+      def length
+        3
+      end
+
+      def pops
+        1
+      end
+
+      def pushes
+        0
+      end
+    end
+
+    # ### Summary
+    #
     # `opt_div` is a specialization of the `opt_send_without_block` instruction
     # that occurs when the `/` operator is used. There are fast paths for if
     # both operands are integers, or if both operands are floats. It pops both
@@ -3531,6 +3579,42 @@ module SyntaxTree
 
       def pushes
         2
+      end
+    end
+
+    # ### Summary
+    #
+    # `throw` pops a value off the top of the stack and throws it. It is caught
+    # using the instruction sequence's (or an ancestor's) catch table. It pushes
+    # on the result of throwing the value.
+    #
+    # ### Usage
+    #
+    # ~~~ruby
+    # [1, 2, 3].map { break 2 }
+    # ~~~
+    #
+    class Throw
+      attr_reader :type
+
+      def initialize(type)
+        @type = type
+      end
+
+      def to_a(_iseq)
+        [:throw, type]
+      end
+
+      def length
+        2
+      end
+
+      def pops
+        1
+      end
+
+      def pushes
+        1
       end
     end
 
