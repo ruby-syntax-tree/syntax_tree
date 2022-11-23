@@ -431,6 +431,8 @@ module SyntaxTree
       YARV::Compiler::Options.new,
       YARV::Compiler::Options.new(frozen_string_literal: true),
       YARV::Compiler::Options.new(operands_unification: false),
+      # TODO: have this work when peephole optimizations are turned off.
+      # YARV::Compiler::Options.new(peephole_optimization: false),
       YARV::Compiler::Options.new(specialized_instruction: false),
       YARV::Compiler::Options.new(inline_const_cache: false),
       YARV::Compiler::Options.new(tailcall_optimization: true)

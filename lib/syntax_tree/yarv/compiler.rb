@@ -54,12 +54,14 @@ module SyntaxTree
           frozen_string_literal: false,
           inline_const_cache: true,
           operands_unification: true,
+          peephole_optimization: true,
           specialized_instruction: true,
           tailcall_optimization: false
         )
           @frozen_string_literal = frozen_string_literal
           @inline_const_cache = inline_const_cache
           @operands_unification = operands_unification
+          @peephole_optimization = peephole_optimization
           @specialized_instruction = specialized_instruction
           @tailcall_optimization = tailcall_optimization
         end
@@ -69,6 +71,7 @@ module SyntaxTree
             frozen_string_literal: @frozen_string_literal,
             inline_const_cache: @inline_const_cache,
             operands_unification: @operands_unification,
+            peephole_optimization: @peephole_optimization,
             specialized_instruction: @specialized_instruction,
             tailcall_optimization: @tailcall_optimization
           }
@@ -88,6 +91,10 @@ module SyntaxTree
 
         def operands_unification?
           @operands_unification
+        end
+
+        def peephole_optimization?
+          @peephole_optimization
         end
 
         def specialized_instruction?
@@ -608,6 +615,9 @@ module SyntaxTree
         end
       end
 
+      def visit_begin(node)
+      end
+
       def visit_binary(node)
         case node.operator
         when :"&&"
@@ -667,6 +677,9 @@ module SyntaxTree
 
       def visit_bodystmt(node)
         visit(node.statements)
+      end
+
+      def visit_break(node)
       end
 
       def visit_call(node)
@@ -1016,12 +1029,18 @@ module SyntaxTree
         )
       end
 
+      def visit_ensure(node)
+      end
+
       def visit_field(node)
         visit(node.parent)
       end
 
       def visit_float(node)
         iseq.putobject(node.accept(RubyVisitor.new))
+      end
+
+      def visit_fndptn(node)
       end
 
       def visit_for(node)
@@ -1064,6 +1083,9 @@ module SyntaxTree
         end
       end
 
+      def visit_hshptn(node)
+      end
+      
       def visit_heredoc(node)
         if node.beginning.value.end_with?("`")
           visit_xstring_literal(node)
@@ -1141,6 +1163,9 @@ module SyntaxTree
 
       def visit_imaginary(node)
         iseq.putobject(node.accept(RubyVisitor.new))
+      end
+
+      def visit_in(node)
       end
 
       def visit_int(node)
@@ -1241,6 +1266,9 @@ module SyntaxTree
           visit_all(node.parts)
           iseq.newarray(node.parts.length)
         end
+      end
+
+      def visit_next(node)
       end
 
       def visit_not(node)
@@ -1408,6 +1436,12 @@ module SyntaxTree
         visit(node.contents)
       end
 
+      def visit_pinned_begin(node)
+      end
+
+      def visit_pinned_var_ref(node)
+      end
+
       def visit_program(node)
         node.statements.body.each do |statement|
           break unless statement.is_a?(Comment)
@@ -1566,6 +1600,9 @@ module SyntaxTree
         iseq.putobject(node.accept(RubyVisitor.new))
       end
 
+      def visit_redo(node)
+      end
+
       def visit_regexp_literal(node)
         if (compiled = RubyVisitor.compile(node))
           iseq.putobject(compiled)
@@ -1576,10 +1613,25 @@ module SyntaxTree
         end
       end
 
+      def visit_rescue(node)
+      end
+
+      def visit_rescue_ex(node)
+      end
+
+      def visit_rescue_mod(node)
+      end
+
       def visit_rest_param(node)
         iseq.local_table.plain(node.name.value.to_sym)
         iseq.argument_options[:rest_start] = iseq.argument_size
         iseq.argument_size += 1
+      end
+
+      def visit_retry(node)
+      end
+
+      def visit_return(node)
       end
 
       def visit_sclass(node)
