@@ -2095,16 +2095,11 @@ module SyntaxTree
         q.group { q.format(left) }
         q.text(" ") unless power
 
-        if operator == :<<
-          q.text("<< ")
-          q.format(right)
-        else
-          q.group do
-            q.text(operator.name)
-            q.indent do
-              power ? q.breakable_empty : q.breakable_space
-              q.format(right)
-            end
+        q.group do
+          q.text(operator.name)
+          q.indent do
+            power ? q.breakable_empty : q.breakable_space
+            q.format(right)
           end
         end
       end
