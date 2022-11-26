@@ -7,6 +7,50 @@ module SyntaxTree
     # list of instructions along with the metadata pertaining to them. It also
     # functions as a builder for the instruction sequence.
     class InstructionSequence
+      # When the list of instructions is first being created, it's stored as a
+      # linked list. This is to make it easier to perform peephole optimizations
+      # and other transformations like instruction specialization.
+      class InstructionList
+        class Node
+          attr_reader :instruction
+          attr_accessor :next_node
+
+          def initialize(instruction, next_node = nil)
+            @instruction = instruction
+            @next_node = next_node
+          end
+        end
+
+        attr_reader :head_node, :tail_node
+
+        def initialize
+          @head_node = nil
+          @tail_node = nil
+        end
+
+        def each
+          return to_enum(__method__) unless block_given?
+          node = head_node
+
+          while node
+            yield node.instruction
+            node = node.next_node
+          end
+        end
+
+        def push(instruction)
+          node = Node.new(instruction)
+
+          if head_node.nil?
+            @head_node = node
+            @tail_node = node
+          else
+            @tail_node.next_node = node
+            @tail_node = node
+          end
+        end
+      end
+
       MAGIC = "YARVInstructionSequence/SimpleDataFormat"
 
       # This provides a handle to the rb_iseq_load function, which allows you to
@@ -110,7 +154,7 @@ module SyntaxTree
 
         @local_table = LocalTable.new
         @inline_storages = {}
-        @insns = []
+        @insns = InstructionList.new
         @storage_index = 0
         @stack = Stack.new
 
@@ -142,7 +186,7 @@ module SyntaxTree
       end
 
       def length
-        insns.inject(0) do |sum, insn|
+        insns.each.inject(0) do |sum, insn|
           case insn
           when Integer, Label, Symbol
             sum
@@ -167,7 +211,7 @@ module SyntaxTree
         versions = RUBY_VERSION.split(".").map(&:to_i)
 
         # First, set it up so that all of the labels get their correct name.
-        insns.inject(0) do |length, insn|
+        insns.each.inject(0) do |length, insn|
           case insn
           when Integer, Symbol
             length
@@ -176,6 +220,18 @@ module SyntaxTree
             length
           else
             length + insn.length
+          end
+        end
+
+        # Next, dump all of the instructions into a flat list.
+        dumped = insns.each.map do |insn|
+          case insn
+          when Integer, Symbol
+            insn
+          when Label
+            insn.name
+          else
+            insn.to_a(self)
           end
         end
 
@@ -198,16 +254,7 @@ module SyntaxTree
           local_table.names,
           argument_options,
           [],
-          insns.map do |insn|
-            case insn
-            when Integer, Symbol
-              insn
-            when Label
-              insn.name
-            else
-              insn.to_a(self)
-            end
-          end
+          dumped
         ]
       end
 
@@ -250,7 +297,7 @@ module SyntaxTree
       end
 
       def push(insn)
-        insns << insn
+        insns.push(insn)
 
         case insn
         when Array, Integer, Label, Symbol
@@ -262,8 +309,7 @@ module SyntaxTree
       end
 
       def label_at_index
-        name = :"label_#{length}"
-        insns.last == name ? name : event(name)
+        push(:"label_#{length}")
       end
 
       def event(name)

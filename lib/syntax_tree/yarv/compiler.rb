@@ -1260,15 +1260,13 @@ module SyntaxTree
       end
 
       def visit_params(node)
-        argument_options = iseq.argument_options
-
         if node.requireds.any?
-          argument_options[:lead_num] = 0
+          iseq.argument_options[:lead_num] = 0
 
           node.requireds.each do |required|
             iseq.local_table.plain(required.value.to_sym)
             iseq.argument_size += 1
-            argument_options[:lead_num] += 1
+            iseq.argument_options[:lead_num] += 1
           end
         end
 
@@ -1279,7 +1277,9 @@ module SyntaxTree
           iseq.local_table.plain(name)
           iseq.argument_size += 1
 
-          argument_options[:opt] = [iseq.label_at_index] unless argument_options.key?(:opt)
+          unless iseq.argument_options.key?(:opt)
+            iseq.argument_options[:opt] = [iseq.label_at_index]
+          end
 
           visit(value)
           iseq.setlocal(index, 0)
@@ -1289,19 +1289,19 @@ module SyntaxTree
         visit(node.rest) if node.rest
 
         if node.posts.any?
-          argument_options[:post_start] = iseq.argument_size
-          argument_options[:post_num] = 0
+          iseq.argument_options[:post_start] = iseq.argument_size
+          iseq.argument_options[:post_num] = 0
 
           node.posts.each do |post|
             iseq.local_table.plain(post.value.to_sym)
             iseq.argument_size += 1
-            argument_options[:post_num] += 1
+            iseq.argument_options[:post_num] += 1
           end
         end
 
         if node.keywords.any?
-          argument_options[:kwbits] = 0
-          argument_options[:keyword] = []
+          iseq.argument_options[:kwbits] = 0
+          iseq.argument_options[:keyword] = []
 
           keyword_bits_name = node.keyword_rest ? 3 : 2
           iseq.argument_size += 1
@@ -1313,16 +1313,16 @@ module SyntaxTree
 
             iseq.local_table.plain(name)
             iseq.argument_size += 1
-            argument_options[:kwbits] += 1
+            iseq.argument_options[:kwbits] += 1
 
             if value.nil?
-              argument_options[:keyword] << name
+              iseq.argument_options[:keyword] << name
             elsif (compiled = RubyVisitor.compile(value))
-              argument_options[:keyword] << [name, compiled]
+              iseq.argument_options[:keyword] << [name, compiled]
             else
               skip_value_label = iseq.label
 
-              argument_options[:keyword] << [name]
+              iseq.argument_options[:keyword] << [name]
               iseq.checkkeyword(keyword_bits_index, keyword_index)
               iseq.branchif(skip_value_label)
               visit(value)
