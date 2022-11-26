@@ -95,12 +95,18 @@ module SyntaxTree
       class Label
         attr_reader :name
 
+        # When we're serializing the instruction sequence, we need to be able to
+        # look up the label from the branch instructions and then access the
+        # subsequent node. So we'll store the reference here.
+        attr_reader :node
+
         def initialize(name = nil)
           @name = name
         end
 
-        def patch!(name)
+        def patch!(name, node)
           @name = name
+          @node = node
         end
       end
 
@@ -220,19 +226,17 @@ module SyntaxTree
         specialize_instructions! if options.specialized_instruction?
 
         # Next, set it up so that all of the labels get their correct name.
-        insns
-          .each
-          .inject(0) do |length, insn|
-            case insn
-            when Integer, Symbol
-              length
-            when Label
-              insn.patch!(:"label_#{length}")
-              length
-            else
-              length + insn.length
-            end
+        length = 0
+        insns.each_node do |node, value|
+          case value
+          when Integer, Symbol
+            # skip
+          when Label
+            value.patch!(:"label_#{length}", node)
+          else
+            length += value.length
           end
+        end
 
         # Next, dump all of the instructions into a flat list.
         dumped =
