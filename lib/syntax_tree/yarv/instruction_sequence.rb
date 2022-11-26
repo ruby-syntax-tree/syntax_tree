@@ -52,6 +52,8 @@ module SyntaxTree
             @tail_node.next_node = node
             @tail_node = node
           end
+
+          node
         end
       end
 
@@ -98,15 +100,14 @@ module SyntaxTree
         # When we're serializing the instruction sequence, we need to be able to
         # look up the label from the branch instructions and then access the
         # subsequent node. So we'll store the reference here.
-        attr_reader :node
+        attr_accessor :node
 
         def initialize(name = nil)
           @name = name
         end
 
-        def patch!(name, node)
+        def patch!(name)
           @name = name
-          @node = node
         end
       end
 
@@ -222,8 +223,9 @@ module SyntaxTree
       def to_a
         versions = RUBY_VERSION.split(".").map(&:to_i)
 
-        # First, specialize any instructions that need to be specialized.
+        # First, handle any compilation options that we need to.
         specialize_instructions! if options.specialized_instruction?
+        peephole_optimize! if options.peephole_optimization?
 
         # Next, set it up so that all of the labels get their correct name.
         length = 0
@@ -232,7 +234,7 @@ module SyntaxTree
           when Integer, Symbol
             # skip
           when Label
-            value.patch!(:"label_#{length}", node)
+            value.patch!(:"label_#{length}")
           else
             length += value.length
           end
@@ -383,6 +385,27 @@ module SyntaxTree
         end
       end
 
+      def peephole_optimize!
+        insns.each_node do |node, value|
+          case value
+          when Jump
+            #  jump LABEL
+            #  ...
+            # LABEL:
+            #  leave
+            # =>
+            #  leave
+            #  ...
+            # LABEL:
+            #  leave
+            # case value.label.node.next_node&.value
+            # when Leave
+            #   node.value = Leave.new
+            # end
+          end
+        end
+      end
+
       ##########################################################################
       # Child instruction sequence methods
       ##########################################################################
@@ -421,15 +444,18 @@ module SyntaxTree
         Label.new
       end
 
-      def push(insn)
-        insns.push(insn)
+      def push(value)
+        node = insns.push(value)
 
-        case insn
-        when Array, Integer, Label, Symbol
-          insn
+        case value
+        when Array, Integer, Symbol
+          value
+        when Label
+          value.node = node
+          value
         else
-          stack.change_by(-insn.pops + insn.pushes)
-          insn
+          stack.change_by(-value.pops + value.pushes)
+          value
         end
       end
 
