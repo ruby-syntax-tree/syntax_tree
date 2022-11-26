@@ -608,33 +608,6 @@ module SyntaxTree
           )
         end
 
-        arg_parts = argument_parts(node.arguments)
-        argc = arg_parts.length
-
-        # First we're going to check if we're calling a method on an array
-        # literal without any arguments. In that case there are some
-        # specializations we might be able to perform.
-        if argc == 0 && (node.message.is_a?(Ident) || node.message.is_a?(Op))
-          case node.receiver
-          when ArrayLiteral
-            parts = node.receiver.contents&.parts || []
-
-            if parts.none? { |part| part.is_a?(ArgStar) } &&
-                 RubyVisitor.compile(node.receiver).nil?
-              case node.message.value
-              when "max"
-                visit(node.receiver.contents)
-                iseq.opt_newarray_max(parts.length)
-                return
-              when "min"
-                visit(node.receiver.contents)
-                iseq.opt_newarray_min(parts.length)
-                return
-              end
-            end
-          end
-        end
-
         # Track whether or not this is a method call on a block proxy receiver.
         # If it is, we can potentially do tailcall optimizations on it.
         block_receiver = false
@@ -663,6 +636,8 @@ module SyntaxTree
           iseq.branchnil(after_call_label)
         end
 
+        arg_parts = argument_parts(node.arguments)
+        argc = arg_parts.length
         flag = 0
 
         arg_parts.each do |arg_part|

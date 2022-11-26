@@ -190,14 +190,16 @@ module SyntaxTree
       end
 
       def length
-        insns.each.inject(0) do |sum, insn|
-          case insn
-          when Integer, Label, Symbol
-            sum
-          else
-            sum + insn.length
+        insns
+          .each
+          .inject(0) do |sum, insn|
+            case insn
+            when Integer, Label, Symbol
+              sum
+            else
+              sum + insn.length
+            end
           end
-        end
       end
 
       def eval
@@ -218,29 +220,32 @@ module SyntaxTree
         specialize_instructions! if options.specialized_instruction?
 
         # Next, set it up so that all of the labels get their correct name.
-        insns.each.inject(0) do |length, insn|
-          case insn
-          when Integer, Symbol
-            length
-          when Label
-            insn.patch!(:"label_#{length}")
-            length
-          else
-            length + insn.length
+        insns
+          .each
+          .inject(0) do |length, insn|
+            case insn
+            when Integer, Symbol
+              length
+            when Label
+              insn.patch!(:"label_#{length}")
+              length
+            else
+              length + insn.length
+            end
           end
-        end
 
         # Next, dump all of the instructions into a flat list.
-        dumped = insns.each.map do |insn|
-          case insn
-          when Integer, Symbol
-            insn
-          when Label
-            insn.name
-          else
-            insn.to_a(self)
+        dumped =
+          insns.each.map do |insn|
+            case insn
+            when Integer, Symbol
+              insn
+            when Label
+              insn.name
+            else
+              insn.to_a(self)
+            end
           end
-        end
 
         dumped_options = argument_options.dup
         dumped_options[:opt].map!(&:name) if dumped_options[:opt]
@@ -271,9 +276,8 @@ module SyntaxTree
       def specialize_instructions!
         insns.each_node do |node|
           case node.instruction
-          when PutObject, PutString
+          when NewArray
             next unless node.next_node
-            next if node.instruction.is_a?(PutObject) && !node.instruction.object.is_a?(String)
 
             next_node = node.next_node
             next unless next_node.instruction.is_a?(Send)
@@ -281,19 +285,46 @@ module SyntaxTree
 
             calldata = next_node.instruction.calldata
             next unless calldata.flags == CallData::CALL_ARGS_SIMPLE
+            next unless calldata.argc == 0
+
+            case calldata.method
+            when :max
+              node.instruction = OptNewArrayMax.new(node.instruction.number)
+              node.next_node = next_node.next_node
+            when :min
+              node.instruction = OptNewArrayMin.new(node.instruction.number)
+              node.next_node = next_node.next_node
+            end
+          when PutObject, PutString
+            next unless node.next_node
+            if node.instruction.is_a?(PutObject) &&
+                 !node.instruction.object.is_a?(String)
+              next
+            end
+
+            next_node = node.next_node
+            next unless next_node.instruction.is_a?(Send)
+            next if next_node.instruction.block_iseq
+
+            calldata = next_node.instruction.calldata
+            next unless calldata.flags == CallData::CALL_ARGS_SIMPLE
+            next unless calldata.argc == 0
 
             case calldata.method
             when :freeze
-              node.instruction = OptStrFreeze.new(node.instruction.object, calldata)
+              node.instruction =
+                OptStrFreeze.new(node.instruction.object, calldata)
               node.next_node = next_node.next_node
             when :-@
-              node.instruction = OptStrUMinus.new(node.instruction.object, calldata)
+              node.instruction =
+                OptStrUMinus.new(node.instruction.object, calldata)
               node.next_node = next_node.next_node
             end
           when Send
             calldata = node.instruction.calldata
 
-            if !node.instruction.block_iseq && !calldata.flag?(CallData::CALL_ARGS_BLOCKARG)
+            if !node.instruction.block_iseq &&
+                 !calldata.flag?(CallData::CALL_ARGS_BLOCKARG)
               # Specialize the send instruction. If it doesn't have a block
               # attached, then we will replace it with an opt_send_without_block
               # and do further specializations based on the called method and
@@ -639,24 +670,6 @@ module SyntaxTree
         push(Legacy::OptGetInlineCache.new(label, cache))
       end
 
-      def opt_newarray_max(length)
-        if options.specialized_instruction?
-          push(OptNewArrayMax.new(length))
-        else
-          newarray(length)
-          send(YARV.calldata(:max))
-        end
-      end
-
-      def opt_newarray_min(length)
-        if options.specialized_instruction?
-          push(OptNewArrayMin.new(length))
-        else
-          newarray(length)
-          send(YARV.calldata(:min))
-        end
-      end
-
       def opt_setinlinecache(cache)
         push(Legacy::OptSetInlineCache.new(cache))
       end
@@ -938,9 +951,11 @@ module SyntaxTree
           when :opt_getinlinecache
             iseq.opt_getinlinecache(labels[opnds[0]], opnds[1])
           when :opt_newarray_max
-            iseq.opt_newarray_max(opnds[0])
+            iseq.newarray(opnds[0])
+            iseq.send(YARV.calldata(:max))
           when :opt_newarray_min
-            iseq.opt_newarray_min(opnds[0])
+            iseq.newarray(opnds[0])
+            iseq.send(YARV.calldata(:min))
           when :opt_neq
             iseq.push(
               OptNEq.new(CallData.from(opnds[0]), CallData.from(opnds[1]))
