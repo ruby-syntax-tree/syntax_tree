@@ -12,10 +12,10 @@ module SyntaxTree
       # and other transformations like instruction specialization.
       class InstructionList
         class Node
-          attr_accessor :instruction, :next_node
+          attr_accessor :value, :next_node
 
-          def initialize(instruction, next_node = nil)
-            @instruction = instruction
+          def initialize(value, next_node = nil)
+            @value = value
             @next_node = next_node
           end
         end
@@ -29,7 +29,7 @@ module SyntaxTree
 
         def each
           return to_enum(__method__) unless block_given?
-          each_node { |node| yield node.instruction }
+          each_node { |node| yield node.value }
         end
 
         def each_node
@@ -37,7 +37,7 @@ module SyntaxTree
           node = head_node
 
           while node
-            yield node
+            yield node, node.value
             node = node.next_node
           end
         end
@@ -274,62 +274,56 @@ module SyntaxTree
       end
 
       def specialize_instructions!
-        insns.each_node do |node|
-          case node.instruction
+        insns.each_node do |node, value|
+          case value
           when NewArray
             next unless node.next_node
 
             next_node = node.next_node
-            next unless next_node.instruction.is_a?(Send)
-            next if next_node.instruction.block_iseq
+            next unless next_node.value.is_a?(Send)
+            next if next_node.value.block_iseq
 
-            calldata = next_node.instruction.calldata
+            calldata = next_node.value.calldata
             next unless calldata.flags == CallData::CALL_ARGS_SIMPLE
             next unless calldata.argc == 0
 
             case calldata.method
             when :max
-              node.instruction = OptNewArrayMax.new(node.instruction.number)
+              node.value = OptNewArrayMax.new(value.number)
               node.next_node = next_node.next_node
             when :min
-              node.instruction = OptNewArrayMin.new(node.instruction.number)
+              node.value = OptNewArrayMin.new(value.number)
               node.next_node = next_node.next_node
             end
           when PutObject, PutString
             next unless node.next_node
-            if node.instruction.is_a?(PutObject) &&
-                 !node.instruction.object.is_a?(String)
-              next
-            end
+            next if value.is_a?(PutObject) && !value.object.is_a?(String)
 
             next_node = node.next_node
-            next unless next_node.instruction.is_a?(Send)
-            next if next_node.instruction.block_iseq
+            next unless next_node.value.is_a?(Send)
+            next if next_node.value.block_iseq
 
-            calldata = next_node.instruction.calldata
+            calldata = next_node.value.calldata
             next unless calldata.flags == CallData::CALL_ARGS_SIMPLE
             next unless calldata.argc == 0
 
             case calldata.method
             when :freeze
-              node.instruction =
-                OptStrFreeze.new(node.instruction.object, calldata)
+              node.value = OptStrFreeze.new(value.object, calldata)
               node.next_node = next_node.next_node
             when :-@
-              node.instruction =
-                OptStrUMinus.new(node.instruction.object, calldata)
+              node.value = OptStrUMinus.new(value.object, calldata)
               node.next_node = next_node.next_node
             end
           when Send
-            calldata = node.instruction.calldata
+            calldata = value.calldata
 
-            if !node.instruction.block_iseq &&
-                 !calldata.flag?(CallData::CALL_ARGS_BLOCKARG)
+            if !value.block_iseq && !calldata.flag?(CallData::CALL_ARGS_BLOCKARG)
               # Specialize the send instruction. If it doesn't have a block
               # attached, then we will replace it with an opt_send_without_block
               # and do further specializations based on the called method and
               # the number of arguments.
-              node.instruction =
+              node.value =
                 case [calldata.method, calldata.argc]
                 when [:length, 0]
                   OptLength.new(calldata)
