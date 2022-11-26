@@ -12,8 +12,7 @@ module SyntaxTree
       # and other transformations like instruction specialization.
       class InstructionList
         class Node
-          attr_reader :instruction
-          attr_accessor :next_node
+          attr_accessor :instruction, :next_node
 
           def initialize(instruction, next_node = nil)
             @instruction = instruction
@@ -30,10 +29,15 @@ module SyntaxTree
 
         def each
           return to_enum(__method__) unless block_given?
+          each_node { |node| yield node.instruction }
+        end
+
+        def each_node
+          return to_enum(__method__) unless block_given?
           node = head_node
 
           while node
-            yield node.instruction
+            yield node
             node = node.next_node
           end
         end
@@ -210,7 +214,10 @@ module SyntaxTree
       def to_a
         versions = RUBY_VERSION.split(".").map(&:to_i)
 
-        # First, set it up so that all of the labels get their correct name.
+        # First, specialize any instructions that need to be specialized.
+        specialize_instructions! if options.specialized_instruction?
+
+        # Next, set it up so that all of the labels get their correct name.
         insns.each.inject(0) do |length, insn|
           case insn
           when Integer, Symbol
@@ -259,6 +266,92 @@ module SyntaxTree
           [],
           dumped
         ]
+      end
+
+      def specialize_instructions!
+        insns.each_node do |node|
+          case node.instruction
+          when PutObject, PutString
+            next unless node.next_node
+            next if node.instruction.is_a?(PutObject) && !node.instruction.object.is_a?(String)
+
+            next_node = node.next_node
+            next unless next_node.instruction.is_a?(Send)
+            next if next_node.instruction.block_iseq
+
+            calldata = next_node.instruction.calldata
+            next unless calldata.flags == CallData::CALL_ARGS_SIMPLE
+
+            case calldata.method
+            when :freeze
+              node.instruction = OptStrFreeze.new(node.instruction.object, calldata)
+              node.next_node = next_node.next_node
+            when :-@
+              node.instruction = OptStrUMinus.new(node.instruction.object, calldata)
+              node.next_node = next_node.next_node
+            end
+          when Send
+            calldata = node.instruction.calldata
+
+            if !node.instruction.block_iseq && !calldata.flag?(CallData::CALL_ARGS_BLOCKARG)
+              # Specialize the send instruction. If it doesn't have a block
+              # attached, then we will replace it with an opt_send_without_block
+              # and do further specializations based on the called method and
+              # the number of arguments.
+              node.instruction =
+                case [calldata.method, calldata.argc]
+                when [:length, 0]
+                  OptLength.new(calldata)
+                when [:size, 0]
+                  OptSize.new(calldata)
+                when [:empty?, 0]
+                  OptEmptyP.new(calldata)
+                when [:nil?, 0]
+                  OptNilP.new(calldata)
+                when [:succ, 0]
+                  OptSucc.new(calldata)
+                when [:!, 0]
+                  OptNot.new(calldata)
+                when [:+, 1]
+                  OptPlus.new(calldata)
+                when [:-, 1]
+                  OptMinus.new(calldata)
+                when [:*, 1]
+                  OptMult.new(calldata)
+                when [:/, 1]
+                  OptDiv.new(calldata)
+                when [:%, 1]
+                  OptMod.new(calldata)
+                when [:==, 1]
+                  OptEq.new(calldata)
+                when [:!=, 1]
+                  OptNEq.new(YARV.calldata(:==, 1), calldata)
+                when [:=~, 1]
+                  OptRegExpMatch2.new(calldata)
+                when [:<, 1]
+                  OptLT.new(calldata)
+                when [:<=, 1]
+                  OptLE.new(calldata)
+                when [:>, 1]
+                  OptGT.new(calldata)
+                when [:>=, 1]
+                  OptGE.new(calldata)
+                when [:<<, 1]
+                  OptLTLT.new(calldata)
+                when [:[], 1]
+                  OptAref.new(calldata)
+                when [:&, 1]
+                  OptAnd.new(calldata)
+                when [:|, 1]
+                  OptOr.new(calldata)
+                when [:[]=, 2]
+                  OptAset.new(calldata)
+                else
+                  OptSendWithoutBlock.new(calldata)
+                end
+            end
+          end
+        end
       end
 
       ##########################################################################
@@ -568,24 +661,6 @@ module SyntaxTree
         push(Legacy::OptSetInlineCache.new(cache))
       end
 
-      def opt_str_freeze(object)
-        if options.specialized_instruction?
-          push(OptStrFreeze.new(object, YARV.calldata(:freeze)))
-        else
-          putstring(object)
-          send(YARV.calldata(:freeze))
-        end
-      end
-
-      def opt_str_uminus(object)
-        if options.specialized_instruction?
-          push(OptStrUMinus.new(object, YARV.calldata(:-@)))
-        else
-          putstring(object)
-          send(YARV.calldata(:-@))
-        end
-      end
-
       def pop
         push(Pop.new)
       end
@@ -625,65 +700,7 @@ module SyntaxTree
       end
 
       def send(calldata, block_iseq = nil)
-        if options.specialized_instruction? && !block_iseq &&
-             !calldata.flag?(CallData::CALL_ARGS_BLOCKARG)
-          # Specialize the send instruction. If it doesn't have a block
-          # attached, then we will replace it with an opt_send_without_block
-          # and do further specializations based on the called method and the
-          # number of arguments.
-          case [calldata.method, calldata.argc]
-          when [:length, 0]
-            push(OptLength.new(calldata))
-          when [:size, 0]
-            push(OptSize.new(calldata))
-          when [:empty?, 0]
-            push(OptEmptyP.new(calldata))
-          when [:nil?, 0]
-            push(OptNilP.new(calldata))
-          when [:succ, 0]
-            push(OptSucc.new(calldata))
-          when [:!, 0]
-            push(OptNot.new(calldata))
-          when [:+, 1]
-            push(OptPlus.new(calldata))
-          when [:-, 1]
-            push(OptMinus.new(calldata))
-          when [:*, 1]
-            push(OptMult.new(calldata))
-          when [:/, 1]
-            push(OptDiv.new(calldata))
-          when [:%, 1]
-            push(OptMod.new(calldata))
-          when [:==, 1]
-            push(OptEq.new(calldata))
-          when [:!=, 1]
-            push(OptNEq.new(YARV.calldata(:==, 1), calldata))
-          when [:=~, 1]
-            push(OptRegExpMatch2.new(calldata))
-          when [:<, 1]
-            push(OptLT.new(calldata))
-          when [:<=, 1]
-            push(OptLE.new(calldata))
-          when [:>, 1]
-            push(OptGT.new(calldata))
-          when [:>=, 1]
-            push(OptGE.new(calldata))
-          when [:<<, 1]
-            push(OptLTLT.new(calldata))
-          when [:[], 1]
-            push(OptAref.new(calldata))
-          when [:&, 1]
-            push(OptAnd.new(calldata))
-          when [:|, 1]
-            push(OptOr.new(calldata))
-          when [:[]=, 2]
-            push(OptAset.new(calldata))
-          else
-            push(OptSendWithoutBlock.new(calldata))
-          end
-        else
-          push(Send.new(calldata, block_iseq))
-        end
+        push(Send.new(calldata, block_iseq))
       end
 
       def setblockparam(index, level)
@@ -931,9 +948,11 @@ module SyntaxTree
           when :opt_setinlinecache
             iseq.opt_setinlinecache(opnds[0])
           when :opt_str_freeze
-            iseq.opt_str_freeze(opnds[0])
+            iseq.putstring(opnds[0])
+            iseq.send(YARV.calldata(:freeze))
           when :opt_str_uminus
-            iseq.opt_str_uminus(opnds[0])
+            iseq.putstring(opnds[0])
+            iseq.send(YARV.calldata(:-@))
           when :pop
             iseq.pop
           when :putnil

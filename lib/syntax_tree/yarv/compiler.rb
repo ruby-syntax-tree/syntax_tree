@@ -632,17 +632,6 @@ module SyntaxTree
                 return
               end
             end
-          when StringLiteral
-            if RubyVisitor.compile(node.receiver).nil?
-              case node.message.value
-              when "-@"
-                iseq.opt_str_uminus(node.receiver.parts.first.value)
-                return
-              when "freeze"
-                iseq.opt_str_freeze(node.receiver.parts.first.value)
-                return
-              end
-            end
           end
         end
 
