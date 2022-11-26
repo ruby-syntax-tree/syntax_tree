@@ -1278,12 +1278,17 @@ module SyntaxTree
           iseq.argument_size += 1
 
           unless iseq.argument_options.key?(:opt)
-            iseq.argument_options[:opt] = [iseq.label_at_index]
+            start_label = iseq.label
+            iseq.push(start_label)
+            iseq.argument_options[:opt] = [start_label]
           end
 
           visit(value)
           iseq.setlocal(index, 0)
-          iseq.argument_options[:opt] << iseq.label_at_index
+
+          arg_given_label = iseq.label
+          iseq.push(arg_given_label)
+          iseq.argument_options[:opt] << arg_given_label
         end
 
         visit(node.rest) if node.rest

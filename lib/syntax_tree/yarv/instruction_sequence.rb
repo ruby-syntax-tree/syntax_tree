@@ -235,6 +235,9 @@ module SyntaxTree
           end
         end
 
+        dumped_options = argument_options.dup
+        dumped_options[:opt].map!(&:name) if dumped_options[:opt]
+
         # Next, return the instruction sequence as an array.
         [
           MAGIC,
@@ -252,7 +255,7 @@ module SyntaxTree
           location.start_line,
           type,
           local_table.names,
-          argument_options,
+          dumped_options,
           [],
           dumped
         ]
@@ -306,10 +309,6 @@ module SyntaxTree
           stack.change_by(-insn.pops + insn.pushes)
           insn
         end
-      end
-
-      def label_at_index
-        push(:"label_#{length}")
       end
 
       def event(name)
@@ -767,6 +766,11 @@ module SyntaxTree
       def self.from(source, options = Compiler::Options.new, parent_iseq = nil)
         iseq = new(source[9], source[5], parent_iseq, Location.default, options)
 
+        # set up the labels object so that the labels are shared between the
+        # location in the instruction sequence and the instructions that
+        # reference them
+        labels = Hash.new { |hash, name| hash[name] = Label.new(name) }
+
         # set up the correct argument size
         iseq.argument_size = source[4][:arg_size]
 
@@ -775,11 +779,9 @@ module SyntaxTree
 
         # set up the argument options
         iseq.argument_options.merge!(source[11])
-
-        # set up the labels object so that the labels are shared between the
-        # location in the instruction sequence and the instructions that
-        # reference them
-        labels = Hash.new { |hash, name| hash[name] = Label.new(name) }
+        if iseq.argument_options[:opt]
+          iseq.argument_options[:opt].map! { |opt| labels[opt] }
+        end
 
         # set up all of the instructions
         source[13].each do |insn|
