@@ -98,6 +98,14 @@ module SyntaxTree
       def pushes
         0
       end
+
+      def canonical
+        self
+      end
+
+      def call(vm)
+        vm.pop(number)
+      end
     end
 
     # ### Summary
@@ -133,6 +141,20 @@ module SyntaxTree
 
       def pushes
         1
+      end
+
+      def canonical
+        self
+      end
+
+      def call(vm)
+        original, value = vm.pop(2)
+
+        if value.is_a?(String)
+          vm.push(value)
+        else
+          vm.push("#<#{original.class.name}:0000>")
+        end
       end
     end
 
@@ -173,6 +195,14 @@ module SyntaxTree
 
       def pushes
         0
+      end
+
+      def canonical
+        self
+      end
+
+      def call(vm)
+        vm.jump(label) if vm.pop
       end
     end
 
@@ -215,6 +245,14 @@ module SyntaxTree
       def pushes
         0
       end
+
+      def canonical
+        self
+      end
+
+      def call(vm)
+        vm.jump(label) if vm.pop.nil?
+      end
     end
 
     # ### Summary
@@ -254,6 +292,14 @@ module SyntaxTree
 
       def pushes
         0
+      end
+
+      def canonical
+        self
+      end
+
+      def call(vm)
+        vm.jump(label) unless vm.pop
       end
     end
 
@@ -303,6 +349,14 @@ module SyntaxTree
       def pushes
         1
       end
+
+      def canonical
+        self
+      end
+
+      def call(vm)
+        vm.push(vm.local_get(keyword_bits_index, 0)[keyword_index])
+      end
     end
 
     # ### Summary
@@ -342,6 +396,14 @@ module SyntaxTree
 
       def pushes
         1
+      end
+
+      def canonical
+        self
+      end
+
+      def call(vm)
+        raise NotImplementedError, "checkmatch"
       end
     end
 
@@ -406,6 +468,61 @@ module SyntaxTree
         # can investigate further.
         2
       end
+
+      def canonical
+        self
+      end
+
+      def call(vm)
+        object = vm.pop
+        result =
+          case type
+          when TYPE_OBJECT
+            raise NotImplementedError, "checktype TYPE_OBJECT"
+          when TYPE_CLASS
+            object.is_a?(Class)
+          when TYPE_MODULE
+            object.is_a?(Module)
+          when TYPE_FLOAT
+            object.is_a?(Float)
+          when TYPE_STRING
+            object.is_a?(String)
+          when TYPE_REGEXP
+            object.is_a?(Regexp)
+          when TYPE_ARRAY
+            object.is_a?(Array)
+          when TYPE_HASH
+            object.is_a?(Hash)
+          when TYPE_STRUCT
+            object.is_a?(Struct)
+          when TYPE_BIGNUM
+            raise NotImplementedError, "checktype TYPE_BIGNUM"
+          when TYPE_FILE
+            object.is_a?(File)
+          when TYPE_DATA
+            raise NotImplementedError, "checktype TYPE_DATA"
+          when TYPE_MATCH
+            raise NotImplementedError, "checktype TYPE_MATCH"
+          when TYPE_COMPLEX
+            object.is_a?(Complex)
+          when TYPE_RATIONAL
+            object.is_a?(Rational)
+          when TYPE_NIL
+            object.nil?
+          when TYPE_TRUE
+            object == true
+          when TYPE_FALSE
+            object == false
+          when TYPE_SYMBOL
+            object.is_a?(Symbol)
+          when TYPE_FIXNUM
+            object.is_a?(Integer)
+          when TYPE_UNDEF
+            raise NotImplementedError, "checktype TYPE_UNDEF"
+          end
+
+        vm.push(result)
+      end
     end
 
     # ### Summary
@@ -437,6 +554,15 @@ module SyntaxTree
 
       def pushes
         1
+      end
+
+      def canonical
+        self
+      end
+
+      def call(vm)
+        left, right = vm.pop(2)
+        vm.push([*left, *right])
       end
     end
 
@@ -476,6 +602,14 @@ module SyntaxTree
 
       def pushes
         1
+      end
+
+      def canonical
+        self
+      end
+
+      def call(vm)
+        vm.push(vm.pop(number).join)
       end
     end
 
@@ -523,6 +657,20 @@ module SyntaxTree
 
       def pushes
         1
+      end
+
+      def canonical
+        self
+      end
+
+      def call(vm)
+        object, superclass = vm.pop(2)
+        iseq = class_iseq
+
+        clazz = Class.new(superclass || Object)
+        vm.push(vm.run_class_frame(iseq, clazz))
+
+        object.const_set(name, clazz)
       end
     end
 
@@ -579,6 +727,46 @@ module SyntaxTree
       def pushes
         1
       end
+
+      def canonical
+        self
+      end
+
+      def call(vm)
+        object = vm.pop
+
+        result =
+          case type
+          when TYPE_NIL, TYPE_SELF, TYPE_TRUE, TYPE_FALSE, TYPE_ASGN, TYPE_EXPR
+            message
+          when TYPE_IVAR
+            message if vm._self.instance_variable_defined?(name)
+          when TYPE_LVAR
+            raise NotImplementedError, "defined TYPE_LVAR"
+          when TYPE_GVAR
+            message if global_variables.include?(name)
+          when TYPE_CVAR
+            clazz = vm._self
+            clazz = clazz.singleton_class unless clazz.is_a?(Module)
+            message if clazz.class_variable_defined?(name)
+          when TYPE_CONST
+            raise NotImplementedError, "defined TYPE_CONST"
+          when TYPE_METHOD
+            raise NotImplementedError, "defined TYPE_METHOD"
+          when TYPE_YIELD
+            raise NotImplementedError, "defined TYPE_YIELD"
+          when TYPE_ZSUPER
+            raise NotImplementedError, "defined TYPE_ZSUPER"
+          when TYPE_REF
+            raise NotImplementedError, "defined TYPE_REF"
+          when TYPE_FUNC
+            message if object.respond_to?(name, true)
+          when TYPE_CONST_FROM
+            raise NotImplementedError, "defined TYPE_CONST_FROM"
+          end
+
+        vm.push(result)
+      end
     end
 
     # ### Summary
@@ -595,15 +783,15 @@ module SyntaxTree
     # ~~~
     #
     class DefineMethod
-      attr_reader :name, :method_iseq
+      attr_reader :method_name, :method_iseq
 
-      def initialize(name, method_iseq)
-        @name = name
+      def initialize(method_name, method_iseq)
+        @method_name = method_name
         @method_iseq = method_iseq
       end
 
       def to_a(_iseq)
-        [:definemethod, name, method_iseq.to_a]
+        [:definemethod, method_name, method_iseq.to_a]
       end
 
       def length
@@ -616,6 +804,21 @@ module SyntaxTree
 
       def pushes
         0
+      end
+
+      def canonical
+        self
+      end
+
+      def call(vm)
+        name = method_name
+        iseq = method_iseq
+
+        vm
+          ._self
+          .__send__(:define_method, name) do |*args, **kwargs, &block|
+            vm.run_method_frame(name, iseq, self, *args, **kwargs, &block)
+          end
       end
     end
 
@@ -634,15 +837,15 @@ module SyntaxTree
     # ~~~
     #
     class DefineSMethod
-      attr_reader :name, :method_iseq
+      attr_reader :method_name, :method_iseq
 
-      def initialize(name, method_iseq)
-        @name = name
+      def initialize(method_name, method_iseq)
+        @method_name = method_name
         @method_iseq = method_iseq
       end
 
       def to_a(_iseq)
-        [:definesmethod, name, method_iseq.to_a]
+        [:definesmethod, method_name, method_iseq.to_a]
       end
 
       def length
@@ -655,6 +858,21 @@ module SyntaxTree
 
       def pushes
         0
+      end
+
+      def canonical
+        self
+      end
+
+      def call(vm)
+        name = method_name
+        iseq = method_iseq
+
+        vm
+          ._self
+          .__send__(:define_singleton_method, name) do |*args, **kwargs, &block|
+            vm.run_method_frame(name, iseq, self, *args, **kwargs, &block)
+          end
       end
     end
 
@@ -683,6 +901,14 @@ module SyntaxTree
 
       def pushes
         2
+      end
+
+      def canonical
+        self
+      end
+
+      def call(vm)
+        vm.push(vm.stack.last.dup)
       end
     end
 
@@ -718,6 +944,14 @@ module SyntaxTree
       def pushes
         1
       end
+
+      def canonical
+        self
+      end
+
+      def call(vm)
+        vm.push(object.dup)
+      end
     end
 
     # ### Summary
@@ -752,6 +986,14 @@ module SyntaxTree
       def pushes
         1
       end
+
+      def canonical
+        self
+      end
+
+      def call(vm)
+        vm.push(object.dup)
+      end
     end
 
     # ### Summary
@@ -785,6 +1027,16 @@ module SyntaxTree
 
       def pushes
         number
+      end
+
+      def canonical
+        self
+      end
+
+      def call(vm)
+        values = vm.pop(number)
+        vm.push(*values)
+        vm.push(*values)
       end
     end
 
@@ -822,6 +1074,14 @@ module SyntaxTree
 
       def pushes
         number
+      end
+
+      def canonical
+        self
+      end
+
+      def call(vm)
+        raise NotImplementedError, "expandarray"
       end
     end
 
@@ -867,6 +1127,14 @@ module SyntaxTree
       def pushes
         1
       end
+
+      def canonical
+        self
+      end
+
+      def call(vm)
+        vm.push(vm.local_get(index, level))
+      end
     end
 
     # ### Summary
@@ -909,6 +1177,14 @@ module SyntaxTree
       def pushes
         1
       end
+
+      def canonical
+        self
+      end
+
+      def call(vm)
+        vm.push(vm.local_get(index, level))
+      end
     end
 
     # ### Summary
@@ -946,6 +1222,16 @@ module SyntaxTree
       def pushes
         1
       end
+
+      def canonical
+        self
+      end
+
+      def call(vm)
+        clazz = vm._self
+        clazz = clazz.class unless clazz.is_a?(Class)
+        vm.push(clazz.class_variable_get(name))
+      end
     end
 
     # ### Summary
@@ -982,6 +1268,24 @@ module SyntaxTree
       def pushes
         1
       end
+
+      def canonical
+        self
+      end
+
+      def call(vm)
+        # const_base, allow_nil =
+        vm.pop(2)
+
+        vm.frame.nesting.reverse_each do |clazz|
+          if clazz.const_defined?(name)
+            vm.push(clazz.const_get(name))
+            return
+          end
+        end
+
+        raise NameError, "uninitialized constant #{name}"
+      end
     end
 
     # ### Summary
@@ -1015,6 +1319,16 @@ module SyntaxTree
 
       def pushes
         1
+      end
+
+      def canonical
+        self
+      end
+
+      def call(vm)
+        # Evaluating the name of the global variable because there isn't a
+        # reflection API for global variables.
+        vm.push(eval(name.to_s, binding, __FILE__, __LINE__))
       end
     end
 
@@ -1058,79 +1372,14 @@ module SyntaxTree
       def pushes
         1
       end
-    end
 
-    # ### Summary
-    #
-    # `getlocal_WC_0` is a specialized version of the `getlocal` instruction. It
-    # fetches the value of a local variable from the current frame determined by
-    # the index given as its only argument.
-    #
-    # ### Usage
-    #
-    # ~~~ruby
-    # value = 5
-    # value
-    # ~~~
-    #
-    class GetLocalWC0
-      attr_reader :index
-
-      def initialize(index)
-        @index = index
+      def canonical
+        self
       end
 
-      def to_a(iseq)
-        [:getlocal_WC_0, iseq.local_table.offset(index)]
-      end
-
-      def length
-        2
-      end
-
-      def pops
-        0
-      end
-
-      def pushes
-        1
-      end
-    end
-
-    # ### Summary
-    #
-    # `getlocal_WC_1` is a specialized version of the `getlocal` instruction. It
-    # fetches the value of a local variable from the parent frame determined by
-    # the index given as its only argument.
-    #
-    # ### Usage
-    #
-    # ~~~ruby
-    # value = 5
-    # self.then { value }
-    # ~~~
-    #
-    class GetLocalWC1
-      attr_reader :index
-
-      def initialize(index)
-        @index = index
-      end
-
-      def to_a(iseq)
-        [:getlocal_WC_1, iseq.parent_iseq.local_table.offset(index)]
-      end
-
-      def length
-        2
-      end
-
-      def pops
-        0
-      end
-
-      def pushes
-        1
+      def call(vm)
+        method = Object.instance_method(:instance_variable_get)
+        vm.push(method.bind(vm._self).call(name))
       end
     end
 
@@ -1173,6 +1422,104 @@ module SyntaxTree
       def pushes
         1
       end
+
+      def canonical
+        self
+      end
+
+      def call(vm)
+        vm.push(vm.local_get(index, level))
+      end
+    end
+
+    # ### Summary
+    #
+    # `getlocal_WC_0` is a specialized version of the `getlocal` instruction. It
+    # fetches the value of a local variable from the current frame determined by
+    # the index given as its only argument.
+    #
+    # ### Usage
+    #
+    # ~~~ruby
+    # value = 5
+    # value
+    # ~~~
+    #
+    class GetLocalWC0
+      attr_reader :index
+
+      def initialize(index)
+        @index = index
+      end
+
+      def to_a(iseq)
+        [:getlocal_WC_0, iseq.local_table.offset(index)]
+      end
+
+      def length
+        2
+      end
+
+      def pops
+        0
+      end
+
+      def pushes
+        1
+      end
+
+      def canonical
+        GetLocal.new(index, 0)
+      end
+
+      def call(vm)
+        canonical.call(vm)
+      end
+    end
+
+    # ### Summary
+    #
+    # `getlocal_WC_1` is a specialized version of the `getlocal` instruction. It
+    # fetches the value of a local variable from the parent frame determined by
+    # the index given as its only argument.
+    #
+    # ### Usage
+    #
+    # ~~~ruby
+    # value = 5
+    # self.then { value }
+    # ~~~
+    #
+    class GetLocalWC1
+      attr_reader :index
+
+      def initialize(index)
+        @index = index
+      end
+
+      def to_a(iseq)
+        [:getlocal_WC_1, iseq.parent_iseq.local_table.offset(index)]
+      end
+
+      def length
+        2
+      end
+
+      def pops
+        0
+      end
+
+      def pushes
+        1
+      end
+
+      def canonical
+        GetLocal.new(index, 1)
+      end
+
+      def call(vm)
+        canonical.call(vm)
+      end
     end
 
     # ### Summary
@@ -1212,6 +1559,21 @@ module SyntaxTree
       def pushes
         1
       end
+
+      def canonical
+        self
+      end
+
+      def call(vm)
+        case key
+        when SVAR_LASTLINE
+          raise NotImplementedError, "getspecial SVAR_LASTLINE"
+        when SVAR_BACKREF
+          raise NotImplementedError, "getspecial SVAR_BACKREF"
+        when SVAR_FLIPFLOP_START
+          vm.frame_svar.svars[SVAR_FLIPFLOP_START]
+        end
+      end
     end
 
     # ### Summary
@@ -1240,6 +1602,14 @@ module SyntaxTree
 
       def pushes
         1
+      end
+
+      def canonical
+        self
+      end
+
+      def call(vm)
+        vm.push(vm.pop.to_sym)
       end
     end
 
@@ -1278,6 +1648,14 @@ module SyntaxTree
 
       def pushes
         1
+      end
+
+      def canonical
+        self
+      end
+
+      def call(vm)
+        vm.push(vm.frame_yield.block.call(*vm.pop(calldata.argc)))
       end
     end
 
@@ -1319,6 +1697,32 @@ module SyntaxTree
       def pushes
         1
       end
+
+      def canonical
+        self
+      end
+
+      def call(vm)
+        block =
+          if (iseq = block_iseq)
+            ->(*args, **kwargs, &blk) do
+              vm.run_block_frame(iseq, *args, **kwargs, &blk)
+            end
+          end
+
+        keywords =
+          if calldata.kw_arg
+            calldata.kw_arg.zip(vm.pop(calldata.kw_arg.length)).to_h
+          else
+            {}
+          end
+
+        arguments = vm.pop(calldata.argc)
+        receiver = vm.pop
+
+        method = receiver.method(vm.frame.name).super_method
+        vm.push(method.call(*arguments, **keywords, &block))
+      end
     end
 
     # ### Summary
@@ -1358,6 +1762,14 @@ module SyntaxTree
       def pushes
         0
       end
+
+      def canonical
+        self
+      end
+
+      def call(vm)
+        vm.jump(label)
+      end
     end
 
     # ### Summary
@@ -1387,6 +1799,14 @@ module SyntaxTree
         # TODO: This is wrong. It should be 1. But it's 0 for now because
         # otherwise the stack size is incorrectly calculated.
         0
+      end
+
+      def canonical
+        self
+      end
+
+      def call(vm)
+        vm.leave
       end
     end
 
@@ -1424,6 +1844,14 @@ module SyntaxTree
       def pushes
         1
       end
+
+      def canonical
+        self
+      end
+
+      def call(vm)
+        vm.push(vm.pop(number))
+      end
     end
 
     # ### Summary
@@ -1459,6 +1887,14 @@ module SyntaxTree
 
       def pushes
         1
+      end
+
+      def canonical
+        self
+      end
+
+      def call(vm)
+        vm.push(vm.pop(number))
       end
     end
 
@@ -1497,6 +1933,14 @@ module SyntaxTree
 
       def pushes
         1
+      end
+
+      def canonical
+        self
+      end
+
+      def call(vm)
+        vm.push(vm.pop(number).each_slice(2).to_h)
       end
     end
 
@@ -1537,6 +1981,14 @@ module SyntaxTree
       def pushes
         1
       end
+
+      def canonical
+        self
+      end
+
+      def call(vm)
+        vm.push(Range.new(*vm.pop(2), exclude_end == 1))
+      end
     end
 
     # ### Summary
@@ -1565,6 +2017,13 @@ module SyntaxTree
 
       def pushes
         0
+      end
+
+      def canonical
+        self
+      end
+
+      def call(vm)
       end
     end
 
@@ -1604,6 +2063,14 @@ module SyntaxTree
       def pushes
         1
       end
+
+      def canonical
+        self
+      end
+
+      def call(vm)
+        vm.push(vm.pop.to_s)
+      end
     end
 
     # ### Summary
@@ -1642,6 +2109,16 @@ module SyntaxTree
       def pushes
         1
       end
+
+      def canonical
+        self
+      end
+
+      def call(vm)
+        return if @executed
+        vm.push(vm.run_block_frame(iseq))
+        @executed = true
+      end
     end
 
     # ### Summary
@@ -1679,6 +2156,14 @@ module SyntaxTree
       def pushes
         1
       end
+
+      def canonical
+        Send.new(calldata, nil)
+      end
+
+      def call(vm)
+        canonical.call(vm)
+      end
     end
 
     # ### Summary
@@ -1714,6 +2199,14 @@ module SyntaxTree
 
       def pushes
         1
+      end
+
+      def canonical
+        Send.new(calldata, nil)
+      end
+
+      def call(vm)
+        canonical.call(vm)
       end
     end
 
@@ -1753,6 +2246,14 @@ module SyntaxTree
       def pushes
         1
       end
+
+      def canonical
+        self
+      end
+
+      def call(vm)
+        vm.push(vm.pop[object])
+      end
     end
 
     # ### Summary
@@ -1789,6 +2290,14 @@ module SyntaxTree
 
       def pushes
         1
+      end
+
+      def canonical
+        Send.new(calldata, nil)
+      end
+
+      def call(vm)
+        canonical.call(vm)
       end
     end
 
@@ -1827,6 +2336,15 @@ module SyntaxTree
       def pushes
         1
       end
+
+      def canonical
+        self
+      end
+
+      def call(vm)
+        hash, value = vm.pop(2)
+        vm.push(hash[object] = value)
+      end
     end
 
     # ### Summary
@@ -1861,7 +2379,11 @@ module SyntaxTree
       end
 
       def to_a(_iseq)
-        [:opt_case_dispatch, case_dispatch_hash, else_label]
+        [
+          :opt_case_dispatch,
+          case_dispatch_hash.flat_map { |key, value| [key, value.name] },
+          else_label
+        ]
       end
 
       def length
@@ -1874,6 +2396,14 @@ module SyntaxTree
 
       def pushes
         0
+      end
+
+      def canonical
+        self
+      end
+
+      def call(vm)
+        vm.jump(case_dispatch_hash.fetch(vm.pop, else_label))
       end
     end
 
@@ -1912,6 +2442,14 @@ module SyntaxTree
       def pushes
         1
       end
+
+      def canonical
+        Send.new(calldata, nil)
+      end
+
+      def call(vm)
+        canonical.call(vm)
+      end
     end
 
     # ### Summary
@@ -1947,6 +2485,14 @@ module SyntaxTree
 
       def pushes
         1
+      end
+
+      def canonical
+        Send.new(calldata, nil)
+      end
+
+      def call(vm)
+        canonical.call(vm)
       end
     end
 
@@ -1985,6 +2531,14 @@ module SyntaxTree
       def pushes
         1
       end
+
+      def canonical
+        Send.new(calldata, nil)
+      end
+
+      def call(vm)
+        canonical.call(vm)
+      end
     end
 
     # ### Summary
@@ -2022,6 +2576,14 @@ module SyntaxTree
       def pushes
         1
       end
+
+      def canonical
+        Send.new(calldata, nil)
+      end
+
+      def call(vm)
+        canonical.call(vm)
+      end
     end
 
     # ### Summary
@@ -2057,6 +2619,21 @@ module SyntaxTree
 
       def pushes
         1
+      end
+
+      def canonical
+        self
+      end
+
+      def call(vm)
+        current = vm._self
+        current = current.class unless current.is_a?(Class)
+
+        names.each do |name|
+          current = name == :"" ? Object : current.const_get(name)
+        end
+
+        vm.push(current)
       end
     end
 
@@ -2095,6 +2672,14 @@ module SyntaxTree
       def pushes
         1
       end
+
+      def canonical
+        Send.new(calldata, nil)
+      end
+
+      def call(vm)
+        canonical.call(vm)
+      end
     end
 
     # ### Summary
@@ -2131,6 +2716,14 @@ module SyntaxTree
 
       def pushes
         1
+      end
+
+      def canonical
+        Send.new(calldata, nil)
+      end
+
+      def call(vm)
+        canonical.call(vm)
       end
     end
 
@@ -2169,6 +2762,14 @@ module SyntaxTree
       def pushes
         1
       end
+
+      def canonical
+        Send.new(calldata, nil)
+      end
+
+      def call(vm)
+        canonical.call(vm)
+      end
     end
 
     # ### Summary
@@ -2206,6 +2807,14 @@ module SyntaxTree
       def pushes
         1
       end
+
+      def canonical
+        Send.new(calldata, nil)
+      end
+
+      def call(vm)
+        canonical.call(vm)
+      end
     end
 
     # ### Summary
@@ -2242,6 +2851,14 @@ module SyntaxTree
 
       def pushes
         1
+      end
+
+      def canonical
+        Send.new(calldata, nil)
+      end
+
+      def call(vm)
+        canonical.call(vm)
       end
     end
 
@@ -2281,6 +2898,14 @@ module SyntaxTree
       def pushes
         1
       end
+
+      def canonical
+        Send.new(calldata, nil)
+      end
+
+      def call(vm)
+        canonical.call(vm)
+      end
     end
 
     # ### Summary
@@ -2318,6 +2943,14 @@ module SyntaxTree
       def pushes
         1
       end
+
+      def canonical
+        Send.new(calldata, nil)
+      end
+
+      def call(vm)
+        canonical.call(vm)
+      end
     end
 
     # ### Summary
@@ -2354,6 +2987,14 @@ module SyntaxTree
 
       def pushes
         1
+      end
+
+      def canonical
+        Send.new(calldata, nil)
+      end
+
+      def call(vm)
+        canonical.call(vm)
       end
     end
 
@@ -2395,6 +3036,15 @@ module SyntaxTree
       def pushes
         1
       end
+
+      def canonical
+        self
+      end
+
+      def call(vm)
+        receiver, argument = vm.pop(2)
+        vm.push(receiver != argument)
+      end
     end
 
     # ### Summary
@@ -2431,6 +3081,14 @@ module SyntaxTree
       def pushes
         1
       end
+
+      def canonical
+        self
+      end
+
+      def call(vm)
+        vm.push(vm.pop(number).max)
+      end
     end
 
     # ### Summary
@@ -2466,6 +3124,14 @@ module SyntaxTree
 
       def pushes
         1
+      end
+
+      def canonical
+        self
+      end
+
+      def call(vm)
+        vm.push(vm.pop(number).min)
       end
     end
 
@@ -2504,6 +3170,14 @@ module SyntaxTree
       def pushes
         1
       end
+
+      def canonical
+        Send.new(calldata, nil)
+      end
+
+      def call(vm)
+        canonical.call(vm)
+      end
     end
 
     # ### Summary
@@ -2538,6 +3212,14 @@ module SyntaxTree
 
       def pushes
         1
+      end
+
+      def canonical
+        Send.new(calldata, nil)
+      end
+
+      def call(vm)
+        canonical.call(vm)
       end
     end
 
@@ -2576,6 +3258,14 @@ module SyntaxTree
       def pushes
         1
       end
+
+      def canonical
+        Send.new(calldata, nil)
+      end
+
+      def call(vm)
+        canonical.call(vm)
+      end
     end
 
     # ### Summary
@@ -2613,6 +3303,14 @@ module SyntaxTree
       def pushes
         1
       end
+
+      def canonical
+        Send.new(calldata, nil)
+      end
+
+      def call(vm)
+        canonical.call(vm)
+      end
     end
 
     # ### Summary
@@ -2649,6 +3347,14 @@ module SyntaxTree
       def pushes
         1
       end
+
+      def canonical
+        Send.new(calldata, nil)
+      end
+
+      def call(vm)
+        canonical.call(vm)
+      end
     end
 
     # ### Summary
@@ -2684,6 +3390,14 @@ module SyntaxTree
 
       def pushes
         1
+      end
+
+      def canonical
+        Send.new(calldata, nil)
+      end
+
+      def call(vm)
+        canonical.call(vm)
       end
     end
 
@@ -2722,6 +3436,14 @@ module SyntaxTree
       def pushes
         1
       end
+
+      def canonical
+        Send.new(calldata, nil)
+      end
+
+      def call(vm)
+        canonical.call(vm)
+      end
     end
 
     # ### Summary
@@ -2758,6 +3480,14 @@ module SyntaxTree
 
       def pushes
         1
+      end
+
+      def canonical
+        self
+      end
+
+      def call(vm)
+        vm.push(object.freeze)
       end
     end
 
@@ -2796,6 +3526,14 @@ module SyntaxTree
       def pushes
         1
       end
+
+      def canonical
+        self
+      end
+
+      def call(vm)
+        vm.push(-object)
+      end
     end
 
     # ### Summary
@@ -2833,6 +3571,14 @@ module SyntaxTree
       def pushes
         1
       end
+
+      def canonical
+        Send.new(calldata, nil)
+      end
+
+      def call(vm)
+        canonical.call(vm)
+      end
     end
 
     # ### Summary
@@ -2861,6 +3607,14 @@ module SyntaxTree
       def pushes
         0
       end
+
+      def canonical
+        self
+      end
+
+      def call(vm)
+        vm.pop
+      end
     end
 
     # ### Summary
@@ -2888,6 +3642,14 @@ module SyntaxTree
 
       def pushes
         1
+      end
+
+      def canonical
+        PutObject.new(nil)
+      end
+
+      def call(vm)
+        canonical.call(vm)
       end
     end
 
@@ -2923,6 +3685,14 @@ module SyntaxTree
       def pushes
         1
       end
+
+      def canonical
+        self
+      end
+
+      def call(vm)
+        vm.push(object)
+      end
     end
 
     # ### Summary
@@ -2952,6 +3722,14 @@ module SyntaxTree
 
       def pushes
         1
+      end
+
+      def canonical
+        PutObject.new(0)
+      end
+
+      def call(vm)
+        canonical.call(vm)
       end
     end
 
@@ -2983,6 +3761,14 @@ module SyntaxTree
       def pushes
         1
       end
+
+      def canonical
+        PutObject.new(1)
+      end
+
+      def call(vm)
+        canonical.call(vm)
+      end
     end
 
     # ### Summary
@@ -3010,6 +3796,14 @@ module SyntaxTree
 
       def pushes
         1
+      end
+
+      def canonical
+        self
+      end
+
+      def call(vm)
+        vm.push(vm._self)
       end
     end
 
@@ -3051,6 +3845,23 @@ module SyntaxTree
       def pushes
         1
       end
+
+      def canonical
+        self
+      end
+
+      def call(vm)
+        case object
+        when OBJECT_VMCORE
+          vm.push(vm.frozen_core)
+        when OBJECT_CBASE
+          value = vm._self
+          value = value.singleton_class unless value.is_a?(Class)
+          vm.push(value)
+        when OBJECT_CONST_BASE
+          vm.push(vm.const_base)
+        end
+      end
     end
 
     # ### Summary
@@ -3084,6 +3895,14 @@ module SyntaxTree
 
       def pushes
         1
+      end
+
+      def canonical
+        self
+      end
+
+      def call(vm)
+        vm.push(object.dup)
       end
     end
 
@@ -3123,6 +3942,33 @@ module SyntaxTree
 
       def pushes
         1
+      end
+
+      def canonical
+        self
+      end
+
+      def call(vm)
+        block =
+          if (iseq = block_iseq)
+            ->(*args, **kwargs, &blk) do
+              vm.run_block_frame(iseq, *args, **kwargs, &blk)
+            end
+          end
+
+        keywords =
+          if calldata.kw_arg
+            calldata.kw_arg.zip(vm.pop(calldata.kw_arg.length)).to_h
+          else
+            {}
+          end
+
+        arguments = vm.pop(calldata.argc)
+        receiver = vm.pop
+
+        vm.push(
+          receiver.__send__(calldata.method, *arguments, **keywords, &block)
+        )
       end
     end
 
@@ -3166,6 +4012,14 @@ module SyntaxTree
       def pushes
         0
       end
+
+      def canonical
+        self
+      end
+
+      def call(vm)
+        vm.local_set(index, level, vm.pop)
+      end
     end
 
     # ### Summary
@@ -3204,6 +4058,16 @@ module SyntaxTree
       def pushes
         0
       end
+
+      def canonical
+        self
+      end
+
+      def call(vm)
+        clazz = vm._self
+        clazz = clazz.class unless clazz.is_a?(Class)
+        clazz.class_variable_set(name, vm.pop)
+      end
     end
 
     # ### Summary
@@ -3239,6 +4103,15 @@ module SyntaxTree
       def pushes
         0
       end
+
+      def canonical
+        self
+      end
+
+      def call(vm)
+        value, parent = vm.pop(2)
+        parent.const_set(name, value)
+      end
     end
 
     # ### Summary
@@ -3273,6 +4146,16 @@ module SyntaxTree
 
       def pushes
         0
+      end
+
+      def canonical
+        self
+      end
+
+      def call(vm)
+        # Evaluating the name of the global variable because there isn't a
+        # reflection API for global variables.
+        eval("#{name} = vm.pop", binding, __FILE__, __LINE__)
       end
     end
 
@@ -3315,6 +4198,15 @@ module SyntaxTree
       def pushes
         0
       end
+
+      def canonical
+        self
+      end
+
+      def call(vm)
+        method = Object.instance_method(:instance_variable_set)
+        method.bind(vm._self).call(name, vm.pop)
+      end
     end
 
     # ### Summary
@@ -3356,6 +4248,14 @@ module SyntaxTree
       def pushes
         0
       end
+
+      def canonical
+        self
+      end
+
+      def call(vm)
+        vm.local_set(index, level, vm.pop)
+      end
     end
 
     # ### Summary
@@ -3392,6 +4292,14 @@ module SyntaxTree
 
       def pushes
         0
+      end
+
+      def canonical
+        SetLocal.new(index, 0)
+      end
+
+      def call(vm)
+        canonical.call(vm)
       end
     end
 
@@ -3430,6 +4338,14 @@ module SyntaxTree
       def pushes
         0
       end
+
+      def canonical
+        SetLocal.new(index, 1)
+      end
+
+      def call(vm)
+        canonical.call(vm)
+      end
     end
 
     # ### Summary
@@ -3464,6 +4380,14 @@ module SyntaxTree
 
       def pushes
         1
+      end
+
+      def canonical
+        self
+      end
+
+      def call(vm)
+        vm.stack[-number - 1] = vm.stack.last
       end
     end
 
@@ -3501,6 +4425,21 @@ module SyntaxTree
       def pushes
         0
       end
+
+      def canonical
+        self
+      end
+
+      def call(vm)
+        case key
+        when GetSpecial::SVAR_LASTLINE
+          raise NotImplementedError, "svar SVAR_LASTLINE"
+        when GetSpecial::SVAR_BACKREF
+          raise NotImplementedError, "setspecial SVAR_BACKREF"
+        when GetSpecial::SVAR_FLIPFLOP_START
+          vm.frame_svar.svars[GetSpecial::SVAR_FLIPFLOP_START]
+        end
+      end
     end
 
     # ### Summary
@@ -3537,6 +4476,14 @@ module SyntaxTree
       def pushes
         1
       end
+
+      def canonical
+        self
+      end
+
+      def call(vm)
+        vm.push(*vm.pop)
+      end
     end
 
     # ### Summary
@@ -3569,6 +4516,15 @@ module SyntaxTree
       def pushes
         2
       end
+
+      def canonical
+        self
+      end
+
+      def call(vm)
+        left, right = vm.pop(2)
+        vm.push(right, left)
+      end
     end
 
     # ### Summary
@@ -3584,6 +4540,16 @@ module SyntaxTree
     # ~~~
     #
     class Throw
+      TAG_NONE = 0x0
+      TAG_RETURN = 0x1
+      TAG_BREAK = 0x2
+      TAG_NEXT = 0x3
+      TAG_RETRY = 0x4
+      TAG_REDO = 0x5
+      TAG_RAISE = 0x6
+      TAG_THROW = 0x7
+      TAG_FATAL = 0x8
+
       attr_reader :type
 
       def initialize(type)
@@ -3604,6 +4570,14 @@ module SyntaxTree
 
       def pushes
         1
+      end
+
+      def canonical
+        self
+      end
+
+      def call(vm)
+        raise NotImplementedError, "throw"
       end
     end
 
@@ -3643,6 +4617,14 @@ module SyntaxTree
       def pushes
         1
       end
+
+      def canonical
+        self
+      end
+
+      def call(vm)
+        vm.push(vm.stack[-number - 1])
+      end
     end
 
     # ### Summary
@@ -3674,6 +4656,14 @@ module SyntaxTree
 
       def pushes
         1
+      end
+
+      def canonical
+        self
+      end
+
+      def call(vm)
+        vm.push(Regexp.new(vm.pop(length).join, options))
       end
     end
   end

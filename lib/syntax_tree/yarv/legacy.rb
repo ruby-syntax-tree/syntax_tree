@@ -82,6 +82,10 @@ module SyntaxTree
         def pushes
           1
         end
+
+        def call(vm)
+          vm.push(nil)
+        end
       end
 
       # ### Summary
@@ -120,6 +124,10 @@ module SyntaxTree
 
         def pushes
           1
+        end
+
+        def call(vm)
+          vm.push(vm.pop)
         end
       end
 

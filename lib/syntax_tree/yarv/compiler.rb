@@ -1987,8 +1987,8 @@ module SyntaxTree
           match_failure_label = iseq.label
           match_error_label = iseq.label
 
-          # If there's a constant, then check if we match against that constant or
-          # not first. Branch to failure if we don't.
+          # If there's a constant, then check if we match against that constant
+          # or not first. Branch to failure if we don't.
           if node.constant
             iseq.dup
             visit(node.constant)
@@ -2007,8 +2007,8 @@ module SyntaxTree
           iseq.topn(2)
           iseq.branchunless(match_failure_label)
 
-          # Since we have a valid cached value, we can skip past the part where we
-          # call #deconstruct on the object.
+          # Since we have a valid cached value, we can skip past the part where
+          # we call #deconstruct on the object.
           iseq.pop
           iseq.topn(1)
           iseq.jump(length_label)
@@ -2064,8 +2064,8 @@ module SyntaxTree
             end
           end
 
-          # Set up the routine here to raise an error to indicate that the type of
-          # the deconstructed array was incorrect.
+          # Set up the routine here to raise an error to indicate that the type
+          # of the deconstructed array was incorrect.
           iseq.push(match_error_label)
           iseq.putspecialobject(PutSpecialObject::OBJECT_VMCORE)
           iseq.putobject(TypeError)

@@ -20,6 +20,7 @@ module SyntaxTree
           end
         end
 
+        include Enumerable
         attr_reader :head_node, :tail_node
 
         def initialize
@@ -109,6 +110,10 @@ module SyntaxTree
         def patch!(name)
           @name = name
         end
+
+        def inspect
+          name.inspect
+        end
       end
 
       # The type of the instruction sequence.
@@ -127,6 +132,9 @@ module SyntaxTree
       # instruction sequence.
       attr_accessor :argument_size
       attr_reader :argument_options
+
+      # The catch table for this instruction sequence.
+      attr_reader :catch_table
 
       # The list of instructions for this instruction sequence.
       attr_reader :insns
@@ -162,6 +170,7 @@ module SyntaxTree
 
         @argument_size = 0
         @argument_options = {}
+        @catch_table = []
 
         @local_table = LocalTable.new
         @inline_storages = {}
@@ -229,20 +238,20 @@ module SyntaxTree
 
         # Next, set it up so that all of the labels get their correct name.
         length = 0
-        insns.each_node do |node, value|
-          case value
+        insns.each do |insn|
+          case insn
           when Integer, Symbol
             # skip
           when Label
-            value.patch!(:"label_#{length}")
+            insn.patch!(:"label_#{length}")
           else
-            length += value.length
+            length += insn.length
           end
         end
 
         # Next, dump all of the instructions into a flat list.
         dumped =
-          insns.each.map do |insn|
+          insns.map do |insn|
             case insn
             when Integer, Symbol
               insn
@@ -274,7 +283,7 @@ module SyntaxTree
           type,
           local_table.names,
           dumped_options,
-          [],
+          catch_table.map(&:to_a),
           dumped
         ]
       end
@@ -324,7 +333,8 @@ module SyntaxTree
           when Send
             calldata = value.calldata
 
-            if !value.block_iseq && !calldata.flag?(CallData::CALL_ARGS_BLOCKARG)
+            if !value.block_iseq &&
+                 !calldata.flag?(CallData::CALL_ARGS_BLOCKARG)
               # Specialize the send instruction. If it doesn't have a block
               # attached, then we will replace it with an opt_send_without_block
               # and do further specializations based on the called method and
@@ -386,24 +396,24 @@ module SyntaxTree
       end
 
       def peephole_optimize!
-        insns.each_node do |node, value|
-          case value
-          when Jump
-            #  jump LABEL
-            #  ...
-            # LABEL:
-            #  leave
-            # =>
-            #  leave
-            #  ...
-            # LABEL:
-            #  leave
-            # case value.label.node.next_node&.value
-            # when Leave
-            #   node.value = Leave.new
-            # end
-          end
-        end
+        # insns.each_node do |node, value|
+        #   case value
+        #   when Jump
+        #     #  jump LABEL
+        #     #  ...
+        #     # LABEL:
+        #     #  leave
+        #     # =>
+        #     #  leave
+        #     #  ...
+        #     # LABEL:
+        #     #  leave
+        #     # case value.label.node.next_node&.value
+        #     # when Leave
+        #     #   node.value = Leave.new
+        #     # end
+        #   end
+        # end
       end
 
       ##########################################################################
@@ -434,6 +444,77 @@ module SyntaxTree
 
       def singleton_class_child_iseq(location)
         child_iseq(:class, "singleton class", location)
+      end
+
+      ##########################################################################
+      # Catch table methods
+      ##########################################################################
+
+      class CatchEntry
+        attr_reader :iseq, :begin_label, :end_label, :exit_label
+
+        def initialize(iseq, begin_label, end_label, exit_label)
+          @iseq = iseq
+          @begin_label = begin_label
+          @end_label = end_label
+          @exit_label = exit_label
+        end
+      end
+
+      class CatchBreak < CatchEntry
+        def to_a
+          [:break, iseq.to_a, begin_label.name, end_label.name, exit_label.name]
+        end
+      end
+
+      class CatchNext < CatchEntry
+        def to_a
+          [:next, nil, begin_label.name, end_label.name, exit_label.name]
+        end
+      end
+
+      class CatchRedo < CatchEntry
+        def to_a
+          [:redo, nil, begin_label.name, end_label.name, exit_label.name]
+        end
+      end
+
+      class CatchRescue < CatchEntry
+        def to_a
+          [
+            :rescue,
+            iseq.to_a,
+            begin_label.name,
+            end_label.name,
+            exit_label.name
+          ]
+        end
+      end
+
+      class CatchRetry < CatchEntry
+        def to_a
+          [:retry, nil, begin_label.name, end_label.name, exit_label.name]
+        end
+      end
+
+      def catch_break(iseq, begin_label, end_label, exit_label)
+        catch_table << CatchBreak.new(iseq, begin_label, end_label, exit_label)
+      end
+
+      def catch_next(begin_label, end_label, exit_label)
+        catch_table << CatchNext.new(nil, begin_label, end_label, exit_label)
+      end
+
+      def catch_redo(begin_label, end_label, exit_label)
+        catch_table << CatchRedo.new(nil, begin_label, end_label, exit_label)
+      end
+
+      def catch_rescue(iseq, begin_label, end_label, exit_label)
+        catch_table << CatchRescue.new(iseq, begin_label, end_label, exit_label)
+      end
+
+      def catch_retry(begin_label, end_label, exit_label)
+        catch_table << CatchRetry.new(nil, begin_label, end_label, exit_label)
       end
 
       ##########################################################################
@@ -837,6 +918,46 @@ module SyntaxTree
           iseq.argument_options[:opt].map! { |opt| labels[opt] }
         end
 
+        # set up the catch table
+        source[12].each do |entry|
+          case entry[0]
+          when :break
+            iseq.catch_break(
+              from(entry[1]),
+              labels[entry[2]],
+              labels[entry[3]],
+              labels[entry[4]]
+            )
+          when :next
+            iseq.catch_next(
+              labels[entry[2]],
+              labels[entry[3]],
+              labels[entry[4]]
+            )
+          when :rescue
+            iseq.catch_rescue(
+              from(entry[1]),
+              labels[entry[2]],
+              labels[entry[3]],
+              labels[entry[4]]
+            )
+          when :redo
+            iseq.catch_redo(
+              labels[entry[2]],
+              labels[entry[3]],
+              labels[entry[4]]
+            )
+          when :retry
+            iseq.catch_retry(
+              labels[entry[2]],
+              labels[entry[3]],
+              labels[entry[4]]
+            )
+          else
+            raise "unknown catch type: #{entry[0]}"
+          end
+        end
+
         # set up all of the instructions
         source[13].each do |insn|
           # skip line numbers
@@ -969,7 +1090,12 @@ module SyntaxTree
           when :opt_aset_with
             iseq.opt_aset_with(opnds[0], CallData.from(opnds[1]))
           when :opt_case_dispatch
-            iseq.opt_case_dispatch(opnds[0], labels[opnds[1]])
+            hash =
+              opnds[0]
+                .each_slice(2)
+                .to_h
+                .transform_values { |value| labels[value] }
+            iseq.opt_case_dispatch(hash, labels[opnds[1]])
           when :opt_getconstant_path
             iseq.opt_getconstant_path(opnds[0])
           when :opt_getinlinecache
