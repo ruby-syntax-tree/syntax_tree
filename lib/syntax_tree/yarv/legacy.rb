@@ -26,6 +26,10 @@ module SyntaxTree
           @name = name
         end
 
+        def disasm(fmt)
+          fmt.instruction("getclassvariable", [fmt.object(name)])
+        end
+
         def to_a(_iseq)
           [:getclassvariable, name]
         end
@@ -67,12 +71,15 @@ module SyntaxTree
           @cache = cache
         end
 
-        def patch!(iseq)
-          @label = iseq.label
+        def disasm(fmt)
+          fmt.instruction(
+            "opt_getinlinecache",
+            [fmt.label(label), fmt.inline_storage(cache)]
+          )
         end
 
         def to_a(_iseq)
-          [:opt_getinlinecache, label, cache]
+          [:opt_getinlinecache, label.name, cache]
         end
 
         def length
@@ -85,6 +92,10 @@ module SyntaxTree
 
         def pushes
           1
+        end
+
+        def call(vm)
+          vm.push(nil)
         end
       end
 
@@ -110,6 +121,10 @@ module SyntaxTree
           @cache = cache
         end
 
+        def disasm(fmt)
+          fmt.instruction("opt_setinlinecache", [fmt.inline_storage(cache)])
+        end
+
         def to_a(_iseq)
           [:opt_setinlinecache, cache]
         end
@@ -124,6 +139,10 @@ module SyntaxTree
 
         def pushes
           1
+        end
+
+        def call(vm)
+          vm.push(vm.pop)
         end
       end
 
@@ -146,6 +165,10 @@ module SyntaxTree
 
         def initialize(name)
           @name = name
+        end
+
+        def disasm(fmt)
+          fmt.instruction("setclassvariable", [fmt.object(name)])
         end
 
         def to_a(_iseq)

@@ -402,99 +402,6 @@ module SyntaxTree
       end
 
       def visit_aryptn(node)
-        match_failures = []
-        jumps_to_exit = []
-
-        # If there's a constant, then check if we match against that constant or
-        # not first. Branch to failure if we don't.
-        if node.constant
-          iseq.dup
-          visit(node.constant)
-          iseq.checkmatch(CheckMatch::TYPE_CASE)
-          match_failures << iseq.branchunless(-1)
-        end
-
-        # First, check if the #deconstruct cache is nil. If it is, we're going
-        # to call #deconstruct on the object and cache the result.
-        iseq.topn(2)
-        branchnil = iseq.branchnil(-1)
-
-        # Next, ensure that the cached value was cached correctly, otherwise
-        # fail the match.
-        iseq.topn(2)
-        match_failures << iseq.branchunless(-1)
-
-        # Since we have a valid cached value, we can skip past the part where we
-        # call #deconstruct on the object.
-        iseq.pop
-        iseq.topn(1)
-        jump = iseq.jump(-1)
-
-        # Check if the object responds to #deconstruct, fail the match
-        # otherwise.
-        branchnil.patch!(iseq)
-        iseq.dup
-        iseq.putobject(:deconstruct)
-        iseq.send(YARV.calldata(:respond_to?, 1))
-        iseq.setn(3)
-        match_failures << iseq.branchunless(-1)
-
-        # Call #deconstruct and ensure that it's an array, raise an error
-        # otherwise.
-        iseq.send(YARV.calldata(:deconstruct))
-        iseq.setn(2)
-        iseq.dup
-        iseq.checktype(CheckType::TYPE_ARRAY)
-        match_error = iseq.branchunless(-1)
-
-        # Ensure that the deconstructed array has the correct size, fail the
-        # match otherwise.
-        jump.patch!(iseq)
-        iseq.dup
-        iseq.send(YARV.calldata(:length))
-        iseq.putobject(node.requireds.length)
-        iseq.send(YARV.calldata(:==, 1))
-        match_failures << iseq.branchunless(-1)
-
-        # For each required element, check if the deconstructed array contains
-        # the element, otherwise jump out to the top-level match failure.
-        iseq.dup
-        node.requireds.each_with_index do |required, index|
-          iseq.putobject(index)
-          iseq.send(YARV.calldata(:[], 1))
-
-          case required
-          when VarField
-            lookup = visit(required)
-            iseq.setlocal(lookup.index, lookup.level)
-          else
-            visit(required)
-            iseq.checkmatch(CheckMatch::TYPE_CASE)
-            match_failures << iseq.branchunless(-1)
-          end
-
-          if index < node.requireds.length - 1
-            iseq.dup
-          else
-            iseq.pop
-            jumps_to_exit << iseq.jump(-1)
-          end
-        end
-
-        # Set up the routine here to raise an error to indicate that the type of
-        # the deconstructed array was incorrect.
-        match_error.patch!(iseq)
-        iseq.putspecialobject(PutSpecialObject::OBJECT_VMCORE)
-        iseq.putobject(TypeError)
-        iseq.putobject("deconstruct must return Array")
-        iseq.send(YARV.calldata(:"core#raise", 2))
-        iseq.pop
-
-        # Patch all of the match failures to jump here so that we pop a final
-        # value before returning to the parent node.
-        match_failures.each { |match_failure| match_failure.patch!(iseq) }
-        iseq.pop
-        jumps_to_exit
       end
 
       def visit_assign(node)
@@ -622,23 +529,25 @@ module SyntaxTree
       def visit_binary(node)
         case node.operator
         when :"&&"
+          done_label = iseq.label
+
           visit(node.left)
           iseq.dup
+          iseq.branchunless(done_label)
 
-          branchunless = iseq.branchunless(-1)
           iseq.pop
-
           visit(node.right)
-          branchunless.patch!(iseq)
+          iseq.push(done_label)
         when :"||"
           visit(node.left)
           iseq.dup
 
-          branchif = iseq.branchif(-1)
+          skip_right_label = iseq.label
+          iseq.branchif(skip_right_label)
           iseq.pop
 
           visit(node.right)
-          branchif.patch!(iseq)
+          iseq.push(skip_right_label)
         else
           visit(node.left)
           visit(node.right)
@@ -699,44 +608,6 @@ module SyntaxTree
           )
         end
 
-        arg_parts = argument_parts(node.arguments)
-        argc = arg_parts.length
-
-        # First we're going to check if we're calling a method on an array
-        # literal without any arguments. In that case there are some
-        # specializations we might be able to perform.
-        if argc == 0 && (node.message.is_a?(Ident) || node.message.is_a?(Op))
-          case node.receiver
-          when ArrayLiteral
-            parts = node.receiver.contents&.parts || []
-
-            if parts.none? { |part| part.is_a?(ArgStar) } &&
-                 RubyVisitor.compile(node.receiver).nil?
-              case node.message.value
-              when "max"
-                visit(node.receiver.contents)
-                iseq.opt_newarray_max(parts.length)
-                return
-              when "min"
-                visit(node.receiver.contents)
-                iseq.opt_newarray_min(parts.length)
-                return
-              end
-            end
-          when StringLiteral
-            if RubyVisitor.compile(node.receiver).nil?
-              case node.message.value
-              when "-@"
-                iseq.opt_str_uminus(node.receiver.parts.first.value)
-                return
-              when "freeze"
-                iseq.opt_str_freeze(node.receiver.parts.first.value)
-                return
-              end
-            end
-          end
-        end
-
         # Track whether or not this is a method call on a block proxy receiver.
         # If it is, we can potentially do tailcall optimizations on it.
         block_receiver = false
@@ -758,12 +629,15 @@ module SyntaxTree
           iseq.putself
         end
 
-        branchnil =
-          if node.operator&.value == "&."
-            iseq.dup
-            iseq.branchnil(-1)
-          end
+        after_call_label = nil
+        if node.operator&.value == "&."
+          iseq.dup
+          after_call_label = iseq.label
+          iseq.branchnil(after_call_label)
+        end
 
+        arg_parts = argument_parts(node.arguments)
+        argc = arg_parts.length
         flag = 0
 
         arg_parts.each do |arg_part|
@@ -815,7 +689,7 @@ module SyntaxTree
           YARV.calldata(node.message.value.to_sym, argc, flag),
           block_iseq
         )
-        branchnil.patch!(iseq) if branchnil
+        iseq.event(after_call_label) if after_call_label
       end
 
       def visit_case(node)
@@ -845,16 +719,19 @@ module SyntaxTree
                 CallData::CALL_FCALL | CallData::CALL_ARGS_SIMPLE
               )
             )
-            [clause, iseq.branchif(:label_00)]
+
+            label = iseq.label
+            iseq.branchif(label)
+            [clause, label]
           end
 
         iseq.pop
         else_clause ? visit(else_clause) : iseq.putnil
         iseq.leave
 
-        branches.each_with_index do |(clause, branchif), index|
+        branches.each_with_index do |(clause, label), index|
           iseq.leave if index != 0
-          branchif.patch!(iseq)
+          iseq.push(label)
           iseq.pop
           visit(clause)
         end
@@ -1100,47 +977,53 @@ module SyntaxTree
 
       def visit_if(node)
         if node.predicate.is_a?(RangeNode)
+          true_label = iseq.label
+          false_label = iseq.label
+          end_label = iseq.label
+
           iseq.getspecial(GetSpecial::SVAR_FLIPFLOP_START, 0)
-          branchif = iseq.branchif(-1)
+          iseq.branchif(true_label)
 
           visit(node.predicate.left)
-          branchunless_true = iseq.branchunless(-1)
+          iseq.branchunless(end_label)
 
           iseq.putobject(true)
           iseq.setspecial(GetSpecial::SVAR_FLIPFLOP_START)
-          branchif.patch!(iseq)
 
+          iseq.push(true_label)
           visit(node.predicate.right)
-          branchunless_false = iseq.branchunless(-1)
+          iseq.branchunless(false_label)
 
           iseq.putobject(false)
           iseq.setspecial(GetSpecial::SVAR_FLIPFLOP_START)
-          branchunless_false.patch!(iseq)
 
+          iseq.push(false_label)
           visit(node.statements)
           iseq.leave
-          branchunless_true.patch!(iseq)
+          iseq.push(end_label)
           iseq.putnil
         else
+          consequent_label = iseq.label
+
           visit(node.predicate)
-          branchunless = iseq.branchunless(-1)
+          iseq.branchunless(consequent_label)
           visit(node.statements)
 
           if last_statement?
             iseq.leave
-            branchunless.patch!(iseq)
-
+            iseq.push(consequent_label)
             node.consequent ? visit(node.consequent) : iseq.putnil
           else
             iseq.pop
 
             if node.consequent
-              jump = iseq.jump(-1)
-              branchunless.patch!(iseq)
+              done_label = iseq.label
+              iseq.jump(done_label)
+              iseq.push(consequent_label)
               visit(node.consequent)
-              jump.patch!(iseq)
+              iseq.push(done_label)
             else
-              branchunless.patch!(iseq)
+              iseq.push(consequent_label)
             end
           end
         end
@@ -1164,9 +1047,6 @@ module SyntaxTree
 
       def visit_imaginary(node)
         iseq.putobject(node.accept(RubyVisitor.new))
-      end
-
-      def visit_in(node)
       end
 
       def visit_int(node)
@@ -1285,11 +1165,11 @@ module SyntaxTree
 
         case (operator = node.operator.value.chomp("=").to_sym)
         when :"&&"
-          branchunless = nil
+          done_label = iseq.label
 
           with_opassign(node) do
             iseq.dup
-            branchunless = iseq.branchunless(-1)
+            iseq.branchunless(done_label)
             iseq.pop
             visit(node.value)
           end
@@ -1297,15 +1177,15 @@ module SyntaxTree
           case node.target
           when ARefField
             iseq.leave
-            branchunless.patch!(iseq)
+            iseq.push(done_label)
             iseq.setn(3)
             iseq.adjuststack(3)
           when ConstPathField, TopConstField
-            branchunless.patch!(iseq)
+            iseq.push(done_label)
             iseq.swap
             iseq.pop
           else
-            branchunless.patch!(iseq)
+            iseq.push(done_label)
           end
         when :"||"
           if node.target.is_a?(ConstPathField) ||
@@ -1317,22 +1197,22 @@ module SyntaxTree
                 [Const, CVar, GVar].include?(node.target.value.class)
             opassign_defined(node)
           else
-            branchif = nil
+            skip_value_label = iseq.label
 
             with_opassign(node) do
               iseq.dup
-              branchif = iseq.branchif(-1)
+              iseq.branchif(skip_value_label)
               iseq.pop
               visit(node.value)
             end
 
             if node.target.is_a?(ARefField)
               iseq.leave
-              branchif.patch!(iseq)
+              iseq.push(skip_value_label)
               iseq.setn(3)
               iseq.adjuststack(3)
             else
-              branchif.patch!(iseq)
+              iseq.push(skip_value_label)
             end
           end
         else
@@ -1344,15 +1224,13 @@ module SyntaxTree
       end
 
       def visit_params(node)
-        argument_options = iseq.argument_options
-
         if node.requireds.any?
-          argument_options[:lead_num] = 0
+          iseq.argument_options[:lead_num] = 0
 
           node.requireds.each do |required|
             iseq.local_table.plain(required.value.to_sym)
             iseq.argument_size += 1
-            argument_options[:lead_num] += 1
+            iseq.argument_options[:lead_num] += 1
           end
         end
 
@@ -1363,31 +1241,36 @@ module SyntaxTree
           iseq.local_table.plain(name)
           iseq.argument_size += 1
 
-          argument_options[:opt] = [iseq.label] unless argument_options.key?(
-            :opt
-          )
+          unless iseq.argument_options.key?(:opt)
+            start_label = iseq.label
+            iseq.push(start_label)
+            iseq.argument_options[:opt] = [start_label]
+          end
 
           visit(value)
           iseq.setlocal(index, 0)
-          iseq.argument_options[:opt] << iseq.label
+
+          arg_given_label = iseq.label
+          iseq.push(arg_given_label)
+          iseq.argument_options[:opt] << arg_given_label
         end
 
         visit(node.rest) if node.rest
 
         if node.posts.any?
-          argument_options[:post_start] = iseq.argument_size
-          argument_options[:post_num] = 0
+          iseq.argument_options[:post_start] = iseq.argument_size
+          iseq.argument_options[:post_num] = 0
 
           node.posts.each do |post|
             iseq.local_table.plain(post.value.to_sym)
             iseq.argument_size += 1
-            argument_options[:post_num] += 1
+            iseq.argument_options[:post_num] += 1
           end
         end
 
         if node.keywords.any?
-          argument_options[:kwbits] = 0
-          argument_options[:keyword] = []
+          iseq.argument_options[:kwbits] = 0
+          iseq.argument_options[:keyword] = []
 
           keyword_bits_name = node.keyword_rest ? 3 : 2
           iseq.argument_size += 1
@@ -1399,19 +1282,21 @@ module SyntaxTree
 
             iseq.local_table.plain(name)
             iseq.argument_size += 1
-            argument_options[:kwbits] += 1
+            iseq.argument_options[:kwbits] += 1
 
             if value.nil?
-              argument_options[:keyword] << name
+              iseq.argument_options[:keyword] << name
             elsif (compiled = RubyVisitor.compile(value))
-              argument_options[:keyword] << [name, compiled]
+              iseq.argument_options[:keyword] << [name, compiled]
             else
-              argument_options[:keyword] << [name]
+              skip_value_label = iseq.label
+
+              iseq.argument_options[:keyword] << [name]
               iseq.checkkeyword(keyword_bits_index, keyword_index)
-              branchif = iseq.branchif(-1)
+              iseq.branchif(skip_value_label)
               visit(value)
               iseq.setlocal(index, 0)
-              branchif.patch!(iseq)
+              iseq.push(skip_value_label)
             end
           end
 
@@ -1474,6 +1359,7 @@ module SyntaxTree
             node.location,
             options
           )
+
         with_child_iseq(top_iseq) do
           visit_all(preexes)
 
@@ -1487,6 +1373,9 @@ module SyntaxTree
 
           iseq.leave
         end
+
+        top_iseq.compile!
+        top_iseq
       end
 
       def visit_qsymbols(node)
@@ -1516,30 +1405,25 @@ module SyntaxTree
         iseq.putnil
 
         if node.operator.is_a?(Kw)
-          jumps = []
+          match_label = iseq.label
 
           visit(node.value)
           iseq.dup
 
-          case node.pattern
-          when VarField
-            lookup = visit(node.pattern)
-            iseq.setlocal(lookup.index, lookup.level)
-            jumps << iseq.jump(-1)
-          else
-            jumps.concat(visit(node.pattern))
-          end
+          visit_pattern(node.pattern, match_label)
 
           iseq.pop
           iseq.pop
           iseq.putobject(false)
           iseq.leave
 
-          jumps.each { |jump| jump.patch!(iseq) }
+          iseq.push(match_label)
           iseq.adjuststack(2)
           iseq.putobject(true)
         else
-          jumps_to_match = []
+          no_key_label = iseq.label
+          end_leave_label = iseq.label
+          end_label = iseq.label
 
           iseq.putnil
           iseq.putobject(false)
@@ -1548,15 +1432,7 @@ module SyntaxTree
           visit(node.value)
           iseq.dup
 
-          # Visit the pattern. If it matches,
-          case node.pattern
-          when VarField
-            lookup = visit(node.pattern)
-            iseq.setlocal(lookup.index, lookup.level)
-            jumps_to_match << iseq.jump(-1)
-          else
-            jumps_to_match.concat(visit(node.pattern))
-          end
+          visit_pattern(node.pattern, end_label)
 
           # First we're going to push the core onto the stack, then we'll check
           # if the value to match is truthy. If it is, we'll jump down to raise
@@ -1564,7 +1440,7 @@ module SyntaxTree
           # NoMatchingPatternError.
           iseq.putspecialobject(PutSpecialObject::OBJECT_VMCORE)
           iseq.topn(4)
-          branchif_no_key = iseq.branchif(-1)
+          iseq.branchif(no_key_label)
 
           # Here we're going to raise NoMatchingPatternError.
           iseq.putobject(NoMatchingPatternError)
@@ -1574,10 +1450,10 @@ module SyntaxTree
           iseq.topn(7)
           iseq.send(YARV.calldata(:"core#sprintf", 3))
           iseq.send(YARV.calldata(:"core#raise", 2))
-          jump_to_exit = iseq.jump(-1)
+          iseq.jump(end_leave_label)
 
           # Here we're going to raise NoMatchingPatternKeyError.
-          branchif_no_key.patch!(iseq)
+          iseq.push(no_key_label)
           iseq.putobject(NoMatchingPatternKeyError)
           iseq.putspecialobject(PutSpecialObject::OBJECT_VMCORE)
           iseq.putobject("%p: %s")
@@ -1591,14 +1467,12 @@ module SyntaxTree
           )
           iseq.send(YARV.calldata(:"core#raise", 1))
 
-          # This runs when the pattern fails to match.
-          jump_to_exit.patch!(iseq)
+          iseq.push(end_leave_label)
           iseq.adjuststack(7)
           iseq.putnil
           iseq.leave
 
-          # This runs when the pattern matches successfully.
-          jumps_to_match.each { |jump| jump.patch!(iseq) }
+          iseq.push(end_label)
           iseq.adjuststack(6)
           iseq.putnil
         end
@@ -1781,44 +1655,47 @@ module SyntaxTree
       end
 
       def visit_unless(node)
+        statements_label = iseq.label
+
         visit(node.predicate)
-        branchunless = iseq.branchunless(-1)
+        iseq.branchunless(statements_label)
         node.consequent ? visit(node.consequent) : iseq.putnil
 
         if last_statement?
           iseq.leave
-          branchunless.patch!(iseq)
-
+          iseq.push(statements_label)
           visit(node.statements)
         else
           iseq.pop
 
           if node.consequent
-            jump = iseq.jump(-1)
-            branchunless.patch!(iseq)
+            done_label = iseq.label
+            iseq.jump(done_label)
+            iseq.push(statements_label)
             visit(node.consequent)
-            jump.patch!(iseq.label)
+            iseq.push(done_label)
           else
-            branchunless.patch!(iseq)
+            iseq.push(statements_label)
           end
         end
       end
 
       def visit_until(node)
-        jumps = []
+        predicate_label = iseq.label
+        statements_label = iseq.label
 
-        jumps << iseq.jump(-1)
+        iseq.jump(predicate_label)
         iseq.putnil
         iseq.pop
-        jumps << iseq.jump(-1)
+        iseq.jump(predicate_label)
 
-        label = iseq.label
+        iseq.push(statements_label)
         visit(node.statements)
         iseq.pop
-        jumps.each { |jump| jump.patch!(iseq) }
 
+        iseq.push(predicate_label)
         visit(node.predicate)
-        iseq.branchunless(label)
+        iseq.branchunless(statements_label)
         iseq.putnil if last_statement?
       end
 
@@ -1891,20 +1768,21 @@ module SyntaxTree
       end
 
       def visit_while(node)
-        jumps = []
+        predicate_label = iseq.label
+        statements_label = iseq.label
 
-        jumps << iseq.jump(-1)
+        iseq.jump(predicate_label)
         iseq.putnil
         iseq.pop
-        jumps << iseq.jump(-1)
+        iseq.jump(predicate_label)
 
-        label = iseq.label
+        iseq.push(statements_label)
         visit(node.statements)
         iseq.pop
-        jumps.each { |jump| jump.patch!(iseq) }
 
+        iseq.push(predicate_label)
         visit(node.predicate)
-        iseq.branchif(label)
+        iseq.branchif(statements_label)
         iseq.putnil if last_statement?
       end
 
@@ -2014,6 +1892,9 @@ module SyntaxTree
       # first check if the value is defined using the defined instruction. I
       # don't know why it is necessary, and suspect that it isn't.
       def opassign_defined(node)
+        value_label = iseq.label
+        skip_value_label = iseq.label
+
         case node.target
         when ConstPathField
           visit(node.target.parent)
@@ -2041,7 +1922,7 @@ module SyntaxTree
           end
         end
 
-        branchunless = iseq.branchunless(-1)
+        iseq.branchunless(value_label)
 
         case node.target
         when ConstPathField, TopConstField
@@ -2060,10 +1941,10 @@ module SyntaxTree
         end
 
         iseq.dup
-        branchif = iseq.branchif(-1)
-        iseq.pop
+        iseq.branchif(skip_value_label)
 
-        branchunless.patch!(iseq)
+        iseq.pop
+        iseq.push(value_label)
         visit(node.value)
 
         case node.target
@@ -2085,7 +1966,7 @@ module SyntaxTree
           end
         end
 
-        branchif.patch!(iseq)
+        iseq.push(skip_value_label)
       end
 
       # Whenever a value is interpolated into a string-like structure, these
@@ -2100,6 +1981,111 @@ module SyntaxTree
           )
         )
         iseq.anytostring
+      end
+
+      # Visit a type of pattern in a pattern match.
+      def visit_pattern(node, end_label)
+        case node
+        when AryPtn
+          length_label = iseq.label
+          match_failure_label = iseq.label
+          match_error_label = iseq.label
+
+          # If there's a constant, then check if we match against that constant
+          # or not first. Branch to failure if we don't.
+          if node.constant
+            iseq.dup
+            visit(node.constant)
+            iseq.checkmatch(CheckMatch::TYPE_CASE)
+            iseq.branchunless(match_failure_label)
+          end
+
+          # First, check if the #deconstruct cache is nil. If it is, we're going
+          # to call #deconstruct on the object and cache the result.
+          iseq.topn(2)
+          deconstruct_label = iseq.label
+          iseq.branchnil(deconstruct_label)
+
+          # Next, ensure that the cached value was cached correctly, otherwise
+          # fail the match.
+          iseq.topn(2)
+          iseq.branchunless(match_failure_label)
+
+          # Since we have a valid cached value, we can skip past the part where
+          # we call #deconstruct on the object.
+          iseq.pop
+          iseq.topn(1)
+          iseq.jump(length_label)
+
+          # Check if the object responds to #deconstruct, fail the match
+          # otherwise.
+          iseq.event(deconstruct_label)
+          iseq.dup
+          iseq.putobject(:deconstruct)
+          iseq.send(YARV.calldata(:respond_to?, 1))
+          iseq.setn(3)
+          iseq.branchunless(match_failure_label)
+
+          # Call #deconstruct and ensure that it's an array, raise an error
+          # otherwise.
+          iseq.send(YARV.calldata(:deconstruct))
+          iseq.setn(2)
+          iseq.dup
+          iseq.checktype(CheckType::TYPE_ARRAY)
+          iseq.branchunless(match_error_label)
+
+          # Ensure that the deconstructed array has the correct size, fail the
+          # match otherwise.
+          iseq.push(length_label)
+          iseq.dup
+          iseq.send(YARV.calldata(:length))
+          iseq.putobject(node.requireds.length)
+          iseq.send(YARV.calldata(:==, 1))
+          iseq.branchunless(match_failure_label)
+
+          # For each required element, check if the deconstructed array contains
+          # the element, otherwise jump out to the top-level match failure.
+          iseq.dup
+          node.requireds.each_with_index do |required, index|
+            iseq.putobject(index)
+            iseq.send(YARV.calldata(:[], 1))
+
+            case required
+            when VarField
+              lookup = visit(required)
+              iseq.setlocal(lookup.index, lookup.level)
+            else
+              visit(required)
+              iseq.checkmatch(CheckMatch::TYPE_CASE)
+              iseq.branchunless(match_failure_label)
+            end
+
+            if index < node.requireds.length - 1
+              iseq.dup
+            else
+              iseq.pop
+              iseq.jump(end_label)
+            end
+          end
+
+          # Set up the routine here to raise an error to indicate that the type
+          # of the deconstructed array was incorrect.
+          iseq.push(match_error_label)
+          iseq.putspecialobject(PutSpecialObject::OBJECT_VMCORE)
+          iseq.putobject(TypeError)
+          iseq.putobject("deconstruct must return Array")
+          iseq.send(YARV.calldata(:"core#raise", 2))
+          iseq.pop
+
+          # Patch all of the match failures to jump here so that we pop a final
+          # value before returning to the parent node.
+          iseq.push(match_failure_label)
+          iseq.pop
+        when VarField
+          lookup = visit(node)
+          iseq.setlocal(lookup.index, lookup.level)
+          iseq.jump(end_label)
+        end
       end
 
       # There are a lot of nodes in the AST that act as contains of parts of

@@ -83,6 +83,10 @@ module SyntaxTree
         @number = number
       end
 
+      def disasm(fmt)
+        fmt.instruction("adjuststack", [fmt.object(number)])
+      end
+
       def to_a(_iseq)
         [:adjuststack, number]
       end
@@ -97,6 +101,14 @@ module SyntaxTree
 
       def pushes
         0
+      end
+
+      def canonical
+        self
+      end
+
+      def call(vm)
+        vm.pop(number)
       end
     end
 
@@ -119,6 +131,10 @@ module SyntaxTree
     # ~~~
     #
     class AnyToString
+      def disasm(fmt)
+        fmt.instruction("anytostring")
+      end
+
       def to_a(_iseq)
         [:anytostring]
       end
@@ -133,6 +149,20 @@ module SyntaxTree
 
       def pushes
         1
+      end
+
+      def canonical
+        self
+      end
+
+      def call(vm)
+        original, value = vm.pop(2)
+
+        if value.is_a?(String)
+          vm.push(value)
+        else
+          vm.push("#<#{original.class.name}:0000>")
+        end
       end
     end
 
@@ -159,12 +189,12 @@ module SyntaxTree
         @label = label
       end
 
-      def patch!(iseq)
-        @label = iseq.label
+      def disasm(fmt)
+        fmt.instruction("branchif", [fmt.label(label)])
       end
 
       def to_a(_iseq)
-        [:branchif, label]
+        [:branchif, label.name]
       end
 
       def length
@@ -177,6 +207,14 @@ module SyntaxTree
 
       def pushes
         0
+      end
+
+      def canonical
+        self
+      end
+
+      def call(vm)
+        vm.jump(label) if vm.pop
       end
     end
 
@@ -204,12 +242,12 @@ module SyntaxTree
         @label = label
       end
 
-      def patch!(iseq)
-        @label = iseq.label
+      def disasm(fmt)
+        fmt.instruction("branchnil", [fmt.label(label)])
       end
 
       def to_a(_iseq)
-        [:branchnil, label]
+        [:branchnil, label.name]
       end
 
       def length
@@ -222,6 +260,14 @@ module SyntaxTree
 
       def pushes
         0
+      end
+
+      def canonical
+        self
+      end
+
+      def call(vm)
+        vm.jump(label) if vm.pop.nil?
       end
     end
 
@@ -248,12 +294,12 @@ module SyntaxTree
         @label = label
       end
 
-      def patch!(iseq)
-        @label = iseq.label
+      def disasm(fmt)
+        fmt.instruction("branchunless", [fmt.label(label)])
       end
 
       def to_a(_iseq)
-        [:branchunless, label]
+        [:branchunless, label.name]
       end
 
       def length
@@ -266,6 +312,14 @@ module SyntaxTree
 
       def pushes
         0
+      end
+
+      def canonical
+        self
+      end
+
+      def call(vm)
+        vm.jump(label) unless vm.pop
       end
     end
 
@@ -296,8 +350,11 @@ module SyntaxTree
         @keyword_index = keyword_index
       end
 
-      def patch!(iseq)
-        @label = iseq.label
+      def disasm(fmt)
+        fmt.instruction(
+          "checkkeyword",
+          [fmt.object(keyword_bits_index), fmt.object(keyword_index)]
+        )
       end
 
       def to_a(iseq)
@@ -318,6 +375,14 @@ module SyntaxTree
 
       def pushes
         1
+      end
+
+      def canonical
+        self
+      end
+
+      def call(vm)
+        vm.push(vm.local_get(keyword_bits_index, 0)[keyword_index])
       end
     end
 
@@ -344,6 +409,10 @@ module SyntaxTree
         @type = type
       end
 
+      def disasm(fmt)
+        fmt.instruction("checkmatch", [fmt.object(type)])
+      end
+
       def to_a(_iseq)
         [:checkmatch, type]
       end
@@ -358,6 +427,14 @@ module SyntaxTree
 
       def pushes
         1
+      end
+
+      def canonical
+        self
+      end
+
+      def call(vm)
+        raise NotImplementedError, "checkmatch"
       end
     end
 
@@ -403,6 +480,56 @@ module SyntaxTree
         @type = type
       end
 
+      def disasm(fmt)
+        name =
+          case type
+          when TYPE_OBJECT
+            "T_OBJECT"
+          when TYPE_CLASS
+            "T_CLASS"
+          when TYPE_MODULE
+            "T_MODULE"
+          when TYPE_FLOAT
+            "T_FLOAT"
+          when TYPE_STRING
+            "T_STRING"
+          when TYPE_REGEXP
+            "T_REGEXP"
+          when TYPE_ARRAY
+            "T_ARRAY"
+          when TYPE_HASH
+            "T_HASH"
+          when TYPE_STRUCT
+            "T_STRUCT"
+          when TYPE_BIGNUM
+            "T_BIGNUM"
+          when TYPE_FILE
+            "T_FILE"
+          when TYPE_DATA
+            "T_DATA"
+          when TYPE_MATCH
+            "T_MATCH"
+          when TYPE_COMPLEX
+            "T_COMPLEX"
+          when TYPE_RATIONAL
+            "T_RATIONAL"
+          when TYPE_NIL
+            "T_NIL"
+          when TYPE_TRUE
+            "T_TRUE"
+          when TYPE_FALSE
+            "T_FALSE"
+          when TYPE_SYMBOL
+            "T_SYMBOL"
+          when TYPE_FIXNUM
+            "T_FIXNUM"
+          when TYPE_UNDEF
+            "T_UNDEF"
+          end
+
+        fmt.instruction("checktype", [name])
+      end
+
       def to_a(_iseq)
         [:checktype, type]
       end
@@ -422,6 +549,61 @@ module SyntaxTree
         # can investigate further.
         2
       end
+
+      def canonical
+        self
+      end
+
+      def call(vm)
+        object = vm.pop
+        result =
+          case type
+          when TYPE_OBJECT
+            raise NotImplementedError, "checktype TYPE_OBJECT"
+          when TYPE_CLASS
+            object.is_a?(Class)
+          when TYPE_MODULE
+            object.is_a?(Module)
+          when TYPE_FLOAT
+            object.is_a?(Float)
+          when TYPE_STRING
+            object.is_a?(String)
+          when TYPE_REGEXP
+            object.is_a?(Regexp)
+          when TYPE_ARRAY
+            object.is_a?(Array)
+          when TYPE_HASH
+            object.is_a?(Hash)
+          when TYPE_STRUCT
+            object.is_a?(Struct)
+          when TYPE_BIGNUM
+            raise NotImplementedError, "checktype TYPE_BIGNUM"
+          when TYPE_FILE
+            object.is_a?(File)
+          when TYPE_DATA
+            raise NotImplementedError, "checktype TYPE_DATA"
+          when TYPE_MATCH
+            raise NotImplementedError, "checktype TYPE_MATCH"
+          when TYPE_COMPLEX
+            object.is_a?(Complex)
+          when TYPE_RATIONAL
+            object.is_a?(Rational)
+          when TYPE_NIL
+            object.nil?
+          when TYPE_TRUE
+            object == true
+          when TYPE_FALSE
+            object == false
+          when TYPE_SYMBOL
+            object.is_a?(Symbol)
+          when TYPE_FIXNUM
+            object.is_a?(Integer)
+          when TYPE_UNDEF
+            raise NotImplementedError, "checktype TYPE_UNDEF"
+          end
+
+        vm.push(result)
+      end
     end
 
     # ### Summary
@@ -439,6 +621,10 @@ module SyntaxTree
     # ~~~
     #
     class ConcatArray
+      def disasm(fmt)
+        fmt.instruction("concatarray")
+      end
+
       def to_a(_iseq)
         [:concatarray]
       end
@@ -453,6 +639,15 @@ module SyntaxTree
 
       def pushes
         1
+      end
+
+      def canonical
+        self
+      end
+
+      def call(vm)
+        left, right = vm.pop(2)
+        vm.push([*left, *right])
       end
     end
 
@@ -478,6 +673,10 @@ module SyntaxTree
         @number = number
       end
 
+      def disasm(fmt)
+        fmt.instruction("concatstrings", [fmt.object(number)])
+      end
+
       def to_a(_iseq)
         [:concatstrings, number]
       end
@@ -492,6 +691,14 @@ module SyntaxTree
 
       def pushes
         1
+      end
+
+      def canonical
+        self
+      end
+
+      def call(vm)
+        vm.push(vm.pop(number).join)
       end
     end
 
@@ -525,6 +732,14 @@ module SyntaxTree
         @flags = flags
       end
 
+      def disasm(fmt)
+        fmt.enqueue(class_iseq)
+        fmt.instruction(
+          "defineclass",
+          [fmt.object(name), class_iseq.name, fmt.object(flags)]
+        )
+      end
+
       def to_a(_iseq)
         [:defineclass, name, class_iseq.to_a, flags]
       end
@@ -539,6 +754,20 @@ module SyntaxTree
 
       def pushes
         1
+      end
+
+      def canonical
+        self
+      end
+
+      def call(vm)
+        object, superclass = vm.pop(2)
+        iseq = class_iseq
+
+        clazz = Class.new(superclass || Object)
+        vm.push(vm.run_class_frame(iseq, clazz))
+
+        object.const_set(name, clazz)
       end
     end
 
@@ -580,6 +809,51 @@ module SyntaxTree
         @message = message
       end
 
+      def disasm(fmt)
+        type_name =
+          case type
+          when TYPE_NIL
+            "nil"
+          when TYPE_IVAR
+            "ivar"
+          when TYPE_LVAR
+            "lvar"
+          when TYPE_GVAR
+            "gvar"
+          when TYPE_CVAR
+            "cvar"
+          when TYPE_CONST
+            "const"
+          when TYPE_METHOD
+            "method"
+          when TYPE_YIELD
+            "yield"
+          when TYPE_ZSUPER
+            "zsuper"
+          when TYPE_SELF
+            "self"
+          when TYPE_TRUE
+            "true"
+          when TYPE_FALSE
+            "false"
+          when TYPE_ASGN
+            "asgn"
+          when TYPE_EXPR
+            "expr"
+          when TYPE_REF
+            "ref"
+          when TYPE_FUNC
+            "func"
+          when TYPE_CONST_FROM
+            "constant-from"
+          end
+
+        fmt.instruction(
+          "defined",
+          [type_name, fmt.object(name), fmt.object(message)]
+        )
+      end
+
       def to_a(_iseq)
         [:defined, type, name, message]
       end
@@ -594,6 +868,46 @@ module SyntaxTree
 
       def pushes
         1
+      end
+
+      def canonical
+        self
+      end
+
+      def call(vm)
+        object = vm.pop
+
+        result =
+          case type
+          when TYPE_NIL, TYPE_SELF, TYPE_TRUE, TYPE_FALSE, TYPE_ASGN, TYPE_EXPR
+            message
+          when TYPE_IVAR
+            message if vm._self.instance_variable_defined?(name)
+          when TYPE_LVAR
+            raise NotImplementedError, "defined TYPE_LVAR"
+          when TYPE_GVAR
+            message if global_variables.include?(name)
+          when TYPE_CVAR
+            clazz = vm._self
+            clazz = clazz.singleton_class unless clazz.is_a?(Module)
+            message if clazz.class_variable_defined?(name)
+          when TYPE_CONST
+            raise NotImplementedError, "defined TYPE_CONST"
+          when TYPE_METHOD
+            raise NotImplementedError, "defined TYPE_METHOD"
+          when TYPE_YIELD
+            raise NotImplementedError, "defined TYPE_YIELD"
+          when TYPE_ZSUPER
+            raise NotImplementedError, "defined TYPE_ZSUPER"
+          when TYPE_REF
+            raise NotImplementedError, "defined TYPE_REF"
+          when TYPE_FUNC
+            message if object.respond_to?(name, true)
+          when TYPE_CONST_FROM
+            raise NotImplementedError, "defined TYPE_CONST_FROM"
+          end
+
+        vm.push(result)
       end
     end
 
@@ -611,15 +925,23 @@ module SyntaxTree
     # ~~~
     #
     class DefineMethod
-      attr_reader :name, :method_iseq
+      attr_reader :method_name, :method_iseq
 
-      def initialize(name, method_iseq)
-        @name = name
+      def initialize(method_name, method_iseq)
+        @method_name = method_name
         @method_iseq = method_iseq
       end
 
+      def disasm(fmt)
+        fmt.enqueue(method_iseq)
+        fmt.instruction(
+          "definemethod",
+          [fmt.object(method_name), method_iseq.name]
+        )
+      end
+
       def to_a(_iseq)
-        [:definemethod, name, method_iseq.to_a]
+        [:definemethod, method_name, method_iseq.to_a]
       end
 
       def length
@@ -632,6 +954,21 @@ module SyntaxTree
 
       def pushes
         0
+      end
+
+      def canonical
+        self
+      end
+
+      def call(vm)
+        name = method_name
+        iseq = method_iseq
+
+        vm
+          ._self
+          .__send__(:define_method, name) do |*args, **kwargs, &block|
+            vm.run_method_frame(name, iseq, self, *args, **kwargs, &block)
+          end
       end
     end
 
@@ -650,15 +987,23 @@ module SyntaxTree
     # ~~~
     #
     class DefineSMethod
-      attr_reader :name, :method_iseq
+      attr_reader :method_name, :method_iseq
 
-      def initialize(name, method_iseq)
-        @name = name
+      def initialize(method_name, method_iseq)
+        @method_name = method_name
         @method_iseq = method_iseq
       end
 
+      def disasm(fmt)
+        fmt.enqueue(method_iseq)
+        fmt.instruction(
+          "definesmethod",
+          [fmt.object(method_name), method_iseq.name]
+        )
+      end
+
       def to_a(_iseq)
-        [:definesmethod, name, method_iseq.to_a]
+        [:definesmethod, method_name, method_iseq.to_a]
       end
 
       def length
@@ -671,6 +1016,21 @@ module SyntaxTree
 
       def pushes
         0
+      end
+
+      def canonical
+        self
+      end
+
+      def call(vm)
+        name = method_name
+        iseq = method_iseq
+
+        vm
+          ._self
+          .__send__(:define_singleton_method, name) do |*args, **kwargs, &block|
+            vm.run_method_frame(name, iseq, self, *args, **kwargs, &block)
+          end
       end
     end
 
@@ -685,6 +1045,10 @@ module SyntaxTree
     # ~~~
     #
     class Dup
+      def disasm(fmt)
+        fmt.instruction("dup")
+      end
+
       def to_a(_iseq)
         [:dup]
       end
@@ -699,6 +1063,14 @@ module SyntaxTree
 
       def pushes
         2
+      end
+
+      def canonical
+        self
+      end
+
+      def call(vm)
+        vm.push(vm.stack.last.dup)
       end
     end
 
@@ -719,6 +1091,10 @@ module SyntaxTree
         @object = object
       end
 
+      def disasm(fmt)
+        fmt.instruction("duparray", [fmt.object(object)])
+      end
+
       def to_a(_iseq)
         [:duparray, object]
       end
@@ -733,6 +1109,14 @@ module SyntaxTree
 
       def pushes
         1
+      end
+
+      def canonical
+        self
+      end
+
+      def call(vm)
+        vm.push(object.dup)
       end
     end
 
@@ -753,6 +1137,10 @@ module SyntaxTree
         @object = object
       end
 
+      def disasm(fmt)
+        fmt.instruction("duphash", [fmt.object(object)])
+      end
+
       def to_a(_iseq)
         [:duphash, object]
       end
@@ -767,6 +1155,14 @@ module SyntaxTree
 
       def pushes
         1
+      end
+
+      def canonical
+        self
+      end
+
+      def call(vm)
+        vm.push(object.dup)
       end
     end
 
@@ -787,6 +1183,10 @@ module SyntaxTree
         @number = number
       end
 
+      def disasm(fmt)
+        fmt.instruction("dupn", [fmt.object(number)])
+      end
+
       def to_a(_iseq)
         [:dupn, number]
       end
@@ -801,6 +1201,16 @@ module SyntaxTree
 
       def pushes
         number
+      end
+
+      def canonical
+        self
+      end
+
+      def call(vm)
+        values = vm.pop(number)
+        vm.push(*values)
+        vm.push(*values)
       end
     end
 
@@ -824,6 +1234,10 @@ module SyntaxTree
         @flags = flags
       end
 
+      def disasm(fmt)
+        fmt.instruction("expandarray", [fmt.object(number), fmt.object(flags)])
+      end
+
       def to_a(_iseq)
         [:expandarray, number, flags]
       end
@@ -838,6 +1252,14 @@ module SyntaxTree
 
       def pushes
         number
+      end
+
+      def canonical
+        self
+      end
+
+      def call(vm)
+        raise NotImplementedError, "expandarray"
       end
     end
 
@@ -866,6 +1288,10 @@ module SyntaxTree
         @level = level
       end
 
+      def disasm(fmt)
+        fmt.instruction("getblockparam", [fmt.local(index, explicit: level)])
+      end
+
       def to_a(iseq)
         current = iseq
         level.times { current = iseq.parent_iseq }
@@ -882,6 +1308,14 @@ module SyntaxTree
 
       def pushes
         1
+      end
+
+      def canonical
+        self
+      end
+
+      def call(vm)
+        vm.push(vm.local_get(index, level))
       end
     end
 
@@ -908,6 +1342,13 @@ module SyntaxTree
         @level = level
       end
 
+      def disasm(fmt)
+        fmt.instruction(
+          "getblockparamproxy",
+          [fmt.local(index, explicit: level)]
+        )
+      end
+
       def to_a(iseq)
         current = iseq
         level.times { current = iseq.parent_iseq }
@@ -924,6 +1365,14 @@ module SyntaxTree
 
       def pushes
         1
+      end
+
+      def canonical
+        self
+      end
+
+      def call(vm)
+        vm.push(vm.local_get(index, level))
       end
     end
 
@@ -947,6 +1396,13 @@ module SyntaxTree
         @cache = cache
       end
 
+      def disasm(fmt)
+        fmt.instruction(
+          "getclassvariable",
+          [fmt.object(name), fmt.inline_storage(cache)]
+        )
+      end
+
       def to_a(_iseq)
         [:getclassvariable, name, cache]
       end
@@ -961,6 +1417,16 @@ module SyntaxTree
 
       def pushes
         1
+      end
+
+      def canonical
+        self
+      end
+
+      def call(vm)
+        clazz = vm._self
+        clazz = clazz.class unless clazz.is_a?(Class)
+        vm.push(clazz.class_variable_get(name))
       end
     end
 
@@ -983,6 +1449,10 @@ module SyntaxTree
         @name = name
       end
 
+      def disasm(fmt)
+        fmt.instruction("getconstant", [fmt.object(name)])
+      end
+
       def to_a(_iseq)
         [:getconstant, name]
       end
@@ -997,6 +1467,24 @@ module SyntaxTree
 
       def pushes
         1
+      end
+
+      def canonical
+        self
+      end
+
+      def call(vm)
+        # const_base, allow_nil =
+        vm.pop(2)
+
+        vm.frame.nesting.reverse_each do |clazz|
+          if clazz.const_defined?(name)
+            vm.push(clazz.const_get(name))
+            return
+          end
+        end
+
+        raise NameError, "uninitialized constant #{name}"
       end
     end
 
@@ -1017,6 +1505,10 @@ module SyntaxTree
         @name = name
       end
 
+      def disasm(fmt)
+        fmt.instruction("getglobal", [fmt.object(name)])
+      end
+
       def to_a(_iseq)
         [:getglobal, name]
       end
@@ -1031,6 +1523,16 @@ module SyntaxTree
 
       def pushes
         1
+      end
+
+      def canonical
+        self
+      end
+
+      def call(vm)
+        # Evaluating the name of the global variable because there isn't a
+        # reflection API for global variables.
+        vm.push(eval(name.to_s, binding, __FILE__, __LINE__))
       end
     end
 
@@ -1059,6 +1561,13 @@ module SyntaxTree
         @cache = cache
       end
 
+      def disasm(fmt)
+        fmt.instruction(
+          "getinstancevariable",
+          [fmt.object(name), fmt.inline_storage(cache)]
+        )
+      end
+
       def to_a(_iseq)
         [:getinstancevariable, name, cache]
       end
@@ -1074,79 +1583,14 @@ module SyntaxTree
       def pushes
         1
       end
-    end
 
-    # ### Summary
-    #
-    # `getlocal_WC_0` is a specialized version of the `getlocal` instruction. It
-    # fetches the value of a local variable from the current frame determined by
-    # the index given as its only argument.
-    #
-    # ### Usage
-    #
-    # ~~~ruby
-    # value = 5
-    # value
-    # ~~~
-    #
-    class GetLocalWC0
-      attr_reader :index
-
-      def initialize(index)
-        @index = index
+      def canonical
+        self
       end
 
-      def to_a(iseq)
-        [:getlocal_WC_0, iseq.local_table.offset(index)]
-      end
-
-      def length
-        2
-      end
-
-      def pops
-        0
-      end
-
-      def pushes
-        1
-      end
-    end
-
-    # ### Summary
-    #
-    # `getlocal_WC_1` is a specialized version of the `getlocal` instruction. It
-    # fetches the value of a local variable from the parent frame determined by
-    # the index given as its only argument.
-    #
-    # ### Usage
-    #
-    # ~~~ruby
-    # value = 5
-    # self.then { value }
-    # ~~~
-    #
-    class GetLocalWC1
-      attr_reader :index
-
-      def initialize(index)
-        @index = index
-      end
-
-      def to_a(iseq)
-        [:getlocal_WC_1, iseq.parent_iseq.local_table.offset(index)]
-      end
-
-      def length
-        2
-      end
-
-      def pops
-        0
-      end
-
-      def pushes
-        1
+      def call(vm)
+        method = Object.instance_method(:instance_variable_get)
+        vm.push(method.bind(vm._self).call(name))
       end
     end
 
@@ -1172,6 +1616,10 @@ module SyntaxTree
         @level = level
       end
 
+      def disasm(fmt)
+        fmt.instruction("getlocal", [fmt.local(index, explicit: level)])
+      end
+
       def to_a(iseq)
         current = iseq
         level.times { current = current.parent_iseq }
@@ -1189,6 +1637,112 @@ module SyntaxTree
       def pushes
         1
       end
+
+      def canonical
+        self
+      end
+
+      def call(vm)
+        vm.push(vm.local_get(index, level))
+      end
+    end
+
+    # ### Summary
+    #
+    # `getlocal_WC_0` is a specialized version of the `getlocal` instruction. It
+    # fetches the value of a local variable from the current frame determined by
+    # the index given as its only argument.
+    #
+    # ### Usage
+    #
+    # ~~~ruby
+    # value = 5
+    # value
+    # ~~~
+    #
+    class GetLocalWC0
+      attr_reader :index
+
+      def initialize(index)
+        @index = index
+      end
+
+      def disasm(fmt)
+        fmt.instruction("getlocal_WC_0", [fmt.local(index, implicit: 0)])
+      end
+
+      def to_a(iseq)
+        [:getlocal_WC_0, iseq.local_table.offset(index)]
+      end
+
+      def length
+        2
+      end
+
+      def pops
+        0
+      end
+
+      def pushes
+        1
+      end
+
+      def canonical
+        GetLocal.new(index, 0)
+      end
+
+      def call(vm)
+        canonical.call(vm)
+      end
+    end
+
+    # ### Summary
+    #
+    # `getlocal_WC_1` is a specialized version of the `getlocal` instruction. It
+    # fetches the value of a local variable from the parent frame determined by
+    # the index given as its only argument.
+    #
+    # ### Usage
+    #
+    # ~~~ruby
+    # value = 5
+    # self.then { value }
+    # ~~~
+    #
+    class GetLocalWC1
+      attr_reader :index
+
+      def initialize(index)
+        @index = index
+      end
+
+      def disasm(fmt)
+        fmt.instruction("getlocal_WC_1", [fmt.local(index, implicit: 1)])
+      end
+
+      def to_a(iseq)
+        [:getlocal_WC_1, iseq.parent_iseq.local_table.offset(index)]
+      end
+
+      def length
+        2
+      end
+
+      def pops
+        0
+      end
+
+      def pushes
+        1
+      end
+
+      def canonical
+        GetLocal.new(index, 1)
+      end
+
+      def call(vm)
+        canonical.call(vm)
+      end
     end
 
     # ### Summary
@@ -1198,7 +1752,7 @@ module SyntaxTree
     # ### Usage
     #
     # ~~~ruby
-    # [true]
+    # 1 if (a == 1) .. (b == 2)
     # ~~~
     #
     class GetSpecial
@@ -1211,6 +1765,10 @@ module SyntaxTree
       def initialize(key, type)
         @key = key
         @type = type
+      end
+
+      def disasm(fmt)
+        fmt.instruction("getspecial", [fmt.object(key), fmt.object(type)])
       end
 
       def to_a(_iseq)
@@ -1228,6 +1786,21 @@ module SyntaxTree
       def pushes
         1
       end
+
+      def canonical
+        self
+      end
+
+      def call(vm)
+        case key
+        when SVAR_LASTLINE
+          raise NotImplementedError, "getspecial SVAR_LASTLINE"
+        when SVAR_BACKREF
+          raise NotImplementedError, "getspecial SVAR_BACKREF"
+        when SVAR_FLIPFLOP_START
+          vm.frame_svar.svars[SVAR_FLIPFLOP_START]
+        end
+      end
     end
 
     # ### Summary
@@ -1242,6 +1815,10 @@ module SyntaxTree
     # ~~~
     #
     class Intern
+      def disasm(fmt)
+        fmt.instruction("intern")
+      end
+
       def to_a(_iseq)
         [:intern]
       end
@@ -1256,6 +1833,14 @@ module SyntaxTree
 
       def pushes
         1
+      end
+
+      def canonical
+        self
+      end
+
+      def call(vm)
+        vm.push(vm.pop.to_sym)
       end
     end
 
@@ -1280,6 +1865,10 @@ module SyntaxTree
         @calldata = calldata
       end
 
+      def disasm(fmt)
+        fmt.instruction("invokeblock", [fmt.calldata(calldata)])
+      end
+
       def to_a(_iseq)
         [:invokeblock, calldata.to_h]
       end
@@ -1294,6 +1883,14 @@ module SyntaxTree
 
       def pushes
         1
+      end
+
+      def canonical
+        self
+      end
+
+      def call(vm)
+        vm.push(vm.frame_yield.block.call(*vm.pop(calldata.argc)))
       end
     end
 
@@ -1319,6 +1916,14 @@ module SyntaxTree
         @block_iseq = block_iseq
       end
 
+      def disasm(fmt)
+        fmt.enqueue(block_iseq) if block_iseq
+        fmt.instruction(
+          "invokesuper",
+          [fmt.calldata(calldata), block_iseq&.name || "nil"]
+        )
+      end
+
       def to_a(_iseq)
         [:invokesuper, calldata.to_h, block_iseq&.to_a]
       end
@@ -1334,6 +1939,32 @@ module SyntaxTree
 
       def pushes
         1
+      end
+
+      def canonical
+        self
+      end
+
+      def call(vm)
+        block =
+          if (iseq = block_iseq)
+            ->(*args, **kwargs, &blk) do
+              vm.run_block_frame(iseq, *args, **kwargs, &blk)
+            end
+          end
+
+        keywords =
+          if calldata.kw_arg
+            calldata.kw_arg.zip(vm.pop(calldata.kw_arg.length)).to_h
+          else
+            {}
+          end
+
+        arguments = vm.pop(calldata.argc)
+        receiver = vm.pop
+
+        method = receiver.method(vm.frame.name).super_method
+        vm.push(method.call(*arguments, **keywords, &block))
       end
     end
 
@@ -1359,12 +1990,12 @@ module SyntaxTree
         @label = label
       end
 
-      def patch!(iseq)
-        @label = iseq.label
+      def disasm(fmt)
+        fmt.instruction("jump", [fmt.label(label)])
       end
 
       def to_a(_iseq)
-        [:jump, label]
+        [:jump, label.name]
       end
 
       def length
@@ -1377,6 +2008,14 @@ module SyntaxTree
 
       def pushes
         0
+      end
+
+      def canonical
+        self
+      end
+
+      def call(vm)
+        vm.jump(label)
       end
     end
 
@@ -1391,6 +2030,10 @@ module SyntaxTree
     # ~~~
     #
     class Leave
+      def disasm(fmt)
+        fmt.instruction("leave")
+      end
+
       def to_a(_iseq)
         [:leave]
       end
@@ -1407,6 +2050,14 @@ module SyntaxTree
         # TODO: This is wrong. It should be 1. But it's 0 for now because
         # otherwise the stack size is incorrectly calculated.
         0
+      end
+
+      def canonical
+        self
+      end
+
+      def call(vm)
+        vm.leave
       end
     end
 
@@ -1429,6 +2080,10 @@ module SyntaxTree
         @number = number
       end
 
+      def disasm(fmt)
+        fmt.instruction("newarray", [fmt.object(number)])
+      end
+
       def to_a(_iseq)
         [:newarray, number]
       end
@@ -1443,6 +2098,14 @@ module SyntaxTree
 
       def pushes
         1
+      end
+
+      def canonical
+        self
+      end
+
+      def call(vm)
+        vm.push(vm.pop(number))
       end
     end
 
@@ -1465,6 +2128,10 @@ module SyntaxTree
         @number = number
       end
 
+      def disasm(fmt)
+        fmt.instruction("newarraykwsplat", [fmt.object(number)])
+      end
+
       def to_a(_iseq)
         [:newarraykwsplat, number]
       end
@@ -1479,6 +2146,14 @@ module SyntaxTree
 
       def pushes
         1
+      end
+
+      def canonical
+        self
+      end
+
+      def call(vm)
+        vm.push(vm.pop(number))
       end
     end
 
@@ -1503,6 +2178,10 @@ module SyntaxTree
         @number = number
       end
 
+      def disasm(fmt)
+        fmt.instruction("newhash", [fmt.object(number)])
+      end
+
       def to_a(_iseq)
         [:newhash, number]
       end
@@ -1517,6 +2196,14 @@ module SyntaxTree
 
       def pushes
         1
+      end
+
+      def canonical
+        self
+      end
+
+      def call(vm)
+        vm.push(vm.pop(number).each_slice(2).to_h)
       end
     end
 
@@ -1542,6 +2229,10 @@ module SyntaxTree
         @exclude_end = exclude_end
       end
 
+      def disasm(fmt)
+        fmt.instruction("newrange", [fmt.object(exclude_end)])
+      end
+
       def to_a(_iseq)
         [:newrange, exclude_end]
       end
@@ -1557,6 +2248,14 @@ module SyntaxTree
       def pushes
         1
       end
+
+      def canonical
+        self
+      end
+
+      def call(vm)
+        vm.push(Range.new(*vm.pop(2), exclude_end == 1))
+      end
     end
 
     # ### Summary
@@ -1571,6 +2270,10 @@ module SyntaxTree
     # ~~~
     #
     class Nop
+      def disasm(fmt)
+        fmt.instruction("nop")
+      end
+
       def to_a(_iseq)
         [:nop]
       end
@@ -1585,6 +2288,13 @@ module SyntaxTree
 
       def pushes
         0
+      end
+
+      def canonical
+        self
+      end
+
+      def call(vm)
       end
     end
 
@@ -1609,6 +2319,10 @@ module SyntaxTree
         @calldata = calldata
       end
 
+      def disasm(fmt)
+        fmt.instruction("objtostring", [fmt.calldata(calldata)])
+      end
+
       def to_a(_iseq)
         [:objtostring, calldata.to_h]
       end
@@ -1623,6 +2337,14 @@ module SyntaxTree
 
       def pushes
         1
+      end
+
+      def canonical
+        self
+      end
+
+      def call(vm)
+        vm.push(vm.pop.to_s)
       end
     end
 
@@ -1647,6 +2369,11 @@ module SyntaxTree
         @cache = cache
       end
 
+      def disasm(fmt)
+        fmt.enqueue(iseq)
+        fmt.instruction("once", [iseq.name, fmt.inline_storage(cache)])
+      end
+
       def to_a(_iseq)
         [:once, iseq.to_a, cache]
       end
@@ -1661,6 +2388,16 @@ module SyntaxTree
 
       def pushes
         1
+      end
+
+      def canonical
+        self
+      end
+
+      def call(vm)
+        return if @executed
+        vm.push(vm.run_block_frame(iseq))
+        @executed = true
       end
     end
 
@@ -1684,6 +2421,10 @@ module SyntaxTree
         @calldata = calldata
       end
 
+      def disasm(fmt)
+        fmt.instruction("opt_and", [fmt.calldata(calldata)])
+      end
+
       def to_a(_iseq)
         [:opt_and, calldata.to_h]
       end
@@ -1698,6 +2439,14 @@ module SyntaxTree
 
       def pushes
         1
+      end
+
+      def canonical
+        Send.new(calldata, nil)
+      end
+
+      def call(vm)
+        canonical.call(vm)
       end
     end
 
@@ -1720,6 +2469,10 @@ module SyntaxTree
         @calldata = calldata
       end
 
+      def disasm(fmt)
+        fmt.instruction("opt_aref", [fmt.calldata(calldata)])
+      end
+
       def to_a(_iseq)
         [:opt_aref, calldata.to_h]
       end
@@ -1734,6 +2487,14 @@ module SyntaxTree
 
       def pushes
         1
+      end
+
+      def canonical
+        Send.new(calldata, nil)
+      end
+
+      def call(vm)
+        canonical.call(vm)
       end
     end
 
@@ -1758,6 +2519,13 @@ module SyntaxTree
         @calldata = calldata
       end
 
+      def disasm(fmt)
+        fmt.instruction(
+          "opt_aref_with",
+          [fmt.object(object), fmt.calldata(calldata)]
+        )
+      end
+
       def to_a(_iseq)
         [:opt_aref_with, object, calldata.to_h]
       end
@@ -1772,6 +2540,14 @@ module SyntaxTree
 
       def pushes
         1
+      end
+
+      def canonical
+        self
+      end
+
+      def call(vm)
+        vm.push(vm.pop[object])
       end
     end
 
@@ -1795,6 +2571,10 @@ module SyntaxTree
         @calldata = calldata
       end
 
+      def disasm(fmt)
+        fmt.instruction("opt_aset", [fmt.calldata(calldata)])
+      end
+
       def to_a(_iseq)
         [:opt_aset, calldata.to_h]
       end
@@ -1809,6 +2589,14 @@ module SyntaxTree
 
       def pushes
         1
+      end
+
+      def canonical
+        Send.new(calldata, nil)
+      end
+
+      def call(vm)
+        canonical.call(vm)
       end
     end
 
@@ -1832,6 +2620,13 @@ module SyntaxTree
         @calldata = calldata
       end
 
+      def disasm(fmt)
+        fmt.instruction(
+          "opt_aset_with",
+          [fmt.object(object), fmt.calldata(calldata)]
+        )
+      end
+
       def to_a(_iseq)
         [:opt_aset_with, object, calldata.to_h]
       end
@@ -1846,6 +2641,15 @@ module SyntaxTree
 
       def pushes
         1
+      end
+
+      def canonical
+        self
+      end
+
+      def call(vm)
+        hash, value = vm.pop(2)
+        vm.push(hash[object] = value)
       end
     end
 
@@ -1880,8 +2684,19 @@ module SyntaxTree
         @else_label = else_label
       end
 
+      def disasm(fmt)
+        fmt.instruction(
+          "opt_case_dispatch",
+          ["<cdhash>", fmt.label(else_label)]
+        )
+      end
+
       def to_a(_iseq)
-        [:opt_case_dispatch, case_dispatch_hash, else_label]
+        [
+          :opt_case_dispatch,
+          case_dispatch_hash.flat_map { |key, value| [key, value.name] },
+          else_label
+        ]
       end
 
       def length
@@ -1894,6 +2709,14 @@ module SyntaxTree
 
       def pushes
         0
+      end
+
+      def canonical
+        self
+      end
+
+      def call(vm)
+        vm.jump(case_dispatch_hash.fetch(vm.pop, else_label))
       end
     end
 
@@ -1917,6 +2740,10 @@ module SyntaxTree
         @calldata = calldata
       end
 
+      def disasm(fmt)
+        fmt.instruction("opt_div", [fmt.calldata(calldata)])
+      end
+
       def to_a(_iseq)
         [:opt_div, calldata.to_h]
       end
@@ -1931,6 +2758,14 @@ module SyntaxTree
 
       def pushes
         1
+      end
+
+      def canonical
+        Send.new(calldata, nil)
+      end
+
+      def call(vm)
+        canonical.call(vm)
       end
     end
 
@@ -1953,6 +2788,10 @@ module SyntaxTree
         @calldata = calldata
       end
 
+      def disasm(fmt)
+        fmt.instruction("opt_empty_p", [fmt.calldata(calldata)])
+      end
+
       def to_a(_iseq)
         [:opt_empty_p, calldata.to_h]
       end
@@ -1967,6 +2806,14 @@ module SyntaxTree
 
       def pushes
         1
+      end
+
+      def canonical
+        Send.new(calldata, nil)
+      end
+
+      def call(vm)
+        canonical.call(vm)
       end
     end
 
@@ -1990,6 +2837,10 @@ module SyntaxTree
         @calldata = calldata
       end
 
+      def disasm(fmt)
+        fmt.instruction("opt_eq", [fmt.calldata(calldata)])
+      end
+
       def to_a(_iseq)
         [:opt_eq, calldata.to_h]
       end
@@ -2004,6 +2855,14 @@ module SyntaxTree
 
       def pushes
         1
+      end
+
+      def canonical
+        Send.new(calldata, nil)
+      end
+
+      def call(vm)
+        canonical.call(vm)
       end
     end
 
@@ -2027,6 +2886,10 @@ module SyntaxTree
         @calldata = calldata
       end
 
+      def disasm(fmt)
+        fmt.instruction("opt_ge", [fmt.calldata(calldata)])
+      end
+
       def to_a(_iseq)
         [:opt_ge, calldata.to_h]
       end
@@ -2041,6 +2904,14 @@ module SyntaxTree
 
       def pushes
         1
+      end
+
+      def canonical
+        Send.new(calldata, nil)
+      end
+
+      def call(vm)
+        canonical.call(vm)
       end
     end
 
@@ -2063,6 +2934,11 @@ module SyntaxTree
         @names = names
       end
 
+      def disasm(fmt)
+        cache = "<ic:0 #{names.join("::")}>"
+        fmt.instruction("opt_getconstant_path", [cache])
+      end
+
       def to_a(_iseq)
         [:opt_getconstant_path, names]
       end
@@ -2077,6 +2953,21 @@ module SyntaxTree
 
       def pushes
         1
+      end
+
+      def canonical
+        self
+      end
+
+      def call(vm)
+        current = vm._self
+        current = current.class unless current.is_a?(Class)
+
+        names.each do |name|
+          current = name == :"" ? Object : current.const_get(name)
+        end
+
+        vm.push(current)
       end
     end
 
@@ -2100,6 +2991,10 @@ module SyntaxTree
         @calldata = calldata
       end
 
+      def disasm(fmt)
+        fmt.instruction("opt_gt", [fmt.calldata(calldata)])
+      end
+
       def to_a(_iseq)
         [:opt_gt, calldata.to_h]
       end
@@ -2114,6 +3009,14 @@ module SyntaxTree
 
       def pushes
         1
+      end
+
+      def canonical
+        Send.new(calldata, nil)
+      end
+
+      def call(vm)
+        canonical.call(vm)
       end
     end
 
@@ -2137,6 +3040,10 @@ module SyntaxTree
         @calldata = calldata
       end
 
+      def disasm(fmt)
+        fmt.instruction("opt_le", [fmt.calldata(calldata)])
+      end
+
       def to_a(_iseq)
         [:opt_le, calldata.to_h]
       end
@@ -2151,6 +3058,14 @@ module SyntaxTree
 
       def pushes
         1
+      end
+
+      def canonical
+        Send.new(calldata, nil)
+      end
+
+      def call(vm)
+        canonical.call(vm)
       end
     end
 
@@ -2174,6 +3089,10 @@ module SyntaxTree
         @calldata = calldata
       end
 
+      def disasm(fmt)
+        fmt.instruction("opt_length", [fmt.calldata(calldata)])
+      end
+
       def to_a(_iseq)
         [:opt_length, calldata.to_h]
       end
@@ -2188,6 +3107,14 @@ module SyntaxTree
 
       def pushes
         1
+      end
+
+      def canonical
+        Send.new(calldata, nil)
+      end
+
+      def call(vm)
+        canonical.call(vm)
       end
     end
 
@@ -2211,6 +3138,10 @@ module SyntaxTree
         @calldata = calldata
       end
 
+      def disasm(fmt)
+        fmt.instruction("opt_lt", [fmt.calldata(calldata)])
+      end
+
       def to_a(_iseq)
         [:opt_lt, calldata.to_h]
       end
@@ -2225,6 +3156,14 @@ module SyntaxTree
 
       def pushes
         1
+      end
+
+      def canonical
+        Send.new(calldata, nil)
+      end
+
+      def call(vm)
+        canonical.call(vm)
       end
     end
 
@@ -2248,6 +3187,10 @@ module SyntaxTree
         @calldata = calldata
       end
 
+      def disasm(fmt)
+        fmt.instruction("opt_ltlt", [fmt.calldata(calldata)])
+      end
+
       def to_a(_iseq)
         [:opt_ltlt, calldata.to_h]
       end
@@ -2262,6 +3205,14 @@ module SyntaxTree
 
       def pushes
         1
+      end
+
+      def canonical
+        Send.new(calldata, nil)
+      end
+
+      def call(vm)
+        canonical.call(vm)
       end
     end
 
@@ -2286,6 +3237,10 @@ module SyntaxTree
         @calldata = calldata
       end
 
+      def disasm(fmt)
+        fmt.instruction("opt_minus", [fmt.calldata(calldata)])
+      end
+
       def to_a(_iseq)
         [:opt_minus, calldata.to_h]
       end
@@ -2300,6 +3255,14 @@ module SyntaxTree
 
       def pushes
         1
+      end
+
+      def canonical
+        Send.new(calldata, nil)
+      end
+
+      def call(vm)
+        canonical.call(vm)
       end
     end
 
@@ -2323,6 +3286,10 @@ module SyntaxTree
         @calldata = calldata
       end
 
+      def disasm(fmt)
+        fmt.instruction("opt_mod", [fmt.calldata(calldata)])
+      end
+
       def to_a(_iseq)
         [:opt_mod, calldata.to_h]
       end
@@ -2337,6 +3304,14 @@ module SyntaxTree
 
       def pushes
         1
+      end
+
+      def canonical
+        Send.new(calldata, nil)
+      end
+
+      def call(vm)
+        canonical.call(vm)
       end
     end
 
@@ -2360,6 +3335,10 @@ module SyntaxTree
         @calldata = calldata
       end
 
+      def disasm(fmt)
+        fmt.instruction("opt_mult", [fmt.calldata(calldata)])
+      end
+
       def to_a(_iseq)
         [:opt_mult, calldata.to_h]
       end
@@ -2374,6 +3353,14 @@ module SyntaxTree
 
       def pushes
         1
+      end
+
+      def canonical
+        Send.new(calldata, nil)
+      end
+
+      def call(vm)
+        canonical.call(vm)
       end
     end
 
@@ -2400,6 +3387,13 @@ module SyntaxTree
         @neq_calldata = neq_calldata
       end
 
+      def disasm(fmt)
+        fmt.instruction(
+          "opt_neq",
+          [fmt.calldata(eq_calldata), fmt.calldata(neq_calldata)]
+        )
+      end
+
       def to_a(_iseq)
         [:opt_neq, eq_calldata.to_h, neq_calldata.to_h]
       end
@@ -2415,6 +3409,15 @@ module SyntaxTree
       def pushes
         1
       end
+
+      def canonical
+        self
+      end
+
+      def call(vm)
+        receiver, argument = vm.pop(2)
+        vm.push(receiver != argument)
+      end
     end
 
     # ### Summary
@@ -2426,7 +3429,7 @@ module SyntaxTree
     # ### Usage
     #
     # ~~~ruby
-    # [1, 2, 3].max
+    # [a, b, c].max
     # ~~~
     #
     class OptNewArrayMax
@@ -2434,6 +3437,10 @@ module SyntaxTree
 
       def initialize(number)
         @number = number
+      end
+
+      def disasm(fmt)
+        fmt.instruction("opt_newarray_max", [fmt.object(number)])
       end
 
       def to_a(_iseq)
@@ -2451,6 +3458,14 @@ module SyntaxTree
       def pushes
         1
       end
+
+      def canonical
+        self
+      end
+
+      def call(vm)
+        vm.push(vm.pop(number).max)
+      end
     end
 
     # ### Summary
@@ -2462,7 +3477,7 @@ module SyntaxTree
     # ### Usage
     #
     # ~~~ruby
-    # [1, 2, 3].min
+    # [a, b, c].min
     # ~~~
     #
     class OptNewArrayMin
@@ -2470,6 +3485,10 @@ module SyntaxTree
 
       def initialize(number)
         @number = number
+      end
+
+      def disasm(fmt)
+        fmt.instruction("opt_newarray_min", [fmt.object(number)])
       end
 
       def to_a(_iseq)
@@ -2486,6 +3505,14 @@ module SyntaxTree
 
       def pushes
         1
+      end
+
+      def canonical
+        self
+      end
+
+      def call(vm)
+        vm.push(vm.pop(number).min)
       end
     end
 
@@ -2509,6 +3536,10 @@ module SyntaxTree
         @calldata = calldata
       end
 
+      def disasm(fmt)
+        fmt.instruction("opt_nil_p", [fmt.calldata(calldata)])
+      end
+
       def to_a(_iseq)
         [:opt_nil_p, calldata.to_h]
       end
@@ -2523,6 +3554,14 @@ module SyntaxTree
 
       def pushes
         1
+      end
+
+      def canonical
+        Send.new(calldata, nil)
+      end
+
+      def call(vm)
+        canonical.call(vm)
       end
     end
 
@@ -2544,6 +3583,10 @@ module SyntaxTree
         @calldata = calldata
       end
 
+      def disasm(fmt)
+        fmt.instruction("opt_not", [fmt.calldata(calldata)])
+      end
+
       def to_a(_iseq)
         [:opt_not, calldata.to_h]
       end
@@ -2558,6 +3601,14 @@ module SyntaxTree
 
       def pushes
         1
+      end
+
+      def canonical
+        Send.new(calldata, nil)
+      end
+
+      def call(vm)
+        canonical.call(vm)
       end
     end
 
@@ -2581,6 +3632,10 @@ module SyntaxTree
         @calldata = calldata
       end
 
+      def disasm(fmt)
+        fmt.instruction("opt_or", [fmt.calldata(calldata)])
+      end
+
       def to_a(_iseq)
         [:opt_or, calldata.to_h]
       end
@@ -2595,6 +3650,14 @@ module SyntaxTree
 
       def pushes
         1
+      end
+
+      def canonical
+        Send.new(calldata, nil)
+      end
+
+      def call(vm)
+        canonical.call(vm)
       end
     end
 
@@ -2618,6 +3681,10 @@ module SyntaxTree
         @calldata = calldata
       end
 
+      def disasm(fmt)
+        fmt.instruction("opt_plus", [fmt.calldata(calldata)])
+      end
+
       def to_a(_iseq)
         [:opt_plus, calldata.to_h]
       end
@@ -2632,6 +3699,14 @@ module SyntaxTree
 
       def pushes
         1
+      end
+
+      def canonical
+        Send.new(calldata, nil)
+      end
+
+      def call(vm)
+        canonical.call(vm)
       end
     end
 
@@ -2654,6 +3729,10 @@ module SyntaxTree
         @calldata = calldata
       end
 
+      def disasm(fmt)
+        fmt.instruction("opt_regexpmatch2", [fmt.calldata(calldata)])
+      end
+
       def to_a(_iseq)
         [:opt_regexpmatch2, calldata.to_h]
       end
@@ -2668,6 +3747,14 @@ module SyntaxTree
 
       def pushes
         1
+      end
+
+      def canonical
+        Send.new(calldata, nil)
+      end
+
+      def call(vm)
+        canonical.call(vm)
       end
     end
 
@@ -2690,6 +3777,10 @@ module SyntaxTree
         @calldata = calldata
       end
 
+      def disasm(fmt)
+        fmt.instruction("opt_send_without_block", [fmt.calldata(calldata)])
+      end
+
       def to_a(_iseq)
         [:opt_send_without_block, calldata.to_h]
       end
@@ -2704,6 +3795,14 @@ module SyntaxTree
 
       def pushes
         1
+      end
+
+      def canonical
+        Send.new(calldata, nil)
+      end
+
+      def call(vm)
+        canonical.call(vm)
       end
     end
 
@@ -2727,6 +3826,10 @@ module SyntaxTree
         @calldata = calldata
       end
 
+      def disasm(fmt)
+        fmt.instruction("opt_size", [fmt.calldata(calldata)])
+      end
+
       def to_a(_iseq)
         [:opt_size, calldata.to_h]
       end
@@ -2741,6 +3844,14 @@ module SyntaxTree
 
       def pushes
         1
+      end
+
+      def canonical
+        Send.new(calldata, nil)
+      end
+
+      def call(vm)
+        canonical.call(vm)
       end
     end
 
@@ -2764,6 +3875,13 @@ module SyntaxTree
         @calldata = calldata
       end
 
+      def disasm(fmt)
+        fmt.instruction(
+          "opt_str_freeze",
+          [fmt.object(object), fmt.calldata(calldata)]
+        )
+      end
+
       def to_a(_iseq)
         [:opt_str_freeze, object, calldata.to_h]
       end
@@ -2778,6 +3896,14 @@ module SyntaxTree
 
       def pushes
         1
+      end
+
+      def canonical
+        self
+      end
+
+      def call(vm)
+        vm.push(object.freeze)
       end
     end
 
@@ -2801,6 +3927,13 @@ module SyntaxTree
         @calldata = calldata
       end
 
+      def disasm(fmt)
+        fmt.instruction(
+          "opt_str_uminus",
+          [fmt.object(object), fmt.calldata(calldata)]
+        )
+      end
+
       def to_a(_iseq)
         [:opt_str_uminus, object, calldata.to_h]
       end
@@ -2815,6 +3948,14 @@ module SyntaxTree
 
       def pushes
         1
+      end
+
+      def canonical
+        self
+      end
+
+      def call(vm)
+        vm.push(-object)
       end
     end
 
@@ -2838,6 +3979,10 @@ module SyntaxTree
         @calldata = calldata
       end
 
+      def disasm(fmt)
+        fmt.instruction("opt_succ", [fmt.calldata(calldata)])
+      end
+
       def to_a(_iseq)
         [:opt_succ, calldata.to_h]
       end
@@ -2853,6 +3998,14 @@ module SyntaxTree
       def pushes
         1
       end
+
+      def canonical
+        Send.new(calldata, nil)
+      end
+
+      def call(vm)
+        canonical.call(vm)
+      end
     end
 
     # ### Summary
@@ -2866,6 +4019,10 @@ module SyntaxTree
     # ~~~
     #
     class Pop
+      def disasm(fmt)
+        fmt.instruction("pop")
+      end
+
       def to_a(_iseq)
         [:pop]
       end
@@ -2881,6 +4038,14 @@ module SyntaxTree
       def pushes
         0
       end
+
+      def canonical
+        self
+      end
+
+      def call(vm)
+        vm.pop
+      end
     end
 
     # ### Summary
@@ -2894,6 +4059,10 @@ module SyntaxTree
     # ~~~
     #
     class PutNil
+      def disasm(fmt)
+        fmt.instruction("putnil")
+      end
+
       def to_a(_iseq)
         [:putnil]
       end
@@ -2908,6 +4077,14 @@ module SyntaxTree
 
       def pushes
         1
+      end
+
+      def canonical
+        PutObject.new(nil)
+      end
+
+      def call(vm)
+        canonical.call(vm)
       end
     end
 
@@ -2928,6 +4105,10 @@ module SyntaxTree
         @object = object
       end
 
+      def disasm(fmt)
+        fmt.instruction("putobject", [fmt.object(object)])
+      end
+
       def to_a(_iseq)
         [:putobject, object]
       end
@@ -2942,6 +4123,14 @@ module SyntaxTree
 
       def pushes
         1
+      end
+
+      def canonical
+        self
+      end
+
+      def call(vm)
+        vm.push(object)
       end
     end
 
@@ -2958,6 +4147,10 @@ module SyntaxTree
     # ~~~
     #
     class PutObjectInt2Fix0
+      def disasm(fmt)
+        fmt.instruction("putobject_INT2FIX_0_")
+      end
+
       def to_a(_iseq)
         [:putobject_INT2FIX_0_]
       end
@@ -2972,6 +4165,14 @@ module SyntaxTree
 
       def pushes
         1
+      end
+
+      def canonical
+        PutObject.new(0)
+      end
+
+      def call(vm)
+        canonical.call(vm)
       end
     end
 
@@ -2988,6 +4189,10 @@ module SyntaxTree
     # ~~~
     #
     class PutObjectInt2Fix1
+      def disasm(fmt)
+        fmt.instruction("putobject_INT2FIX_1_")
+      end
+
       def to_a(_iseq)
         [:putobject_INT2FIX_1_]
       end
@@ -3003,6 +4208,14 @@ module SyntaxTree
       def pushes
         1
       end
+
+      def canonical
+        PutObject.new(1)
+      end
+
+      def call(vm)
+        canonical.call(vm)
+      end
     end
 
     # ### Summary
@@ -3016,6 +4229,10 @@ module SyntaxTree
     # ~~~
     #
     class PutSelf
+      def disasm(fmt)
+        fmt.instruction("putself")
+      end
+
       def to_a(_iseq)
         [:putself]
       end
@@ -3030,6 +4247,14 @@ module SyntaxTree
 
       def pushes
         1
+      end
+
+      def canonical
+        self
+      end
+
+      def call(vm)
+        vm.push(vm._self)
       end
     end
 
@@ -3056,6 +4281,10 @@ module SyntaxTree
         @object = object
       end
 
+      def disasm(fmt)
+        fmt.instruction("putspecialobject", [fmt.object(object)])
+      end
+
       def to_a(_iseq)
         [:putspecialobject, object]
       end
@@ -3070,6 +4299,23 @@ module SyntaxTree
 
       def pushes
         1
+      end
+
+      def canonical
+        self
+      end
+
+      def call(vm)
+        case object
+        when OBJECT_VMCORE
+          vm.push(vm.frozen_core)
+        when OBJECT_CBASE
+          value = vm._self
+          value = value.singleton_class unless value.is_a?(Class)
+          vm.push(value)
+        when OBJECT_CONST_BASE
+          vm.push(vm.const_base)
+        end
       end
     end
 
@@ -3090,6 +4336,10 @@ module SyntaxTree
         @object = object
       end
 
+      def disasm(fmt)
+        fmt.instruction("putstring", [fmt.object(object)])
+      end
+
       def to_a(_iseq)
         [:putstring, object]
       end
@@ -3104,6 +4354,14 @@ module SyntaxTree
 
       def pushes
         1
+      end
+
+      def canonical
+        self
+      end
+
+      def call(vm)
+        vm.push(object.dup)
       end
     end
 
@@ -3128,6 +4386,14 @@ module SyntaxTree
         @block_iseq = block_iseq
       end
 
+      def disasm(fmt)
+        fmt.enqueue(block_iseq) if block_iseq
+        fmt.instruction(
+          "send",
+          [fmt.calldata(calldata), block_iseq&.name || "nil"]
+        )
+      end
+
       def to_a(_iseq)
         [:send, calldata.to_h, block_iseq&.to_a]
       end
@@ -3143,6 +4409,33 @@ module SyntaxTree
 
       def pushes
         1
+      end
+
+      def canonical
+        self
+      end
+
+      def call(vm)
+        block =
+          if (iseq = block_iseq)
+            ->(*args, **kwargs, &blk) do
+              vm.run_block_frame(iseq, *args, **kwargs, &blk)
+            end
+          end
+
+        keywords =
+          if calldata.kw_arg
+            calldata.kw_arg.zip(vm.pop(calldata.kw_arg.length)).to_h
+          else
+            {}
+          end
+
+        arguments = vm.pop(calldata.argc)
+        receiver = vm.pop
+
+        vm.push(
+          receiver.__send__(calldata.method, *arguments, **keywords, &block)
+        )
       end
     end
 
@@ -3169,6 +4462,10 @@ module SyntaxTree
         @level = level
       end
 
+      def disasm(fmt)
+        fmt.instruction("setblockparam", [fmt.local(index, explicit: level)])
+      end
+
       def to_a(iseq)
         current = iseq
         level.times { current = current.parent_iseq }
@@ -3185,6 +4482,14 @@ module SyntaxTree
 
       def pushes
         0
+      end
+
+      def canonical
+        self
+      end
+
+      def call(vm)
+        vm.local_set(index, level, vm.pop)
       end
     end
 
@@ -3209,6 +4514,13 @@ module SyntaxTree
         @cache = cache
       end
 
+      def disasm(fmt)
+        fmt.instruction(
+          "setclassvariable",
+          [fmt.object(name), fmt.inline_storage(cache)]
+        )
+      end
+
       def to_a(_iseq)
         [:setclassvariable, name, cache]
       end
@@ -3223,6 +4535,16 @@ module SyntaxTree
 
       def pushes
         0
+      end
+
+      def canonical
+        self
+      end
+
+      def call(vm)
+        clazz = vm._self
+        clazz = clazz.class unless clazz.is_a?(Class)
+        clazz.class_variable_set(name, vm.pop)
       end
     end
 
@@ -3244,6 +4566,10 @@ module SyntaxTree
         @name = name
       end
 
+      def disasm(fmt)
+        fmt.instruction("setconstant", [fmt.object(name)])
+      end
+
       def to_a(_iseq)
         [:setconstant, name]
       end
@@ -3258,6 +4584,15 @@ module SyntaxTree
 
       def pushes
         0
+      end
+
+      def canonical
+        self
+      end
+
+      def call(vm)
+        value, parent = vm.pop(2)
+        parent.const_set(name, value)
       end
     end
 
@@ -3279,6 +4614,10 @@ module SyntaxTree
         @name = name
       end
 
+      def disasm(fmt)
+        fmt.instruction("setglobal", [fmt.object(name)])
+      end
+
       def to_a(_iseq)
         [:setglobal, name]
       end
@@ -3293,6 +4632,16 @@ module SyntaxTree
 
       def pushes
         0
+      end
+
+      def canonical
+        self
+      end
+
+      def call(vm)
+        # Evaluating the name of the global variable because there isn't a
+        # reflection API for global variables.
+        eval("#{name} = vm.pop", binding, __FILE__, __LINE__)
       end
     end
 
@@ -3320,6 +4669,13 @@ module SyntaxTree
         @cache = cache
       end
 
+      def disasm(fmt)
+        fmt.instruction(
+          "setinstancevariable",
+          [fmt.object(name), fmt.inline_storage(cache)]
+        )
+      end
+
       def to_a(_iseq)
         [:setinstancevariable, name, cache]
       end
@@ -3334,6 +4690,15 @@ module SyntaxTree
 
       def pushes
         0
+      end
+
+      def canonical
+        self
+      end
+
+      def call(vm)
+        method = Object.instance_method(:instance_variable_set)
+        method.bind(vm._self).call(name, vm.pop)
       end
     end
 
@@ -3359,6 +4724,10 @@ module SyntaxTree
         @level = level
       end
 
+      def disasm(fmt)
+        fmt.instruction("setlocal", [fmt.local(index, explicit: level)])
+      end
+
       def to_a(iseq)
         current = iseq
         level.times { current = current.parent_iseq }
@@ -3375,6 +4744,14 @@ module SyntaxTree
 
       def pushes
         0
+      end
+
+      def canonical
+        self
+      end
+
+      def call(vm)
+        vm.local_set(index, level, vm.pop)
       end
     end
 
@@ -3398,6 +4775,10 @@ module SyntaxTree
         @index = index
       end
 
+      def disasm(fmt)
+        fmt.instruction("setlocal_WC_0", [fmt.local(index, implicit: 0)])
+      end
+
       def to_a(iseq)
         [:setlocal_WC_0, iseq.local_table.offset(index)]
       end
@@ -3412,6 +4793,14 @@ module SyntaxTree
 
       def pushes
         0
+      end
+
+      def canonical
+        SetLocal.new(index, 0)
+      end
+
+      def call(vm)
+        canonical.call(vm)
       end
     end
 
@@ -3435,6 +4824,10 @@ module SyntaxTree
         @index = index
       end
 
+      def disasm(fmt)
+        fmt.instruction("setlocal_WC_1", [fmt.local(index, implicit: 1)])
+      end
+
       def to_a(iseq)
         [:setlocal_WC_1, iseq.parent_iseq.local_table.offset(index)]
       end
@@ -3449,6 +4842,14 @@ module SyntaxTree
 
       def pushes
         0
+      end
+
+      def canonical
+        SetLocal.new(index, 1)
+      end
+
+      def call(vm)
+        canonical.call(vm)
       end
     end
 
@@ -3470,6 +4871,10 @@ module SyntaxTree
         @number = number
       end
 
+      def disasm(fmt)
+        fmt.instruction("setn", [fmt.object(number)])
+      end
+
       def to_a(_iseq)
         [:setn, number]
       end
@@ -3484,6 +4889,14 @@ module SyntaxTree
 
       def pushes
         1
+      end
+
+      def canonical
+        self
+      end
+
+      def call(vm)
+        vm.stack[-number - 1] = vm.stack.last
       end
     end
 
@@ -3506,6 +4919,10 @@ module SyntaxTree
         @key = key
       end
 
+      def disasm(fmt)
+        fmt.instruction("setspecial", [fmt.object(key)])
+      end
+
       def to_a(_iseq)
         [:setspecial, key]
       end
@@ -3520,6 +4937,21 @@ module SyntaxTree
 
       def pushes
         0
+      end
+
+      def canonical
+        self
+      end
+
+      def call(vm)
+        case key
+        when GetSpecial::SVAR_LASTLINE
+          raise NotImplementedError, "svar SVAR_LASTLINE"
+        when GetSpecial::SVAR_BACKREF
+          raise NotImplementedError, "setspecial SVAR_BACKREF"
+        when GetSpecial::SVAR_FLIPFLOP_START
+          vm.frame_svar.svars[GetSpecial::SVAR_FLIPFLOP_START]
+        end
       end
     end
 
@@ -3542,6 +4974,10 @@ module SyntaxTree
         @flag = flag
       end
 
+      def disasm(fmt)
+        fmt.instruction("splatarray", [fmt.object(flag)])
+      end
+
       def to_a(_iseq)
         [:splatarray, flag]
       end
@@ -3556,6 +4992,14 @@ module SyntaxTree
 
       def pushes
         1
+      end
+
+      def canonical
+        self
+      end
+
+      def call(vm)
+        vm.push(*vm.pop)
       end
     end
 
@@ -3574,6 +5018,10 @@ module SyntaxTree
     # ~~~
     #
     class Swap
+      def disasm(fmt)
+        fmt.instruction("swap")
+      end
+
       def to_a(_iseq)
         [:swap]
       end
@@ -3588,6 +5036,15 @@ module SyntaxTree
 
       def pushes
         2
+      end
+
+      def canonical
+        self
+      end
+
+      def call(vm)
+        left, right = vm.pop(2)
+        vm.push(right, left)
       end
     end
 
@@ -3604,10 +5061,24 @@ module SyntaxTree
     # ~~~
     #
     class Throw
+      TAG_NONE = 0x0
+      TAG_RETURN = 0x1
+      TAG_BREAK = 0x2
+      TAG_NEXT = 0x3
+      TAG_RETRY = 0x4
+      TAG_REDO = 0x5
+      TAG_RAISE = 0x6
+      TAG_THROW = 0x7
+      TAG_FATAL = 0x8
+
       attr_reader :type
 
       def initialize(type)
         @type = type
+      end
+
+      def disasm(fmt)
+        fmt.instruction("throw", [fmt.object(type)])
       end
 
       def to_a(_iseq)
@@ -3624,6 +5095,14 @@ module SyntaxTree
 
       def pushes
         1
+      end
+
+      def canonical
+        self
+      end
+
+      def call(vm)
+        raise NotImplementedError, "throw"
       end
     end
 
@@ -3648,6 +5127,10 @@ module SyntaxTree
         @number = number
       end
 
+      def disasm(fmt)
+        fmt.instruction("topn", [fmt.object(number)])
+      end
+
       def to_a(_iseq)
         [:topn, number]
       end
@@ -3662,6 +5145,14 @@ module SyntaxTree
 
       def pushes
         1
+      end
+
+      def canonical
+        self
+      end
+
+      def call(vm)
+        vm.push(vm.stack[-number - 1])
       end
     end
 
@@ -3684,6 +5175,10 @@ module SyntaxTree
         @length = length
       end
 
+      def disasm(fmt)
+        fmt.instruction("toregexp", [fmt.object(options), fmt.object(length)])
+      end
+
       def to_a(_iseq)
         [:toregexp, options, length]
       end
@@ -3694,6 +5189,14 @@ module SyntaxTree
 
       def pushes
         1
+      end
+
+      def canonical
+        self
+      end
+
+      def call(vm)
+        vm.push(Regexp.new(vm.pop(length).join, options))
       end
     end
   end

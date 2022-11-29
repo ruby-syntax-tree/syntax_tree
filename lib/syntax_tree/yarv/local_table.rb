@@ -44,6 +44,10 @@ module SyntaxTree
         @locals = []
       end
 
+      def empty?
+        locals.empty?
+      end
+
       def find(name, level = 0)
         index = locals.index { |local| local.name == name }
         Lookup.new(locals[index], index, level) if index
@@ -55,6 +59,10 @@ module SyntaxTree
 
       def names
         locals.map(&:name)
+      end
+
+      def name_at(index)
+        locals[index].name
       end
 
       def size

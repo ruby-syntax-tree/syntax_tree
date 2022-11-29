@@ -7,6 +7,57 @@ module SyntaxTree
     # list of instructions along with the metadata pertaining to them. It also
     # functions as a builder for the instruction sequence.
     class InstructionSequence
+      # When the list of instructions is first being created, it's stored as a
+      # linked list. This is to make it easier to perform peephole optimizations
+      # and other transformations like instruction specialization.
+      class InstructionList
+        class Node
+          attr_accessor :value, :next_node
+
+          def initialize(value, next_node = nil)
+            @value = value
+            @next_node = next_node
+          end
+        end
+
+        include Enumerable
+        attr_reader :head_node, :tail_node
+
+        def initialize
+          @head_node = nil
+          @tail_node = nil
+        end
+
+        def each
+          return to_enum(__method__) unless block_given?
+          each_node { |node| yield node.value }
+        end
+
+        def each_node
+          return to_enum(__method__) unless block_given?
+          node = head_node
+
+          while node
+            yield node, node.value
+            node = node.next_node
+          end
+        end
+
+        def push(instruction)
+          node = Node.new(instruction)
+
+          if head_node.nil?
+            @head_node = node
+            @tail_node = node
+          else
+            @tail_node.next_node = node
+            @tail_node = node
+          end
+
+          node
+        end
+      end
+
       MAGIC = "YARVInstructionSequence/SimpleDataFormat"
 
       # This provides a handle to the rb_iseq_load function, which allows you to
@@ -41,6 +92,30 @@ module SyntaxTree
         end
       end
 
+      # This represents the destination of instructions that jump. Initially it
+      # does not track its position so that when we perform optimizations the
+      # indices don't get messed up.
+      class Label
+        attr_reader :name
+
+        # When we're serializing the instruction sequence, we need to be able to
+        # look up the label from the branch instructions and then access the
+        # subsequent node. So we'll store the reference here.
+        attr_accessor :node
+
+        def initialize(name = nil)
+          @name = name
+        end
+
+        def patch!(name)
+          @name = name
+        end
+
+        def inspect
+          name.inspect
+        end
+      end
+
       # The type of the instruction sequence.
       attr_reader :type
 
@@ -57,6 +132,9 @@ module SyntaxTree
       # instruction sequence.
       attr_accessor :argument_size
       attr_reader :argument_options
+
+      # The catch table for this instruction sequence.
+      attr_reader :catch_table
 
       # The list of instructions for this instruction sequence.
       attr_reader :insns
@@ -92,10 +170,11 @@ module SyntaxTree
 
         @argument_size = 0
         @argument_options = {}
+        @catch_table = []
 
         @local_table = LocalTable.new
         @inline_storages = {}
-        @insns = []
+        @insns = InstructionList.new
         @storage_index = 0
         @stack = Stack.new
 
@@ -127,14 +206,16 @@ module SyntaxTree
       end
 
       def length
-        insns.inject(0) do |sum, insn|
-          case insn
-          when Integer, Symbol
-            sum
-          else
-            sum + insn.length
+        insns
+          .each
+          .inject(0) do |sum, insn|
+            case insn
+            when Integer, Label, Symbol
+              sum
+            else
+              sum + insn.length
+            end
           end
-        end
       end
 
       def eval
@@ -151,6 +232,23 @@ module SyntaxTree
       def to_a
         versions = RUBY_VERSION.split(".").map(&:to_i)
 
+        # Dump all of the instructions into a flat list.
+        dumped =
+          insns.map do |insn|
+            case insn
+            when Integer, Symbol
+              insn
+            when Label
+              insn.name
+            else
+              insn.to_a(self)
+            end
+          end
+
+        dumped_options = argument_options.dup
+        dumped_options[:opt].map!(&:name) if dumped_options[:opt]
+
+        # Next, return the instruction sequence as an array.
         [
           MAGIC,
           versions[0],
@@ -167,12 +265,155 @@ module SyntaxTree
           location.start_line,
           type,
           local_table.names,
-          argument_options,
-          [],
-          insns.map do |insn|
-            insn.is_a?(Integer) || insn.is_a?(Symbol) ? insn : insn.to_a(self)
-          end
+          dumped_options,
+          catch_table.map(&:to_a),
+          dumped
         ]
+      end
+
+      def disasm
+        formatter = DisasmFormatter.new
+        formatter.enqueue(self)
+        formatter.format!
+      end
+
+      # This method converts our linked list of instructions into a final array
+      # and performs any other compilation steps necessary.
+      def compile!
+        specialize_instructions! if options.specialized_instruction?
+
+        length = 0
+        insns.each do |insn|
+          case insn
+          when Integer, Symbol
+            # skip
+          when Label
+            insn.patch!(:"label_#{length}")
+          when DefineClass
+            insn.class_iseq.compile!
+            length += insn.length
+          when DefineMethod, DefineSMethod
+            insn.method_iseq.compile!
+            length += insn.length
+          when InvokeSuper, Send
+            insn.block_iseq.compile! if insn.block_iseq
+            length += insn.length
+          when Once
+            insn.iseq.compile!
+            length += insn.length
+          else
+            length += insn.length
+          end
+        end
+
+        @insns = insns.to_a
+      end
+
+      def specialize_instructions!
+        insns.each_node do |node, value|
+          case value
+          when NewArray
+            next unless node.next_node
+
+            next_node = node.next_node
+            next unless next_node.value.is_a?(Send)
+            next if next_node.value.block_iseq
+
+            calldata = next_node.value.calldata
+            next unless calldata.flags == CallData::CALL_ARGS_SIMPLE
+            next unless calldata.argc == 0
+
+            case calldata.method
+            when :max
+              node.value = OptNewArrayMax.new(value.number)
+              node.next_node = next_node.next_node
+            when :min
+              node.value = OptNewArrayMin.new(value.number)
+              node.next_node = next_node.next_node
+            end
+          when PutObject, PutString
+            next unless node.next_node
+            next if value.is_a?(PutObject) && !value.object.is_a?(String)
+
+            next_node = node.next_node
+            next unless next_node.value.is_a?(Send)
+            next if next_node.value.block_iseq
+
+            calldata = next_node.value.calldata
+            next unless calldata.flags == CallData::CALL_ARGS_SIMPLE
+            next unless calldata.argc == 0
+
+            case calldata.method
+            when :freeze
+              node.value = OptStrFreeze.new(value.object, calldata)
+              node.next_node = next_node.next_node
+            when :-@
+              node.value = OptStrUMinus.new(value.object, calldata)
+              node.next_node = next_node.next_node
+            end
+          when Send
+            calldata = value.calldata
+
+            if !value.block_iseq &&
+                 !calldata.flag?(CallData::CALL_ARGS_BLOCKARG)
+              # Specialize the send instruction. If it doesn't have a block
+              # attached, then we will replace it with an opt_send_without_block
+              # and do further specializations based on the called method and
+              # the number of arguments.
+              node.value =
+                case [calldata.method, calldata.argc]
+                when [:length, 0]
+                  OptLength.new(calldata)
+                when [:size, 0]
+                  OptSize.new(calldata)
+                when [:empty?, 0]
+                  OptEmptyP.new(calldata)
+                when [:nil?, 0]
+                  OptNilP.new(calldata)
+                when [:succ, 0]
+                  OptSucc.new(calldata)
+                when [:!, 0]
+                  OptNot.new(calldata)
+                when [:+, 1]
+                  OptPlus.new(calldata)
+                when [:-, 1]
+                  OptMinus.new(calldata)
+                when [:*, 1]
+                  OptMult.new(calldata)
+                when [:/, 1]
+                  OptDiv.new(calldata)
+                when [:%, 1]
+                  OptMod.new(calldata)
+                when [:==, 1]
+                  OptEq.new(calldata)
+                when [:!=, 1]
+                  OptNEq.new(YARV.calldata(:==, 1), calldata)
+                when [:=~, 1]
+                  OptRegExpMatch2.new(calldata)
+                when [:<, 1]
+                  OptLT.new(calldata)
+                when [:<=, 1]
+                  OptLE.new(calldata)
+                when [:>, 1]
+                  OptGT.new(calldata)
+                when [:>=, 1]
+                  OptGE.new(calldata)
+                when [:<<, 1]
+                  OptLTLT.new(calldata)
+                when [:[], 1]
+                  OptAref.new(calldata)
+                when [:&, 1]
+                  OptAnd.new(calldata)
+                when [:|, 1]
+                  OptOr.new(calldata)
+                when [:[]=, 2]
+                  OptAset.new(calldata)
+                else
+                  OptSendWithoutBlock.new(calldata)
+                end
+            end
+          end
+        end
       end
 
       ##########################################################################
@@ -206,26 +447,97 @@ module SyntaxTree
       end
 
       ##########################################################################
-      # Instruction push methods
+      # Catch table methods
       ##########################################################################
 
-      def push(insn)
-        insns << insn
+      class CatchEntry
+        attr_reader :iseq, :begin_label, :end_label, :exit_label
 
-        case insn
-        when Integer, Symbol, Array
-          insn
-        else
-          stack.change_by(-insn.pops + insn.pushes)
-          insn
+        def initialize(iseq, begin_label, end_label, exit_label)
+          @iseq = iseq
+          @begin_label = begin_label
+          @end_label = end_label
+          @exit_label = exit_label
         end
       end
 
-      # This creates a new label at the current length of the instruction
-      # sequence. It is used as the operand for jump instructions.
+      class CatchBreak < CatchEntry
+        def to_a
+          [:break, iseq.to_a, begin_label.name, end_label.name, exit_label.name]
+        end
+      end
+
+      class CatchNext < CatchEntry
+        def to_a
+          [:next, nil, begin_label.name, end_label.name, exit_label.name]
+        end
+      end
+
+      class CatchRedo < CatchEntry
+        def to_a
+          [:redo, nil, begin_label.name, end_label.name, exit_label.name]
+        end
+      end
+
+      class CatchRescue < CatchEntry
+        def to_a
+          [
+            :rescue,
+            iseq.to_a,
+            begin_label.name,
+            end_label.name,
+            exit_label.name
+          ]
+        end
+      end
+
+      class CatchRetry < CatchEntry
+        def to_a
+          [:retry, nil, begin_label.name, end_label.name, exit_label.name]
+        end
+      end
+
+      def catch_break(iseq, begin_label, end_label, exit_label)
+        catch_table << CatchBreak.new(iseq, begin_label, end_label, exit_label)
+      end
+
+      def catch_next(begin_label, end_label, exit_label)
+        catch_table << CatchNext.new(nil, begin_label, end_label, exit_label)
+      end
+
+      def catch_redo(begin_label, end_label, exit_label)
+        catch_table << CatchRedo.new(nil, begin_label, end_label, exit_label)
+      end
+
+      def catch_rescue(iseq, begin_label, end_label, exit_label)
+        catch_table << CatchRescue.new(iseq, begin_label, end_label, exit_label)
+      end
+
+      def catch_retry(begin_label, end_label, exit_label)
+        catch_table << CatchRetry.new(nil, begin_label, end_label, exit_label)
+      end
+
+      ##########################################################################
+      # Instruction push methods
+      ##########################################################################
+
       def label
-        name = :"label_#{length}"
-        insns.last == name ? name : event(name)
+        Label.new
+      end
+
+      def push(value)
+        node = insns.push(value)
+
+        case value
+        when Array, Integer, Symbol
+          value
+        when Label
+          value.node = node
+          value
+        else
+          stack.change_by(-value.pops + value.pushes)
+          value
+        end
       end
 
       def event(name)
@@ -426,11 +738,12 @@ module SyntaxTree
       def opt_getconstant_path(names)
         if RUBY_VERSION < "3.2" || !options.inline_const_cache?
           cache = nil
-          getinlinecache = nil
+          cache_filled_label = nil
 
           if options.inline_const_cache?
             cache = inline_storage
-            getinlinecache = opt_getinlinecache(-1, cache)
+            cache_filled_label = label
+            opt_getinlinecache(cache_filled_label, cache)
 
             if names[0] == :""
               names.shift
@@ -451,7 +764,7 @@ module SyntaxTree
 
           if options.inline_const_cache?
             opt_setinlinecache(cache)
-            getinlinecache.patch!(self)
+            push(cache_filled_label)
           end
         else
           push(OptGetConstantPath.new(names))
@@ -462,44 +775,8 @@ module SyntaxTree
         push(Legacy::OptGetInlineCache.new(label, cache))
       end
 
-      def opt_newarray_max(length)
-        if options.specialized_instruction?
-          push(OptNewArrayMax.new(length))
-        else
-          newarray(length)
-          send(YARV.calldata(:max))
-        end
-      end
-
-      def opt_newarray_min(length)
-        if options.specialized_instruction?
-          push(OptNewArrayMin.new(length))
-        else
-          newarray(length)
-          send(YARV.calldata(:min))
-        end
-      end
-
       def opt_setinlinecache(cache)
         push(Legacy::OptSetInlineCache.new(cache))
-      end
-
-      def opt_str_freeze(object)
-        if options.specialized_instruction?
-          push(OptStrFreeze.new(object, YARV.calldata(:freeze)))
-        else
-          putstring(object)
-          send(YARV.calldata(:freeze))
-        end
-      end
-
-      def opt_str_uminus(object)
-        if options.specialized_instruction?
-          push(OptStrUMinus.new(object, YARV.calldata(:-@)))
-        else
-          putstring(object)
-          send(YARV.calldata(:-@))
-        end
       end
 
       def pop
@@ -541,65 +818,7 @@ module SyntaxTree
       end
 
       def send(calldata, block_iseq = nil)
-        if options.specialized_instruction? && !block_iseq &&
-             !calldata.flag?(CallData::CALL_ARGS_BLOCKARG)
-          # Specialize the send instruction. If it doesn't have a block
-          # attached, then we will replace it with an opt_send_without_block
-          # and do further specializations based on the called method and the
-          # number of arguments.
-          case [calldata.method, calldata.argc]
-          when [:length, 0]
-            push(OptLength.new(calldata))
-          when [:size, 0]
-            push(OptSize.new(calldata))
-          when [:empty?, 0]
-            push(OptEmptyP.new(calldata))
-          when [:nil?, 0]
-            push(OptNilP.new(calldata))
-          when [:succ, 0]
-            push(OptSucc.new(calldata))
-          when [:!, 0]
-            push(OptNot.new(calldata))
-          when [:+, 1]
-            push(OptPlus.new(calldata))
-          when [:-, 1]
-            push(OptMinus.new(calldata))
-          when [:*, 1]
-            push(OptMult.new(calldata))
-          when [:/, 1]
-            push(OptDiv.new(calldata))
-          when [:%, 1]
-            push(OptMod.new(calldata))
-          when [:==, 1]
-            push(OptEq.new(calldata))
-          when [:!=, 1]
-            push(OptNEq.new(YARV.calldata(:==, 1), calldata))
-          when [:=~, 1]
-            push(OptRegExpMatch2.new(calldata))
-          when [:<, 1]
-            push(OptLT.new(calldata))
-          when [:<=, 1]
-            push(OptLE.new(calldata))
-          when [:>, 1]
-            push(OptGT.new(calldata))
-          when [:>=, 1]
-            push(OptGE.new(calldata))
-          when [:<<, 1]
-            push(OptLTLT.new(calldata))
-          when [:[], 1]
-            push(OptAref.new(calldata))
-          when [:&, 1]
-            push(OptAnd.new(calldata))
-          when [:|, 1]
-            push(OptOr.new(calldata))
-          when [:[]=, 2]
-            push(OptAset.new(calldata))
-          else
-            push(OptSendWithoutBlock.new(calldata))
-          end
-        else
-          push(Send.new(calldata, block_iseq))
-        end
+        push(Send.new(calldata, block_iseq))
       end
 
       def setblockparam(index, level)
@@ -682,6 +901,11 @@ module SyntaxTree
       def self.from(source, options = Compiler::Options.new, parent_iseq = nil)
         iseq = new(source[9], source[5], parent_iseq, Location.default, options)
 
+        # set up the labels object so that the labels are shared between the
+        # location in the instruction sequence and the instructions that
+        # reference them
+        labels = Hash.new { |hash, name| hash[name] = Label.new(name) }
+
         # set up the correct argument size
         iseq.argument_size = source[4][:arg_size]
 
@@ -690,30 +914,82 @@ module SyntaxTree
 
         # set up the argument options
         iseq.argument_options.merge!(source[11])
+        if iseq.argument_options[:opt]
+          iseq.argument_options[:opt].map! { |opt| labels[opt] }
+        end
+
+        # set up the catch table
+        source[12].each do |entry|
+          case entry[0]
+          when :break
+            iseq.catch_break(
+              from(entry[1]),
+              labels[entry[2]],
+              labels[entry[3]],
+              labels[entry[4]]
+            )
+          when :next
+            iseq.catch_next(
+              labels[entry[2]],
+              labels[entry[3]],
+              labels[entry[4]]
+            )
+          when :rescue
+            iseq.catch_rescue(
+              from(entry[1]),
+              labels[entry[2]],
+              labels[entry[3]],
+              labels[entry[4]]
+            )
+          when :redo
+            iseq.catch_redo(
+              labels[entry[2]],
+              labels[entry[3]],
+              labels[entry[4]]
+            )
+          when :retry
+            iseq.catch_retry(
+              labels[entry[2]],
+              labels[entry[3]],
+              labels[entry[4]]
+            )
+          else
+            raise "unknown catch type: #{entry[0]}"
+          end
+        end
 
         # set up all of the instructions
         source[13].each do |insn|
-          # skip line numbers
-          next if insn.is_a?(Integer)
-
-          # put events into the array and then continue
-          if insn.is_a?(Symbol)
-            iseq.event(insn)
+          # add line numbers
+          if insn.is_a?(Integer)
+            iseq.push(insn)
             next
           end
 
+          # add events and labels
+          if insn.is_a?(Symbol)
+            if insn.start_with?("label_")
+              iseq.push(labels[insn])
+            else
+              iseq.push(insn)
+            end
+            next
+          end
+
+          # add instructions, mapped to our own instruction classes
           type, *opnds = insn
+
           case type
           when :adjuststack
             iseq.adjuststack(opnds[0])
           when :anytostring
             iseq.anytostring
           when :branchif
-            iseq.branchif(opnds[0])
+            iseq.branchif(labels[opnds[0]])
           when :branchnil
-            iseq.branchnil(opnds[0])
+            iseq.branchnil(labels[opnds[0]])
           when :branchunless
-            iseq.branchunless(opnds[0])
+            iseq.branchunless(labels[opnds[0]])
           when :checkkeyword
             iseq.checkkeyword(iseq.local_table.size - opnds[0] + 2, opnds[1])
           when :checkmatch
@@ -789,7 +1065,7 @@ module SyntaxTree
             block_iseq = opnds[1] ? from(opnds[1], options, iseq) : nil
             iseq.invokesuper(CallData.from(opnds[0]), block_iseq)
           when :jump
-            iseq.jump(opnds[0])
+            iseq.jump(labels[opnds[0]])
           when :leave
             iseq.leave
           when :newarray
@@ -817,15 +1093,22 @@ module SyntaxTree
           when :opt_aset_with
             iseq.opt_aset_with(opnds[0], CallData.from(opnds[1]))
           when :opt_case_dispatch
-            iseq.opt_case_dispatch(opnds[0], opnds[1])
+            hash =
+              opnds[0]
+                .each_slice(2)
+                .to_h
+                .transform_values { |value| labels[value] }
+            iseq.opt_case_dispatch(hash, labels[opnds[1]])
           when :opt_getconstant_path
             iseq.opt_getconstant_path(opnds[0])
           when :opt_getinlinecache
-            iseq.opt_getinlinecache(opnds[0], opnds[1])
+            iseq.opt_getinlinecache(labels[opnds[0]], opnds[1])
           when :opt_newarray_max
-            iseq.opt_newarray_max(opnds[0])
+            iseq.newarray(opnds[0])
+            iseq.send(YARV.calldata(:max))
           when :opt_newarray_min
-            iseq.opt_newarray_min(opnds[0])
+            iseq.newarray(opnds[0])
+            iseq.send(YARV.calldata(:min))
           when :opt_neq
             iseq.push(
               OptNEq.new(CallData.from(opnds[0]), CallData.from(opnds[1]))
@@ -833,9 +1116,11 @@ module SyntaxTree
           when :opt_setinlinecache
             iseq.opt_setinlinecache(opnds[0])
           when :opt_str_freeze
-            iseq.opt_str_freeze(opnds[0])
+            iseq.putstring(opnds[0])
+            iseq.send(YARV.calldata(:freeze))
           when :opt_str_uminus
-            iseq.opt_str_uminus(opnds[0])
+            iseq.putstring(opnds[0])
+            iseq.send(YARV.calldata(:-@))
           when :pop
             iseq.pop
           when :putnil
@@ -882,6 +1167,7 @@ module SyntaxTree
           end
         end
 
+        iseq.compile! if iseq.type == :top
         iseq
       end
     end

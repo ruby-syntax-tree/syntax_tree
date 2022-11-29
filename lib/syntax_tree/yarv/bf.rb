@@ -74,6 +74,7 @@ module SyntaxTree
           end
 
         iseq.leave
+        iseq.compile!
         iseq
       end
 
@@ -154,22 +155,24 @@ module SyntaxTree
       # unless $tape[$cursor] == 0
       def loop_start(iseq)
         start_label = iseq.label
+        end_label = iseq.label
 
+        iseq.push(start_label)
         iseq.getglobal(:$tape)
         iseq.getglobal(:$cursor)
         iseq.send(YARV.calldata(:[], 1))
 
         iseq.putobject(0)
         iseq.send(YARV.calldata(:==, 1))
+        iseq.branchunless(end_label)
 
-        branchunless = iseq.branchunless(-1)
-        [start_label, branchunless]
+        [start_label, end_label]
       end
 
       # Jump back to the start of the loop.
-      def loop_end(iseq, start_label, branchunless)
+      def loop_end(iseq, start_label, end_label)
         iseq.jump(start_label)
-        branchunless.patch!(iseq)
+        iseq.push(end_label)
       end
     end
   end
