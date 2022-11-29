@@ -33,6 +33,25 @@ module SyntaxTree
         @kw_arg = kw_arg
       end
 
+      def disasm
+        flag_names = []
+        flag_names << :ARGS_SPLAT if flag?(CALL_ARGS_SPLAT)
+        flag_names << :ARGS_BLOCKARG if flag?(CALL_ARGS_BLOCKARG)
+        flag_names << :FCALL if flag?(CALL_FCALL)
+        flag_names << :VCALL if flag?(CALL_VCALL)
+        flag_names << :ARGS_SIMPLE if flag?(CALL_ARGS_SIMPLE)
+        flag_names << :BLOCKISEQ if flag?(CALL_BLOCKISEQ)
+        flag_names << :KWARG if flag?(CALL_KWARG)
+        flag_names << :KW_SPLAT if flag?(CALL_KW_SPLAT)
+        flag_names << :TAILCALL if flag?(CALL_TAILCALL)
+        flag_names << :SUPER if flag?(CALL_SUPER)
+        flag_names << :ZSUPER if flag?(CALL_ZSUPER)
+        flag_names << :OPT_SEND if flag?(CALL_OPT_SEND)
+        flag_names << :KW_SPLAT_MUT if flag?(CALL_KW_SPLAT_MUT)
+
+        "<calldata!mid:#{method}, argc:#{argc}, #{flag_names.join("|")}>"
+      end
+
       def flag?(mask)
         (flags & mask) > 0
       end
@@ -1783,6 +1802,10 @@ module SyntaxTree
     # ~~~
     #
     class Leave
+      def disasm(_iseq)
+        "leave"
+      end
+
       def to_a(_iseq)
         [:leave]
       end
@@ -2973,6 +2996,10 @@ module SyntaxTree
         @calldata = calldata
       end
 
+      def disasm(_iseq)
+        "%-38s %s" % ["opt_mult", calldata.disasm]
+      end
+
       def to_a(_iseq)
         [:opt_mult, calldata.to_h]
       end
@@ -3286,6 +3313,10 @@ module SyntaxTree
 
       def initialize(calldata)
         @calldata = calldata
+      end
+
+      def disasm(iseq)
+        "%-38s %s" % ["opt_plus", calldata.disasm]
       end
 
       def to_a(_iseq)
@@ -3670,6 +3701,10 @@ module SyntaxTree
         @object = object
       end
 
+      def disasm(_iseq)
+        "%-38s %s" % ["putobject", object.inspect]
+      end
+
       def to_a(_iseq)
         [:putobject, object]
       end
@@ -3708,6 +3743,10 @@ module SyntaxTree
     # ~~~
     #
     class PutObjectInt2Fix0
+      def disasm(_iseq)
+        "putobject_INT2FIX_0_"
+      end
+
       def to_a(_iseq)
         [:putobject_INT2FIX_0_]
       end
@@ -3746,6 +3785,10 @@ module SyntaxTree
     # ~~~
     #
     class PutObjectInt2Fix1
+      def disasm(_iseq)
+        "putobject_INT2FIX_1_"
+      end
+
       def to_a(_iseq)
         [:putobject_INT2FIX_1_]
       end

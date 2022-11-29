@@ -281,7 +281,6 @@ module SyntaxTree
     def self.interpret(source, options = Compiler::Options.new)
       iseq = RubyVM::InstructionSequence.compile(source, **options)
       iseq = InstructionSequence.from(iseq.to_a)
-      iseq.specialize_instructions!
       VM.new.run_top_frame(iseq)
     end
   end

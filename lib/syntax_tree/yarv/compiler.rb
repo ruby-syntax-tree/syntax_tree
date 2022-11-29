@@ -1359,6 +1359,7 @@ module SyntaxTree
             node.location,
             options
           )
+
         with_child_iseq(top_iseq) do
           visit_all(preexes)
 
@@ -1372,6 +1373,9 @@ module SyntaxTree
 
           iseq.leave
         end
+
+        top_iseq.compile!
+        top_iseq
       end
 
       def visit_qsymbols(node)

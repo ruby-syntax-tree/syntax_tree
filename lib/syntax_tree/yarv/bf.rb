@@ -74,6 +74,7 @@ module SyntaxTree
           end
 
         iseq.leave
+        iseq.compile!
         iseq
       end
 

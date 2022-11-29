@@ -54,7 +54,6 @@ module SyntaxTree
         clauses = {}
         clause = []
 
-        iseq.to_a
         iseq.insns.each do |insn|
           case insn
           when InstructionSequence::Label
@@ -192,7 +191,7 @@ module SyntaxTree
               Assign(VarField(target), value)
             end
           else
-            raise "Unknown instruction #{insn[0]}"
+            raise "Unknown instruction #{insn}"
           end
         end
 

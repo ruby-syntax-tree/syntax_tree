@@ -232,24 +232,7 @@ module SyntaxTree
       def to_a
         versions = RUBY_VERSION.split(".").map(&:to_i)
 
-        # First, handle any compilation options that we need to.
-        specialize_instructions! if options.specialized_instruction?
-        peephole_optimize! if options.peephole_optimization?
-
-        # Next, set it up so that all of the labels get their correct name.
-        length = 0
-        insns.each do |insn|
-          case insn
-          when Integer, Symbol
-            # skip
-          when Label
-            insn.patch!(:"label_#{length}")
-          else
-            length += insn.length
-          end
-        end
-
-        # Next, dump all of the instructions into a flat list.
+        # Dump all of the instructions into a flat list.
         dumped =
           insns.map do |insn|
             case insn
@@ -286,6 +269,65 @@ module SyntaxTree
           catch_table.map(&:to_a),
           dumped
         ]
+      end
+
+      def disasm
+        output = StringIO.new
+        output << "== disasm: #<ISeq:#{name}@<compiled>:1 (#{location.start_line},#{location.start_column})-(#{location.end_line},#{location.end_column})> (catch: FALSE)\n"
+
+        length = 0
+        events = []
+
+        insns.each do |insn|
+          case insn
+          when Integer
+            # skip
+          when Symbol
+            events << insn
+          when Label
+            # skip
+          else
+            output << "%04d " % length
+            output << insn.disasm(self)
+            output << "\n"
+          end
+
+          length += insn.length
+        end
+
+        output.string
+      end
+
+      # This method converts our linked list of instructions into a final array
+      # and performs any other compilation steps necessary.
+      def compile!
+        specialize_instructions! if options.specialized_instruction?
+
+        length = 0
+        insns.each do |insn|
+          case insn
+          when Integer, Symbol
+            # skip
+          when Label
+            insn.patch!(:"label_#{length}")
+          when DefineClass
+            insn.class_iseq.compile!
+            length += insn.length
+          when DefineMethod, DefineSMethod
+            insn.method_iseq.compile!
+            length += insn.length
+          when InvokeSuper, Send
+            insn.block_iseq.compile! if insn.block_iseq
+            length += insn.length
+          when Once
+            insn.iseq.compile!
+            length += insn.length
+          else
+            length += insn.length
+          end
+        end
+
+        @insns = insns.to_a
       end
 
       def specialize_instructions!
@@ -333,8 +375,7 @@ module SyntaxTree
           when Send
             calldata = value.calldata
 
-            if !value.block_iseq &&
-                 !calldata.flag?(CallData::CALL_ARGS_BLOCKARG)
+            if !value.block_iseq && !calldata.flag?(CallData::CALL_ARGS_BLOCKARG)
               # Specialize the send instruction. If it doesn't have a block
               # attached, then we will replace it with an opt_send_without_block
               # and do further specializations based on the called method and
@@ -393,27 +434,6 @@ module SyntaxTree
             end
           end
         end
-      end
-
-      def peephole_optimize!
-        # insns.each_node do |node, value|
-        #   case value
-        #   when Jump
-        #     #  jump LABEL
-        #     #  ...
-        #     # LABEL:
-        #     #  leave
-        #     # =>
-        #     #  leave
-        #     #  ...
-        #     # LABEL:
-        #     #  leave
-        #     # case value.label.node.next_node&.value
-        #     # when Leave
-        #     #   node.value = Leave.new
-        #     # end
-        #   end
-        # end
       end
 
       ##########################################################################
@@ -1164,6 +1184,7 @@ module SyntaxTree
           end
         end
 
+        iseq.compile! if iseq.type == :top
         iseq
       end
     end
