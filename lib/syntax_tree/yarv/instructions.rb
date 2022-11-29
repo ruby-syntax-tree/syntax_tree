@@ -33,25 +33,6 @@ module SyntaxTree
         @kw_arg = kw_arg
       end
 
-      def disasm
-        flag_names = []
-        flag_names << :ARGS_SPLAT if flag?(CALL_ARGS_SPLAT)
-        flag_names << :ARGS_BLOCKARG if flag?(CALL_ARGS_BLOCKARG)
-        flag_names << :FCALL if flag?(CALL_FCALL)
-        flag_names << :VCALL if flag?(CALL_VCALL)
-        flag_names << :ARGS_SIMPLE if flag?(CALL_ARGS_SIMPLE)
-        flag_names << :BLOCKISEQ if flag?(CALL_BLOCKISEQ)
-        flag_names << :KWARG if flag?(CALL_KWARG)
-        flag_names << :KW_SPLAT if flag?(CALL_KW_SPLAT)
-        flag_names << :TAILCALL if flag?(CALL_TAILCALL)
-        flag_names << :SUPER if flag?(CALL_SUPER)
-        flag_names << :ZSUPER if flag?(CALL_ZSUPER)
-        flag_names << :OPT_SEND if flag?(CALL_OPT_SEND)
-        flag_names << :KW_SPLAT_MUT if flag?(CALL_KW_SPLAT_MUT)
-
-        "<calldata!mid:#{method}, argc:#{argc}, #{flag_names.join("|")}>"
-      end
-
       def flag?(mask)
         (flags & mask) > 0
       end
@@ -102,6 +83,10 @@ module SyntaxTree
         @number = number
       end
 
+      def disasm(fmt)
+        fmt.instruction("adjuststack", [fmt.object(number)])
+      end
+
       def to_a(_iseq)
         [:adjuststack, number]
       end
@@ -146,6 +131,10 @@ module SyntaxTree
     # ~~~
     #
     class AnyToString
+      def disasm(fmt)
+        fmt.instruction("anytostring")
+      end
+
       def to_a(_iseq)
         [:anytostring]
       end
@@ -200,6 +189,10 @@ module SyntaxTree
         @label = label
       end
 
+      def disasm(fmt)
+        fmt.instruction("branchif", [fmt.label(label)])
+      end
+
       def to_a(_iseq)
         [:branchif, label.name]
       end
@@ -249,6 +242,10 @@ module SyntaxTree
         @label = label
       end
 
+      def disasm(fmt)
+        fmt.instruction("branchnil", [fmt.label(label)])
+      end
+
       def to_a(_iseq)
         [:branchnil, label.name]
       end
@@ -295,6 +292,10 @@ module SyntaxTree
 
       def initialize(label)
         @label = label
+      end
+
+      def disasm(fmt)
+        fmt.instruction("branchunless", [fmt.label(label)])
       end
 
       def to_a(_iseq)
@@ -349,6 +350,13 @@ module SyntaxTree
         @keyword_index = keyword_index
       end
 
+      def disasm(fmt)
+        fmt.instruction(
+          "checkkeyword",
+          [fmt.object(keyword_bits_index), fmt.object(keyword_index)]
+        )
+      end
+
       def to_a(iseq)
         [
           :checkkeyword,
@@ -399,6 +407,10 @@ module SyntaxTree
 
       def initialize(type)
         @type = type
+      end
+
+      def disasm(fmt)
+        fmt.instruction("checkmatch", [fmt.object(type)])
       end
 
       def to_a(_iseq)
@@ -466,6 +478,56 @@ module SyntaxTree
 
       def initialize(type)
         @type = type
+      end
+
+      def disasm(fmt)
+        name =
+          case type
+          when TYPE_OBJECT
+            "T_OBJECT"
+          when TYPE_CLASS
+            "T_CLASS"
+          when TYPE_MODULE
+            "T_MODULE"
+          when TYPE_FLOAT
+            "T_FLOAT"
+          when TYPE_STRING
+            "T_STRING"
+          when TYPE_REGEXP
+            "T_REGEXP"
+          when TYPE_ARRAY
+            "T_ARRAY"
+          when TYPE_HASH
+            "T_HASH"
+          when TYPE_STRUCT
+            "T_STRUCT"
+          when TYPE_BIGNUM
+            "T_BIGNUM"
+          when TYPE_FILE
+            "T_FILE"
+          when TYPE_DATA
+            "T_DATA"
+          when TYPE_MATCH
+            "T_MATCH"
+          when TYPE_COMPLEX
+            "T_COMPLEX"
+          when TYPE_RATIONAL
+            "T_RATIONAL"
+          when TYPE_NIL
+            "T_NIL"
+          when TYPE_TRUE
+            "T_TRUE"
+          when TYPE_FALSE
+            "T_FALSE"
+          when TYPE_SYMBOL
+            "T_SYMBOL"
+          when TYPE_FIXNUM
+            "T_FIXNUM"
+          when TYPE_UNDEF
+            "T_UNDEF"
+          end
+
+        fmt.instruction("checktype", [name])
       end
 
       def to_a(_iseq)
@@ -559,6 +621,10 @@ module SyntaxTree
     # ~~~
     #
     class ConcatArray
+      def disasm(fmt)
+        fmt.instruction("concatarray")
+      end
+
       def to_a(_iseq)
         [:concatarray]
       end
@@ -605,6 +671,10 @@ module SyntaxTree
 
       def initialize(number)
         @number = number
+      end
+
+      def disasm(fmt)
+        fmt.instruction("concatstrings", [fmt.object(number)])
       end
 
       def to_a(_iseq)
@@ -660,6 +730,14 @@ module SyntaxTree
         @name = name
         @class_iseq = class_iseq
         @flags = flags
+      end
+
+      def disasm(fmt)
+        fmt.enqueue(class_iseq)
+        fmt.instruction(
+          "defineclass",
+          [fmt.object(name), class_iseq.name, fmt.object(flags)]
+        )
       end
 
       def to_a(_iseq)
@@ -729,6 +807,51 @@ module SyntaxTree
         @type = type
         @name = name
         @message = message
+      end
+
+      def disasm(fmt)
+        type_name =
+          case type
+          when TYPE_NIL
+            "nil"
+          when TYPE_IVAR
+            "ivar"
+          when TYPE_LVAR
+            "lvar"
+          when TYPE_GVAR
+            "gvar"
+          when TYPE_CVAR
+            "cvar"
+          when TYPE_CONST
+            "const"
+          when TYPE_METHOD
+            "method"
+          when TYPE_YIELD
+            "yield"
+          when TYPE_ZSUPER
+            "zsuper"
+          when TYPE_SELF
+            "self"
+          when TYPE_TRUE
+            "true"
+          when TYPE_FALSE
+            "false"
+          when TYPE_ASGN
+            "asgn"
+          when TYPE_EXPR
+            "expr"
+          when TYPE_REF
+            "ref"
+          when TYPE_FUNC
+            "func"
+          when TYPE_CONST_FROM
+            "constant-from"
+          end
+
+        fmt.instruction(
+          "defined",
+          [type_name, fmt.object(name), fmt.object(message)]
+        )
       end
 
       def to_a(_iseq)
@@ -809,6 +932,14 @@ module SyntaxTree
         @method_iseq = method_iseq
       end
 
+      def disasm(fmt)
+        fmt.enqueue(method_iseq)
+        fmt.instruction(
+          "definemethod",
+          [fmt.object(method_name), method_iseq.name]
+        )
+      end
+
       def to_a(_iseq)
         [:definemethod, method_name, method_iseq.to_a]
       end
@@ -863,6 +994,14 @@ module SyntaxTree
         @method_iseq = method_iseq
       end
 
+      def disasm(fmt)
+        fmt.enqueue(method_iseq)
+        fmt.instruction(
+          "definesmethod",
+          [fmt.object(method_name), method_iseq.name]
+        )
+      end
+
       def to_a(_iseq)
         [:definesmethod, method_name, method_iseq.to_a]
       end
@@ -906,6 +1045,10 @@ module SyntaxTree
     # ~~~
     #
     class Dup
+      def disasm(fmt)
+        fmt.instruction("dup")
+      end
+
       def to_a(_iseq)
         [:dup]
       end
@@ -946,6 +1089,10 @@ module SyntaxTree
 
       def initialize(object)
         @object = object
+      end
+
+      def disasm(fmt)
+        fmt.instruction("duparray", [fmt.object(object)])
       end
 
       def to_a(_iseq)
@@ -990,6 +1137,10 @@ module SyntaxTree
         @object = object
       end
 
+      def disasm(fmt)
+        fmt.instruction("duphash", [fmt.object(object)])
+      end
+
       def to_a(_iseq)
         [:duphash, object]
       end
@@ -1030,6 +1181,10 @@ module SyntaxTree
 
       def initialize(number)
         @number = number
+      end
+
+      def disasm(fmt)
+        fmt.instruction("dupn", [fmt.object(number)])
       end
 
       def to_a(_iseq)
@@ -1077,6 +1232,10 @@ module SyntaxTree
       def initialize(number, flags)
         @number = number
         @flags = flags
+      end
+
+      def disasm(fmt)
+        fmt.instruction("expandarray", [fmt.object(number), fmt.object(flags)])
       end
 
       def to_a(_iseq)
@@ -1129,6 +1288,10 @@ module SyntaxTree
         @level = level
       end
 
+      def disasm(fmt)
+        fmt.instruction("getblockparam", [fmt.local(index, explicit: level)])
+      end
+
       def to_a(iseq)
         current = iseq
         level.times { current = iseq.parent_iseq }
@@ -1179,6 +1342,13 @@ module SyntaxTree
         @level = level
       end
 
+      def disasm(fmt)
+        fmt.instruction(
+          "getblockparamproxy",
+          [fmt.local(index, explicit: level)]
+        )
+      end
+
       def to_a(iseq)
         current = iseq
         level.times { current = iseq.parent_iseq }
@@ -1226,6 +1396,13 @@ module SyntaxTree
         @cache = cache
       end
 
+      def disasm(fmt)
+        fmt.instruction(
+          "getclassvariable",
+          [fmt.object(name), fmt.inline_storage(cache)]
+        )
+      end
+
       def to_a(_iseq)
         [:getclassvariable, name, cache]
       end
@@ -1270,6 +1447,10 @@ module SyntaxTree
 
       def initialize(name)
         @name = name
+      end
+
+      def disasm(fmt)
+        fmt.instruction("getconstant", [fmt.object(name)])
       end
 
       def to_a(_iseq)
@@ -1324,6 +1505,10 @@ module SyntaxTree
         @name = name
       end
 
+      def disasm(fmt)
+        fmt.instruction("getglobal", [fmt.object(name)])
+      end
+
       def to_a(_iseq)
         [:getglobal, name]
       end
@@ -1376,6 +1561,13 @@ module SyntaxTree
         @cache = cache
       end
 
+      def disasm(fmt)
+        fmt.instruction(
+          "getinstancevariable",
+          [fmt.object(name), fmt.inline_storage(cache)]
+        )
+      end
+
       def to_a(_iseq)
         [:getinstancevariable, name, cache]
       end
@@ -1422,6 +1614,10 @@ module SyntaxTree
       def initialize(index, level)
         @index = index
         @level = level
+      end
+
+      def disasm(fmt)
+        fmt.instruction("getlocal", [fmt.local(index, explicit: level)])
       end
 
       def to_a(iseq)
@@ -1471,6 +1667,10 @@ module SyntaxTree
         @index = index
       end
 
+      def disasm(fmt)
+        fmt.instruction("getlocal_WC_0", [fmt.local(index, implicit: 0)])
+      end
+
       def to_a(iseq)
         [:getlocal_WC_0, iseq.local_table.offset(index)]
       end
@@ -1516,6 +1716,10 @@ module SyntaxTree
         @index = index
       end
 
+      def disasm(fmt)
+        fmt.instruction("getlocal_WC_1", [fmt.local(index, implicit: 1)])
+      end
+
       def to_a(iseq)
         [:getlocal_WC_1, iseq.parent_iseq.local_table.offset(index)]
       end
@@ -1548,7 +1752,7 @@ module SyntaxTree
     # ### Usage
     #
     # ~~~ruby
-    # [true]
+    # 1 if (a == 1) .. (b == 2)
     # ~~~
     #
     class GetSpecial
@@ -1561,6 +1765,10 @@ module SyntaxTree
       def initialize(key, type)
         @key = key
         @type = type
+      end
+
+      def disasm(fmt)
+        fmt.instruction("getspecial", [fmt.object(key), fmt.object(type)])
       end
 
       def to_a(_iseq)
@@ -1607,6 +1815,10 @@ module SyntaxTree
     # ~~~
     #
     class Intern
+      def disasm(fmt)
+        fmt.instruction("intern")
+      end
+
       def to_a(_iseq)
         [:intern]
       end
@@ -1651,6 +1863,10 @@ module SyntaxTree
 
       def initialize(calldata)
         @calldata = calldata
+      end
+
+      def disasm(fmt)
+        fmt.instruction("invokeblock", [fmt.calldata(calldata)])
       end
 
       def to_a(_iseq)
@@ -1698,6 +1914,14 @@ module SyntaxTree
       def initialize(calldata, block_iseq)
         @calldata = calldata
         @block_iseq = block_iseq
+      end
+
+      def disasm(fmt)
+        fmt.enqueue(block_iseq) if block_iseq
+        fmt.instruction(
+          "invokesuper",
+          [fmt.calldata(calldata), block_iseq&.name || "nil"]
+        )
       end
 
       def to_a(_iseq)
@@ -1766,6 +1990,10 @@ module SyntaxTree
         @label = label
       end
 
+      def disasm(fmt)
+        fmt.instruction("jump", [fmt.label(label)])
+      end
+
       def to_a(_iseq)
         [:jump, label.name]
       end
@@ -1802,8 +2030,8 @@ module SyntaxTree
     # ~~~
     #
     class Leave
-      def disasm(_iseq)
-        "leave"
+      def disasm(fmt)
+        fmt.instruction("leave")
       end
 
       def to_a(_iseq)
@@ -1852,6 +2080,10 @@ module SyntaxTree
         @number = number
       end
 
+      def disasm(fmt)
+        fmt.instruction("newarray", [fmt.object(number)])
+      end
+
       def to_a(_iseq)
         [:newarray, number]
       end
@@ -1894,6 +2126,10 @@ module SyntaxTree
 
       def initialize(number)
         @number = number
+      end
+
+      def disasm(fmt)
+        fmt.instruction("newarraykwsplat", [fmt.object(number)])
       end
 
       def to_a(_iseq)
@@ -1940,6 +2176,10 @@ module SyntaxTree
 
       def initialize(number)
         @number = number
+      end
+
+      def disasm(fmt)
+        fmt.instruction("newhash", [fmt.object(number)])
       end
 
       def to_a(_iseq)
@@ -1989,6 +2229,10 @@ module SyntaxTree
         @exclude_end = exclude_end
       end
 
+      def disasm(fmt)
+        fmt.instruction("newrange", [fmt.object(exclude_end)])
+      end
+
       def to_a(_iseq)
         [:newrange, exclude_end]
       end
@@ -2026,6 +2270,10 @@ module SyntaxTree
     # ~~~
     #
     class Nop
+      def disasm(fmt)
+        fmt.instruction("nop")
+      end
+
       def to_a(_iseq)
         [:nop]
       end
@@ -2069,6 +2317,10 @@ module SyntaxTree
 
       def initialize(calldata)
         @calldata = calldata
+      end
+
+      def disasm(fmt)
+        fmt.instruction("objtostring", [fmt.calldata(calldata)])
       end
 
       def to_a(_iseq)
@@ -2115,6 +2367,11 @@ module SyntaxTree
       def initialize(iseq, cache)
         @iseq = iseq
         @cache = cache
+      end
+
+      def disasm(fmt)
+        fmt.enqueue(iseq)
+        fmt.instruction("once", [iseq.name, fmt.inline_storage(cache)])
       end
 
       def to_a(_iseq)
@@ -2164,6 +2421,10 @@ module SyntaxTree
         @calldata = calldata
       end
 
+      def disasm(fmt)
+        fmt.instruction("opt_and", [fmt.calldata(calldata)])
+      end
+
       def to_a(_iseq)
         [:opt_and, calldata.to_h]
       end
@@ -2206,6 +2467,10 @@ module SyntaxTree
 
       def initialize(calldata)
         @calldata = calldata
+      end
+
+      def disasm(fmt)
+        fmt.instruction("opt_aref", [fmt.calldata(calldata)])
       end
 
       def to_a(_iseq)
@@ -2254,6 +2519,13 @@ module SyntaxTree
         @calldata = calldata
       end
 
+      def disasm(fmt)
+        fmt.instruction(
+          "opt_aref_with",
+          [fmt.object(object), fmt.calldata(calldata)]
+        )
+      end
+
       def to_a(_iseq)
         [:opt_aref_with, object, calldata.to_h]
       end
@@ -2299,6 +2571,10 @@ module SyntaxTree
         @calldata = calldata
       end
 
+      def disasm(fmt)
+        fmt.instruction("opt_aset", [fmt.calldata(calldata)])
+      end
+
       def to_a(_iseq)
         [:opt_aset, calldata.to_h]
       end
@@ -2342,6 +2618,13 @@ module SyntaxTree
       def initialize(object, calldata)
         @object = object
         @calldata = calldata
+      end
+
+      def disasm(fmt)
+        fmt.instruction(
+          "opt_aset_with",
+          [fmt.object(object), fmt.calldata(calldata)]
+        )
       end
 
       def to_a(_iseq)
@@ -2401,6 +2684,13 @@ module SyntaxTree
         @else_label = else_label
       end
 
+      def disasm(fmt)
+        fmt.instruction(
+          "opt_case_dispatch",
+          ["<cdhash>", fmt.label(else_label)]
+        )
+      end
+
       def to_a(_iseq)
         [
           :opt_case_dispatch,
@@ -2450,6 +2740,10 @@ module SyntaxTree
         @calldata = calldata
       end
 
+      def disasm(fmt)
+        fmt.instruction("opt_div", [fmt.calldata(calldata)])
+      end
+
       def to_a(_iseq)
         [:opt_div, calldata.to_h]
       end
@@ -2492,6 +2786,10 @@ module SyntaxTree
 
       def initialize(calldata)
         @calldata = calldata
+      end
+
+      def disasm(fmt)
+        fmt.instruction("opt_empty_p", [fmt.calldata(calldata)])
       end
 
       def to_a(_iseq)
@@ -2539,6 +2837,10 @@ module SyntaxTree
         @calldata = calldata
       end
 
+      def disasm(fmt)
+        fmt.instruction("opt_eq", [fmt.calldata(calldata)])
+      end
+
       def to_a(_iseq)
         [:opt_eq, calldata.to_h]
       end
@@ -2584,6 +2886,10 @@ module SyntaxTree
         @calldata = calldata
       end
 
+      def disasm(fmt)
+        fmt.instruction("opt_ge", [fmt.calldata(calldata)])
+      end
+
       def to_a(_iseq)
         [:opt_ge, calldata.to_h]
       end
@@ -2626,6 +2932,11 @@ module SyntaxTree
 
       def initialize(names)
         @names = names
+      end
+
+      def disasm(fmt)
+        cache = "<ic:0 #{names.join("::")}>"
+        fmt.instruction("opt_getconstant_path", [cache])
       end
 
       def to_a(_iseq)
@@ -2680,6 +2991,10 @@ module SyntaxTree
         @calldata = calldata
       end
 
+      def disasm(fmt)
+        fmt.instruction("opt_gt", [fmt.calldata(calldata)])
+      end
+
       def to_a(_iseq)
         [:opt_gt, calldata.to_h]
       end
@@ -2723,6 +3038,10 @@ module SyntaxTree
 
       def initialize(calldata)
         @calldata = calldata
+      end
+
+      def disasm(fmt)
+        fmt.instruction("opt_le", [fmt.calldata(calldata)])
       end
 
       def to_a(_iseq)
@@ -2770,6 +3089,10 @@ module SyntaxTree
         @calldata = calldata
       end
 
+      def disasm(fmt)
+        fmt.instruction("opt_length", [fmt.calldata(calldata)])
+      end
+
       def to_a(_iseq)
         [:opt_length, calldata.to_h]
       end
@@ -2815,6 +3138,10 @@ module SyntaxTree
         @calldata = calldata
       end
 
+      def disasm(fmt)
+        fmt.instruction("opt_lt", [fmt.calldata(calldata)])
+      end
+
       def to_a(_iseq)
         [:opt_lt, calldata.to_h]
       end
@@ -2858,6 +3185,10 @@ module SyntaxTree
 
       def initialize(calldata)
         @calldata = calldata
+      end
+
+      def disasm(fmt)
+        fmt.instruction("opt_ltlt", [fmt.calldata(calldata)])
       end
 
       def to_a(_iseq)
@@ -2906,6 +3237,10 @@ module SyntaxTree
         @calldata = calldata
       end
 
+      def disasm(fmt)
+        fmt.instruction("opt_minus", [fmt.calldata(calldata)])
+      end
+
       def to_a(_iseq)
         [:opt_minus, calldata.to_h]
       end
@@ -2949,6 +3284,10 @@ module SyntaxTree
 
       def initialize(calldata)
         @calldata = calldata
+      end
+
+      def disasm(fmt)
+        fmt.instruction("opt_mod", [fmt.calldata(calldata)])
       end
 
       def to_a(_iseq)
@@ -2996,8 +3335,8 @@ module SyntaxTree
         @calldata = calldata
       end
 
-      def disasm(_iseq)
-        "%-38s %s" % ["opt_mult", calldata.disasm]
+      def disasm(fmt)
+        fmt.instruction("opt_mult", [fmt.calldata(calldata)])
       end
 
       def to_a(_iseq)
@@ -3048,6 +3387,13 @@ module SyntaxTree
         @neq_calldata = neq_calldata
       end
 
+      def disasm(fmt)
+        fmt.instruction(
+          "opt_neq",
+          [fmt.calldata(eq_calldata), fmt.calldata(neq_calldata)]
+        )
+      end
+
       def to_a(_iseq)
         [:opt_neq, eq_calldata.to_h, neq_calldata.to_h]
       end
@@ -3083,7 +3429,7 @@ module SyntaxTree
     # ### Usage
     #
     # ~~~ruby
-    # [1, 2, 3].max
+    # [a, b, c].max
     # ~~~
     #
     class OptNewArrayMax
@@ -3091,6 +3437,10 @@ module SyntaxTree
 
       def initialize(number)
         @number = number
+      end
+
+      def disasm(fmt)
+        fmt.instruction("opt_newarray_max", [fmt.object(number)])
       end
 
       def to_a(_iseq)
@@ -3127,7 +3477,7 @@ module SyntaxTree
     # ### Usage
     #
     # ~~~ruby
-    # [1, 2, 3].min
+    # [a, b, c].min
     # ~~~
     #
     class OptNewArrayMin
@@ -3135,6 +3485,10 @@ module SyntaxTree
 
       def initialize(number)
         @number = number
+      end
+
+      def disasm(fmt)
+        fmt.instruction("opt_newarray_min", [fmt.object(number)])
       end
 
       def to_a(_iseq)
@@ -3182,6 +3536,10 @@ module SyntaxTree
         @calldata = calldata
       end
 
+      def disasm(fmt)
+        fmt.instruction("opt_nil_p", [fmt.calldata(calldata)])
+      end
+
       def to_a(_iseq)
         [:opt_nil_p, calldata.to_h]
       end
@@ -3223,6 +3581,10 @@ module SyntaxTree
 
       def initialize(calldata)
         @calldata = calldata
+      end
+
+      def disasm(fmt)
+        fmt.instruction("opt_not", [fmt.calldata(calldata)])
       end
 
       def to_a(_iseq)
@@ -3270,6 +3632,10 @@ module SyntaxTree
         @calldata = calldata
       end
 
+      def disasm(fmt)
+        fmt.instruction("opt_or", [fmt.calldata(calldata)])
+      end
+
       def to_a(_iseq)
         [:opt_or, calldata.to_h]
       end
@@ -3315,8 +3681,8 @@ module SyntaxTree
         @calldata = calldata
       end
 
-      def disasm(iseq)
-        "%-38s %s" % ["opt_plus", calldata.disasm]
+      def disasm(fmt)
+        fmt.instruction("opt_plus", [fmt.calldata(calldata)])
       end
 
       def to_a(_iseq)
@@ -3363,6 +3729,10 @@ module SyntaxTree
         @calldata = calldata
       end
 
+      def disasm(fmt)
+        fmt.instruction("opt_regexpmatch2", [fmt.calldata(calldata)])
+      end
+
       def to_a(_iseq)
         [:opt_regexpmatch2, calldata.to_h]
       end
@@ -3405,6 +3775,10 @@ module SyntaxTree
 
       def initialize(calldata)
         @calldata = calldata
+      end
+
+      def disasm(fmt)
+        fmt.instruction("opt_send_without_block", [fmt.calldata(calldata)])
       end
 
       def to_a(_iseq)
@@ -3452,6 +3826,10 @@ module SyntaxTree
         @calldata = calldata
       end
 
+      def disasm(fmt)
+        fmt.instruction("opt_size", [fmt.calldata(calldata)])
+      end
+
       def to_a(_iseq)
         [:opt_size, calldata.to_h]
       end
@@ -3495,6 +3873,13 @@ module SyntaxTree
       def initialize(object, calldata)
         @object = object
         @calldata = calldata
+      end
+
+      def disasm(fmt)
+        fmt.instruction(
+          "opt_str_freeze",
+          [fmt.object(object), fmt.calldata(calldata)]
+        )
       end
 
       def to_a(_iseq)
@@ -3542,6 +3927,13 @@ module SyntaxTree
         @calldata = calldata
       end
 
+      def disasm(fmt)
+        fmt.instruction(
+          "opt_str_uminus",
+          [fmt.object(object), fmt.calldata(calldata)]
+        )
+      end
+
       def to_a(_iseq)
         [:opt_str_uminus, object, calldata.to_h]
       end
@@ -3587,6 +3979,10 @@ module SyntaxTree
         @calldata = calldata
       end
 
+      def disasm(fmt)
+        fmt.instruction("opt_succ", [fmt.calldata(calldata)])
+      end
+
       def to_a(_iseq)
         [:opt_succ, calldata.to_h]
       end
@@ -3623,6 +4019,10 @@ module SyntaxTree
     # ~~~
     #
     class Pop
+      def disasm(fmt)
+        fmt.instruction("pop")
+      end
+
       def to_a(_iseq)
         [:pop]
       end
@@ -3659,6 +4059,10 @@ module SyntaxTree
     # ~~~
     #
     class PutNil
+      def disasm(fmt)
+        fmt.instruction("putnil")
+      end
+
       def to_a(_iseq)
         [:putnil]
       end
@@ -3701,8 +4105,8 @@ module SyntaxTree
         @object = object
       end
 
-      def disasm(_iseq)
-        "%-38s %s" % ["putobject", object.inspect]
+      def disasm(fmt)
+        fmt.instruction("putobject", [fmt.object(object)])
       end
 
       def to_a(_iseq)
@@ -3743,8 +4147,8 @@ module SyntaxTree
     # ~~~
     #
     class PutObjectInt2Fix0
-      def disasm(_iseq)
-        "putobject_INT2FIX_0_"
+      def disasm(fmt)
+        fmt.instruction("putobject_INT2FIX_0_")
       end
 
       def to_a(_iseq)
@@ -3785,8 +4189,8 @@ module SyntaxTree
     # ~~~
     #
     class PutObjectInt2Fix1
-      def disasm(_iseq)
-        "putobject_INT2FIX_1_"
+      def disasm(fmt)
+        fmt.instruction("putobject_INT2FIX_1_")
       end
 
       def to_a(_iseq)
@@ -3825,6 +4229,10 @@ module SyntaxTree
     # ~~~
     #
     class PutSelf
+      def disasm(fmt)
+        fmt.instruction("putself")
+      end
+
       def to_a(_iseq)
         [:putself]
       end
@@ -3871,6 +4279,10 @@ module SyntaxTree
 
       def initialize(object)
         @object = object
+      end
+
+      def disasm(fmt)
+        fmt.instruction("putspecialobject", [fmt.object(object)])
       end
 
       def to_a(_iseq)
@@ -3924,6 +4336,10 @@ module SyntaxTree
         @object = object
       end
 
+      def disasm(fmt)
+        fmt.instruction("putstring", [fmt.object(object)])
+      end
+
       def to_a(_iseq)
         [:putstring, object]
       end
@@ -3968,6 +4384,14 @@ module SyntaxTree
       def initialize(calldata, block_iseq)
         @calldata = calldata
         @block_iseq = block_iseq
+      end
+
+      def disasm(fmt)
+        fmt.enqueue(block_iseq) if block_iseq
+        fmt.instruction(
+          "send",
+          [fmt.calldata(calldata), block_iseq&.name || "nil"]
+        )
       end
 
       def to_a(_iseq)
@@ -4038,6 +4462,10 @@ module SyntaxTree
         @level = level
       end
 
+      def disasm(fmt)
+        fmt.instruction("setblockparam", [fmt.local(index, explicit: level)])
+      end
+
       def to_a(iseq)
         current = iseq
         level.times { current = current.parent_iseq }
@@ -4086,6 +4514,13 @@ module SyntaxTree
         @cache = cache
       end
 
+      def disasm(fmt)
+        fmt.instruction(
+          "setclassvariable",
+          [fmt.object(name), fmt.inline_storage(cache)]
+        )
+      end
+
       def to_a(_iseq)
         [:setclassvariable, name, cache]
       end
@@ -4131,6 +4566,10 @@ module SyntaxTree
         @name = name
       end
 
+      def disasm(fmt)
+        fmt.instruction("setconstant", [fmt.object(name)])
+      end
+
       def to_a(_iseq)
         [:setconstant, name]
       end
@@ -4173,6 +4612,10 @@ module SyntaxTree
 
       def initialize(name)
         @name = name
+      end
+
+      def disasm(fmt)
+        fmt.instruction("setglobal", [fmt.object(name)])
       end
 
       def to_a(_iseq)
@@ -4226,6 +4669,13 @@ module SyntaxTree
         @cache = cache
       end
 
+      def disasm(fmt)
+        fmt.instruction(
+          "setinstancevariable",
+          [fmt.object(name), fmt.inline_storage(cache)]
+        )
+      end
+
       def to_a(_iseq)
         [:setinstancevariable, name, cache]
       end
@@ -4272,6 +4722,10 @@ module SyntaxTree
       def initialize(index, level)
         @index = index
         @level = level
+      end
+
+      def disasm(fmt)
+        fmt.instruction("setlocal", [fmt.local(index, explicit: level)])
       end
 
       def to_a(iseq)
@@ -4321,6 +4775,10 @@ module SyntaxTree
         @index = index
       end
 
+      def disasm(fmt)
+        fmt.instruction("setlocal_WC_0", [fmt.local(index, implicit: 0)])
+      end
+
       def to_a(iseq)
         [:setlocal_WC_0, iseq.local_table.offset(index)]
       end
@@ -4366,6 +4824,10 @@ module SyntaxTree
         @index = index
       end
 
+      def disasm(fmt)
+        fmt.instruction("setlocal_WC_1", [fmt.local(index, implicit: 1)])
+      end
+
       def to_a(iseq)
         [:setlocal_WC_1, iseq.parent_iseq.local_table.offset(index)]
       end
@@ -4407,6 +4869,10 @@ module SyntaxTree
 
       def initialize(number)
         @number = number
+      end
+
+      def disasm(fmt)
+        fmt.instruction("setn", [fmt.object(number)])
       end
 
       def to_a(_iseq)
@@ -4451,6 +4917,10 @@ module SyntaxTree
 
       def initialize(key)
         @key = key
+      end
+
+      def disasm(fmt)
+        fmt.instruction("setspecial", [fmt.object(key)])
       end
 
       def to_a(_iseq)
@@ -4504,6 +4974,10 @@ module SyntaxTree
         @flag = flag
       end
 
+      def disasm(fmt)
+        fmt.instruction("splatarray", [fmt.object(flag)])
+      end
+
       def to_a(_iseq)
         [:splatarray, flag]
       end
@@ -4544,6 +5018,10 @@ module SyntaxTree
     # ~~~
     #
     class Swap
+      def disasm(fmt)
+        fmt.instruction("swap")
+      end
+
       def to_a(_iseq)
         [:swap]
       end
@@ -4599,6 +5077,10 @@ module SyntaxTree
         @type = type
       end
 
+      def disasm(fmt)
+        fmt.instruction("throw", [fmt.object(type)])
+      end
+
       def to_a(_iseq)
         [:throw, type]
       end
@@ -4645,6 +5127,10 @@ module SyntaxTree
         @number = number
       end
 
+      def disasm(fmt)
+        fmt.instruction("topn", [fmt.object(number)])
+      end
+
       def to_a(_iseq)
         [:topn, number]
       end
@@ -4687,6 +5173,10 @@ module SyntaxTree
       def initialize(options, length)
         @options = options
         @length = length
+      end
+
+      def disasm(fmt)
+        fmt.instruction("toregexp", [fmt.object(options), fmt.object(length)])
       end
 
       def to_a(_iseq)

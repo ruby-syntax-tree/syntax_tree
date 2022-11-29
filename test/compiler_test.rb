@@ -449,6 +449,10 @@ module SyntaxTree
         define_method(:"test_loads_#{source}_(#{suffix})") do
           assert_loads(source, options)
         end
+
+        define_method(:"test_disasms_#{source}_(#{suffix})") do
+          assert_disasms(source, options)
+        end
       end
     end
 
@@ -505,6 +509,13 @@ module SyntaxTree
         serialize_iseq(compiled),
         serialize_iseq(YARV::InstructionSequence.from(compiled.to_a, options))
       )
+    end
+
+    # Check that we can successfully disasm the compiled instruction sequence.
+    def assert_disasms(source, options)
+      compiled = RubyVM::InstructionSequence.compile(source, **options)
+      yarv = YARV::InstructionSequence.from(compiled.to_a, options)
+      assert_kind_of String, yarv.disasm
     end
 
     def assert_evaluates(expected, source)

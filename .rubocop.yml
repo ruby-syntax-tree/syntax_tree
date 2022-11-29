@@ -16,6 +16,12 @@ Layout/LineLength:
 Lint/AmbiguousBlockAssociation:
   Enabled: false
 
+Lint/AmbiguousOperatorPrecedence:
+  Enabled: false
+
+Lint/AmbiguousRange:
+  Enabled: false
+
 Lint/BooleanSymbol:
   Enabled: false
 
@@ -89,6 +95,9 @@ Style/ExplicitBlockArgument:
   Enabled: false
 
 Style/FormatString:
+  Enabled: false
+
+Style/FormatStringToken:
   Enabled: false
 
 Style/GuardClause:

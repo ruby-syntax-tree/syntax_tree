@@ -272,30 +272,9 @@ module SyntaxTree
       end
 
       def disasm
-        output = StringIO.new
-        output << "== disasm: #<ISeq:#{name}@<compiled>:1 (#{location.start_line},#{location.start_column})-(#{location.end_line},#{location.end_column})> (catch: FALSE)\n"
-
-        length = 0
-        events = []
-
-        insns.each do |insn|
-          case insn
-          when Integer
-            # skip
-          when Symbol
-            events << insn
-          when Label
-            # skip
-          else
-            output << "%04d " % length
-            output << insn.disasm(self)
-            output << "\n"
-          end
-
-          length += insn.length
-        end
-
-        output.string
+        formatter = DisasmFormatter.new
+        formatter.enqueue(self)
+        formatter.format!
       end
 
       # This method converts our linked list of instructions into a final array
@@ -375,7 +354,8 @@ module SyntaxTree
           when Send
             calldata = value.calldata
 
-            if !value.block_iseq && !calldata.flag?(CallData::CALL_ARGS_BLOCKARG)
+            if !value.block_iseq &&
+                 !calldata.flag?(CallData::CALL_ARGS_BLOCKARG)
               # Specialize the send instruction. If it doesn't have a block
               # attached, then we will replace it with an opt_send_without_block
               # and do further specializations based on the called method and
@@ -980,8 +960,11 @@ module SyntaxTree
 
         # set up all of the instructions
         source[13].each do |insn|
-          # skip line numbers
-          next if insn.is_a?(Integer)
+          # add line numbers
+          if insn.is_a?(Integer)
+            iseq.push(insn)
+            next
+          end
 
           # add events and labels
           if insn.is_a?(Symbol)
