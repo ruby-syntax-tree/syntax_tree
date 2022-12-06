@@ -116,17 +116,17 @@ module SyntaxTree
         end
       end
 
-      # The type of the instruction sequence.
-      attr_reader :type
-
       # The name of the instruction sequence.
       attr_reader :name
 
+      # The source location of the instruction sequence.
+      attr_reader :file, :line
+
+      # The type of the instruction sequence.
+      attr_reader :type
+
       # The parent instruction sequence, if there is one.
       attr_reader :parent_iseq
-
-      # The location of the root node of this instruction sequence.
-      attr_reader :location
 
       # This is the list of information about the arguments to this
       # instruction sequence.
@@ -157,16 +157,18 @@ module SyntaxTree
       attr_reader :options
 
       def initialize(
-        type,
         name,
-        parent_iseq,
-        location,
+        file,
+        line,
+        type,
+        parent_iseq = nil,
         options = Compiler::Options.new
       )
-        @type = type
         @name = name
+        @file = file
+        @line = line
+        @type = type
         @parent_iseq = parent_iseq
-        @location = location
 
         @argument_size = 0
         @argument_options = {}
@@ -256,9 +258,9 @@ module SyntaxTree
             node_ids: [-1] * insns.length
           },
           name,
+          file,
           "<compiled>",
-          "<compiled>",
-          location.start_line,
+          line,
           type,
           local_table.names,
           dumped_options,
@@ -277,6 +279,12 @@ module SyntaxTree
       # and performs any other compilation steps necessary.
       def compile!
         specialize_instructions! if options.specialized_instruction?
+
+        catch_table.each do |catch_entry|
+          if !catch_entry.is_a?(CatchBreak) && catch_entry.iseq
+            catch_entry.iseq.compile!
+          end
+        end
 
         length = 0
         insns.each do |insn|
@@ -416,30 +424,30 @@ module SyntaxTree
       # Child instruction sequence methods
       ##########################################################################
 
-      def child_iseq(type, name, location)
-        InstructionSequence.new(type, name, self, location, options)
+      def child_iseq(name, line, type)
+        InstructionSequence.new(name, file, line, type, self, options)
       end
 
-      def block_child_iseq(location)
+      def block_child_iseq(line)
         current = self
         current = current.parent_iseq while current.type == :block
-        child_iseq(:block, "block in #{current.name}", location)
+        child_iseq("block in #{current.name}", line, :block)
       end
 
-      def class_child_iseq(name, location)
-        child_iseq(:class, "<class:#{name}>", location)
+      def class_child_iseq(name, line)
+        child_iseq("<class:#{name}>", line, :class)
       end
 
-      def method_child_iseq(name, location)
-        child_iseq(:method, name, location)
+      def method_child_iseq(name, line)
+        child_iseq(name, line, :method)
       end
 
-      def module_child_iseq(name, location)
-        child_iseq(:class, "<module:#{name}>", location)
+      def module_child_iseq(name, line)
+        child_iseq("<module:#{name}>", line, :class)
       end
 
-      def singleton_class_child_iseq(location)
-        child_iseq(:class, "singleton class", location)
+      def singleton_class_child_iseq(line)
+        child_iseq("singleton class", line, :class)
       end
 
       ##########################################################################
@@ -447,19 +455,39 @@ module SyntaxTree
       ##########################################################################
 
       class CatchEntry
-        attr_reader :iseq, :begin_label, :end_label, :exit_label
+        attr_reader :iseq, :begin_label, :end_label, :exit_label, :restore_sp
 
-        def initialize(iseq, begin_label, end_label, exit_label)
+        def initialize(iseq, begin_label, end_label, exit_label, restore_sp)
           @iseq = iseq
           @begin_label = begin_label
           @end_label = end_label
           @exit_label = exit_label
+          @restore_sp = restore_sp
         end
       end
 
       class CatchBreak < CatchEntry
         def to_a
-          [:break, iseq.to_a, begin_label.name, end_label.name, exit_label.name]
+          [
+            :break,
+            iseq.to_a,
+            begin_label.name,
+            end_label.name,
+            exit_label.name,
+            restore_sp
+          ]
+        end
+      end
+
+      class CatchEnsure < CatchEntry
+        def to_a
+          [
+            :ensure,
+            iseq.to_a,
+            begin_label.name,
+            end_label.name,
+            exit_label.name
+          ]
         end
       end
 
@@ -493,24 +521,64 @@ module SyntaxTree
         end
       end
 
-      def catch_break(iseq, begin_label, end_label, exit_label)
-        catch_table << CatchBreak.new(iseq, begin_label, end_label, exit_label)
+      def catch_break(iseq, begin_label, end_label, exit_label, restore_sp)
+        catch_table << CatchBreak.new(
+          iseq,
+          begin_label,
+          end_label,
+          exit_label,
+          restore_sp
+        )
       end
 
-      def catch_next(begin_label, end_label, exit_label)
-        catch_table << CatchNext.new(nil, begin_label, end_label, exit_label)
+      def catch_ensure(iseq, begin_label, end_label, exit_label, restore_sp)
+        catch_table << CatchEnsure.new(
+          iseq,
+          begin_label,
+          end_label,
+          exit_label,
+          restore_sp
+        )
       end
 
-      def catch_redo(begin_label, end_label, exit_label)
-        catch_table << CatchRedo.new(nil, begin_label, end_label, exit_label)
+      def catch_next(begin_label, end_label, exit_label, restore_sp)
+        catch_table << CatchNext.new(
+          nil,
+          begin_label,
+          end_label,
+          exit_label,
+          restore_sp
+        )
       end
 
-      def catch_rescue(iseq, begin_label, end_label, exit_label)
-        catch_table << CatchRescue.new(iseq, begin_label, end_label, exit_label)
+      def catch_redo(begin_label, end_label, exit_label, restore_sp)
+        catch_table << CatchRedo.new(
+          nil,
+          begin_label,
+          end_label,
+          exit_label,
+          restore_sp
+        )
       end
 
-      def catch_retry(begin_label, end_label, exit_label)
-        catch_table << CatchRetry.new(nil, begin_label, end_label, exit_label)
+      def catch_rescue(iseq, begin_label, end_label, exit_label, restore_sp)
+        catch_table << CatchRescue.new(
+          iseq,
+          begin_label,
+          end_label,
+          exit_label,
+          restore_sp
+        )
+      end
+
+      def catch_retry(begin_label, end_label, exit_label, restore_sp)
+        catch_table << CatchRetry.new(
+          nil,
+          begin_label,
+          end_label,
+          exit_label,
+          restore_sp
+        )
       end
 
       ##########################################################################
@@ -895,7 +963,8 @@ module SyntaxTree
       # This method will create a new instruction sequence from a serialized
       # RubyVM::InstructionSequence object.
       def self.from(source, options = Compiler::Options.new, parent_iseq = nil)
-        iseq = new(source[9], source[5], parent_iseq, Location.default, options)
+        iseq =
+          new(source[5], source[6], source[8], source[9], parent_iseq, options)
 
         # set up the labels object so that the labels are shared between the
         # location in the instruction sequence and the instructions that
@@ -914,45 +983,9 @@ module SyntaxTree
           iseq.argument_options[:opt].map! { |opt| labels[opt] }
         end
 
-        # set up the catch table
-        source[12].each do |entry|
-          case entry[0]
-          when :break
-            iseq.catch_break(
-              from(entry[1]),
-              labels[entry[2]],
-              labels[entry[3]],
-              labels[entry[4]]
-            )
-          when :next
-            iseq.catch_next(
-              labels[entry[2]],
-              labels[entry[3]],
-              labels[entry[4]]
-            )
-          when :rescue
-            iseq.catch_rescue(
-              from(entry[1]),
-              labels[entry[2]],
-              labels[entry[3]],
-              labels[entry[4]]
-            )
-          when :redo
-            iseq.catch_redo(
-              labels[entry[2]],
-              labels[entry[3]],
-              labels[entry[4]]
-            )
-          when :retry
-            iseq.catch_retry(
-              labels[entry[2]],
-              labels[entry[3]],
-              labels[entry[4]]
-            )
-          else
-            raise "unknown catch type: #{entry[0]}"
-          end
-        end
+        # track the child block iseqs so that our catch table can point to the
+        # correctly created iseqs
+        block_iseqs = []
 
         # set up all of the instructions
         source[13].each do |insn|
@@ -1135,6 +1168,7 @@ module SyntaxTree
             iseq.putspecialobject(opnds[0])
           when :send
             block_iseq = opnds[1] ? from(opnds[1], options, iseq) : nil
+            block_iseqs << block_iseq if block_iseq
             iseq.send(CallData.from(opnds[0]), block_iseq)
           when :setclassvariable
             iseq.push(SetClassVariable.new(opnds[0], opnds[1]))
@@ -1160,6 +1194,76 @@ module SyntaxTree
             iseq.toregexp(opnds[0], opnds[1])
           else
             raise "Unknown instruction type: #{type}"
+          end
+        end
+
+        # set up the catch table
+        source[12].each do |entry|
+          case entry[0]
+          when :break
+            if entry[1]
+              break_iseq =
+                block_iseqs.find do |block_iseq|
+                  block_iseq.name == entry[1][5] &&
+                    block_iseq.file == entry[1][6] &&
+                    block_iseq.line == entry[1][8]
+                end
+
+              iseq.catch_break(
+                break_iseq || from(entry[1], options, iseq),
+                labels[entry[2]],
+                labels[entry[3]],
+                labels[entry[4]],
+                entry[5]
+              )
+            else
+              iseq.catch_break(
+                nil,
+                labels[entry[2]],
+                labels[entry[3]],
+                labels[entry[4]],
+                entry[5]
+              )
+            end
+          when :ensure
+            iseq.catch_ensure(
+              from(entry[1], options, iseq),
+              labels[entry[2]],
+              labels[entry[3]],
+              labels[entry[4]],
+              entry[5]
+            )
+          when :next
+            iseq.catch_next(
+              labels[entry[2]],
+              labels[entry[3]],
+              labels[entry[4]],
+              entry[5]
+            )
+          when :rescue
+            iseq.catch_rescue(
+              from(entry[1], options, iseq),
+              labels[entry[2]],
+              labels[entry[3]],
+              labels[entry[4]],
+              entry[5]
+            )
+          when :redo
+            iseq.catch_redo(
+              labels[entry[2]],
+              labels[entry[3]],
+              labels[entry[4]],
+              entry[5]
+            )
+          when :retry
+            iseq.catch_retry(
+              labels[entry[2]],
+              labels[entry[3]],
+              labels[entry[4]],
+              entry[5]
+            )
+          else
+            raise "unknown catch type: #{entry[0]}"
           end
         end
 

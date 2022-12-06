@@ -64,6 +64,13 @@ module SyntaxTree
             clauses[label] = clause
             clause = []
             label = insn.name
+          when BranchIf
+            body = [
+              Assign(block_label.field, node_for(insn.label.name)),
+              Next(Args([]))
+            ]
+
+            clause << UnlessNode(clause.pop, Statements(body), nil)
           when BranchUnless
             body = [
               Assign(block_label.field, node_for(insn.label.name)),
@@ -157,6 +164,8 @@ module SyntaxTree
                 )
               end
             end
+          when Pop
+            # skip
           when PutObject
             case insn.object
             when Float

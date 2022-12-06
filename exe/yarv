@@ -1,0 +1,63 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+$:.unshift(File.expand_path("../lib", __dir__))
+
+require "syntax_tree"
+
+# Require these here so that we can run binding.irb without having them require
+# anything that we've already patched.
+require "irb"
+require "irb/completion"
+require "irb/color_printer"
+require "readline"
+
+# First, create an instance of our virtual machine.
+events =
+  if ENV["DEBUG"]
+    SyntaxTree::YARV::VM::STDOUTEvents.new
+  else
+    SyntaxTree::YARV::VM::NullEvents.new
+  end
+
+vm = SyntaxTree::YARV::VM.new(events)
+
+# Next, set up a bunch of aliases for methods that we're going to hook into in
+# order to set up our virtual machine.
+class << Kernel
+  alias yarv_require require
+  alias yarv_require_relative require_relative
+  alias yarv_load load
+  alias yarv_eval eval
+  alias yarv_throw throw
+  alias yarv_catch catch
+end
+
+# Next, patch the methods that we just aliased so that they use our virtual
+# machine's versions instead. This allows us to load Ruby files and have them
+# execute in our virtual machine instead of the runtime environment.
+[Kernel, Kernel.singleton_class].each do |klass|
+  klass.define_method(:require) { |filepath| vm.require(filepath) }
+
+  klass.define_method(:load) { |filepath| vm.load(filepath) }
+
+  # klass.define_method(:require_relative) do |filepath|
+  #   vm.require_relative(filepath)
+  # end
+
+  # klass.define_method(:eval) do |
+  #   source,
+  #   binding = TOPLEVEL_BINDING,
+  #   filename = "(eval)",
+  #   lineno = 1
+  # |
+  #   vm.eval(source, binding, filename, lineno)
+  # end
+
+  # klass.define_method(:throw) { |tag, value = nil| vm.throw(tag, value) }
+
+  # klass.define_method(:catch) { |tag, &block| vm.catch(tag, &block) }
+end
+
+# Finally, require the file that we want to execute.
+vm.require_resolved(ARGV.shift)

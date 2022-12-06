@@ -4,7 +4,8 @@ module SyntaxTree
   module YARV
     class Disassembler
       attr_reader :output, :queue
-      attr_reader :current_prefix, :current_iseq
+      attr_reader :current_prefix
+      attr_accessor :current_iseq
 
       def initialize
         @output = StringIO.new
@@ -114,7 +115,7 @@ module SyntaxTree
         output << "#{current_prefix}== disasm: "
         output << "#<ISeq:#{iseq.name}@<compiled>:1 "
 
-        location = iseq.location
+        location = Location.fixed(line: iseq.line, char: 0, column: 0)
         output << "(#{location.start_line},#{location.start_column})-"
         output << "(#{location.end_line},#{location.end_column})"
         output << "> "

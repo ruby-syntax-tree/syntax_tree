@@ -304,10 +304,11 @@ module SyntaxTree
       end
 
       def visit_END(node)
+        start_line = node.location.start_line
         once_iseq =
-          with_child_iseq(iseq.block_child_iseq(node.location)) do
+          with_child_iseq(iseq.block_child_iseq(start_line)) do
             postexe_iseq =
-              with_child_iseq(iseq.block_child_iseq(node.location)) do
+              with_child_iseq(iseq.block_child_iseq(start_line)) do
                 iseq.event(:RUBY_EVENT_B_CALL)
 
                 *statements, last_statement = node.statements.body
@@ -567,7 +568,7 @@ module SyntaxTree
       end
 
       def visit_block(node)
-        with_child_iseq(iseq.block_child_iseq(node.location)) do
+        with_child_iseq(iseq.block_child_iseq(node.location.start_line)) do
           iseq.event(:RUBY_EVENT_B_CALL)
           visit(node.block_var)
           visit(node.bodystmt)
@@ -751,7 +752,9 @@ module SyntaxTree
       def visit_class(node)
         name = node.constant.constant.value.to_sym
         class_iseq =
-          with_child_iseq(iseq.class_child_iseq(name, node.location)) do
+          with_child_iseq(
+            iseq.class_child_iseq(name, node.location.start_line)
+          ) do
             iseq.event(:RUBY_EVENT_CLASS)
             visit(node.bodystmt)
             iseq.event(:RUBY_EVENT_END)
@@ -818,7 +821,8 @@ module SyntaxTree
 
       def visit_def(node)
         name = node.name.value.to_sym
-        method_iseq = iseq.method_child_iseq(name.to_s, node.location)
+        method_iseq =
+          iseq.method_child_iseq(name.to_s, node.location.start_line)
 
         with_child_iseq(method_iseq) do
           visit(node.params) if node.params
@@ -939,7 +943,9 @@ module SyntaxTree
         iseq.local_table.plain(name)
 
         block_iseq =
-          with_child_iseq(iseq.block_child_iseq(node.statements.location)) do
+          with_child_iseq(
+            iseq.block_child_iseq(node.statements.location.start_line)
+          ) do
             iseq.argument_options[:lead_num] ||= 0
             iseq.argument_options[:lead_num] += 1
             iseq.argument_options[:ambiguous_param0] = true
@@ -1076,7 +1082,7 @@ module SyntaxTree
 
       def visit_lambda(node)
         lambda_iseq =
-          with_child_iseq(iseq.block_child_iseq(node.location)) do
+          with_child_iseq(iseq.block_child_iseq(node.location.start_line)) do
             iseq.event(:RUBY_EVENT_B_CALL)
             visit(node.params)
             visit(node.statements)
@@ -1127,7 +1133,9 @@ module SyntaxTree
       def visit_module(node)
         name = node.constant.constant.value.to_sym
         module_iseq =
-          with_child_iseq(iseq.module_child_iseq(name, node.location)) do
+          with_child_iseq(
+            iseq.module_child_iseq(name, node.location.start_line)
+          ) do
             iseq.event(:RUBY_EVENT_CLASS)
             visit(node.bodystmt)
             iseq.event(:RUBY_EVENT_END)
@@ -1375,10 +1383,11 @@ module SyntaxTree
 
         top_iseq =
           InstructionSequence.new(
-            :top,
             "<compiled>",
+            "<compiled>",
+            1,
+            :top,
             nil,
-            node.location,
             options
           )
 
@@ -1543,7 +1552,9 @@ module SyntaxTree
         iseq.putnil
 
         singleton_iseq =
-          with_child_iseq(iseq.singleton_class_child_iseq(node.location)) do
+          with_child_iseq(
+            iseq.singleton_class_child_iseq(node.location.start_line)
+          ) do
             iseq.event(:RUBY_EVENT_CLASS)
             visit(node.bodystmt)
             iseq.event(:RUBY_EVENT_END)
@@ -2018,7 +2029,7 @@ module SyntaxTree
           if node.constant
             iseq.dup
             visit(node.constant)
-            iseq.checkmatch(CheckMatch::TYPE_CASE)
+            iseq.checkmatch(CheckMatch::VM_CHECKMATCH_TYPE_CASE)
             iseq.branchunless(match_failure_label)
           end
 
@@ -2078,7 +2089,7 @@ module SyntaxTree
               iseq.setlocal(lookup.index, lookup.level)
             else
               visit(required)
-              iseq.checkmatch(CheckMatch::TYPE_CASE)
+              iseq.checkmatch(CheckMatch::VM_CHECKMATCH_TYPE_CASE)
               iseq.branchunless(match_failure_label)
             end
 

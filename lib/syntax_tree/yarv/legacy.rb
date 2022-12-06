@@ -45,6 +45,14 @@ module SyntaxTree
         def pushes
           1
         end
+
+        def canonical
+          YARV::GetClassVariable.new(name, nil)
+        end
+
+        def call(vm)
+          canonical.call(vm)
+        end
       end
 
       # ### Summary
@@ -94,6 +102,10 @@ module SyntaxTree
           1
         end
 
+        def canonical
+          self
+        end
+
         def call(vm)
           vm.push(nil)
         end
@@ -102,8 +114,8 @@ module SyntaxTree
       # ### Summary
       #
       # `opt_setinlinecache` sets an inline cache for a constant lookup. It pops
-      # the value it should set off the top of the stack. It then pushes that
-      # value back onto the top of the stack.
+      # the value it should set off the top of the stack. It uses this value to
+      # set the cache. It then pushes that value back onto the top of the stack.
       #
       # This instruction is no longer used since in Ruby 3.2 it was replaced by
       # the consolidated `opt_getconstant_path` instruction.
@@ -141,8 +153,11 @@ module SyntaxTree
           1
         end
 
+        def canonical
+          self
+        end
+
         def call(vm)
-          vm.push(vm.pop)
         end
       end
 
@@ -185,6 +200,14 @@ module SyntaxTree
 
         def pushes
           0
+        end
+
+        def canonical
+          YARV::SetClassVariable.new(name, nil)
+        end
+
+        def call(vm)
+          canonical.call(vm)
         end
       end
     end

@@ -399,9 +399,11 @@ module SyntaxTree
     # ~~~
     #
     class CheckMatch
-      TYPE_WHEN = 1
-      TYPE_CASE = 2
-      TYPE_RESCUE = 3
+      VM_CHECKMATCH_TYPE_WHEN = 1
+      VM_CHECKMATCH_TYPE_CASE = 2
+      VM_CHECKMATCH_TYPE_RESCUE = 3
+      VM_CHECKMATCH_TYPE_MASK = 0x03
+      VM_CHECKMATCH_ARRAY = 0x04
 
       attr_reader :type
 
@@ -434,7 +436,32 @@ module SyntaxTree
       end
 
       def call(vm)
-        raise NotImplementedError, "checkmatch"
+        target, pattern = vm.pop(2)
+
+        vm.push(
+          if type & VM_CHECKMATCH_ARRAY > 0
+            pattern.any? { |item| check?(item, target) }
+          else
+            check?(pattern, target)
+          end
+        )
+      end
+
+      private
+
+      def check?(pattern, target)
+        case type & VM_CHECKMATCH_TYPE_MASK
+        when VM_CHECKMATCH_TYPE_WHEN
+          pattern
+        when VM_CHECKMATCH_TYPE_CASE
+          pattern === target
+        when VM_CHECKMATCH_TYPE_RESCUE
+          unless pattern.is_a?(Module)
+            raise TypeError, "class or module required for rescue clause"
+          end
+
+          pattern === target
+        end
       end
     end
 
@@ -762,12 +789,26 @@ module SyntaxTree
 
       def call(vm)
         object, superclass = vm.pop(2)
-        iseq = class_iseq
 
-        clazz = Class.new(superclass || Object)
-        vm.push(vm.run_class_frame(iseq, clazz))
+        if name == :singletonclass
+          vm.push(vm.run_class_frame(class_iseq, object.singleton_class))
+        elsif object.const_defined?(name)
+          vm.push(vm.run_class_frame(class_iseq, object.const_get(name)))
+        elsif flags & TYPE_MODULE > 0
+          clazz = Module.new
+          object.const_set(name, clazz)
+          vm.push(vm.run_class_frame(class_iseq, clazz))
+        else
+          clazz =
+            if flags & FLAG_HAS_SUPERCLASS > 0
+              Class.new(superclass)
+            else
+              Class.new
+            end
 
-        object.const_set(name, clazz)
+          object.const_set(name, clazz)
+          vm.push(vm.run_class_frame(class_iseq, clazz))
+        end
       end
     end
 
@@ -882,17 +923,19 @@ module SyntaxTree
           when TYPE_NIL, TYPE_SELF, TYPE_TRUE, TYPE_FALSE, TYPE_ASGN, TYPE_EXPR
             message
           when TYPE_IVAR
-            message if vm._self.instance_variable_defined?(name)
+            message if vm.frame._self.instance_variable_defined?(name)
           when TYPE_LVAR
             raise NotImplementedError, "defined TYPE_LVAR"
           when TYPE_GVAR
             message if global_variables.include?(name)
           when TYPE_CVAR
-            clazz = vm._self
+            clazz = vm.frame._self
             clazz = clazz.singleton_class unless clazz.is_a?(Module)
             message if clazz.class_variable_defined?(name)
           when TYPE_CONST
-            raise NotImplementedError, "defined TYPE_CONST"
+            clazz = vm.frame._self
+            clazz = clazz.singleton_class unless clazz.is_a?(Module)
+            message if clazz.const_defined?(name)
           when TYPE_METHOD
             raise NotImplementedError, "defined TYPE_METHOD"
           when TYPE_YIELD
@@ -904,7 +947,9 @@ module SyntaxTree
           when TYPE_FUNC
             message if object.respond_to?(name, true)
           when TYPE_CONST_FROM
-            raise NotImplementedError, "defined TYPE_CONST_FROM"
+            defined =
+              vm.frame.nesting.any? { |scope| scope.const_defined?(name, true) }
+            message if defined
           end
 
         vm.push(result)
@@ -962,12 +1007,22 @@ module SyntaxTree
 
       def call(vm)
         name = method_name
+        nesting = vm.frame.nesting
         iseq = method_iseq
 
         vm
+          .frame
           ._self
           .__send__(:define_method, name) do |*args, **kwargs, &block|
-            vm.run_method_frame(name, iseq, self, *args, **kwargs, &block)
+            vm.run_method_frame(
+              name,
+              nesting,
+              iseq,
+              self,
+              *args,
+              **kwargs,
+              &block
+            )
           end
       end
     end
@@ -1024,12 +1079,22 @@ module SyntaxTree
 
       def call(vm)
         name = method_name
+        nesting = vm.frame.nesting
         iseq = method_iseq
 
         vm
+          .frame
           ._self
           .__send__(:define_singleton_method, name) do |*args, **kwargs, &block|
-            vm.run_method_frame(name, iseq, self, *args, **kwargs, &block)
+            vm.run_method_frame(
+              name,
+              nesting,
+              iseq,
+              self,
+              *args,
+              **kwargs,
+              &block
+            )
           end
       end
     end
@@ -1259,7 +1324,42 @@ module SyntaxTree
       end
 
       def call(vm)
-        raise NotImplementedError, "expandarray"
+        object = vm.pop
+        object =
+          if Array === object
+            object.dup
+          elsif object.respond_to?(:to_ary, true)
+            object.to_ary
+          else
+            [object]
+          end
+
+        splat_flag = flags & 0x01 > 0
+        postarg_flag = flags & 0x02 > 0
+
+        if number == 0 && splat_flag == 0
+          # no space left on stack
+        elsif postarg_flag
+          values = []
+
+          if number > object.size
+            (number - object.size).times { values.push(nil) }
+          end
+          [number, object.size].min.times { values.push(object.pop) }
+          values.push(object.to_a) if splat_flag
+
+          values.each { |item| vm.push(item) }
+        else
+          values = []
+
+          [number, object.size].min.times { values.push(object.shift) }
+          if number > values.size
+            (number - values.size).times { values.push(nil) }
+          end
+          values.push(object.to_a) if splat_flag
+
+          values.reverse_each { |item| vm.push(item) }
+        end
       end
     end
 
@@ -1424,7 +1524,7 @@ module SyntaxTree
       end
 
       def call(vm)
-        clazz = vm._self
+        clazz = vm.frame._self
         clazz = clazz.class unless clazz.is_a?(Class)
         vm.push(clazz.class_variable_get(name))
       end
@@ -1474,13 +1574,19 @@ module SyntaxTree
       end
 
       def call(vm)
-        # const_base, allow_nil =
-        vm.pop(2)
+        const_base, allow_nil = vm.pop(2)
 
-        vm.frame.nesting.reverse_each do |clazz|
-          if clazz.const_defined?(name)
-            vm.push(clazz.const_get(name))
+        if const_base
+          if const_base.const_defined?(name)
+            vm.push(const_base.const_get(name))
             return
+          end
+        elsif const_base.nil? && allow_nil
+          vm.frame.nesting.reverse_each do |clazz|
+            if clazz.const_defined?(name)
+              vm.push(clazz.const_get(name))
+              return
+            end
           end
         end
 
@@ -1590,7 +1696,7 @@ module SyntaxTree
 
       def call(vm)
         method = Object.instance_method(:instance_variable_get)
-        vm.push(method.bind(vm._self).call(name))
+        vm.push(method.bind(vm.frame._self).call(name))
       end
     end
 
@@ -1948,8 +2054,9 @@ module SyntaxTree
       def call(vm)
         block =
           if (iseq = block_iseq)
+            frame = vm.frame
             ->(*args, **kwargs, &blk) do
-              vm.run_block_frame(iseq, *args, **kwargs, &blk)
+              vm.run_block_frame(iseq, frame, *args, **kwargs, &blk)
             end
           end
 
@@ -2396,7 +2503,7 @@ module SyntaxTree
 
       def call(vm)
         return if @executed
-        vm.push(vm.run_block_frame(iseq))
+        vm.push(vm.run_block_frame(iseq, vm.frame))
         @executed = true
       end
     end
@@ -2960,7 +3067,7 @@ module SyntaxTree
       end
 
       def call(vm)
-        current = vm._self
+        current = vm.frame._self
         current = current.class unless current.is_a?(Class)
 
         names.each do |name|
@@ -4254,7 +4361,7 @@ module SyntaxTree
       end
 
       def call(vm)
-        vm.push(vm._self)
+        vm.push(vm.frame._self)
       end
     end
 
@@ -4310,7 +4417,7 @@ module SyntaxTree
         when OBJECT_VMCORE
           vm.push(vm.frozen_core)
         when OBJECT_CBASE
-          value = vm._self
+          value = vm.frame._self
           value = value.singleton_class unless value.is_a?(Class)
           vm.push(value)
         when OBJECT_CONST_BASE
@@ -4418,9 +4525,12 @@ module SyntaxTree
       def call(vm)
         block =
           if (iseq = block_iseq)
+            frame = vm.frame
             ->(*args, **kwargs, &blk) do
-              vm.run_block_frame(iseq, *args, **kwargs, &blk)
+              vm.run_block_frame(iseq, frame, *args, **kwargs, &blk)
             end
+          elsif calldata.flag?(CallData::CALL_ARGS_BLOCKARG)
+            vm.pop
           end
 
         keywords =
@@ -4542,7 +4652,7 @@ module SyntaxTree
       end
 
       def call(vm)
-        clazz = vm._self
+        clazz = vm.frame._self
         clazz = clazz.class unless clazz.is_a?(Class)
         clazz.class_variable_set(name, vm.pop)
       end
@@ -4698,7 +4808,7 @@ module SyntaxTree
 
       def call(vm)
         method = Object.instance_method(:instance_variable_set)
-        method.bind(vm._self).call(name, vm.pop)
+        method.bind(vm.frame._self).call(name, vm.pop)
       end
     end
 
@@ -4946,7 +5056,7 @@ module SyntaxTree
       def call(vm)
         case key
         when GetSpecial::SVAR_LASTLINE
-          raise NotImplementedError, "svar SVAR_LASTLINE"
+          raise NotImplementedError, "setspecial SVAR_LASTLINE"
         when GetSpecial::SVAR_BACKREF
           raise NotImplementedError, "setspecial SVAR_BACKREF"
         when GetSpecial::SVAR_FLIPFLOP_START
@@ -4999,7 +5109,27 @@ module SyntaxTree
       end
 
       def call(vm)
-        vm.push(*vm.pop)
+        value = vm.pop
+
+        vm.push(
+          if Array === value
+            value.instance_of?(Array) ? value.dup : Array[*value]
+          elsif value.nil?
+            value.to_a
+          else
+            if value.respond_to?(:to_a, true)
+              result = value.to_a
+
+              if result.nil?
+                [value]
+              elsif !result.is_a?(Array)
+                raise TypeError, "expected to_a to return an Array"
+              end
+            else
+              [value]
+            end
+          end
+        )
       end
     end
 
@@ -5061,15 +5191,18 @@ module SyntaxTree
     # ~~~
     #
     class Throw
-      TAG_NONE = 0x0
-      TAG_RETURN = 0x1
-      TAG_BREAK = 0x2
-      TAG_NEXT = 0x3
-      TAG_RETRY = 0x4
-      TAG_REDO = 0x5
-      TAG_RAISE = 0x6
-      TAG_THROW = 0x7
-      TAG_FATAL = 0x8
+      RUBY_TAG_NONE = 0x0
+      RUBY_TAG_RETURN = 0x1
+      RUBY_TAG_BREAK = 0x2
+      RUBY_TAG_NEXT = 0x3
+      RUBY_TAG_RETRY = 0x4
+      RUBY_TAG_REDO = 0x5
+      RUBY_TAG_RAISE = 0x6
+      RUBY_TAG_THROW = 0x7
+      RUBY_TAG_FATAL = 0x8
+
+      VM_THROW_NO_ESCAPE_FLAG = 0x8000
+      VM_THROW_STATE_MASK = 0xff
 
       attr_reader :type
 
@@ -5102,7 +5235,43 @@ module SyntaxTree
       end
 
       def call(vm)
-        raise NotImplementedError, "throw"
+        state = type & VM_THROW_STATE_MASK
+        value = vm.pop
+
+        case state
+        when RUBY_TAG_NONE
+          case value
+          when nil
+            # do nothing
+          when Exception
+            raise value
+          else
+            raise NotImplementedError
+          end
+        when RUBY_TAG_RETURN
+          raise VM::ReturnError.new(value, error_backtrace(vm))
+        when RUBY_TAG_BREAK
+          raise VM::BreakError.new(value, error_backtrace(vm))
+        when RUBY_TAG_NEXT
+          raise VM::NextError.new(value, error_backtrace(vm))
+        else
+          raise NotImplementedError, "Unknown throw kind #{state}"
+        end
+      end
+
+      private
+
+      def error_backtrace(vm)
+        backtrace = []
+        current = vm.frame
+
+        while current
+          backtrace << "#{current.iseq.file}:#{current.line}:in" \
+            "`#{current.iseq.name}'"
+          current = current.parent
+        end
+
+        [*backtrace, *caller]
       end
     end
 
