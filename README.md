@@ -328,7 +328,7 @@ Syntax Tree can be used as a library to access the syntax tree underlying Ruby s
 
 ### SyntaxTree.read(filepath)
 
-This function takes a filepath and returns a string associated with the content of that file. It is similar in functionality to `File.read`, except htat it takes into account Ruby-level file encoding (through magic comments at the top of the file).
+This function takes a filepath and returns a string associated with the content of that file. It is similar in functionality to `File.read`, except that it takes into account Ruby-level file encoding (through magic comments at the top of the file).
 
 ### SyntaxTree.parse(source)
 
@@ -570,7 +570,7 @@ SyntaxTree::Formatter.format(source, program.accept(visitor))
 ### WithEnvironment
 
 The `WithEnvironment` module can be included in visitors to automatically keep track of local variables and arguments
-defined inside each environment. A `current_environment` accessor is made availble to the request, allowing it to find
+defined inside each environment. A `current_environment` accessor is made available to the request, allowing it to find
 all usages and definitions of a local.
 
 ```ruby
@@ -611,7 +611,7 @@ The language server also responds to the relatively new inlay hints request. Thi
 1 + 2 * 3
 ```
 
-Implicity, the `2 * 3` is going to be executed first because the `*` operator has higher precedence than the `+` operator. To ease mental overhead, our language server includes small parentheses to make this explicit, as in:
+Implicitly, the `2 * 3` is going to be executed first because the `*` operator has higher precedence than the `+` operator. To ease mental overhead, our language server includes small parentheses to make this explicit, as in:
 
 ```ruby
 1 + ₍2 * 3₎
@@ -686,7 +686,7 @@ Below are listed all of the "official" language plugins hosted under the same Gi
 
 ## Integration
 
-Syntax Tree's goal is to seemlessly integrate into your workflow. To this end, it provides a couple of additional tools beyond the CLI and the Ruby library.
+Syntax Tree's goal is to seamlessly integrate into your workflow. To this end, it provides a couple of additional tools beyond the CLI and the Ruby library.
 
 ### Rake
 
