@@ -650,14 +650,36 @@ module SyntaxTree
             flag |= CallData::CALL_ARGS_SPLAT
             visit(arg_part)
           when ArgsForward
-            flag |= CallData::CALL_ARGS_SPLAT
-            flag |= CallData::CALL_ARGS_BLOCKARG
             flag |= CallData::CALL_TAILCALL if options.tailcall_optimization?
 
-            lookup = iseq.local_table.find(:*)
-            iseq.getlocal(lookup.index, lookup.level)
-            iseq.splatarray(arg_parts.length != 1)
+            if RUBY_VERSION < "3.2"
+              flag |= CallData::CALL_ARGS_SPLAT
+              lookup = iseq.local_table.find(:*)
+              iseq.getlocal(lookup.index, lookup.level)
+              iseq.splatarray(arg_parts.length != 1)
+            else
+              flag |= CallData::CALL_ARGS_SPLAT
+              lookup = iseq.local_table.find(:*)
+              iseq.getlocal(lookup.index, lookup.level)
+              iseq.splatarray(true)
 
+              flag |= CallData::CALL_KW_SPLAT
+              iseq.putspecialobject(PutSpecialObject::OBJECT_VMCORE)
+              iseq.newhash(0)
+              lookup = iseq.local_table.find(:**)
+              iseq.getlocal(lookup.index, lookup.level)
+              iseq.send(
+                YARV.calldata(
+                  :"core#hash_merge_kwd",
+                  2,
+                  CallData::CALL_ARGS_SIMPLE
+                )
+              )
+              iseq.newarray(1)
+              iseq.concatarray
+            end
+
+            flag |= CallData::CALL_ARGS_BLOCKARG
             lookup = iseq.local_table.find(:&)
             iseq.getblockparamproxy(lookup.index, lookup.level)
           when BareAssocHash
@@ -1304,13 +1326,25 @@ module SyntaxTree
         end
 
         if node.keyword_rest.is_a?(ArgsForward)
-          iseq.local_table.plain(:*)
-          iseq.local_table.plain(:&)
+          if RUBY_VERSION >= "3.2"
+            iseq.local_table.plain(:*)
+            iseq.local_table.plain(:**)
+            iseq.local_table.plain(:&)
 
-          iseq.argument_options[:rest_start] = iseq.argument_size
-          iseq.argument_options[:block_start] = iseq.argument_size + 1
+            iseq.argument_options[:rest_start] = iseq.argument_size
+            iseq.argument_options[:block_start] = iseq.argument_size + 2
+            iseq.argument_options[:kwrest] = iseq.argument_size + 1
 
-          iseq.argument_size += 2
+            iseq.argument_size += 3
+          else
+            iseq.local_table.plain(:*)
+            iseq.local_table.plain(:&)
+
+            iseq.argument_options[:rest_start] = iseq.argument_size
+            iseq.argument_options[:block_start] = iseq.argument_size + 1
+
+            iseq.argument_size += 2
+          end
         elsif node.keyword_rest
           visit(node.keyword_rest)
         end
