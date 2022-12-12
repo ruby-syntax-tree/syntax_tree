@@ -11,6 +11,8 @@ Syntax Tree is a suite of tools built on top of the internal CRuby parser. It pr
 
 It is built with only standard library dependencies. It additionally ships with a plugin system so that you can build your own syntax trees from other languages and incorporate these tools.
 
+[RDoc Documentation](https://ruby-syntax-tree.github.io/syntax_tree/)
+
 - [Installation](#installation)
 - [CLI](#cli)
   - [ast](#ast)
