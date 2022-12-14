@@ -11,8 +11,6 @@ Syntax Tree is a suite of tools built on top of the internal CRuby parser. It pr
 
 It is built with only standard library dependencies. It additionally ships with a plugin system so that you can build your own syntax trees from other languages and incorporate these tools.
 
-[RDoc Documentation](https://ruby-syntax-tree.github.io/syntax_tree/)
-
 - [Installation](#installation)
 - [CLI](#cli)
   - [ast](#ast)
@@ -326,7 +324,7 @@ stree write "**/{[!schema]*,*}.rb"
 
 ## Library
 
-Syntax Tree can be used as a library to access the syntax tree underlying Ruby source code.
+Syntax Tree can be used as a library to access the syntax tree underlying Ruby source code. The API is described below. For the full library documentation, see the [RDoc documentation](https://ruby-syntax-tree.github.io/syntax_tree/).
 
 ### SyntaxTree.read(filepath)
 
