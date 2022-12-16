@@ -223,8 +223,8 @@ module SyntaxTree
         compiled = to_a
 
         # Temporary hack until we get these working.
-        compiled[4][:node_id] = 11
-        compiled[4][:node_ids] = [1, 0, 3, 2, 6, 7, 9, -1]
+        compiled[4][:node_id] = -1
+        compiled[4][:node_ids] = [-1] * insns.length
 
         Fiddle.dlunwrap(ISEQ_LOAD.call(Fiddle.dlwrap(compiled), 0, nil)).eval
       end
@@ -272,9 +272,9 @@ module SyntaxTree
       end
 
       def disasm
-        formatter = DisasmFormatter.new
-        formatter.enqueue(self)
-        formatter.format!
+        disassembler = Disassembler.new
+        disassembler.enqueue(self)
+        disassembler.format!
       end
 
       # This method converts our linked list of instructions into a final array

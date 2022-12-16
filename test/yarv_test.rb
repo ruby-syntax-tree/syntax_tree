@@ -31,7 +31,7 @@ module SyntaxTree
 
     CASES.each do |source, expected|
       define_method("test_disassemble_#{source}") do
-        assert_disassembles(expected, source)
+        assert_decompiles(expected, source)
       end
     end
 
@@ -41,13 +41,13 @@ module SyntaxTree
           ">>.>---.+++++++..+++.>>.<-.<.+++.------.--------.>>+.>++."
 
       iseq = YARV::Bf.new(hello_world).compile
-      Formatter.format(hello_world, YARV::Disassembler.new(iseq).to_ruby)
+      Formatter.format(hello_world, YARV::Decompiler.new(iseq).to_ruby)
     end
 
     private
 
-    def assert_disassembles(expected, source)
-      ruby = YARV::Disassembler.new(YARV.compile(source)).to_ruby
+    def assert_decompiles(expected, source)
+      ruby = YARV::Decompiler.new(YARV.compile(source)).to_ruby
       actual = Formatter.format(source, ruby)
       assert_equal expected, actual
     end
