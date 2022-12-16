@@ -148,7 +148,18 @@ module SyntaxTree
         end
 
         def visit_int(node)
-          node.value.to_i
+          case (value = node.value)
+          when /^0b/
+            value[2..].to_i(2)
+          when /^0o/
+            value[2..].to_i(8)
+          when /^0d/
+            value[2..].to_i
+          when /^0x/
+            value[2..].to_i(16)
+          else
+            value.to_i
+          end
         end
 
         def visit_label(node)
