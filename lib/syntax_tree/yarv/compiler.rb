@@ -125,7 +125,7 @@ module SyntaxTree
         end
 
         def visit_array(node)
-          visit_all(node.contents.parts)
+          node.contents ? visit_all(node.contents.parts) : []
         end
 
         def visit_bare_assoc_hash(node)

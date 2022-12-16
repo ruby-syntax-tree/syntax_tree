@@ -2695,7 +2695,7 @@ module SyntaxTree
         [
           :opt_case_dispatch,
           case_dispatch_hash.flat_map { |key, value| [key, value.name] },
-          else_label
+          else_label.name
         ]
       end
 

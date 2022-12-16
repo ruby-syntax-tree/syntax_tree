@@ -220,13 +220,7 @@ module SyntaxTree
 
       def eval
         raise "Unsupported platform" if ISEQ_LOAD.nil?
-        compiled = to_a
-
-        # Temporary hack until we get these working.
-        compiled[4][:node_id] = -1
-        compiled[4][:node_ids] = [-1] * insns.length
-
-        Fiddle.dlunwrap(ISEQ_LOAD.call(Fiddle.dlwrap(compiled), 0, nil)).eval
+        Fiddle.dlunwrap(ISEQ_LOAD.call(Fiddle.dlwrap(to_a), 0, nil)).eval
       end
 
       def to_a
@@ -257,7 +251,9 @@ module SyntaxTree
           {
             arg_size: argument_size,
             local_size: local_table.size,
-            stack_max: stack.maximum_size
+            stack_max: stack.maximum_size,
+            node_id: -1,
+            node_ids: [-1] * insns.length
           },
           name,
           "<compiled>",
