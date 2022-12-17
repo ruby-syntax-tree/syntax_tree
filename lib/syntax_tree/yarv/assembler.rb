@@ -79,6 +79,12 @@ module SyntaxTree
             iseq.branchnil(labels[operands])
           when "branchunless"
             iseq.branchunless(labels[operands])
+          when "checkkeyword"
+            kwbits_index, keyword_index = operands.split(/,\s*/)
+            iseq.checkkeyword(
+              parse_number(kwbits_index),
+              parse_number(keyword_index)
+            )
           when "checkmatch"
             iseq.checkmatch(parse_number(operands))
           when "checktype"
@@ -98,6 +104,8 @@ module SyntaxTree
             class_iseq = iseq.class_child_iseq(name.to_s, Location.default)
             assemble_iseq(class_iseq, body)
             iseq.defineclass(name, class_iseq, flags)
+          when "defined"
+            raise NotImplementedError
           when "definemethod"
             body = parse_nested(lines[line_index..])
             line_index += body.length
@@ -127,6 +135,12 @@ module SyntaxTree
           when "expandarray"
             number, flags = operands.split(/,\s*/)
             iseq.expandarray(parse_number(number), parse_number(flags))
+          when "getblockparam"
+            lookup = find_local(iseq, operands)
+            iseq.getblockparam(lookup.index, lookup.level)
+          when "getblockparamproxy"
+            lookup = find_local(iseq, operands)
+            iseq.getblockparamproxy(lookup.index, lookup.level)
           when "getclassvariable"
             iseq.getclassvariable(parse_symbol(operands))
           when "getconstant"
@@ -136,18 +150,16 @@ module SyntaxTree
           when "getinstancevariable"
             iseq.getinstancevariable(parse_symbol(operands))
           when "getlocal"
-            name_string, level_string = operands.split(/,\s*/)
-            name = name_string.to_sym
-            level = level_string&.to_i || 0
-
-            iseq.local_table.plain(name)
-            lookup = iseq.local_table.find(name, level)
+            lookup = find_local(iseq, operands)
             iseq.getlocal(lookup.index, lookup.level)
           when "getspecial"
             key, type = operands.split(/,\s*/)
             iseq.getspecial(parse_number(key), parse_number(type))
           when "intern"
             iseq.intern
+          when "invokeblock"
+            cdata = operands ? calldata(operands) : YARV.calldata(nil, 0)
+            iseq.invokeblock(cdata)
           when "invokesuper"
             cdata =
               if operands
@@ -305,17 +317,15 @@ module SyntaxTree
               end
 
             iseq.send(calldata(operands), block_iseq)
+          when "setblockparam"
+            lookup = find_local(iseq, operands)
+            iseq.setblockparam(lookup.index, lookup.level)
           when "setconstant"
             iseq.setconstant(parse_symbol(operands))
           when "setglobal"
             iseq.setglobal(parse_symbol(operands))
           when "setlocal"
-            name_string, level_string = operands.split(/,\s*/)
-            name = name_string.to_sym
-            level = level_string&.to_i || 0
-
-            iseq.local_table.plain(name)
-            lookup = iseq.local_table.find(name, level)
+            lookup = find_local(iseq, operands)
             iseq.setlocal(lookup.index, lookup.level)
           when "setn"
             iseq.setn(parse_number(operands))
@@ -329,6 +339,8 @@ module SyntaxTree
             iseq.splatarray(parse_options(operands, [true, false]))
           when "swap"
             iseq.swap
+          when "throw"
+            iseq.throw(parse_number(operands))
           when "topn"
             iseq.topn(parse_number(operands))
           when "toregexp"
@@ -337,10 +349,23 @@ module SyntaxTree
           when "ARG_REQ"
             iseq.argument_size += 1
             iseq.local_table.plain(operands.to_sym)
+          when "ARG_BLOCK"
+            iseq.argument_options[:block_start] = iseq.argument_size
+            iseq.local_table.block(operands.to_sym)
+            iseq.argument_size += 1
           else
             raise "Could not understand: #{line}"
           end
         end
+      end
+
+      def find_local(iseq, operands)
+        name_string, level_string = operands.split(/,\s*/)
+        name = name_string.to_sym
+        level = level_string&.to_i || 0
+
+        iseq.local_table.plain(name)
+        iseq.local_table.find(name, level)
       end
 
       def parse(value)
