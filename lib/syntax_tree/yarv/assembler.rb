@@ -25,6 +25,43 @@ module SyntaxTree
         end
       end
 
+      CALLDATA_FLAGS = {
+        "ARGS_SPLAT" => CallData::CALL_ARGS_SPLAT,
+        "ARGS_BLOCKARG" => CallData::CALL_ARGS_BLOCKARG,
+        "FCALL" => CallData::CALL_FCALL,
+        "VCALL" => CallData::CALL_VCALL,
+        "ARGS_SIMPLE" => CallData::CALL_ARGS_SIMPLE,
+        "BLOCKISEQ" => CallData::CALL_BLOCKISEQ,
+        "KWARG" => CallData::CALL_KWARG,
+        "KW_SPLAT" => CallData::CALL_KW_SPLAT,
+        "TAILCALL" => CallData::CALL_TAILCALL,
+        "SUPER" => CallData::CALL_SUPER,
+        "ZSUPER" => CallData::CALL_ZSUPER,
+        "OPT_SEND" => CallData::CALL_OPT_SEND,
+        "KW_SPLAT_MUT" => CallData::CALL_KW_SPLAT_MUT
+      }.freeze
+
+      DEFINED_TYPES = [
+        nil,
+        "nil",
+        "instance-variable",
+        "local-variable",
+        "global-variable",
+        "class variable",
+        "constant",
+        "method",
+        "yield",
+        "super",
+        "self",
+        "true",
+        "false",
+        "assignment",
+        "expression",
+        "ref",
+        "func",
+        "constant-from"
+      ].freeze
+
       attr_reader :filepath
 
       def initialize(filepath)
@@ -105,7 +142,12 @@ module SyntaxTree
             assemble_iseq(class_iseq, body)
             iseq.defineclass(name, class_iseq, flags)
           when "defined"
-            raise NotImplementedError
+            type, object, message = operands.split(/,\s*/)
+            iseq.defined(
+              DEFINED_TYPES.index(type),
+              parse_symbol(object),
+              parse_string(message)
+            )
           when "definemethod"
             body = parse_nested(lines[line_index..])
             line_index += body.length
@@ -158,12 +200,13 @@ module SyntaxTree
           when "intern"
             iseq.intern
           when "invokeblock"
-            cdata = operands ? calldata(operands) : YARV.calldata(nil, 0)
-            iseq.invokeblock(cdata)
+            iseq.invokeblock(
+              operands ? parse_calldata(operands) : YARV.calldata(nil, 0)
+            )
           when "invokesuper"
-            cdata =
+            calldata =
               if operands
-                calldata(operands)
+                parse_calldata(operands)
               else
                 YARV.calldata(
                   nil,
@@ -183,7 +226,7 @@ module SyntaxTree
                 block_iseq
               end
 
-            iseq.invokesuper(cdata, block_iseq)
+            iseq.invokesuper(calldata, block_iseq)
           when "jump"
             iseq.jump(labels[operands])
           when "leave"
@@ -282,7 +325,7 @@ module SyntaxTree
           when "opt_reverse"
             iseq.send(YARV.calldata(:reverse))
           when "opt_send_without_block"
-            iseq.send(calldata(operands))
+            iseq.send(parse_calldata(operands))
           when "opt_size"
             iseq.send(YARV.calldata(:size))
           when "opt_str_freeze"
@@ -316,7 +359,7 @@ module SyntaxTree
                 block_iseq
               end
 
-            iseq.send(calldata(operands), block_iseq)
+            iseq.send(parse_calldata(operands), block_iseq)
           when "setblockparam"
             lookup = find_local(iseq, operands)
             iseq.setblockparam(lookup.index, lookup.level)
@@ -400,23 +443,7 @@ module SyntaxTree
         body.map! { |line| line.delete_prefix!("  ") || +"" }
       end
 
-      CALLDATA_FLAGS = {
-        "ARGS_SPLAT" => CallData::CALL_ARGS_SPLAT,
-        "ARGS_BLOCKARG" => CallData::CALL_ARGS_BLOCKARG,
-        "FCALL" => CallData::CALL_FCALL,
-        "VCALL" => CallData::CALL_VCALL,
-        "ARGS_SIMPLE" => CallData::CALL_ARGS_SIMPLE,
-        "BLOCKISEQ" => CallData::CALL_BLOCKISEQ,
-        "KWARG" => CallData::CALL_KWARG,
-        "KW_SPLAT" => CallData::CALL_KW_SPLAT,
-        "TAILCALL" => CallData::CALL_TAILCALL,
-        "SUPER" => CallData::CALL_SUPER,
-        "ZSUPER" => CallData::CALL_ZSUPER,
-        "OPT_SEND" => CallData::CALL_OPT_SEND,
-        "KW_SPLAT_MUT" => CallData::CALL_KW_SPLAT_MUT
-      }.freeze
-
-      def calldata(value)
+      def parse_calldata(value)
         message, argc_value, flags_value = value.split
         flags =
           if flags_value
