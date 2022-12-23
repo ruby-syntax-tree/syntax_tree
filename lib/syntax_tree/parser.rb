@@ -820,13 +820,13 @@ module SyntaxTree
           end
 
         bodystmt.bind(
-          keyword.location.end_char,
+          find_next_statement_start(keyword.location.end_char),
           keyword.location.end_column,
           end_location.end_char,
           end_location.end_column
         )
-        location = keyword.location.to(bodystmt.location)
 
+        location = keyword.location.to(end_location)
         Begin.new(bodystmt: bodystmt, location: location)
       end
     end
@@ -905,14 +905,15 @@ module SyntaxTree
     #     (nil | Ensure) ensure_clause
     #   ) -> BodyStmt
     def on_bodystmt(statements, rescue_clause, else_clause, ensure_clause)
+      parts = [statements, rescue_clause, else_clause, ensure_clause].compact
+
       BodyStmt.new(
         statements: statements,
         rescue_clause: rescue_clause,
         else_keyword: else_clause && consume_keyword(:else),
         else_clause: else_clause,
         ensure_clause: ensure_clause,
-        location:
-          Location.fixed(line: lineno, char: char_pos, column: current_column)
+        location: parts.first.location.to(parts.last.location)
       )
     end
 

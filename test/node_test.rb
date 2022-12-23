@@ -268,7 +268,7 @@ module SyntaxTree
         end
       SOURCE
 
-      at = location(lines: 9..9, chars: 5..64)
+      at = location(lines: 2..9, chars: 5..64)
       assert_node(BodyStmt, source, at: at, &:bodystmt)
     end
 
