@@ -111,6 +111,8 @@ module SyntaxTree
           write(id: request[:id], result: PP.pp(SyntaxTree.parse(store[uri]), +""))
         when Request[method: %r{\$/.+}]
           # ignored
+        when Request[method: "textDocument/documentColor", params: { textDocument: { uri: :any } }]
+          # ignored
         else
           raise ArgumentError, "Unhandled: #{request}"
         end
