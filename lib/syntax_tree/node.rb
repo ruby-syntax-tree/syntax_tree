@@ -6160,7 +6160,7 @@ module SyntaxTree
         # want to force it to not be a ternary, like if the predicate is an
         # assignment because it's hard to read.
         case node.predicate
-        when Assign, Command, CommandCall, MAssign, OpAssign
+        when Assign, Binary, Command, CommandCall, MAssign, OpAssign
           return false
         when Not
           return false unless node.predicate.parentheses?
@@ -6183,10 +6183,10 @@ module SyntaxTree
       # and default instead to breaking them into multiple lines.
       def ternaryable?(statement)
         case statement
-        when AliasNode, Assign, Break, Command, CommandCall, Heredoc, IfNode,
-             IfOp, Lambda, MAssign, Next, OpAssign, RescueMod, ReturnNode,
-             Super, Undef, UnlessNode, UntilNode, VoidStmt, WhileNode,
-             YieldNode, ZSuper
+        when AliasNode, Assign, Break, Command, CommandCall, Defined, Heredoc,
+             IfNode, IfOp, Lambda, MAssign, Next, OpAssign, RescueMod,
+             ReturnNode, Super, Undef, UnlessNode, UntilNode, VoidStmt,
+             WhileNode, YieldNode, ZSuper
           # This is a list of nodes that should not be allowed to be a part of a
           # ternary clause.
           false

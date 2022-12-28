@@ -67,3 +67,10 @@ end
 if true # comment1
   # comment2
 end
+%
+result =
+  if false && val = 1
+    "A"
+  else
+    "B"
+  end
