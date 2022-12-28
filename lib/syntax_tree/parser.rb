@@ -995,22 +995,11 @@ module SyntaxTree
     # :call-seq:
     #   on_case: (untyped value, untyped consequent) -> Case | RAssign
     def on_case(value, consequent)
-      if (keyword = find_keyword(:case))
-        tokens.delete(keyword)
-
-        Case.new(
-          keyword: keyword,
-          value: value,
-          consequent: consequent,
-          location: keyword.location.to(consequent.location)
-        )
-      else
-        operator =
-          if (keyword = find_keyword(:in))
-            tokens.delete(keyword)
-          else
-            consume_operator(:"=>")
-          end
+      if value && (operator = find_keyword(:in) || find_operator(:"=>")) &&
+           (value.location.end_char...consequent.location.start_char).cover?(
+             operator.location.start_char
+           )
+        tokens.delete(operator)
 
         node =
           RAssign.new(
@@ -1022,6 +1011,15 @@ module SyntaxTree
 
         PinVisitor.visit(node, tokens)
         node
+      else
+        keyword = consume_keyword(:case)
+
+        Case.new(
+          keyword: keyword,
+          value: value,
+          consequent: consequent,
+          location: keyword.location.to(consequent.location)
+        )
       end
     end
 

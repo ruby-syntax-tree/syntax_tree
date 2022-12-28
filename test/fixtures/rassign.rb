@@ -23,3 +23,9 @@ foo => [
 %
 a in Integer
 b => [Integer => c]
+%
+case [0]
+when 0
+  { a: 0 } => { a: }
+  puts a
+end
