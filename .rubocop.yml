@@ -7,7 +7,7 @@ AllCops:
   SuggestExtensions: false
   TargetRubyVersion: 2.7
   Exclude:
-  - '{.git,.github,bin,coverage,pkg,test/fixtures,vendor,tmp}/**/*'
+  - '{.git,.github,bin,coverage,pkg,spec,test/fixtures,vendor,tmp}/**/*'
   - test.rb
 
 Layout/LineLength:
@@ -41,6 +41,9 @@ Lint/NonLocalExitFromIterator:
   Enabled: false
 
 Lint/RedundantRequireStatement:
+  Enabled: false
+
+Lint/RescueException:
   Enabled: false
 
 Lint/SuppressedException:

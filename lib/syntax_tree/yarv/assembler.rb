@@ -69,7 +69,7 @@ module SyntaxTree
       end
 
       def assemble
-        iseq = InstructionSequence.new(:top, "<main>", nil, Location.default)
+        iseq = InstructionSequence.new("<main>", "<compiled>", 1, :top)
         assemble_iseq(iseq, File.readlines(filepath, chomp: true))
 
         iseq.compile!
@@ -138,7 +138,7 @@ module SyntaxTree
             name = parse_symbol(name_value)
             flags = parse_number(flags_value)
 
-            class_iseq = iseq.class_child_iseq(name.to_s, Location.default)
+            class_iseq = iseq.class_child_iseq(name.to_s, 1)
             assemble_iseq(class_iseq, body)
             iseq.defineclass(name, class_iseq, flags)
           when "defined"
@@ -153,7 +153,7 @@ module SyntaxTree
             line_index += body.length
 
             name = parse_symbol(operands)
-            method_iseq = iseq.method_child_iseq(name.to_s, Location.default)
+            method_iseq = iseq.method_child_iseq(name.to_s, 1)
             assemble_iseq(method_iseq, body)
 
             iseq.definemethod(name, method_iseq)
@@ -162,7 +162,7 @@ module SyntaxTree
             line_index += body.length
 
             name = parse_symbol(operands)
-            method_iseq = iseq.method_child_iseq(name.to_s, Location.default)
+            method_iseq = iseq.method_child_iseq(name.to_s, 1)
 
             assemble_iseq(method_iseq, body)
             iseq.definesmethod(name, method_iseq)
@@ -221,7 +221,7 @@ module SyntaxTree
                 body = parse_nested(lines[line_index..])
                 line_index += body.length
 
-                block_iseq = iseq.block_child_iseq(Location.default)
+                block_iseq = iseq.block_child_iseq(1)
                 assemble_iseq(block_iseq, body)
                 block_iseq
               end
@@ -249,7 +249,7 @@ module SyntaxTree
                 body = parse_nested(lines[line_index..])
                 line_index += body.length
 
-                block_iseq = iseq.block_child_iseq(Location.default)
+                block_iseq = iseq.block_child_iseq(1)
                 assemble_iseq(block_iseq, body)
                 block_iseq
               end
@@ -354,7 +354,7 @@ module SyntaxTree
                 body = parse_nested(lines[line_index..])
                 line_index += body.length
 
-                block_iseq = iseq.block_child_iseq(Location.default)
+                block_iseq = iseq.block_child_iseq(1)
                 assemble_iseq(block_iseq, body)
                 block_iseq
               end

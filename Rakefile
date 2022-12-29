@@ -26,3 +26,10 @@ end
 
 SyntaxTree::Rake::CheckTask.new(&configure)
 SyntaxTree::Rake::WriteTask.new(&configure)
+
+desc "Run mspec tests using YARV emulation"
+task :spec do
+  Dir["./spec/ruby/language/**/*_spec.rb"].each do |filepath|
+    sh "exe/yarv ./spec/mspec/bin/mspec-tag #{filepath}"
+  end
+end

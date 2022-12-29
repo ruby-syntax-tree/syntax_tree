@@ -13,7 +13,7 @@ module SyntaxTree
 
       def compile
         # Set up the top-level instruction sequence that will be returned.
-        iseq = InstructionSequence.new(:top, "<compiled>", nil, location)
+        iseq = InstructionSequence.new("<compiled>", "<compiled>", 1, :top)
 
         # Set up the $tape global variable that will hold our state.
         iseq.duphash({ 0 => 0 })
@@ -80,19 +80,6 @@ module SyntaxTree
 
       private
 
-      # This is the location of the top instruction sequence, derived from the
-      # source string.
-      def location
-        Location.new(
-          start_line: 1,
-          start_char: 0,
-          start_column: 0,
-          end_line: source.count("\n") + 1,
-          end_char: source.size,
-          end_column: source.size - (source.rindex("\n") || 0) - 1
-        )
-      end
-
       # $tape[$cursor] += value
       def change_by(iseq, value)
         iseq.getglobal(:$tape)
@@ -111,6 +98,7 @@ module SyntaxTree
         end
 
         iseq.send(YARV.calldata(:[]=, 2))
+        iseq.pop
       end
 
       # $cursor += value
@@ -138,6 +126,7 @@ module SyntaxTree
         iseq.send(YARV.calldata(:chr))
 
         iseq.send(YARV.calldata(:putc, 1))
+        iseq.pop
       end
 
       # $tape[$cursor] = $stdin.getc.ord
@@ -150,6 +139,7 @@ module SyntaxTree
         iseq.send(YARV.calldata(:ord))
 
         iseq.send(YARV.calldata(:[]=, 2))
+        iseq.pop
       end
 
       # unless $tape[$cursor] == 0
@@ -164,14 +154,21 @@ module SyntaxTree
 
         iseq.putobject(0)
         iseq.send(YARV.calldata(:==, 1))
-        iseq.branchunless(end_label)
+        iseq.branchif(end_label)
 
         [start_label, end_label]
       end
 
       # Jump back to the start of the loop.
       def loop_end(iseq, start_label, end_label)
-        iseq.jump(start_label)
+        iseq.getglobal(:$tape)
+        iseq.getglobal(:$cursor)
+        iseq.send(YARV.calldata(:[], 1))
+
+        iseq.putobject(0)
+        iseq.send(YARV.calldata(:==, 1))
+        iseq.branchunless(start_label)
+
         iseq.push(end_label)
       end
     end
