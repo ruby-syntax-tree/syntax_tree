@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 
 ## [Unreleased]
 
+## [5.1.0] - 2022-12-28
+
 ### Added
 
 - An experiment in working with instruction sequences has been added to Syntax Tree. This is subject to change, so it is not well documented or tested at the moment. It does not impact other functionality.
@@ -469,7 +471,8 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 
 - 🎉 Initial release! 🎉
 
-[unreleased]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v5.0.1...HEAD
+[unreleased]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v5.1.0...HEAD
+[5.1.0]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v5.0.1...v5.1.0
 [5.0.1]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v5.0.0...v5.0.1
 [5.0.0]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v4.3.0...v5.0.0
 [4.3.0]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v4.2.0...v4.3.0
