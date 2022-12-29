@@ -84,10 +84,10 @@ module SyntaxTree
       @target_ruby_version = options.target_ruby_version
     end
 
-    def self.format(source, node)
+    def self.format(source, node, base_indentation = 0)
       q = new(source, [])
       q.format(node)
-      q.flush
+      q.flush(base_indentation)
       q.output.join
     end
 
