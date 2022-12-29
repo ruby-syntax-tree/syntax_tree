@@ -6,9 +6,17 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 
 ## [Unreleased]
 
+### Added
+
+- An experiment in working with instruction sequences has been added to Syntax Tree. This is subject to change, so it is not well documented or tested at the moment. It does not impact other functionality.
+
 ### Changed
 
 - Support forwarding anonymous keyword arguments with `**`.
+- The `BodyStmt` node now has a more correct location information.
+- Ignore the `textDocument/documentColor` request coming into the language server to support clients that require that request be received.
+- Do not attempt to convert `if..else` into ternaries if the predicate has a `Binary` node.
+- Properly handle nested pattern matching when a rightward assignment is inside a `when` clause.
 
 ## [5.0.1] - 2022-11-10
 
