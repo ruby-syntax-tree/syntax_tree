@@ -9,6 +9,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 ### Added
 
 - An experiment in working with instruction sequences has been added to Syntax Tree. This is subject to change, so it is not well documented or tested at the moment. It does not impact other functionality.
+- You can now format at a different base layer of indentation. This is an optional third argument to `SyntaxTree::format`.
 
 ### Changed
 
