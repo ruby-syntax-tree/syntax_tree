@@ -53,7 +53,7 @@ module SyntaxTree
       # there's a BOM at the beginning of the file, which is the reason we need
       # to compare it to 0 here.
       def [](byteindex)
-        indices[byteindex < 0 ? 0 : byteindex]
+        indices[[byteindex, 0].max]
       end
     end
 

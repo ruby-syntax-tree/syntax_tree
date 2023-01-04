@@ -147,3 +147,6 @@ Style/SpecialGlobalVars:
 
 Style/StructInheritance:
   Enabled: false
+
+Style/YodaExpression:
+  Enabled: false
