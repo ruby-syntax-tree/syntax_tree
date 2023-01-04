@@ -2,8 +2,6 @@
 foo(bar)
 %
 foo()
--
-foo
 %
 foo(barrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr)
 -

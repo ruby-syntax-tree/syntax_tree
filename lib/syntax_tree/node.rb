@@ -3001,16 +3001,25 @@ module SyntaxTree
       else
         q.format(message)
 
-        if arguments.is_a?(ArgParen) && arguments.arguments.nil? &&
-             !message.is_a?(Const)
-          # If you're using an explicit set of parentheses on something that
-          # looks like a constant, then we need to match that in order to
-          # maintain valid Ruby. For example, you could do something like Foo(),
-          # on which we would need to keep the parentheses to make it look like
-          # a method call.
-        else
-          q.format(arguments)
-        end
+        # Note that this explicitly leaves parentheses in place even if they are
+        # empty. There are two reasons we would need to do this. The first is if
+        # we're calling something that looks like a constant, as in:
+        #
+        #     Foo()
+        #
+        # In this case if we remove the parentheses then this becomes a constant
+        # reference and not a method call. The second is if we're calling a
+        # method that is the same name as a local variable that is in scope, as
+        # in:
+        #
+        #     foo = foo()
+        #
+        # In this case we have to keep the parentheses or else it treats this
+        # like assigning nil to the local variable. Note that we could attempt
+        # to be smarter about this by tracking the local variables that are in
+        # scope, but for now it's simpler and more efficient to just leave the
+        # parentheses in place.
+        q.format(arguments) if arguments
       end
     end
 
