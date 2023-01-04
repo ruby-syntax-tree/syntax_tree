@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 
 ## [Unreleased]
 
+## [5.2.0] - 2023-01-04
+
+### Added
+
+- An experiment in evaluating compiled instruction sequences has been added to Syntax Tree. This is subject to change, so it will not be well documented or testing at the moment. It does not impact other functionality.
+
+### Changed
+
+- Empty parentheses on method calls will now be left in place. Previously they were left in place if the method being called looked like a constant. Now they are left in place for all method calls since the method name can mirror the name of a local variable, in which case the parentheses are required.
+
 ## [5.1.0] - 2022-12-28
 
 ### Added
@@ -471,7 +481,8 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 
 - 🎉 Initial release! 🎉
 
-[unreleased]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v5.1.0...HEAD
+[unreleased]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v5.2.0...HEAD
+[5.2.0]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v5.1.0...v5.2.0
 [5.1.0]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v5.0.1...v5.1.0
 [5.0.1]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v5.0.0...v5.0.1
 [5.0.0]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v4.3.0...v5.0.0
