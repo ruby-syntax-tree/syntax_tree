@@ -303,10 +303,11 @@ module SyntaxTree
             options.print_width,
             options: options.formatter_options
           )
+        changed = source != formatted
 
-        File.write(filepath, formatted) if item.writable?
+        File.write(filepath, formatted) if item.writable? && changed
 
-        color = source == formatted ? Color.gray(filepath) : filepath
+        color = changed ? filepath : Color.gray(filepath)
         delta = ((Time.now - start) * 1000).round
 
         puts "#{color} #{delta}ms"
