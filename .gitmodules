@@ -4,3 +4,6 @@
 [submodule "spec"]
 	path = spec/ruby
 	url = git@github.com:ruby/spec.git
+[submodule "test/ruby-syntax-fixtures"]
+	path = test/ruby-syntax-fixtures
+	url = https://github.com/ruby-syntax-tree/ruby-syntax-fixtures
