@@ -70,7 +70,7 @@ module SyntaxTree
             [Fiddle::TYPE_VOIDP] * 3,
             Fiddle::TYPE_VOIDP
           )
-        rescue NameError
+        rescue NameError, Fiddle::DLError
         end
 
       # This object is used to track the size of the stack at any given time. It
