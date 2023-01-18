@@ -4175,6 +4175,17 @@ module SyntaxTree
     def endless?
       !bodystmt.is_a?(BodyStmt)
     end
+
+    def arity
+      case params
+      when Params
+        params.arity
+      when Paren
+        params.contents.arity
+      else
+        0..0
+      end
+    end
   end
 
   # Defined represents the use of the +defined?+ operator. It can be used with
@@ -4360,6 +4371,15 @@ module SyntaxTree
 
     def keywords?
       opening.is_a?(Kw)
+    end
+
+    def arity
+      case block_var
+      when BlockVar
+        block_var.params.arity
+      else
+        0..0
+      end
     end
 
     private
@@ -8323,6 +8343,23 @@ module SyntaxTree
           .zip(other.keywords)
           .all? { |left, right| ArrayMatch.call(left, right) } &&
         keyword_rest === other.keyword_rest && block === other.block
+    end
+
+    # Returns a range representing the possible number of arguments accepted
+    # by this params node not including the block. For example:
+    #   def foo(a, b = 1, c:, d: 2, &block)
+    #     ...
+    #   end
+    # has arity 2..4
+    def arity
+      optional_keywords = keywords.count { |_label, value| value }
+      lower_bound =
+        requireds.length + posts.length + keywords.length - optional_keywords
+
+      upper_bound =
+        lower_bound + optionals.length +
+          optional_keywords if keyword_rest.nil? && rest.nil?
+      lower_bound..upper_bound
     end
 
     private
