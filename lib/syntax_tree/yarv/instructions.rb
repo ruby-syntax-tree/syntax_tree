@@ -91,6 +91,14 @@ module SyntaxTree
         [:adjuststack, number]
       end
 
+      def deconstruct_keys(keys)
+        { number: number }
+      end
+
+      def ==(other)
+        other.is_a?(AdjustStack) && other.number == number
+      end
+
       def length
         2
       end
@@ -137,6 +145,14 @@ module SyntaxTree
 
       def to_a(_iseq)
         [:anytostring]
+      end
+
+      def deconstruct_keys(keys)
+        {}
+      end
+
+      def ==(other)
+        other.is_a?(AnyToString)
       end
 
       def length
@@ -197,6 +213,14 @@ module SyntaxTree
         [:branchif, label.name]
       end
 
+      def deconstruct_keys(keys)
+        { label: label }
+      end
+
+      def ==(other)
+        other.is_a?(BranchIf) && other.label == label
+      end
+
       def length
         2
       end
@@ -250,6 +274,14 @@ module SyntaxTree
         [:branchnil, label.name]
       end
 
+      def deconstruct_keys(keys)
+        { label: label }
+      end
+
+      def ==(other)
+        other.is_a?(BranchNil) && other.label == label
+      end
+
       def length
         2
       end
@@ -300,6 +332,14 @@ module SyntaxTree
 
       def to_a(_iseq)
         [:branchunless, label.name]
+      end
+
+      def deconstruct_keys(keys)
+        { label: label }
+      end
+
+      def ==(other)
+        other.is_a?(BranchUnless) && other.label == label
       end
 
       def length
@@ -365,6 +405,16 @@ module SyntaxTree
         ]
       end
 
+      def deconstruct_keys(keys)
+        { keyword_bits_index: keyword_bits_index, keyword_index: keyword_index }
+      end
+
+      def ==(other)
+        other.is_a?(CheckKeyword) &&
+          other.keyword_bits_index == keyword_bits_index &&
+          other.keyword_index == keyword_index
+      end
+
       def length
         3
       end
@@ -417,6 +467,14 @@ module SyntaxTree
 
       def to_a(_iseq)
         [:checkmatch, type]
+      end
+
+      def deconstruct_keys(keys)
+        { type: type }
+      end
+
+      def ==(other)
+        other.is_a?(CheckMatch) && other.type == type
       end
 
       def length
@@ -561,6 +619,14 @@ module SyntaxTree
         [:checktype, type]
       end
 
+      def deconstruct_keys(keys)
+        { type: type }
+      end
+
+      def ==(other)
+        other.is_a?(CheckType) && other.type == type
+      end
+
       def length
         2
       end
@@ -656,6 +722,14 @@ module SyntaxTree
         [:concatarray]
       end
 
+      def deconstruct_keys(keys)
+        {}
+      end
+
+      def ==(other)
+        other.is_a?(ConcatArray)
+      end
+
       def length
         1
       end
@@ -706,6 +780,14 @@ module SyntaxTree
 
       def to_a(_iseq)
         [:concatstrings, number]
+      end
+
+      def deconstruct_keys(keys)
+        { number: number }
+      end
+
+      def ==(other)
+        other.is_a?(ConcatStrings) && other.number == number
       end
 
       def length
@@ -769,6 +851,17 @@ module SyntaxTree
 
       def to_a(_iseq)
         [:defineclass, name, class_iseq.to_a, flags]
+      end
+
+      def deconstruct_keys(keys)
+        { name: name, class_iseq: class_iseq, flags: flags }
+      end
+
+      def ==(other)
+        other.is_a?(DefineClass) &&
+          other.name == name &&
+          other.class_iseq == class_iseq &&
+          other.flags == flags
       end
 
       def length
@@ -899,6 +992,17 @@ module SyntaxTree
         [:defined, type, name, message]
       end
 
+      def deconstruct_keys(keys)
+        { type: type, name: name, message: message }
+      end
+
+      def ==(other)
+        other.is_a?(Defined) &&
+          other.type == type &&
+          other.name == name &&
+          other.message == message
+      end
+
       def length
         4
       end
@@ -989,6 +1093,16 @@ module SyntaxTree
         [:definemethod, method_name, method_iseq.to_a]
       end
 
+      def deconstruct_keys(keys)
+        { method_name: method_name, method_iseq: method_iseq }
+      end
+
+      def ==(other)
+        other.is_a?(DefineMethod) &&
+          other.method_name == method_name &&
+          other.method_iseq == method_iseq
+      end
+
       def length
         3
       end
@@ -1061,6 +1175,16 @@ module SyntaxTree
         [:definesmethod, method_name, method_iseq.to_a]
       end
 
+      def deconstruct_keys(keys)
+        { method_name: method_name, method_iseq: method_iseq }
+      end
+
+      def ==(other)
+        other.is_a?(DefineSMethod) &&
+          other.method_name == method_name &&
+          other.method_iseq == method_iseq
+      end
+
       def length
         3
       end
@@ -1118,6 +1242,14 @@ module SyntaxTree
         [:dup]
       end
 
+      def deconstruct_keys(keys)
+        {}
+      end
+
+      def ==(other)
+        other.is_a?(Dup)
+      end
+
       def length
         1
       end
@@ -1162,6 +1294,14 @@ module SyntaxTree
 
       def to_a(_iseq)
         [:duparray, object]
+      end
+
+      def deconstruct_keys(keys)
+        { object: object }
+      end
+
+      def ==(other)
+        other.is_a?(DupArray) && other.object == object
       end
 
       def length
@@ -1210,6 +1350,14 @@ module SyntaxTree
         [:duphash, object]
       end
 
+      def deconstruct_keys(keys)
+        { object: object }
+      end
+
+      def ==(other)
+        other.is_a?(DupHash) && other.object == object
+      end
+
       def length
         2
       end
@@ -1254,6 +1402,14 @@ module SyntaxTree
 
       def to_a(_iseq)
         [:dupn, number]
+      end
+
+      def deconstruct_keys(keys)
+        { number: number }
+      end
+
+      def ==(other)
+        other.is_a?(DupN) && other.number == number
       end
 
       def length
@@ -1305,6 +1461,16 @@ module SyntaxTree
 
       def to_a(_iseq)
         [:expandarray, number, flags]
+      end
+
+      def deconstruct_keys(keys)
+        { number: number, flags: flags }
+      end
+
+      def ==(other)
+        other.is_a?(ExpandArray) &&
+          other.number == number &&
+          other.flags == flags
       end
 
       def length
@@ -1398,6 +1564,16 @@ module SyntaxTree
         [:getblockparam, current.local_table.offset(index), level]
       end
 
+      def deconstruct_keys(keys)
+        { index: index, level: level }
+      end
+
+      def ==(other)
+        other.is_a?(GetBlockParam) &&
+          other.index == index &&
+          other.level == level
+      end
+
       def length
         3
       end
@@ -1455,6 +1631,16 @@ module SyntaxTree
         [:getblockparamproxy, current.local_table.offset(index), level]
       end
 
+      def deconstruct_keys(keys)
+        { index: index, level: level }
+      end
+
+      def ==(other)
+        other.is_a?(GetBlockParamProxy) &&
+          other.index == index &&
+          other.level == level
+      end
+
       def length
         3
       end
@@ -1507,6 +1693,16 @@ module SyntaxTree
         [:getclassvariable, name, cache]
       end
 
+      def deconstruct_keys(keys)
+        { name: name, cache: cache }
+      end
+
+      def ==(other)
+        other.is_a?(GetClassVariable) &&
+          other.name == name &&
+          other.cache == cache
+      end
+
       def length
         3
       end
@@ -1555,6 +1751,14 @@ module SyntaxTree
 
       def to_a(_iseq)
         [:getconstant, name]
+      end
+
+      def deconstruct_keys(keys)
+        { name: name }
+      end
+
+      def ==(other)
+        other.is_a?(GetConstant) && other.name == name
       end
 
       def length
@@ -1619,6 +1823,14 @@ module SyntaxTree
         [:getglobal, name]
       end
 
+      def deconstruct_keys(keys)
+        { name: name }
+      end
+
+      def ==(other)
+        other.is_a?(GetGlobal) && other.name == name
+      end
+
       def length
         2
       end
@@ -1678,6 +1890,16 @@ module SyntaxTree
         [:getinstancevariable, name, cache]
       end
 
+      def deconstruct_keys(keys)
+        { name: name, cache: cache }
+      end
+
+      def ==(other)
+        other.is_a?(GetInstanceVariable) &&
+          other.name == name &&
+          other.cache == cache
+      end
+
       def length
         3
       end
@@ -1732,6 +1954,14 @@ module SyntaxTree
         [:getlocal, current.local_table.offset(index), level]
       end
 
+      def deconstruct_keys(keys)
+        { index: index, level: level }
+      end
+
+      def ==(other)
+        other.is_a?(GetLocal) && other.index == index && other.level == level
+      end
+
       def length
         3
       end
@@ -1781,6 +2011,14 @@ module SyntaxTree
         [:getlocal_WC_0, iseq.local_table.offset(index)]
       end
 
+      def deconstruct_keys(keys)
+        { index: index }
+      end
+
+      def ==(other)
+        other.is_a?(GetLocalWC0) && other.index == index
+      end
+
       def length
         2
       end
@@ -1828,6 +2066,14 @@ module SyntaxTree
 
       def to_a(iseq)
         [:getlocal_WC_1, iseq.parent_iseq.local_table.offset(index)]
+      end
+
+      def deconstruct_keys(keys)
+        { index: index }
+      end
+
+      def ==(other)
+        other.is_a?(GetLocalWC1) && other.index == index
       end
 
       def length
@@ -1881,6 +2127,14 @@ module SyntaxTree
         [:getspecial, key, type]
       end
 
+      def deconstruct_keys(keys)
+        { key: key, type: type }
+      end
+
+      def ==(other)
+        other.is_a?(GetSpecial) && other.key == key && other.type == type
+      end
+
       def length
         3
       end
@@ -1927,6 +2181,14 @@ module SyntaxTree
 
       def to_a(_iseq)
         [:intern]
+      end
+
+      def deconstruct_keys(keys)
+        {}
+      end
+
+      def ==(other)
+        other.is_a?(Intern)
       end
 
       def length
@@ -1977,6 +2239,14 @@ module SyntaxTree
 
       def to_a(_iseq)
         [:invokeblock, calldata.to_h]
+      end
+
+      def deconstruct_keys(keys)
+        { calldata: calldata }
+      end
+
+      def ==(other)
+        other.is_a?(InvokeBlock) && other.calldata == calldata
       end
 
       def length
@@ -2032,6 +2302,16 @@ module SyntaxTree
 
       def to_a(_iseq)
         [:invokesuper, calldata.to_h, block_iseq&.to_a]
+      end
+
+      def deconstruct_keys(keys)
+        { calldata: calldata, block_iseq: block_iseq }
+      end
+
+      def ==(other)
+        other.is_a?(InvokeSuper) &&
+          other.calldata == calldata &&
+          other.block_iseq == block_iseq
       end
 
       def length
@@ -2105,6 +2385,14 @@ module SyntaxTree
         [:jump, label.name]
       end
 
+      def deconstruct_keys(keys)
+        { label: label }
+      end
+
+      def ==(other)
+        other.is_a?(Jump) && other.label == label
+      end
+
       def length
         2
       end
@@ -2143,6 +2431,14 @@ module SyntaxTree
 
       def to_a(_iseq)
         [:leave]
+      end
+
+      def deconstruct_keys(keys)
+        {}
+      end
+
+      def ==(other)
+        other.is_a?(Leave)
       end
 
       def length
@@ -2195,6 +2491,14 @@ module SyntaxTree
         [:newarray, number]
       end
 
+      def deconstruct_keys(keys)
+        { number: number }
+      end
+
+      def ==(other)
+        other.is_a?(NewArray) && other.number == number
+      end
+
       def length
         2
       end
@@ -2241,6 +2545,14 @@ module SyntaxTree
 
       def to_a(_iseq)
         [:newarraykwsplat, number]
+      end
+
+      def deconstruct_keys(keys)
+        { number: number }
+      end
+
+      def ==(other)
+        other.is_a?(NewArrayKwSplat) && other.number == number
       end
 
       def length
@@ -2291,6 +2603,14 @@ module SyntaxTree
 
       def to_a(_iseq)
         [:newhash, number]
+      end
+
+      def deconstruct_keys(keys)
+        { number: number }
+      end
+
+      def ==(other)
+        other.is_a?(NewHash) && other.number == number
       end
 
       def length
@@ -2344,6 +2664,14 @@ module SyntaxTree
         [:newrange, exclude_end]
       end
 
+      def deconstruct_keys(keys)
+        { exclude_end: exclude_end }
+      end
+
+      def ==(other)
+        other.is_a?(NewRange) && other.exclude_end == exclude_end
+      end
+
       def length
         2
       end
@@ -2383,6 +2711,14 @@ module SyntaxTree
 
       def to_a(_iseq)
         [:nop]
+      end
+
+      def deconstruct_keys(keys)
+        {}
+      end
+
+      def ==(other)
+        other.is_a?(Nop)
       end
 
       def length
@@ -2432,6 +2768,14 @@ module SyntaxTree
 
       def to_a(_iseq)
         [:objtostring, calldata.to_h]
+      end
+
+      def deconstruct_keys(keys)
+        { calldata: calldata }
+      end
+
+      def ==(other)
+        other.is_a?(ObjToString) && other.calldata == calldata
       end
 
       def length
@@ -2485,6 +2829,14 @@ module SyntaxTree
         [:once, iseq.to_a, cache]
       end
 
+      def deconstruct_keys(keys)
+        { iseq: iseq, cache: cache }
+      end
+
+      def ==(other)
+        other.is_a?(Once) && other.iseq == iseq && other.cache == cache
+      end
+
       def length
         3
       end
@@ -2536,6 +2888,14 @@ module SyntaxTree
         [:opt_and, calldata.to_h]
       end
 
+      def deconstruct_keys(keys)
+        { calldata: calldata }
+      end
+
+      def ==(other)
+        other.is_a?(OptAnd) && other.calldata == calldata
+      end
+
       def length
         2
       end
@@ -2582,6 +2942,14 @@ module SyntaxTree
 
       def to_a(_iseq)
         [:opt_aref, calldata.to_h]
+      end
+
+      def deconstruct_keys(keys)
+        { calldata: calldata }
+      end
+
+      def ==(other)
+        other.is_a?(OptAref) && other.calldata == calldata
       end
 
       def length
@@ -2637,6 +3005,16 @@ module SyntaxTree
         [:opt_aref_with, object, calldata.to_h]
       end
 
+      def deconstruct_keys(keys)
+        { object: object, calldata: calldata }
+      end
+
+      def ==(other)
+        other.is_a?(OptArefWith) &&
+          other.object == object &&
+          other.calldata == calldata
+      end
+
       def length
         3
       end
@@ -2684,6 +3062,14 @@ module SyntaxTree
 
       def to_a(_iseq)
         [:opt_aset, calldata.to_h]
+      end
+
+      def deconstruct_keys(keys)
+        { calldata: calldata }
+      end
+
+      def ==(other)
+        other.is_a?(OptAset) && other.calldata == calldata
       end
 
       def length
@@ -2736,6 +3122,16 @@ module SyntaxTree
 
       def to_a(_iseq)
         [:opt_aset_with, object, calldata.to_h]
+      end
+
+      def deconstruct_keys(keys)
+        { object: object, calldata: calldata }
+      end
+
+      def ==(other)
+        other.is_a?(OptAsetWith) &&
+          other.object == object &&
+          other.calldata == calldata
       end
 
       def length
@@ -2806,6 +3202,16 @@ module SyntaxTree
         ]
       end
 
+      def deconstruct_keys(keys)
+        { case_dispatch_hash: case_dispatch_hash, else_label: else_label }
+      end
+
+      def ==(other)
+        other.is_a?(OptCaseDispatch) &&
+          other.case_dispatch_hash == case_dispatch_hash &&
+          other.else_label == else_label
+      end
+
       def length
         3
       end
@@ -2855,6 +3261,14 @@ module SyntaxTree
         [:opt_div, calldata.to_h]
       end
 
+      def deconstruct_keys(keys)
+        { calldata: calldata }
+      end
+
+      def ==(other)
+        other.is_a?(OptDiv) && other.calldata == calldata
+      end
+
       def length
         2
       end
@@ -2901,6 +3315,14 @@ module SyntaxTree
 
       def to_a(_iseq)
         [:opt_empty_p, calldata.to_h]
+      end
+
+      def deconstruct_keys(keys)
+        { calldata: calldata }
+      end
+
+      def ==(other)
+        other.is_a?(OptEmptyP) && other.calldata == calldata
       end
 
       def length
@@ -2952,6 +3374,14 @@ module SyntaxTree
         [:opt_eq, calldata.to_h]
       end
 
+      def deconstruct_keys(keys)
+        { calldata: calldata }
+      end
+
+      def ==(other)
+        other.is_a?(OptEq) && other.calldata == calldata
+      end
+
       def length
         2
       end
@@ -3001,6 +3431,14 @@ module SyntaxTree
         [:opt_ge, calldata.to_h]
       end
 
+      def deconstruct_keys(keys)
+        { calldata: calldata }
+      end
+
+      def ==(other)
+        other.is_a?(OptGE) && other.calldata == calldata
+      end
+
       def length
         2
       end
@@ -3048,6 +3486,14 @@ module SyntaxTree
 
       def to_a(_iseq)
         [:opt_getconstant_path, names]
+      end
+
+      def deconstruct_keys(keys)
+        { names: names }
+      end
+
+      def ==(other)
+        other.is_a?(OptGetConstantPath) && other.names == names
       end
 
       def length
@@ -3106,6 +3552,14 @@ module SyntaxTree
         [:opt_gt, calldata.to_h]
       end
 
+      def deconstruct_keys(keys)
+        { calldata: calldata }
+      end
+
+      def ==(other)
+        other.is_a?(OptGT) && other.calldata == calldata
+      end
+
       def length
         2
       end
@@ -3153,6 +3607,14 @@ module SyntaxTree
 
       def to_a(_iseq)
         [:opt_le, calldata.to_h]
+      end
+
+      def deconstruct_keys(keys)
+        { calldata: calldata }
+      end
+
+      def ==(other)
+        other.is_a?(OptLE) && other.calldata == calldata
       end
 
       def length
@@ -3204,6 +3666,14 @@ module SyntaxTree
         [:opt_length, calldata.to_h]
       end
 
+      def deconstruct_keys(keys)
+        { calldata: calldata }
+      end
+
+      def ==(other)
+        other.is_a?(OptLength) && other.calldata == calldata
+      end
+
       def length
         2
       end
@@ -3253,6 +3723,14 @@ module SyntaxTree
         [:opt_lt, calldata.to_h]
       end
 
+      def deconstruct_keys(keys)
+        { calldata: calldata }
+      end
+
+      def ==(other)
+        other.is_a?(OptLT) && other.calldata == calldata
+      end
+
       def length
         2
       end
@@ -3300,6 +3778,14 @@ module SyntaxTree
 
       def to_a(_iseq)
         [:opt_ltlt, calldata.to_h]
+      end
+
+      def deconstruct_keys(keys)
+        { calldata: calldata }
+      end
+
+      def ==(other)
+        other.is_a?(OptLTLT) && other.calldata == calldata
       end
 
       def length
@@ -3352,6 +3838,14 @@ module SyntaxTree
         [:opt_minus, calldata.to_h]
       end
 
+      def deconstruct_keys(keys)
+        { calldata: calldata }
+      end
+
+      def ==(other)
+        other.is_a?(OptMinus) && other.calldata == calldata
+      end
+
       def length
         2
       end
@@ -3401,6 +3895,14 @@ module SyntaxTree
         [:opt_mod, calldata.to_h]
       end
 
+      def deconstruct_keys(keys)
+        { calldata: calldata }
+      end
+
+      def ==(other)
+        other.is_a?(OptMod) && other.calldata == calldata
+      end
+
       def length
         2
       end
@@ -3448,6 +3950,14 @@ module SyntaxTree
 
       def to_a(_iseq)
         [:opt_mult, calldata.to_h]
+      end
+
+      def deconstruct_keys(keys)
+        { calldata: calldata }
+      end
+
+      def ==(other)
+        other.is_a?(OptMult) && other.calldata == calldata
       end
 
       def length
@@ -3505,6 +4015,16 @@ module SyntaxTree
         [:opt_neq, eq_calldata.to_h, neq_calldata.to_h]
       end
 
+      def deconstruct_keys(keys)
+        { eq_calldata: eq_calldata, neq_calldata: neq_calldata }
+      end
+
+      def ==(other)
+        other.is_a?(OptNEq) &&
+          other.eq_calldata == eq_calldata &&
+          other.neq_calldata == neq_calldata
+      end
+
       def length
         3
       end
@@ -3554,6 +4074,14 @@ module SyntaxTree
         [:opt_newarray_max, number]
       end
 
+      def deconstruct_keys(keys)
+        { number: number }
+      end
+
+      def ==(other)
+        other.is_a?(OptNewArrayMax) && other.number == number
+      end
+
       def length
         2
       end
@@ -3600,6 +4128,14 @@ module SyntaxTree
 
       def to_a(_iseq)
         [:opt_newarray_min, number]
+      end
+
+      def deconstruct_keys(keys)
+        { number: number }
+      end
+
+      def ==(other)
+        other.is_a?(OptNewArrayMin) && other.number == number
       end
 
       def length
@@ -3651,6 +4187,14 @@ module SyntaxTree
         [:opt_nil_p, calldata.to_h]
       end
 
+      def deconstruct_keys(keys)
+        { calldata: calldata }
+      end
+
+      def ==(other)
+        other.is_a?(OptNilP) && other.calldata == calldata
+      end
+
       def length
         2
       end
@@ -3696,6 +4240,14 @@ module SyntaxTree
 
       def to_a(_iseq)
         [:opt_not, calldata.to_h]
+      end
+
+      def deconstruct_keys(keys)
+        { calldata: calldata }
+      end
+
+      def ==(other)
+        other.is_a?(OptNot) && other.calldata == calldata
       end
 
       def length
@@ -3747,6 +4299,14 @@ module SyntaxTree
         [:opt_or, calldata.to_h]
       end
 
+      def deconstruct_keys(keys)
+        { calldata: calldata }
+      end
+
+      def ==(other)
+        other.is_a?(OptOr) && other.calldata == calldata
+      end
+
       def length
         2
       end
@@ -3794,6 +4354,14 @@ module SyntaxTree
 
       def to_a(_iseq)
         [:opt_plus, calldata.to_h]
+      end
+
+      def deconstruct_keys(keys)
+        { calldata: calldata }
+      end
+
+      def ==(other)
+        other.is_a?(OptPlus) && other.calldata == calldata
       end
 
       def length
@@ -3844,6 +4412,14 @@ module SyntaxTree
         [:opt_regexpmatch2, calldata.to_h]
       end
 
+      def deconstruct_keys(keys)
+        { calldata: calldata }
+      end
+
+      def ==(other)
+        other.is_a?(OptRegExpMatch2) && other.calldata == calldata
+      end
+
       def length
         2
       end
@@ -3890,6 +4466,14 @@ module SyntaxTree
 
       def to_a(_iseq)
         [:opt_send_without_block, calldata.to_h]
+      end
+
+      def deconstruct_keys(keys)
+        { calldata: calldata }
+      end
+
+      def ==(other)
+        other.is_a?(OptSendWithoutBlock) && other.calldata == calldata
       end
 
       def length
@@ -3939,6 +4523,14 @@ module SyntaxTree
 
       def to_a(_iseq)
         [:opt_size, calldata.to_h]
+      end
+
+      def deconstruct_keys(keys)
+        { calldata: calldata }
+      end
+
+      def ==(other)
+        other.is_a?(OptSize) && other.calldata == calldata
       end
 
       def length
@@ -3993,6 +4585,16 @@ module SyntaxTree
         [:opt_str_freeze, object, calldata.to_h]
       end
 
+      def deconstruct_keys(keys)
+        { object: object, calldata: calldata }
+      end
+
+      def ==(other)
+        other.is_a?(OptStrFreeze) &&
+          other.object == object &&
+          other.calldata == calldata
+      end
+
       def length
         3
       end
@@ -4045,6 +4647,16 @@ module SyntaxTree
         [:opt_str_uminus, object, calldata.to_h]
       end
 
+      def deconstruct_keys(keys)
+        { object: object, calldata: calldata }
+      end
+
+      def ==(other)
+        other.is_a?(OptStrUMinus) &&
+          other.object == object &&
+          other.calldata == calldata
+      end
+
       def length
         3
       end
@@ -4094,6 +4706,14 @@ module SyntaxTree
         [:opt_succ, calldata.to_h]
       end
 
+      def deconstruct_keys(keys)
+        { calldata: calldata }
+      end
+
+      def ==(other)
+        other.is_a?(OptSucc) && other.calldata == calldata
+      end
+
       def length
         2
       end
@@ -4134,6 +4754,14 @@ module SyntaxTree
         [:pop]
       end
 
+      def deconstruct_keys(keys)
+        {}
+      end
+
+      def ==(other)
+        other.is_a?(Pop)
+      end
+
       def length
         1
       end
@@ -4172,6 +4800,14 @@ module SyntaxTree
 
       def to_a(_iseq)
         [:putnil]
+      end
+
+      def deconstruct_keys(keys)
+        {}
+      end
+
+      def ==(other)
+        other.is_a?(PutNil)
       end
 
       def length
@@ -4220,6 +4856,14 @@ module SyntaxTree
         [:putobject, object]
       end
 
+      def deconstruct_keys(keys)
+        { object: object }
+      end
+
+      def ==(other)
+        other.is_a?(PutObject) && other.object == object
+      end
+
       def length
         2
       end
@@ -4260,6 +4904,14 @@ module SyntaxTree
 
       def to_a(_iseq)
         [:putobject_INT2FIX_0_]
+      end
+
+      def deconstruct_keys(keys)
+        {}
+      end
+
+      def ==(other)
+        other.is_a?(PutObjectInt2Fix0)
       end
 
       def length
@@ -4304,6 +4956,14 @@ module SyntaxTree
         [:putobject_INT2FIX_1_]
       end
 
+      def deconstruct_keys(keys)
+        {}
+      end
+
+      def ==(other)
+        other.is_a?(PutObjectInt2Fix1)
+      end
+
       def length
         1
       end
@@ -4342,6 +5002,14 @@ module SyntaxTree
 
       def to_a(_iseq)
         [:putself]
+      end
+
+      def deconstruct_keys(keys)
+        {}
+      end
+
+      def ==(other)
+        other.is_a?(PutSelf)
       end
 
       def length
@@ -4394,6 +5062,14 @@ module SyntaxTree
 
       def to_a(_iseq)
         [:putspecialobject, object]
+      end
+
+      def deconstruct_keys(keys)
+        { object: object }
+      end
+
+      def ==(other)
+        other.is_a?(PutSpecialObject) && other.object == object
       end
 
       def length
@@ -4451,6 +5127,14 @@ module SyntaxTree
         [:putstring, object]
       end
 
+      def deconstruct_keys(keys)
+        { object: object }
+      end
+
+      def ==(other)
+        other.is_a?(PutString) && other.object == object
+      end
+
       def length
         2
       end
@@ -4503,6 +5187,16 @@ module SyntaxTree
 
       def to_a(_iseq)
         [:send, calldata.to_h, block_iseq&.to_a]
+      end
+
+      def deconstruct_keys(keys)
+        { calldata: calldata, block_iseq: block_iseq }
+      end
+
+      def ==(other)
+        other.is_a?(Send) &&
+          other.calldata == calldata &&
+          other.block_iseq == block_iseq
       end
 
       def length
@@ -4582,6 +5276,16 @@ module SyntaxTree
         [:setblockparam, current.local_table.offset(index), level]
       end
 
+      def deconstruct_keys(keys)
+        { index: index, level: level }
+      end
+
+      def ==(other)
+        other.is_a?(SetBlockParam) &&
+          other.index == index &&
+          other.level == level
+      end
+
       def length
         3
       end
@@ -4635,6 +5339,16 @@ module SyntaxTree
         [:setclassvariable, name, cache]
       end
 
+      def deconstruct_keys(keys)
+        { name: name, cache: cache }
+      end
+
+      def ==(other)
+        other.is_a?(SetClassVariable) &&
+          other.name == name &&
+          other.cache == cache
+      end
+
       def length
         3
       end
@@ -4684,6 +5398,14 @@ module SyntaxTree
         [:setconstant, name]
       end
 
+      def deconstruct_keys(keys)
+        { name: name }
+      end
+
+      def ==(other)
+        other.is_a?(SetConstant) && other.name == name
+      end
+
       def length
         2
       end
@@ -4730,6 +5452,14 @@ module SyntaxTree
 
       def to_a(_iseq)
         [:setglobal, name]
+      end
+
+      def deconstruct_keys(keys)
+        { name: name }
+      end
+
+      def ==(other)
+        other.is_a?(SetGlobal) && other.name == name
       end
 
       def length
@@ -4790,6 +5520,16 @@ module SyntaxTree
         [:setinstancevariable, name, cache]
       end
 
+      def deconstruct_keys(keys)
+        { name: name, cache: cache }
+      end
+
+      def ==(other)
+        other.is_a?(SetInstanceVariable) &&
+          other.name == name &&
+          other.cache == cache
+      end
+
       def length
         3
       end
@@ -4844,6 +5584,14 @@ module SyntaxTree
         [:setlocal, current.local_table.offset(index), level]
       end
 
+      def deconstruct_keys(keys)
+        { index: index, level: level }
+      end
+
+      def ==(other)
+        other.is_a?(SetLocal) && other.index == index && other.level == level
+      end
+
       def length
         3
       end
@@ -4891,6 +5639,14 @@ module SyntaxTree
 
       def to_a(iseq)
         [:setlocal_WC_0, iseq.local_table.offset(index)]
+      end
+
+      def deconstruct_keys(keys)
+        { index: index }
+      end
+
+      def ==(other)
+        other.is_a?(SetLocalWC0) && other.index == index
       end
 
       def length
@@ -4942,6 +5698,14 @@ module SyntaxTree
         [:setlocal_WC_1, iseq.parent_iseq.local_table.offset(index)]
       end
 
+      def deconstruct_keys(keys)
+        { index: index }
+      end
+
+      def ==(other)
+        other.is_a?(SetLocalWC1) && other.index == index
+      end
+
       def length
         2
       end
@@ -4987,6 +5751,14 @@ module SyntaxTree
 
       def to_a(_iseq)
         [:setn, number]
+      end
+
+      def deconstruct_keys(keys)
+        { number: number }
+      end
+
+      def ==(other)
+        other.is_a?(SetN) && other.number == number
       end
 
       def length
@@ -5035,6 +5807,14 @@ module SyntaxTree
 
       def to_a(_iseq)
         [:setspecial, key]
+      end
+
+      def deconstruct_keys(keys)
+        { key: key }
+      end
+
+      def ==(other)
+        other.is_a?(SetSpecial) && other.key == key
       end
 
       def length
@@ -5090,6 +5870,14 @@ module SyntaxTree
 
       def to_a(_iseq)
         [:splatarray, flag]
+      end
+
+      def deconstruct_keys(keys)
+        { flag: flag }
+      end
+
+      def ==(other)
+        other.is_a?(SplatArray) && other.flag == flag
       end
 
       def length
@@ -5156,6 +5944,14 @@ module SyntaxTree
         [:swap]
       end
 
+      def deconstruct_keys(keys)
+        {}
+      end
+
+      def ==(other)
+        other.is_a?(Swap)
+      end
+
       def length
         1
       end
@@ -5216,6 +6012,14 @@ module SyntaxTree
 
       def to_a(_iseq)
         [:throw, type]
+      end
+
+      def deconstruct_keys(keys)
+        { type: type }
+      end
+
+      def ==(other)
+        other.is_a?(Throw) && other.type == type
       end
 
       def length
@@ -5304,6 +6108,14 @@ module SyntaxTree
         [:topn, number]
       end
 
+      def deconstruct_keys(keys)
+        { number: number }
+      end
+
+      def ==(other)
+        other.is_a?(TopN) && other.number == number
+      end
+
       def length
         2
       end
@@ -5350,6 +6162,16 @@ module SyntaxTree
 
       def to_a(_iseq)
         [:toregexp, options, length]
+      end
+
+      def deconstruct_keys(keys)
+        { options: options, length: length }
+      end
+
+      def ==(other)
+        other.is_a?(ToRegExp) &&
+          other.options == options &&
+          other.length == length
       end
 
       def pops
