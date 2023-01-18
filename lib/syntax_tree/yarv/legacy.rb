@@ -34,10 +34,10 @@ module SyntaxTree
           [:getclassvariable, name]
         end
 
-        def deconstruct_keys(keys)
+        def deconstruct_keys(_keys)
           { name: name }
         end
-  
+
         def ==(other)
           other.is_a?(GetClassVariable) && other.name == name
         end
@@ -98,13 +98,12 @@ module SyntaxTree
           [:opt_getinlinecache, label.name, cache]
         end
 
-        def deconstruct_keys(keys)
+        def deconstruct_keys(_keys)
           { label: label, cache: cache }
         end
-  
+
         def ==(other)
-          other.is_a?(OptGetInlineCache) &&
-            other.label == label &&
+          other.is_a?(OptGetInlineCache) && other.label == label &&
             other.cache == cache
         end
 
@@ -159,10 +158,10 @@ module SyntaxTree
           [:opt_setinlinecache, cache]
         end
 
-        def deconstruct_keys(keys)
+        def deconstruct_keys(_keys)
           { cache: cache }
         end
-  
+
         def ==(other)
           other.is_a?(OptSetInlineCache) && other.cache == cache
         end
@@ -216,10 +215,10 @@ module SyntaxTree
           [:setclassvariable, name]
         end
 
-        def deconstruct_keys(keys)
+        def deconstruct_keys(_keys)
           { name: name }
         end
-  
+
         def ==(other)
           other.is_a?(SetClassVariable) && other.name == name
         end

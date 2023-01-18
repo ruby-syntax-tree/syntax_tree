@@ -8,6 +8,7 @@ AllCops:
   TargetRubyVersion: 2.7
   Exclude:
   - '{.git,.github,bin,coverage,pkg,spec,test/fixtures,vendor,tmp}/**/*'
+  - test/ruby-syntax-fixtures/**/*
   - test.rb
 
 Layout/LineLength:

@@ -290,19 +290,19 @@ module SyntaxTree
 
     instructions =
       YARV.constants.map { YARV.const_get(_1) } +
-      YARV::Legacy.constants.map { YARV::Legacy.const_get(_1) } -
-      [
-        YARV::Assembler,
-        YARV::Bf,
-        YARV::CallData,
-        YARV::Compiler,
-        YARV::Decompiler,
-        YARV::Disassembler,
-        YARV::InstructionSequence,
-        YARV::Legacy,
-        YARV::LocalTable,
-        YARV::VM
-      ]
+        YARV::Legacy.constants.map { YARV::Legacy.const_get(_1) } -
+        [
+          YARV::Assembler,
+          YARV::Bf,
+          YARV::CallData,
+          YARV::Compiler,
+          YARV::Decompiler,
+          YARV::Disassembler,
+          YARV::InstructionSequence,
+          YARV::Legacy,
+          YARV::LocalTable,
+          YARV::VM
+        ]
 
     interface = %i[
       disasm
