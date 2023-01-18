@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 
 ## [Unreleased]
 
+### Added
+
+- Arity has been added to DefNode, BlockNode and Params. The method returns a range where the lower bound is the minimum and the upper bound is the maximum number of arguments that can be used to invoke that block/method definition.
+
 ## [5.2.0] - 2023-01-04
 
 ### Added

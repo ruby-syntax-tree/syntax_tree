@@ -1058,6 +1058,169 @@ module SyntaxTree
       end
     end
 
+    def test_arity_no_args
+      source = <<~SOURCE
+        def foo
+        end
+      SOURCE
+
+      at = location(chars: 0..11, columns: 0..3, lines: 1..2)
+      assert_node(DefNode, source, at: at) do |node|
+        assert_equal(0..0, node.arity)
+        node
+      end
+    end
+
+    def test_arity_positionals
+      source = <<~SOURCE
+        def foo(a, b = 1)
+        end
+      SOURCE
+
+      at = location(chars: 0..21, columns: 0..3, lines: 1..2)
+      assert_node(DefNode, source, at: at) do |node|
+        assert_equal(1..2, node.arity)
+        node
+      end
+    end
+
+    def test_arity_rest
+      source = <<~SOURCE
+        def foo(a, *b)
+        end
+      SOURCE
+
+      at = location(chars: 0..18, columns: 0..3, lines: 1..2)
+      assert_node(DefNode, source, at: at) do |node|
+        assert_equal(1.., node.arity)
+        node
+      end
+    end
+
+    def test_arity_keyword_rest
+      source = <<~SOURCE
+        def foo(a, **b)
+        end
+      SOURCE
+
+      at = location(chars: 0..19, columns: 0..3, lines: 1..2)
+      assert_node(DefNode, source, at: at) do |node|
+        assert_equal(1.., node.arity)
+        node
+      end
+    end
+
+    def test_arity_keywords
+      source = <<~SOURCE
+        def foo(a:, b: 1)
+        end
+      SOURCE
+
+      at = location(chars: 0..21, columns: 0..3, lines: 1..2)
+      assert_node(DefNode, source, at: at) do |node|
+        assert_equal(1..2, node.arity)
+        node
+      end
+    end
+
+    def test_arity_mixed
+      source = <<~SOURCE
+        def foo(a, b = 1, c:, d: 2)
+        end
+      SOURCE
+
+      at = location(chars: 0..31, columns: 0..3, lines: 1..2)
+      assert_node(DefNode, source, at: at) do |node|
+        assert_equal(2..4, node.arity)
+        node
+      end
+    end
+
+    guard_version("2.7.3") do
+      def test_arity_arg_forward
+        source = <<~SOURCE
+          def foo(...)
+          end
+        SOURCE
+
+        at = location(chars: 0..16, columns: 0..3, lines: 1..2)
+        assert_node(DefNode, source, at: at) do |node|
+          assert_equal(0.., node.arity)
+          node
+        end
+      end
+    end
+
+    guard_version("3.0.0") do
+      def test_arity_positional_and_arg_forward
+        source = <<~SOURCE
+          def foo(a, ...)
+          end
+        SOURCE
+
+        at = location(chars: 0..19, columns: 0..3, lines: 1..2)
+        assert_node(DefNode, source, at: at) do |node|
+          assert_equal(1.., node.arity)
+          node
+        end
+      end
+    end
+
+    def test_arity_no_parenthesis
+      source = <<~SOURCE
+        def foo a, b = 1
+        end
+      SOURCE
+
+      at = location(chars: 0..20, columns: 0..3, lines: 1..2)
+      assert_node(DefNode, source, at: at) do |node|
+        assert_equal(1..2, node.arity)
+        node
+      end
+    end
+
+    def test_block_arity_positionals
+      source = <<~SOURCE
+        [].each do |a, b, c|
+        end
+      SOURCE
+
+      at = location(chars: 8..24, columns: 8..3, lines: 1..2)
+      assert_node(BlockNode, source, at: at) do |node|
+        block = node.block
+        assert_equal(3..3, block.arity)
+        block
+      end
+    end
+
+    def test_block_arity_with_optional
+      source = <<~SOURCE
+        [].each do |a, b = 1|
+        end
+      SOURCE
+
+      at = location(chars: 8..25, columns: 8..3, lines: 1..2)
+      assert_node(BlockNode, source, at: at) do |node|
+        block = node.block
+        assert_equal(1..2, block.arity)
+        block
+      end
+    end
+
+    def test_block_arity_with_optional_keyword
+      source = <<~SOURCE
+        [].each do |a, b: 2|
+        end
+      SOURCE
+
+      at = location(chars: 8..24, columns: 8..3, lines: 1..2)
+      assert_node(BlockNode, source, at: at) do |node|
+        block = node.block
+        assert_equal(1..2, block.arity)
+        block
+      end
+    end
+
     private
 
     def location(lines: 1..1, chars: 0..0, columns: 0..0)
