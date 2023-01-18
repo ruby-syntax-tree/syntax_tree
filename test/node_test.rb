@@ -1221,6 +1221,179 @@ module SyntaxTree
       end
     end
 
+    def test_call_node_arity_positional_arguments
+      source = <<~SOURCE
+        foo(1, 2, 3)
+      SOURCE
+
+      at = location(chars: 0..12, columns: 0..3, lines: 1..1)
+      assert_node(CallNode, source, at: at) do |node|
+        assert_equal(3, node.arity)
+        node
+      end
+    end
+
+    def test_call_node_arity_keyword_arguments
+      source = <<~SOURCE
+        foo(bar, something: 123)
+      SOURCE
+
+      at = location(chars: 0..24, columns: 0..24, lines: 1..1)
+      assert_node(CallNode, source, at: at) do |node|
+        assert_equal(2, node.arity)
+        node
+      end
+    end
+
+    def test_call_node_arity_splat_arguments
+      source = <<~SOURCE
+        foo(*bar)
+      SOURCE
+
+      at = location(chars: 0..9, columns: 0..9, lines: 1..1)
+      assert_node(CallNode, source, at: at) do |node|
+        assert_equal(Float::INFINITY, node.arity)
+        node
+      end
+    end
+
+    def test_call_node_arity_keyword_rest_arguments
+      source = <<~SOURCE
+        foo(**bar)
+      SOURCE
+
+      at = location(chars: 0..10, columns: 0..10, lines: 1..1)
+      assert_node(CallNode, source, at: at) do |node|
+        assert_equal(Float::INFINITY, node.arity)
+        node
+      end
+    end
+
+    guard_version("2.7.3") do
+      def test_call_node_arity_arg_forward_arguments
+        source = <<~SOURCE
+          def foo(...)
+            bar(...)
+          end
+        SOURCE
+
+        at = location(chars: 15..23, columns: 2..10, lines: 2..2)
+        assert_node(CallNode, source, at: at) do |node|
+          call = node.bodystmt.statements.body.first
+          assert_equal(Float::INFINITY, call.arity)
+          call
+        end
+      end
+    end
+
+    def test_command_arity_positional_arguments
+      source = <<~SOURCE
+        foo 1, 2, 3
+      SOURCE
+
+      at = location(chars: 0..11, columns: 0..3, lines: 1..1)
+      assert_node(Command, source, at: at) do |node|
+        assert_equal(3, node.arity)
+        node
+      end
+    end
+
+    def test_command_arity_keyword_arguments
+      source = <<~SOURCE
+        foo bar, something: 123
+      SOURCE
+
+      at = location(chars: 0..23, columns: 0..23, lines: 1..1)
+      assert_node(Command, source, at: at) do |node|
+        assert_equal(2, node.arity)
+        node
+      end
+    end
+
+    def test_command_arity_splat_arguments
+      source = <<~SOURCE
+        foo *bar
+      SOURCE
+
+      at = location(chars: 0..8, columns: 0..8, lines: 1..1)
+      assert_node(Command, source, at: at) do |node|
+        assert_equal(Float::INFINITY, node.arity)
+        node
+      end
+    end
+
+    def test_command_arity_keyword_rest_arguments
+      source = <<~SOURCE
+        foo **bar
+      SOURCE
+
+      at = location(chars: 0..9, columns: 0..9, lines: 1..1)
+      assert_node(Command, source, at: at) do |node|
+        assert_equal(Float::INFINITY, node.arity)
+        node
+      end
+    end
+
+    def test_command_call_arity_positional_arguments
+      source = <<~SOURCE
+        object.foo 1, 2, 3
+      SOURCE
+
+      at = location(chars: 0..18, columns: 0..3, lines: 1..1)
+      assert_node(CommandCall, source, at: at) do |node|
+        assert_equal(3, node.arity)
+        node
+      end
+    end
+
+    def test_command_call_arity_keyword_arguments
+      source = <<~SOURCE
+        object.foo bar, something: 123
+      SOURCE
+
+      at = location(chars: 0..30, columns: 0..30, lines: 1..1)
+      assert_node(CommandCall, source, at: at) do |node|
+        assert_equal(2, node.arity)
+        node
+      end
+    end
+
+    def test_command_call_arity_splat_arguments
+      source = <<~SOURCE
+        object.foo *bar
+      SOURCE
+
+      at = location(chars: 0..15, columns: 0..15, lines: 1..1)
+      assert_node(CommandCall, source, at: at) do |node|
+        assert_equal(Float::INFINITY, node.arity)
+        node
+      end
+    end
+
+    def test_command_call_arity_keyword_rest_arguments
+      source = <<~SOURCE
+        object.foo **bar
+      SOURCE
+
+      at = location(chars: 0..16, columns: 0..16, lines: 1..1)
+      assert_node(CommandCall, source, at: at) do |node|
+        assert_equal(Float::INFINITY, node.arity)
+        node
+      end
+    end
+
+    def test_vcall_arity
+      source = <<~SOURCE
+        foo
+      SOURCE
+
+      at = location(chars: 0..3, columns: 0..3, lines: 1..1)
+      assert_node(VCall, source, at: at) do |node|
+        assert_equal(0, node.arity)
+        node
+      end
+    end
+
     private
 
     def location(lines: 1..1, chars: 0..0, columns: 0..0)

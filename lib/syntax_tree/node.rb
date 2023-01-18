@@ -775,6 +775,10 @@ module SyntaxTree
       other.is_a?(ArgParen) && arguments === other.arguments
     end
 
+    def arity
+      arguments&.arity || 0
+    end
+
     private
 
     def trailing_comma?
@@ -847,6 +851,22 @@ module SyntaxTree
 
     def ===(other)
       other.is_a?(Args) && ArrayMatch.call(parts, other.parts)
+    end
+
+    def arity
+      accepts_infinite_arguments? ? Float::INFINITY : parts.length
+    end
+
+    private
+
+    def accepts_infinite_arguments?
+      parts.any? do |part|
+        part.is_a?(ArgStar) || part.is_a?(ArgsForward) ||
+          (
+            part.is_a?(BareAssocHash) &&
+              part.assocs.any? { |p| p.is_a?(AssocSplat) }
+          )
+      end
     end
   end
 
@@ -1007,6 +1027,10 @@ module SyntaxTree
 
     def ===(other)
       other.is_a?(ArgsForward)
+    end
+
+    def arity
+      Float::INFINITY
     end
   end
 
@@ -3068,6 +3092,10 @@ module SyntaxTree
         end
       end
     end
+
+    def arity
+      arguments&.arity || 0
+    end
   end
 
   # Case represents the beginning of a case chain.
@@ -3481,6 +3509,10 @@ module SyntaxTree
         arguments === other.arguments && block === other.block
     end
 
+    def arity
+      arguments.arity
+    end
+
     private
 
     def align(q, node, &block)
@@ -3644,6 +3676,10 @@ module SyntaxTree
       other.is_a?(CommandCall) && receiver === other.receiver &&
         operator === other.operator && message === other.message &&
         arguments === other.arguments && block === other.block
+    end
+
+    def arity
+      arguments&.arity || 0
     end
 
     private
@@ -11630,6 +11666,10 @@ module SyntaxTree
 
     def access_control?
       @access_control ||= %w[private protected public].include?(value.value)
+    end
+
+    def arity
+      0
     end
   end
 
