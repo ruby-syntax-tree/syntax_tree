@@ -288,6 +288,41 @@ module SyntaxTree
       end
     end
 
+    instructions =
+      YARV.constants.map { YARV.const_get(_1) } +
+        YARV::Legacy.constants.map { YARV::Legacy.const_get(_1) } -
+        [
+          YARV::Assembler,
+          YARV::Bf,
+          YARV::CallData,
+          YARV::Compiler,
+          YARV::Decompiler,
+          YARV::Disassembler,
+          YARV::InstructionSequence,
+          YARV::Legacy,
+          YARV::LocalTable,
+          YARV::VM
+        ]
+
+    interface = %i[
+      disasm
+      to_a
+      deconstruct_keys
+      length
+      pops
+      pushes
+      canonical
+      call
+      ==
+    ]
+
+    instructions.each do |instruction|
+      define_method("test_instruction_interface_#{instruction.name}") do
+        instance_methods = instruction.instance_methods(false)
+        assert_empty(interface - instance_methods)
+      end
+    end
+
     private
 
     def assert_decompiles(expected, source)
