@@ -62,22 +62,26 @@ module SyntaxTree
         "constant-from"
       ].freeze
 
-      attr_reader :filepath
+      attr_reader :lines
 
-      def initialize(filepath)
-        @filepath = filepath
+      def initialize(lines)
+        @lines = lines
       end
 
       def assemble
         iseq = InstructionSequence.new("<main>", "<compiled>", 1, :top)
-        assemble_iseq(iseq, File.readlines(filepath, chomp: true))
+        assemble_iseq(iseq, lines)
 
         iseq.compile!
         iseq
       end
 
-      def self.assemble(filepath)
-        new(filepath).assemble
+      def self.assemble(source)
+        new(source.lines(chomp: true)).assemble
+      end
+
+      def self.assemble_file(filepath)
+        new(File.readlines(filepath, chomp: true)).assemble
       end
 
       private

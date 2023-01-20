@@ -97,7 +97,7 @@ module SyntaxTree
             clause << Next(Args([]))
           when Leave
             value = Args([clause.pop])
-            clause << (iseq.type == :top ? Break(value) : ReturnNode(value))
+            clause << (iseq.type != :top ? Break(value) : ReturnNode(value))
           when OptAnd, OptDiv, OptEq, OptGE, OptGT, OptLE, OptLT, OptLTLT,
                OptMinus, OptMod, OptMult, OptOr, OptPlus
             left, right = clause.pop(2)

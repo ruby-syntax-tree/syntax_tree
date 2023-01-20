@@ -219,6 +219,10 @@ module SyntaxTree
         @frame = nil
       end
 
+      def self.run(iseq)
+        new.run_top_frame(iseq)
+      end
+
       ##########################################################################
       # Helper methods for frames
       ##########################################################################

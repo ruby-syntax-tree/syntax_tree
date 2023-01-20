@@ -285,7 +285,7 @@ module SyntaxTree
       # if we need to return the value of the last statement.
       attr_reader :last_statement
 
-      def initialize(options)
+      def initialize(options = Options.new)
         @options = options
         @iseq = nil
         @last_statement = false
