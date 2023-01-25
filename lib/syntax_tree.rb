@@ -26,6 +26,7 @@ require_relative "syntax_tree/visitor/with_environment"
 require_relative "syntax_tree/parser"
 require_relative "syntax_tree/pattern"
 require_relative "syntax_tree/search"
+require_relative "syntax_tree/index"
 
 require_relative "syntax_tree/yarv"
 require_relative "syntax_tree/yarv/bf"
@@ -115,5 +116,19 @@ module SyntaxTree
   # node in the tree that matches the pattern to the given block.
   def self.search(source, query, &block)
     Search.new(Pattern.new(query).compile).scan(parse(source), &block)
+  end
+
+  # Indexes the given source code to return a list of all class, module, and
+  # method definitions. Used to quickly provide indexing capability for IDEs or
+  # documentation generation.
+  def self.index(source)
+    Index.index(source)
+  end
+
+  # Indexes the given file to return a list of all class, module, and method
+  # definitions. Used to quickly provide indexing capability for IDEs or
+  # documentation generation.
+  def self.index_file(filepath)
+    Index.index_file(filepath)
   end
 end
