@@ -1103,6 +1103,7 @@ module SyntaxTree
     # :call-seq:
     #   on_comment: (String value) -> Comment
     def on_comment(value)
+      # char is the index of the # character in the source.
       char = char_pos
       location =
         Location.token(
@@ -1112,8 +1113,24 @@ module SyntaxTree
           size: value.size - 1
         )
 
-      index = source.rindex(/[^\t ]/, char - 1) if char != 0
-      inline = index && (source[index] != "\n")
+      # Loop backward in the source string, starting from the beginning of the
+      # comment, and find the first character that is not a space or a tab. If
+      # index is -1, this indicates that we've checked all of the characters
+      # back to the start of the source, so this comment must be at the
+      # beginning of the file.
+      #
+      # We are purposefully not using rindex or regular expressions here because
+      # they check if there are invalid characters, which is actually possible
+      # with the use of __END__ syntax.
+      index = char - 1
+      while index > -1 && (source[index] == "\t" || source[index] == " ")
+        index -= 1
+      end
+
+      # If we found a character that was not a space or a tab before the comment
+      # and it's a newline, then this comment is inline. Otherwise, it stands on
+      # its own and can be attached as its own node in the tree.
+      inline = index != -1 && source[index] != "\n"
       comment =
         Comment.new(value: value.chomp, inline: inline, location: location)
 

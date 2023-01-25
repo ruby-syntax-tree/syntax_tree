@@ -65,5 +65,14 @@ module SyntaxTree
         end
       RUBY
     end
+
+    def test_does_not_choke_on_invalid_characters_in_source_string
+      SyntaxTree.parse(<<~RUBY)
+        # comment
+        # comment
+        __END__
+        \xC5
+      RUBY
+    end
   end
 end
