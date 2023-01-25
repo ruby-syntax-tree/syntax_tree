@@ -18,6 +18,13 @@ module SyntaxTree
       end
     end
 
+    def test_module_comments
+      index_each("# comment1\n# comment2\nmodule Foo; end") do |entry|
+        assert_equal :Foo, entry.name
+        assert_equal ["# comment1", "# comment2"], entry.comments.to_a
+      end
+    end
+
     def test_class
       index_each("class Foo; end") do |entry|
         assert_equal :Foo, entry.name
@@ -32,6 +39,13 @@ module SyntaxTree
       end
     end
 
+    def test_class_comments
+      index_each("# comment1\n# comment2\nclass Foo; end") do |entry|
+        assert_equal :Foo, entry.name
+        assert_equal ["# comment1", "# comment2"], entry.comments.to_a
+      end
+    end
+
     def test_method
       index_each("def foo; end") do |entry|
         assert_equal :foo, entry.name
@@ -43,6 +57,13 @@ module SyntaxTree
       index_each("class Foo; def foo; end; end") do |entry|
         assert_equal :foo, entry.name
         assert_equal [:Foo], entry.nesting
+      end
+    end
+
+    def test_method_comments
+      index_each("# comment1\n# comment2\ndef foo; end") do |entry|
+        assert_equal :foo, entry.name
+        assert_equal ["# comment1", "# comment2"], entry.comments.to_a
       end
     end
 

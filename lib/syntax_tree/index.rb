@@ -20,46 +20,128 @@ module SyntaxTree
 
     # This entry represents a class definition using the class keyword.
     class ClassDefinition
-      attr_reader :nesting, :name, :location
+      attr_reader :nesting, :name, :location, :comments
 
-      def initialize(nesting, name, location)
+      def initialize(nesting, name, location, comments)
         @nesting = nesting
         @name = name
         @location = location
+        @comments = comments
       end
     end
 
     # This entry represents a module definition using the module keyword.
     class ModuleDefinition
-      attr_reader :nesting, :name, :location
+      attr_reader :nesting, :name, :location, :comments
 
-      def initialize(nesting, name, location)
+      def initialize(nesting, name, location, comments)
         @nesting = nesting
         @name = name
         @location = location
+        @comments = comments
       end
     end
 
     # This entry represents a method definition using the def keyword.
     class MethodDefinition
-      attr_reader :nesting, :name, :location
+      attr_reader :nesting, :name, :location, :comments
 
-      def initialize(nesting, name, location)
+      def initialize(nesting, name, location, comments)
         @nesting = nesting
         @name = name
         @location = location
+        @comments = comments
       end
     end
 
     # This entry represents a singleton method definition using the def keyword
     # with a specified target.
     class SingletonMethodDefinition
-      attr_reader :nesting, :name, :location
+      attr_reader :nesting, :name, :location, :comments
 
-      def initialize(nesting, name, location)
+      def initialize(nesting, name, location, comments)
         @nesting = nesting
         @name = name
         @location = location
+        @comments = comments
+      end
+    end
+
+    # When you're using the instruction sequence backend, this class is used to
+    # lazily parse comments out of the source code.
+    class FileComments
+      # We use the ripper library to pull out source comments.
+      class Parser < Ripper
+        attr_reader :comments
+
+        def initialize(*)
+          super
+          @comments = {}
+        end
+
+        def on_comment(value)
+          comments[lineno] = value.chomp
+        end
+      end
+
+      # This represents the Ruby source in the form of a file. When it needs to
+      # be read we'll read the file.
+      class FileSource
+        attr_reader :filepath
+
+        def initialize(filepath)
+          @filepath = filepath
+        end
+
+        def source
+          File.read(filepath)
+        end
+      end
+
+      # This represents the Ruby source in the form of a string. When it needs
+      # to be read the string is returned.
+      class StringSource
+        attr_reader :source
+
+        def initialize(source)
+          @source = source
+        end
+      end
+
+      attr_reader :source
+
+      def initialize(source)
+        @source = source
+      end
+
+      def comments
+        @comments ||= Parser.new(source.source).tap(&:parse).comments
+      end
+    end
+
+    # This class handles parsing comments from Ruby source code in the case that
+    # we use the instruction sequence backend. Because the instruction sequence
+    # backend doesn't provide comments (since they are dropped) we provide this
+    # interface to lazily parse them out.
+    class EntryComments
+      include Enumerable
+      attr_reader :file_comments, :location
+
+      def initialize(file_comments, location)
+        @file_comments = file_comments
+        @location = location
+      end
+
+      def each(&block)
+        line = location.line - 1
+        result = []
+
+        while line >= 0 && (comment = file_comments.comments[line])
+          result.unshift(comment)
+          line -= 1
+        end
+
+        result.each(&block)
       end
     end
 
@@ -74,16 +156,22 @@ module SyntaxTree
       VM_DEFINECLASS_FLAG_HAS_SUPERCLASS = 0x10
 
       def index(source)
-        index_iseq(RubyVM::InstructionSequence.compile(source).to_a)
+        index_iseq(
+          RubyVM::InstructionSequence.compile(source).to_a,
+          FileComments.new(FileComments::StringSource.new(source))
+        )
       end
 
       def index_file(filepath)
-        index_iseq(RubyVM::InstructionSequence.compile_file(filepath).to_a)
+        index_iseq(
+          RubyVM::InstructionSequence.compile_file(filepath).to_a,
+          FileComments.new(FileComments::FileSource.new(filepath))
+        )
       end
 
       private
 
-      def index_iseq(iseq)
+      def index_iseq(iseq, file_comments)
         results = []
         queue = [[iseq, []]]
 
@@ -106,11 +194,23 @@ module SyntaxTree
               elsif flags & VM_DEFINECLASS_TYPE_MODULE > 0
                 code_location = class_iseq[4][:code_location]
                 location = Location.new(code_location[0], code_location[1])
-                results << ModuleDefinition.new(current_nesting, name, location)
+
+                results << ModuleDefinition.new(
+                  current_nesting,
+                  name,
+                  location,
+                  EntryComments.new(file_comments, location)
+                )
               else
                 code_location = class_iseq[4][:code_location]
                 location = Location.new(code_location[0], code_location[1])
-                results << ClassDefinition.new(current_nesting, name, location)
+
+                results << ClassDefinition.new(
+                  current_nesting,
+                  name,
+                  location,
+                  EntryComments.new(file_comments, location)
+                )
               end
 
               queue << [class_iseq, current_nesting + [name]]
@@ -122,14 +222,21 @@ module SyntaxTree
               results << SingletonMethodDefinition.new(
                 current_nesting,
                 name,
-                location
+                location,
+                EntryComments.new(file_comments, location)
               )
             when :definesmethod
               _, name, method_iseq = insn
 
               code_location = method_iseq[4][:code_location]
               location = Location.new(code_location[0], code_location[1])
-              results << MethodDefinition.new(current_nesting, name, location)
+
+              results << MethodDefinition.new(
+                current_nesting,
+                name,
+                location,
+                EntryComments.new(file_comments, location)
+              )
             end
           end
         end
@@ -143,11 +250,12 @@ module SyntaxTree
     # supported on all runtimes.
     class ParserBackend
       class IndexVisitor < Visitor
-        attr_reader :results, :nesting
+        attr_reader :results, :nesting, :statements
 
         def initialize
           @results = []
           @nesting = []
+          @statements = nil
         end
 
         def visit_class(node)
@@ -155,9 +263,14 @@ module SyntaxTree
           location =
             Location.new(node.location.start_line, node.location.start_column)
 
-          results << ClassDefinition.new(nesting.dup, name, location)
-          nesting << name
+          results << ClassDefinition.new(
+            nesting.dup,
+            name,
+            location,
+            comments_for(node)
+          )
 
+          nesting << name
           super
           nesting.pop
         end
@@ -172,9 +285,19 @@ module SyntaxTree
             Location.new(node.location.start_line, node.location.start_column)
 
           results << if node.target.nil?
-            MethodDefinition.new(nesting.dup, name, location)
+            MethodDefinition.new(
+              nesting.dup,
+              name,
+              location,
+              comments_for(node)
+            )
           else
-            SingletonMethodDefinition.new(nesting.dup, name, location)
+            SingletonMethodDefinition.new(
+              nesting.dup,
+              name,
+              location,
+              comments_for(node)
+            )
           end
         end
 
@@ -183,9 +306,14 @@ module SyntaxTree
           location =
             Location.new(node.location.start_line, node.location.start_column)
 
-          results << ModuleDefinition.new(nesting.dup, name, location)
-          nesting << name
+          results << ModuleDefinition.new(
+            nesting.dup,
+            name,
+            location,
+            comments_for(node)
+          )
 
+          nesting << name
           super
           nesting.pop
         end
@@ -193,6 +321,30 @@ module SyntaxTree
         def visit_program(node)
           super
           results
+        end
+
+        def visit_statements(node)
+          @statements = node
+          super
+        end
+
+        private
+
+        def comments_for(node)
+          comments = []
+
+          body = statements.body
+          line = node.location.start_line - 1
+          index = body.index(node) - 1
+
+          while index >= 0 && body[index].is_a?(Comment) &&
+                  (line - body[index].location.start_line < 2)
+            comments.unshift(body[index].value)
+            line = body[index].location.start_line
+            index -= 1
+          end
+
+          comments
         end
       end
 
