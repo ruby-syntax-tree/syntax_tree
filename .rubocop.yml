@@ -11,6 +11,9 @@ AllCops:
   - test/ruby-syntax-fixtures/**/*
   - test.rb
 
+Gemspec/DevelopmentDependencies:
+  Enabled: false
+
 Layout/LineLength:
   Max: 80
 
