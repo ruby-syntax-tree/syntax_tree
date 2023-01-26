@@ -1103,58 +1103,6 @@ module SyntaxTree
       end
     end
 
-    # Formats an array that contains only a list of variable references. To make
-    # things simpler, if there are a bunch, we format them all using the "fill"
-    # algorithm as opposed to breaking them into a ton of lines. For example,
-    #
-    #     [foo, bar, baz]
-    #
-    # instead of becoming:
-    #
-    #     [
-    #       foo,
-    #       bar,
-    #       baz
-    #     ]
-    #
-    # would instead become:
-    #
-    #     [
-    #       foo, bar,
-    #       baz
-    #     ]
-    #
-    # provided the line length was hit between `bar` and `baz`.
-    class VarRefsFormatter
-      # The separator for the fill algorithm.
-      class Separator
-        def call(q)
-          q.text(",")
-          q.fill_breakable
-        end
-      end
-
-      # [Args] the contents of the array
-      attr_reader :contents
-
-      def initialize(contents)
-        @contents = contents
-      end
-
-      def format(q)
-        q.text("[")
-        q.group do
-          q.indent do
-            q.breakable_empty
-            q.seplist(contents.parts, Separator.new) { |part| q.format(part) }
-            q.if_break { q.text(",") } if q.trailing_comma?
-          end
-          q.breakable_empty
-        end
-        q.text("]")
-      end
-    end
-
     # This is a special formatter used if the array literal contains no values
     # but _does_ contain comments. In this case we do some special formatting to
     # make sure the comments gets indented properly.
@@ -1229,19 +1177,17 @@ module SyntaxTree
     end
 
     def format(q)
-      if qwords?
-        QWordsFormatter.new(contents).format(q)
-        return
-      end
+      if lbracket.comments.empty? && contents && contents.comments.empty? &&
+           contents.parts.length > 1
+        if qwords?
+          QWordsFormatter.new(contents).format(q)
+          return
+        end
 
-      if qsymbols?
-        QSymbolsFormatter.new(contents).format(q)
-        return
-      end
-
-      if var_refs?(q)
-        VarRefsFormatter.new(contents).format(q)
-        return
+        if qsymbols?
+          QSymbolsFormatter.new(contents).format(q)
+          return
+        end
       end
 
       if empty_with_comments?
@@ -1273,39 +1219,24 @@ module SyntaxTree
     private
 
     def qwords?
-      lbracket.comments.empty? && contents && contents.comments.empty? &&
-        contents.parts.length > 1 &&
-        contents.parts.all? do |part|
-          case part
-          when StringLiteral
-            part.comments.empty? && part.parts.length == 1 &&
-              part.parts.first.is_a?(TStringContent) &&
-              !part.parts.first.value.match?(/[\s\[\]\\]/)
-          when CHAR
-            !part.value.match?(/[\[\]\\]/)
-          else
-            false
-          end
+      contents.parts.all? do |part|
+        case part
+        when StringLiteral
+          part.comments.empty? && part.parts.length == 1 &&
+            part.parts.first.is_a?(TStringContent) &&
+            !part.parts.first.value.match?(/[\s\[\]\\]/)
+        when CHAR
+          !part.value.match?(/[\[\]\\]/)
+        else
+          false
         end
+      end
     end
 
     def qsymbols?
-      lbracket.comments.empty? && contents && contents.comments.empty? &&
-        contents.parts.length > 1 &&
-        contents.parts.all? do |part|
-          part.is_a?(SymbolLiteral) && part.comments.empty?
-        end
-    end
-
-    def var_refs?(q)
-      lbracket.comments.empty? && contents && contents.comments.empty? &&
-        contents.parts.all? do |part|
-          part.is_a?(VarRef) && part.comments.empty?
-        end &&
-        (
-          contents.parts.sum { |part| part.value.value.length + 2 } >
-            q.maxwidth * 2
-        )
+      contents.parts.all? do |part|
+        part.is_a?(SymbolLiteral) && part.comments.empty?
+      end
     end
 
     # If we have an empty array that contains only comments, then we're going
@@ -6551,9 +6482,26 @@ module SyntaxTree
 
     def format(q)
       force_flat = [
-        AliasNode, Assign, Break, Command, CommandCall, Heredoc, IfNode, IfOp,
-        Lambda, MAssign, Next, OpAssign, RescueMod, ReturnNode, Super, Undef,
-        UnlessNode, VoidStmt, YieldNode, ZSuper
+        AliasNode,
+        Assign,
+        Break,
+        Command,
+        CommandCall,
+        Heredoc,
+        IfNode,
+        IfOp,
+        Lambda,
+        MAssign,
+        Next,
+        OpAssign,
+        RescueMod,
+        ReturnNode,
+        Super,
+        Undef,
+        UnlessNode,
+        VoidStmt,
+        YieldNode,
+        ZSuper
       ]
 
       if q.parent.is_a?(Paren) || force_flat.include?(truthy.class) ||
