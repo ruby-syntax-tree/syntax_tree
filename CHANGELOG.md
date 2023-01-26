@@ -6,10 +6,21 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 
 ## [Unreleased]
 
+## [5.3.0] - 2023-01-26
+
 ### Added
 
-- Arity has been added to DefNode, BlockNode and Params. The method returns a range where the lower bound is the minimum and the upper bound is the maximum number of arguments that can be used to invoke that block/method definition.
-- Arity has been added to CallNode, Command, CommandCall and VCall nodes. The method returns the number of arguments included in the invocation. For splats, double splats or argument forwards, this method returns Float::INFINITY.
+- `#arity` has been added to `DefNode`, `BlockNode`, and `Params`. The method returns a range where the lower bound is the minimum and the upper bound is the maximum number of arguments that can be used to invoke that block/method definition.
+- `#arity` has been added to `CallNode`, `Command`, `CommandCall`, and `VCall` nodes. The method returns the number of arguments included in the invocation. For splats, double splats, or argument forwards, this method returns `Float::INFINITY`.
+- `SyntaxTree::index` and `SyntaxTree::index_file` APIs have been added to collect a list of classes, modules, and methods defined in a given source string or file, respectively. These APIs are experimental and subject to change.
+- A `plugin/disable_auto_ternary` plugin has been added the disables the formatted that automatically changes permissable `if/else` clauses into ternaries.
+
+### Changed
+
+- Files are now only written from the CLI if the content of them changes, which should match watching files less chaotic.
+- In the case that `rb_iseq_load` cannot be found, `Fiddle::DLError` is now rescued.
+- Previously if there were invalid UTF-8 byte sequences after the `__END__` keyword the parser could potentially have crashed when parsing comments. This has been fixed.
+- Previously there was special formatting for array literals that contained only variable references (either locals, method calls, or constants). For consistency, this has been removed and all array literals are now formatted the same way.
 
 ## [5.2.0] - 2023-01-04
 
@@ -486,7 +497,8 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 
 - 🎉 Initial release! 🎉
 
-[unreleased]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v5.2.0...HEAD
+[unreleased]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v5.3.0...HEAD
+[5.3.0]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v5.2.0...v5.3.0
 [5.2.0]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v5.1.0...v5.2.0
 [5.1.0]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v5.0.1...v5.1.0
 [5.0.1]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v5.0.0...v5.0.1
