@@ -854,18 +854,17 @@ module SyntaxTree
     end
 
     def arity
-      accepts_infinite_arguments? ? Float::INFINITY : parts.length
-    end
-
-    private
-
-    def accepts_infinite_arguments?
-      parts.any? do |part|
-        part.is_a?(ArgStar) || part.is_a?(ArgsForward) ||
-          (
-            part.is_a?(BareAssocHash) &&
-              part.assocs.any? { |p| p.is_a?(AssocSplat) }
-          )
+      parts.sum do |part|
+        case part
+        when ArgStar, ArgsForward
+          Float::INFINITY
+        when BareAssocHash
+          part.assocs.sum do |assoc|
+            assoc.is_a?(AssocSplat) ? Float::INFINITY : 1
+          end
+        else
+          1
+        end
       end
     end
   end
@@ -8383,18 +8382,24 @@ module SyntaxTree
 
     # Returns a range representing the possible number of arguments accepted
     # by this params node not including the block. For example:
-    #   def foo(a, b = 1, c:, d: 2, &block)
-    #     ...
-    #   end
-    # has arity 2..4
+    #
+    #     def foo(a, b = 1, c:, d: 2, &block)
+    #       ...
+    #     end
+    #
+    # has arity 2..4.
+    #
     def arity
       optional_keywords = keywords.count { |_label, value| value }
+
       lower_bound =
         requireds.length + posts.length + keywords.length - optional_keywords
 
       upper_bound =
-        lower_bound + optionals.length +
-          optional_keywords if keyword_rest.nil? && rest.nil?
+        if keyword_rest.nil? && rest.nil?
+          lower_bound + optionals.length + optional_keywords
+        end
+
       lower_bound..upper_bound
     end
 
