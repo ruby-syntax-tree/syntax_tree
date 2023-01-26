@@ -4388,8 +4388,22 @@ module SyntaxTree
         when Paren, Statements
           # If we hit certain breakpoints then we know we're safe.
           return false
-        when IfNode, IfOp, UnlessNode, WhileNode, UntilNode
+        when IfNode, IfOp, UnlessNode
+          # If this node is the predicate of an if/unless node, then we're
+          # going to have to use the {..} bounds.
           return true if parent.predicate == previous
+        when WhileNode, UntilNode
+          if previous.is_a?(Binary)
+            # If this node is the predicate of a while/until node, then we're
+            # going to have to use the {..} bounds if the loop is in the
+            # modifier form because otherwise the do/end could be confused for
+            # the optional do keyword of the loop.
+            return parent.predicate == previous && parent.modifier?
+          else
+            # If this node is the predicate of a while/until node, then we're
+            # going to have to use the {..} bounds.
+            return true if parent.predicate == previous
+          end
         end
 
         previous = parent
