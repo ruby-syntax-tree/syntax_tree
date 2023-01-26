@@ -23,13 +23,13 @@ module SyntaxTree
     class Options
       attr_reader :quote,
                   :trailing_comma,
-                  :disable_ternary,
+                  :disable_auto_ternary,
                   :target_ruby_version
 
       def initialize(
         quote: :default,
         trailing_comma: :default,
-        disable_ternary: :default,
+        disable_auto_ternary: :default,
         target_ruby_version: :default
       )
         @quote =
@@ -54,15 +54,15 @@ module SyntaxTree
             trailing_comma
           end
 
-        @disable_ternary =
-          if disable_ternary == :default
+        @disable_auto_ternary =
+          if disable_auto_ternary == :default
             # We ship with a disable ternary plugin that will define this
             # constant. That constant is responsible for determining the default
             # disable ternary value. If it's defined, then we default to true.
             # Otherwise we default to false.
             defined?(DISABLE_TERNARY)
           else
-            disable_ternary
+            disable_auto_ternary
           end
 
         @target_ruby_version =
@@ -84,9 +84,13 @@ module SyntaxTree
 
     # These options are overridden in plugins to we need to make sure they are
     # available here.
-    attr_reader :quote, :trailing_comma, :disable_ternary, :target_ruby_version
+    attr_reader :quote,
+                :trailing_comma,
+                :disable_auto_ternary,
+                :target_ruby_version
+
     alias trailing_comma? trailing_comma
-    alias disable_ternary? disable_ternary
+    alias disable_auto_ternary? disable_auto_ternary
 
     def initialize(source, *args, options: Options.new)
       super(*args)
@@ -97,7 +101,7 @@ module SyntaxTree
       # Memoizing these values to make access faster.
       @quote = options.quote
       @trailing_comma = options.trailing_comma
-      @disable_ternary = options.disable_ternary
+      @disable_auto_ternary = options.disable_auto_ternary
       @target_ruby_version = options.target_ruby_version
     end
 

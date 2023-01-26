@@ -6139,8 +6139,7 @@ module SyntaxTree
   module Ternaryable
     class << self
       def call(q, node)
-        return false if ENV["STREE_FAST_FORMAT"]
-        return false if q.disable_ternary?
+        return false if ENV["STREE_FAST_FORMAT"] || q.disable_auto_ternary?
 
         # If this is a conditional inside of a parentheses as the only content,
         # then we don't want to transform it into a ternary. Presumably the user

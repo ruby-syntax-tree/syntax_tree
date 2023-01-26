@@ -21,7 +21,7 @@ module SyntaxTree
     private
 
     def assert_format(expected, source = expected)
-      options = Formatter::Options.new(disable_ternary: true)
+      options = Formatter::Options.new(disable_auto_ternary: true)
       formatter = Formatter.new(source, [], options: options)
       SyntaxTree.parse(source).format(formatter)
 

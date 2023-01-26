@@ -658,7 +658,7 @@ To register plugins, define a file somewhere in your load path named `syntax_tre
 
 * `plugin/single_quotes` - This will change all of your string literals to use single quotes instead of the default double quotes.
 * `plugin/trailing_comma` - This will put trailing commas into multiline array literals, hash literals, and method calls that can support trailing commas.
-* `plugin/disable_ternary` - This will prevent the automatic conversion of `if ... else` to ternary expressions.
+* `plugin/disable_auto_ternary` - This will prevent the automatic conversion of `if ... else` to ternary expressions.
 
 If you're using Syntax Tree as a library, you can require those files directly or manually pass those options to the formatter initializer through the `SyntaxTree::Formatter::Options` class.
 
