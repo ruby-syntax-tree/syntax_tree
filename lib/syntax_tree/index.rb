@@ -171,6 +171,11 @@ module SyntaxTree
 
       private
 
+      def location_for(iseq)
+        code_location = iseq[4][:code_location]
+        Location.new(code_location[0], code_location[1])
+      end
+
       def index_iseq(iseq, file_comments)
         results = []
         queue = [[iseq, []]]
@@ -192,9 +197,7 @@ module SyntaxTree
                         "singleton class with non-self receiver"
                 end
               elsif flags & VM_DEFINECLASS_TYPE_MODULE > 0
-                code_location = class_iseq[4][:code_location]
-                location = Location.new(code_location[0], code_location[1])
-
+                location = location_for(class_iseq)
                 results << ModuleDefinition.new(
                   current_nesting,
                   name,
@@ -202,9 +205,7 @@ module SyntaxTree
                   EntryComments.new(file_comments, location)
                 )
               else
-                code_location = class_iseq[4][:code_location]
-                location = Location.new(code_location[0], code_location[1])
-
+                location = location_for(class_iseq)
                 results << ClassDefinition.new(
                   current_nesting,
                   name,
@@ -215,25 +216,23 @@ module SyntaxTree
 
               queue << [class_iseq, current_nesting + [name]]
             when :definemethod
-              _, name, method_iseq = insn
-
-              code_location = method_iseq[4][:code_location]
-              location = Location.new(code_location[0], code_location[1])
-              results << SingletonMethodDefinition.new(
+              location = location_for(insn[2])
+              results << MethodDefinition.new(
                 current_nesting,
-                name,
+                insn[1],
                 location,
                 EntryComments.new(file_comments, location)
               )
             when :definesmethod
-              _, name, method_iseq = insn
+              if current_iseq[13][index - 1] != [:putself]
+                raise NotImplementedError,
+                      "singleton method with non-self receiver"
+              end
 
-              code_location = method_iseq[4][:code_location]
-              location = Location.new(code_location[0], code_location[1])
-
-              results << MethodDefinition.new(
+              location = location_for(insn[2])
+              results << SingletonMethodDefinition.new(
                 current_nesting,
-                name,
+                insn[1],
                 location,
                 EntryComments.new(file_comments, location)
               )
@@ -363,13 +362,13 @@ module SyntaxTree
       defined?(RubyVM::InstructionSequence) ? ISeqBackend : ParserBackend
 
     # This method accepts source code and then indexes it.
-    def self.index(source)
-      INDEX_BACKEND.new.index(source)
+    def self.index(source, backend: INDEX_BACKEND.new)
+      backend.index(source)
     end
 
     # This method accepts a filepath and then indexes it.
-    def self.index_file(filepath)
-      INDEX_BACKEND.new.index_file(filepath)
+    def self.index_file(filepath, backend: INDEX_BACKEND.new)
+      backend.index_file(filepath)
     end
   end
 end
