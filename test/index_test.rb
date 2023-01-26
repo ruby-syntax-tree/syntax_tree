@@ -67,13 +67,44 @@ module SyntaxTree
       end
     end
 
+    def test_singleton_method
+      index_each("def self.foo; end") do |entry|
+        assert_equal :foo, entry.name
+        assert_empty entry.nesting
+      end
+    end
+
+    def test_singleton_method_nested
+      index_each("class Foo; def self.foo; end; end") do |entry|
+        assert_equal :foo, entry.name
+        assert_equal [:Foo], entry.nesting
+      end
+    end
+
+    def test_singleton_method_comments
+      index_each("# comment1\n# comment2\ndef self.foo; end") do |entry|
+        assert_equal :foo, entry.name
+        assert_equal ["# comment1", "# comment2"], entry.comments.to_a
+      end
+    end
+
+    def test_this_file
+      entries = Index.index_file(__FILE__, backend: Index::ParserBackend.new)
+
+      if defined?(RubyVM::InstructionSequence)
+        entries += Index.index_file(__FILE__, backend: Index::ISeqBackend.new)
+      end
+
+      entries.map { |entry| entry.comments.to_a }
+    end
+
     private
 
     def index_each(source)
-      yield SyntaxTree::Index::ParserBackend.new.index(source).last
+      yield Index.index(source, backend: Index::ParserBackend.new).last
 
       if defined?(RubyVM::InstructionSequence)
-        yield SyntaxTree::Index::ISeqBackend.new.index(source).last
+        yield Index.index(source, backend: Index::ISeqBackend.new).last
       end
     end
   end
