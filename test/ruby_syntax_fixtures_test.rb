@@ -1,5 +1,9 @@
 # frozen_string_literal: true
 
+# The ruby-syntax-fixtures repository tests against the current Ruby syntax, so
+# we don't execute this test unless we're running 3.2 or above.
+return unless RUBY_VERSION >= "3.2"
+
 require_relative "test_helper"
 
 module SyntaxTree
