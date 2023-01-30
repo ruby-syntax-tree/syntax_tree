@@ -7,3 +7,6 @@
 [submodule "test/ruby-syntax-fixtures"]
 	path = test/ruby-syntax-fixtures
 	url = https://github.com/ruby-syntax-tree/ruby-syntax-fixtures
+[submodule "test/suites/parser"]
+	path = test/suites/parser
+	url = https://github.com/whitequark/parser

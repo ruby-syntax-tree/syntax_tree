@@ -6,8 +6,16 @@ require "syntax_tree/rake_tasks"
 
 Rake::TestTask.new(:test) do |t|
   t.libs << "test"
+  t.libs << "test/suites"
   t.libs << "lib"
-  t.test_files = FileList["test/**/*_test.rb"]
+
+  # These are our own tests.
+  test_files = FileList["test/**/*_test.rb"]
+
+  # This is a big test file from the parser gem that tests its functionality.
+  test_files << "test/suites/parser/test/test_parser.rb"
+
+  t.test_files = test_files
 end
 
 task default: :test

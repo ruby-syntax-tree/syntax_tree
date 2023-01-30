@@ -40,6 +40,8 @@ require_relative "syntax_tree/yarv/local_table"
 require_relative "syntax_tree/yarv/assembler"
 require_relative "syntax_tree/yarv/vm"
 
+require_relative "syntax_tree/translation"
+
 # Syntax Tree is a suite of tools built on top of the internal CRuby parser. It
 # provides the ability to generate a syntax tree from source, as well as the
 # tools necessary to inspect and manipulate that syntax tree. It can be used to
