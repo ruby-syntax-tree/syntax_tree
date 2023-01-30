@@ -132,7 +132,8 @@ module ParseHelper
     expected = parse(code)
     return if expected.nil?
 
-    actual = SyntaxTree::Translation.to_parser(SyntaxTree.parse(code), code)
+    buffer = expected.location.expression.source_buffer
+    actual = SyntaxTree::Translation.to_parser(SyntaxTree.parse(code), buffer)
     assert_equal(expected, actual)
   end
 
@@ -146,4 +147,29 @@ module ParseHelper
     parser.parse(buffer)
   rescue Parser::SyntaxError
   end
+end
+
+if ENV["PARSER_LOCATION"]
+  # Modify the source map == check so that it doesn't check against the node
+  # itself so we don't get into a recursive loop.
+  Parser::Source::Map.prepend(
+    Module.new do
+      def ==(other)
+        self.class == other.class &&
+          (instance_variables - %i[@node]).map do |ivar|
+            instance_variable_get(ivar) == other.instance_variable_get(ivar)
+          end.reduce(:&)
+      end
+    end
+  )
+
+  # Next, ensure that we're comparing the nodes and also comparing the source
+  # ranges so that we're getting all of the necessary information.
+  Parser::AST::Node.prepend(
+    Module.new do
+      def ==(other)
+        super && (location == other.location)
+      end
+    end
+  )
 end

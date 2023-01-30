@@ -7,12 +7,9 @@ module SyntaxTree
     # This method translates the given node into the representation defined by
     # the whitequark/parser gem. We don't explicitly list it as a dependency
     # because it's not required for the core functionality of Syntax Tree.
-    def self.to_parser(node, source)
+    def self.to_parser(node, buffer)
       require "parser"
       require_relative "translation/parser"
-
-      buffer = ::Parser::Source::Buffer.new("(string)")
-      buffer.source = source
 
       node.accept(Parser.new(buffer))
     end

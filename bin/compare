@@ -1,0 +1,59 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+require "bundler/setup"
+require "parser/current"
+
+$:.unshift(File.expand_path("../lib", __dir__))
+require "syntax_tree"
+
+# First, opt in to every AST feature.
+# Parser::Builders::Default.modernize
+
+# Modify the source map == check so that it doesn't check against the node
+# itself so we don't get into a recursive loop.
+Parser::Source::Map.prepend(
+  Module.new {
+    def ==(other)
+      self.class == other.class &&
+        (instance_variables - %i[@node]).map do |ivar|
+          instance_variable_get(ivar) == other.instance_variable_get(ivar)
+        end.reduce(:&)
+    end
+  }
+)
+
+# Next, ensure that we're comparing the nodes and also comparing the source
+# ranges so that we're getting all of the necessary information.
+Parser::AST::Node.prepend(
+  Module.new {
+    def ==(other)
+      super && (location == other.location)
+    end
+  }
+)
+
+source = ARGF.read
+
+parser = Parser::CurrentRuby.new
+parser.diagnostics.all_errors_are_fatal = true
+
+buffer = Parser::Source::Buffer.new("(string)", 1)
+buffer.source = source.dup.force_encoding(parser.default_encoding)
+
+stree = SyntaxTree::Translation.to_parser(SyntaxTree.parse(source), buffer)
+ptree = parser.parse(buffer)
+
+if stree == ptree
+  puts "Syntax trees are equivalent."
+else
+  warn "Syntax trees are different."
+
+  warn "syntax_tree:"
+  pp stree
+
+  warn "parser:"
+  pp ptree
+
+  binding.irb
+end
