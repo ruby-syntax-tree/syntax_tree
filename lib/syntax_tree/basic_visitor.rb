@@ -29,7 +29,7 @@ module SyntaxTree
       def corrections
         @corrections ||=
           DidYouMean::SpellChecker.new(
-            dictionary: Visitor.visit_methods
+            dictionary: BasicVisitor.valid_visit_methods
           ).correct(visit_method)
       end
 
@@ -40,7 +40,40 @@ module SyntaxTree
       end
     end
 
+    # This module is responsible for checking all of the methods defined within
+    # a given block to ensure that they are valid visit methods.
+    class VisitMethodsChecker < Module
+      Status = Struct.new(:checking)
+
+      # This is the status of the checker. It's used to determine whether or not
+      # we should be checking the methods that are defined. It is kept as an
+      # instance variable so that it can be disabled later.
+      attr_reader :status
+
+      def initialize
+        # We need the status to be an instance variable so that it can be
+        # accessed by the disable! method, but also a local variable so that it
+        # can be captured by the define_method block.
+        status = @status = Status.new(true)
+
+        define_method(:method_added) do |name|
+          BasicVisitor.visit_method(name) if status.checking
+          super(name)
+        end
+      end
+
+      def disable!
+        status.checking = false
+      end
+    end
+
     class << self
+      # This is the list of all of the valid visit methods.
+      def valid_visit_methods
+        @valid_visit_methods ||=
+          Visitor.instance_methods.grep(/^visit_(?!child_nodes)/)
+      end
+
       # This method is here to help folks write visitors.
       #
       # It's not always easy to ensure you're writing the correct method name in
@@ -51,15 +84,21 @@ module SyntaxTree
       # name. It will raise an error if the visit method you're defining isn't
       # actually a method on the parent visitor.
       def visit_method(method_name)
-        return if visit_methods.include?(method_name)
+        return if valid_visit_methods.include?(method_name)
 
         raise VisitMethodError, method_name
       end
 
-      # This is the list of all of the valid visit methods.
+      # This method is here to help folks write visitors.
+      #
+      # Within the given block, every method that is defined will be checked to
+      # ensure it's a valid visit method using the BasicVisitor::visit_method
+      # method defined above.
       def visit_methods
-        @visit_methods ||=
-          Visitor.instance_methods.grep(/^visit_(?!child_nodes)/)
+        checker = VisitMethodsChecker.new
+        extend(checker)
+        yield
+        checker.disable!
       end
     end
 
