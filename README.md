@@ -40,6 +40,7 @@ It is built with only standard library dependencies. It additionally ships with 
   - [construct_keys](#construct_keys)
 - [Visitor](#visitor)
   - [visit_method](#visit_method)
+  - [visit_methods](#visit_methods)
   - [BasicVisitor](#basicvisitor)
   - [MutationVisitor](#mutationvisitor)
   - [WithEnvironment](#withenvironment)
@@ -516,6 +517,26 @@ Did you mean?  visit_binary
 	from (irb):1:in `<main>'
 	from bin/console:8:in `<main>'
 ```
+
+### visit_methods
+
+Similar to `visit_method`, `visit_methods` also checks that methods defined are valid visit methods. This variation however accepts a block and checks that all methods defined within that block are valid visit methods. It's meant to be used like:
+
+```ruby
+class ArithmeticVisitor < SyntaxTree::Visitor
+  visit_methods do
+    def visit_binary(node)
+      # ...
+    end
+
+    def visit_int(node)
+      # ...
+    end
+  end
+end
+```
+
+This is only checked when the methods are defined and does not impose any kind of runtime overhead after that. It is very useful for upgrading versions of Syntax Tree in case these methods names change.
 
 ### BasicVisitor
 

@@ -53,5 +53,19 @@ module SyntaxTree
         assert_match(/visit_binary/, message)
       end
     end
+
+    class VisitMethodsTestVisitor < BasicVisitor
+    end
+
+    def test_visit_methods
+      VisitMethodsTestVisitor.visit_methods do
+        assert_raises(BasicVisitor::VisitMethodError) do
+          # In reality, this would be a method defined using the def keyword,
+          # but we're using method_added here to trigger the checker so that we
+          # aren't defining methods dynamically in the test suite.
+          VisitMethodsTestVisitor.method_added(:visit_foo)
+        end
+      end
+    end
   end
 end
