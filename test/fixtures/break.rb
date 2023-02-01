@@ -27,3 +27,9 @@ break(
 )
 %
 break foo.bar :baz do |qux| qux end
+-
+break(
+  foo.bar :baz do |qux|
+    qux
+  end
+)

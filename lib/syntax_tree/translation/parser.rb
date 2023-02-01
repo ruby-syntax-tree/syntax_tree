@@ -191,13 +191,21 @@ module SyntaxTree
       # Visit an ArgStar node.
       def visit_arg_star(node)
         if stack[-3].is_a?(MLHSParen) && stack[-3].contents.is_a?(MLHS)
-          case node.value
-          when nil
-            s(:restarg, [], nil)
-          when Ident
-            s(:restarg, [node.value.value.to_sym], nil)
+          if node.value.nil?
+            s(
+              :restarg,
+              [],
+              source_map_variable(expression: source_range_node(node))
+            )
           else
-            s(:restarg, [node.value.value.value.to_sym], nil)
+            s(
+              :restarg,
+              [node.value.value.to_sym],
+              source_map_variable(
+                name: source_range_node(node.value),
+                expression: source_range_node(node)
+              )
+            )
           end
         else
           s(
@@ -212,8 +220,8 @@ module SyntaxTree
       end
 
       # Visit an ArgsForward node.
-      def visit_args_forward(_node)
-        s(:forwarded_args, [], nil)
+      def visit_args_forward(node)
+        s(:forwarded_args, [], source_map(expression: source_range_node(node)))
       end
 
       # Visit an ArrayLiteral node.
@@ -251,11 +259,44 @@ module SyntaxTree
           end
         end
 
-        inner = s(type, children + visit_all(node.posts), nil)
         if node.constant
-          s(:const_pattern, [visit(node.constant), inner], nil)
+          s(
+            :const_pattern,
+            [
+              visit(node.constant),
+              s(
+                type,
+                children + visit_all(node.posts),
+                source_map_collection(
+                  expression:
+                    source_range(
+                      node.constant.location.end_char + 1,
+                      node.location.end_char - 1
+                    )
+                )
+              )
+            ],
+            source_map_collection(
+              begin_token:
+                source_range_length(node.constant.location.end_char, 1),
+              end_token: source_range_length(node.location.end_char, -1),
+              expression: source_range_node(node)
+            )
+          )
         else
-          inner
+          s(
+            type,
+            children + visit_all(node.posts),
+            if buffer.source[node.location.start_char] == "["
+              source_map_collection(
+                begin_token: source_range_length(node.location.start_char, 1),
+                end_token: source_range_length(node.location.end_char, -1),
+                expression: source_range_node(node)
+              )
+            else
+              source_map_collection(expression: source_range_node(node))
+            end
+          )
         end
       end
 
@@ -280,15 +321,23 @@ module SyntaxTree
       # Visit an Assoc node.
       def visit_assoc(node)
         if node.value.nil?
-          type = node.key.value.start_with?(/[A-Z]/) ? :const : :send
+          expression =
+            source_range(node.location.start_char, node.location.end_char - 1)
 
           s(
             :pair,
             [
               visit(node.key),
-              s(type, [nil, node.key.value.chomp(":").to_sym], nil)
+              s(
+                node.key.value.start_with?(/[A-Z]/) ? :const : :send,
+                [nil, node.key.value.chomp(":").to_sym],
+                source_map_send(selector: expression, expression: expression)
+              )
             ],
-            nil
+            source_map_operator(
+              operator: source_range_length(node.key.location.end_char, -1),
+              expression: source_range_node(node)
+            )
           )
         else
           s(
@@ -411,6 +460,11 @@ module SyntaxTree
             )
           )
         when :=~
+          # When you use a regular expression on the left hand side of a =~
+          # operator and it doesn't have interpolatoin, then its named capture
+          # groups introduce local variables into the scope. In this case the
+          # parser gem has a different node (match_with_lvasgn) instead of the
+          # regular send.
           if node.left.is_a?(RegexpLiteral) && node.left.parts.length == 1 &&
                node.left.parts.first.is_a?(TStringContent)
             s(
@@ -457,60 +511,124 @@ module SyntaxTree
       # Visit a BlockVar node.
       def visit_block_var(node)
         shadowargs =
-          node.locals.map { |local| s(:shadowarg, [local.value.to_sym], nil) }
+          node.locals.map do |local|
+            s(
+              :shadowarg,
+              [local.value.to_sym],
+              source_map_variable(
+                name: source_range_node(local),
+                expression: source_range_node(local)
+              )
+            )
+          end
 
-        # There is a special node type in the parser gem for when a single
-        # required parameter to a block would potentially be expanded
-        # automatically. We handle that case here.
-        if ::Parser::Builders::Default.emit_procarg0
-          params = node.params
-
-          if params.requireds.length == 1 && params.optionals.empty? &&
-               params.rest.nil? && params.posts.empty? &&
-               params.keywords.empty? && params.keyword_rest.nil? &&
-               params.block.nil?
+        params = node.params
+        children =
+          if ::Parser::Builders::Default.emit_procarg0 && node.arg0?
+            # There is a special node type in the parser gem for when a single
+            # required parameter to a block would potentially be expanded
+            # automatically. We handle that case here.
             required = params.requireds.first
-
             procarg0 =
               if ::Parser::Builders::Default.emit_arg_inside_procarg0 &&
                    required.is_a?(Ident)
-                s(:procarg0, [s(:arg, [required.value.to_sym], nil)], nil)
+                s(
+                  :procarg0,
+                  [
+                    s(
+                      :arg,
+                      [required.value.to_sym],
+                      source_map_variable(
+                        name: source_range_node(required),
+                        expression: source_range_node(required)
+                      )
+                    )
+                  ],
+                  source_map_collection(expression: source_range_node(required))
+                )
               else
-                s(:procarg0, visit(required).children, nil)
+                child = visit(required)
+                s(:procarg0, child, child.location)
               end
 
-            return s(:args, [procarg0] + shadowargs, nil)
+            [procarg0]
+          else
+            visit(params).children
           end
-        end
 
-        s(:args, visit(node.params).children + shadowargs, nil)
+        s(
+          :args,
+          children + shadowargs,
+          source_map_collection(
+            begin_token: source_range_length(node.location.start_char, 1),
+            end_token: source_range_length(node.location.end_char, -1),
+            expression: source_range_node(node)
+          )
+        )
       end
 
       # Visit a BodyStmt node.
       def visit_bodystmt(node)
-        inner = visit(node.statements)
+        result = visit(node.statements)
 
         if node.rescue_clause
-          children = [inner] + visit(node.rescue_clause).children
+          rescue_node = visit(node.rescue_clause)
+
+          children = [result] + rescue_node.children
+          location = rescue_node.location
 
           if node.else_clause
             children.pop
             children << visit(node.else_clause)
+
+            location =
+              source_map_condition(
+                else_token:
+                  source_range_length(
+                    node.else_clause.location.start_char - 3,
+                    -4
+                  ),
+                expression:
+                  source_range(
+                    location.expression.begin_pos,
+                    node.else_clause.location.end_char
+                  )
+              )
           end
 
-          inner = s(:rescue, children, nil)
+          result = s(rescue_node.type, children, location)
         end
 
         if node.ensure_clause
-          inner = s(:ensure, [inner] + visit(node.ensure_clause).children, nil)
+          ensure_node = visit(node.ensure_clause)
+
+          expression =
+            (
+              if result
+                result.location.expression.join(ensure_node.location.expression)
+              else
+                ensure_node.location.expression
+              end
+            )
+          location = ensure_node.location.with_expression(expression)
+
+          result =
+            s(ensure_node.type, [result] + ensure_node.children, location)
         end
 
-        inner
+        result
       end
 
       # Visit a Break node.
       def visit_break(node)
-        s(:break, visit_all(node.arguments.parts), nil)
+        s(
+          :break,
+          visit_all(node.arguments.parts),
+          source_map_keyword(
+            keyword: source_range_length(node.location.start_char, 5),
+            expression: source_range_node(node)
+          )
+        )
       end
 
       # Visit a CallNode node.
@@ -606,6 +724,7 @@ module SyntaxTree
           visit(node.receiver),
           node.message == :call ? :call : node.message.value.to_sym
         ]
+
         begin_token = nil
         end_token = nil
 
@@ -649,13 +768,11 @@ module SyntaxTree
                 if node.operator == :"::"
                   source_range_find(
                     node.receiver.location.end_char,
-                    (
-                      if node.message == :call
-                        dot_bound
-                      else
-                        node.message.location.start_char
-                      end
-                    ),
+                    if node.message == :call
+                      dot_bound
+                    else
+                      node.message.location.start_char
+                    end,
                     "::"
                   )
                 elsif node.operator
@@ -665,7 +782,18 @@ module SyntaxTree
               end_token: end_token,
               selector:
                 node.message == :call ? nil : source_range_node(node.message),
-              expression: source_range_node(node)
+              expression:
+                if node.arguments.is_a?(ArgParen) ||
+                     (node.arguments.is_a?(Args) && node.arguments.parts.any?)
+                  source_range(
+                    node.location.start_char,
+                    node.arguments.location.end_char
+                  )
+                elsif node.block
+                  source_range_node(node.message)
+                else
+                  source_range_node(node)
+                end
             )
           )
 
@@ -798,6 +926,28 @@ module SyntaxTree
             s(:args, [], source_map_collection(expression: nil))
           end
 
+        location =
+          if node.endless?
+            source_map_method_definition(
+              keyword: source_range_length(node.location.start_char, 3),
+              assignment:
+                source_range_find(
+                  (node.params || node.name).location.end_char,
+                  node.bodystmt.location.start_char,
+                  "="
+                ),
+              name: source_range_node(node.name),
+              expression: source_range_node(node)
+            )
+          else
+            source_map_method_definition(
+              keyword: source_range_length(node.location.start_char, 3),
+              name: source_range_node(node.name),
+              end_token: source_range_length(node.location.end_char, -3),
+              expression: source_range_node(node)
+            )
+          end
+
         if node.target
           target = node.target.is_a?(Paren) ? node.target.contents : node.target
 
@@ -805,24 +955,16 @@ module SyntaxTree
             :defs,
             [visit(target), name, args, visit(node.bodystmt)],
             source_map_method_definition(
-              keyword: source_range_length(node.location.start_char, 3),
+              keyword: location.keyword,
+              assignment: location.assignment,
               operator: source_range_node(node.operator),
-              name: source_range_node(node.name),
-              end_token: source_range_length(node.location.end_char, -3),
-              expression: source_range_node(node)
+              name: location.name,
+              end_token: location.end,
+              expression: location.expression
             )
           )
         else
-          s(
-            :def,
-            [name, args, visit(node.bodystmt)],
-            source_map_method_definition(
-              keyword: source_range_length(node.location.start_char, 3),
-              name: source_range_node(node.name),
-              end_token: source_range_length(node.location.end_char, -3),
-              expression: source_range_node(node)
-            )
-          )
+          s(:def, [name, args, visit(node.bodystmt)], location)
         end
       end
 
@@ -934,7 +1076,22 @@ module SyntaxTree
 
       # Visit an Ensure node.
       def visit_ensure(node)
-        s(:ensure, [visit(node.statements)], nil)
+        start_char = node.location.start_char
+        end_char =
+          if node.statements.empty?
+            start_char + 6
+          else
+            node.statements.body.last.location.end_char
+          end
+
+        s(
+          :ensure,
+          [visit(node.statements)],
+          source_map_condition(
+            keyword: source_range_length(start_char, 6),
+            expression: source_range(start_char, end_char)
+          )
+        )
       end
 
       # Visit a Field node.
@@ -1009,10 +1166,29 @@ module SyntaxTree
 
       # Visit a For node.
       def visit_for(node)
+        begin_start = node.collection.location.end_char
+        begin_end = node.statements.location.start_char
+
+        begin_token =
+          if buffer.source[begin_start...begin_end].include?("do")
+            source_range_find(begin_start, begin_end, "do")
+          end
+
         s(
           :for,
           [visit(node.index), visit(node.collection), visit(node.statements)],
-          nil
+          source_map_for(
+            keyword: source_range_length(node.location.start_char, 3),
+            in_token:
+              source_range_find(
+                node.index.location.end_char,
+                node.collection.location.start_char,
+                "in"
+              ),
+            begin_token: begin_token,
+            end_token: source_range_length(node.location.end_char, -3),
+            expression: source_range_node(node)
+          )
         )
       end
 
@@ -1223,6 +1399,19 @@ module SyntaxTree
               expression: source_range_node(node)
             )
           else
+            begin_start = node.predicate.location.end_char
+            begin_end =
+              if node.statements.empty?
+                node.statements.location.end_char
+              else
+                node.statements.body.first.location.start_char
+              end
+
+            begin_token =
+              if buffer.source[begin_start...begin_end].include?("then")
+                source_range_find(begin_start, begin_end, "then")
+              end
+
             else_token =
               case node.consequent
               when Elsif
@@ -1233,6 +1422,7 @@ module SyntaxTree
 
             source_map_condition(
               keyword: source_range_length(node.location.start_char, 2),
+              begin_token: begin_token,
               else_token: else_token,
               end_token: source_range_length(node.location.end_char, -3),
               expression: source_range_node(node)
@@ -1288,10 +1478,20 @@ module SyntaxTree
             nil
           )
         else
+          end_char =
+            if node.statements.empty?
+              node.statements.location.end_char - 1
+            else
+              node.statements.body.first.location.start_char
+            end
+
           s(
             :in_pattern,
             [visit(node.pattern), nil, visit(node.statements)],
-            nil
+            source_map_keyword(
+              keyword: source_range_length(node.location.start_char, 2),
+              expression: source_range(node.location.start_char, end_char)
+            )
           )
         end
       end
@@ -1380,30 +1580,79 @@ module SyntaxTree
       # Visit a Lambda node.
       def visit_lambda(node)
         args = node.params.is_a?(LambdaVar) ? node.params : node.params.contents
-
-        arguments = visit(args)
-        child =
-          if ::Parser::Builders::Default.emit_lambda
-            s(:lambda, [], nil)
-          else
-            s(:send, [nil, :lambda], nil)
-          end
+        args_node = visit(args)
 
         type = :block
         if args.empty? && (maximum = num_block_type(node.statements))
           type = :numblock
-          arguments = maximum
+          args_node = maximum
         end
 
-        s(type, [child, arguments, visit(node.statements)], nil)
+        begin_start = node.params.location.end_char
+        begin_token, end_token =
+          if buffer.source[begin_start - 1] == "{"
+            [
+              source_range_length(begin_start, -1),
+              source_range_length(node.location.end_char, -1)
+            ]
+          else
+            [
+              source_range_length(begin_start, -2),
+              source_range_length(node.location.end_char, -3)
+            ]
+          end
+
+        selector = source_range_length(node.location.start_char, 2)
+
+        s(
+          type,
+          [
+            if ::Parser::Builders::Default.emit_lambda
+              s(:lambda, [], source_map(expression: selector))
+            else
+              s(
+                :send,
+                [nil, :lambda],
+                source_map_send(selector: selector, expression: selector)
+              )
+            end,
+            args_node,
+            visit(node.statements)
+          ],
+          source_map_collection(
+            begin_token: begin_token,
+            end_token: end_token,
+            expression: source_range_node(node)
+          )
+        )
       end
 
       # Visit a LambdaVar node.
       def visit_lambda_var(node)
         shadowargs =
-          node.locals.map { |local| s(:shadowarg, [local.value.to_sym], nil) }
+          node.locals.map do |local|
+            s(
+              :shadowarg,
+              [local.value.to_sym],
+              source_map_variable(
+                name: source_range_node(local),
+                expression: source_range_node(local)
+              )
+            )
+          end
 
-        s(:args, visit(node.params).children + shadowargs, nil)
+        location =
+          if node.location.start_char == node.location.end_char
+            source_map_collection(expression: nil)
+          else
+            source_map_collection(
+              begin_token: source_range_length(node.location.start_char, 1),
+              end_token: source_range_length(node.location.end_char, -1),
+              expression: source_range_node(node)
+            )
+          end
+
+        s(:args, visit(node.params).children + shadowargs, location)
       end
 
       # Visit an MAssign node.
@@ -1425,11 +1674,11 @@ module SyntaxTree
 
       # Visit a MethodAddBlock node.
       def visit_method_add_block(node)
-        type, arguments = block_children(node.block)
-
         case node.call
         when Break, Next, ReturnNode
+          type, arguments = block_children(node.block)
           call = visit(node.call)
+
           s(
             call.type,
             [
@@ -1441,11 +1690,24 @@ module SyntaxTree
             ],
             nil
           )
-        else
+        when ARef, Super, ZSuper
+          type, arguments = block_children(node.block)
+
           s(
             type,
             [visit(node.call), arguments, visit(node.block.bodystmt)],
             nil
+          )
+        else
+          visit_command_call(
+            CommandCall.new(
+              receiver: node.call.receiver,
+              operator: node.call.operator,
+              message: node.call.message,
+              arguments: node.call.arguments,
+              block: node.block,
+              location: node.location
+            )
           )
         end
       end
@@ -1455,7 +1717,18 @@ module SyntaxTree
         s(
           :mlhs,
           node.parts.map do |part|
-            part.is_a?(Ident) ? s(:arg, [part.value.to_sym], nil) : visit(part)
+            if part.is_a?(Ident)
+              s(
+                :arg,
+                [part.value.to_sym],
+                source_map_variable(
+                  name: source_range_node(part),
+                  expression: source_range_node(part)
+                )
+              )
+            else
+              visit(part)
+            end
           end,
           source_map_collection(expression: source_range_node(node))
         )
@@ -1463,7 +1736,17 @@ module SyntaxTree
 
       # Visit an MLHSParen node.
       def visit_mlhs_paren(node)
-        visit(node.contents)
+        child = visit(node.contents)
+
+        s(
+          child.type,
+          child.children,
+          source_map_collection(
+            begin_token: source_range_length(node.location.start_char, 1),
+            end_token: source_range_length(node.location.end_char, -1),
+            expression: source_range_node(node)
+          )
+        )
       end
 
       # Visit a ModuleDeclaration node.
@@ -1673,7 +1956,14 @@ module SyntaxTree
         when nil, ArgsForward
           # do nothing
         when :nil
-          children << s(:kwnilarg, [], nil)
+          children << s(
+            :kwnilarg,
+            [],
+            source_map_variable(
+              name: source_range_length(node.location.end_char, -3),
+              expression: source_range_node(node)
+            )
+          )
         else
           children << visit(node.keyword_rest)
         end
@@ -1681,15 +1971,21 @@ module SyntaxTree
         children << visit(node.block) if node.block
 
         if node.keyword_rest.is_a?(ArgsForward)
+          location =
+            source_map(expression: source_range_node(node.keyword_rest))
+
+          # If there are no other arguments and we have the emit_forward_arg
+          # option enabled, then the entire argument list is represented by a
+          # single forward_args node.
           if children.empty? && !::Parser::Builders::Default.emit_forward_arg
-            return s(:forward_args, [], nil)
+            return s(:forward_args, [], location)
           end
 
-          children.insert(
-            node.requireds.length + node.optionals.length +
-              node.keywords.length,
-            s(:forward_arg, [], nil)
-          )
+          # Otherwise, we need to insert a forward_arg node into the list of
+          # parameters before any keyword rest or block parameters.
+          index =
+            node.requireds.length + node.optionals.length + node.keywords.length
+          children.insert(index, s(:forward_arg, [], location))
         end
 
         s(:args, children, nil)
@@ -1697,31 +1993,19 @@ module SyntaxTree
 
       # Visit a Paren node.
       def visit_paren(node)
+        location =
+          source_map_collection(
+            begin_token: source_range_length(node.location.start_char, 1),
+            end_token: source_range_length(node.location.end_char, -1),
+            expression: source_range_node(node)
+          )
+
         if node.contents.nil? ||
-             (
-               node.contents.is_a?(Statements) &&
-                 node.contents.body.length == 1 &&
-                 node.contents.body.first.is_a?(VoidStmt)
-             )
-          s(:begin, [], nil)
-        elsif stack[-2].is_a?(DefNode) && stack[-2].target.nil? &&
-              stack[-2].target == node
-          visit(node.contents)
+             (node.contents.is_a?(Statements) && node.contents.empty?)
+          s(:begin, [], location)
         else
           child = visit(node.contents)
-          if child.type == :begin
-            child
-          else
-            s(
-              :begin,
-              [child],
-              source_map_collection(
-                begin_token: source_range_length(node.location.start_char, 1),
-                end_token: source_range_length(node.location.end_char, -1),
-                expression: source_range_node(node)
-              )
-            )
-          end
+          child.type == :begin ? child : s(:begin, [child], location)
         end
       end
 
@@ -1847,23 +2131,86 @@ module SyntaxTree
 
       # Visit a Rescue node.
       def visit_rescue(node)
+        # In the parser gem, there is a separation between the rescue node and
+        # the rescue body. They have different bounds, so we have to calculate
+        # those here.
+        start_char = node.location.start_char
+
+        body_end_char =
+          if node.statements.empty?
+            start_char + 6
+          else
+            node.statements.body.last.location.end_char
+          end
+
+        end_char =
+          if node.consequent
+            end_node = node.consequent
+            end_node = end_node.consequent while end_node.consequent
+
+            if end_node.statements.empty?
+              start_char + 6
+            else
+              end_node.statements.body.last.location.end_char
+            end
+          else
+            body_end_char
+          end
+
+        # These locations are reused for multiple children.
+        keyword = source_range_length(start_char, 6)
+        body_expression = source_range(start_char, body_end_char)
+        expression = source_range(start_char, end_char)
+
         exceptions =
           case node.exception&.exceptions
           when nil
             nil
-          when VarRef
-            s(:array, [visit(node.exception.exceptions)], nil)
           when MRHS
-            s(:array, visit_all(node.exception.exceptions.parts), nil)
+            visit_array(
+              ArrayLiteral.new(
+                lbracket: nil,
+                contents:
+                  Args.new(
+                    parts: node.exception.exceptions.parts,
+                    location: node.exception.exceptions.location
+                  ),
+                location: node.exception.exceptions.location
+              )
+            )
           else
-            s(:array, [visit(node.exception.exceptions)], nil)
+            visit_array(
+              ArrayLiteral.new(
+                lbracket: nil,
+                contents:
+                  Args.new(
+                    parts: [node.exception.exceptions],
+                    location: node.exception.exceptions.location
+                  ),
+                location: node.exception.exceptions.location
+              )
+            )
           end
 
         resbody =
           if node.exception.nil?
-            s(:resbody, [nil, nil, visit(node.statements)], nil)
+            s(
+              :resbody,
+              [nil, nil, visit(node.statements)],
+              source_map_rescue_body(
+                keyword: keyword,
+                expression: body_expression
+              )
+            )
           elsif node.exception.variable.nil?
-            s(:resbody, [exceptions, nil, visit(node.statements)], nil)
+            s(
+              :resbody,
+              [exceptions, nil, visit(node.statements)],
+              source_map_rescue_body(
+                keyword: keyword,
+                expression: body_expression
+              )
+            )
           else
             s(
               :resbody,
@@ -1872,7 +2219,16 @@ module SyntaxTree
                 visit(node.exception.variable),
                 visit(node.statements)
               ],
-              nil
+              source_map_rescue_body(
+                keyword: keyword,
+                assoc:
+                  source_range_find(
+                    node.location.start_char + 6,
+                    node.exception.variable.location.start_char,
+                    "=>"
+                  ),
+                expression: body_expression
+              )
             )
           end
 
@@ -1883,7 +2239,7 @@ module SyntaxTree
           children << nil
         end
 
-        s(:rescue, children, nil)
+        s(:rescue, children, source_map_condition(expression: expression))
       end
 
       # Visit a RescueMod node.
@@ -2314,59 +2670,58 @@ module SyntaxTree
 
       # Visit a VarField node.
       def visit_var_field(node)
-        is_match_var = ->(parent) do
-          case parent
-          when AryPtn, FndPtn, HshPtn, In, RAssign
-            true
-          when Binary
-            parent.operator == :"=>"
-          else
-            false
+        name = node.value.value.to_sym
+        match_var =
+          [stack[-3], stack[-2]].any? do |parent|
+            case parent
+            when AryPtn, FndPtn, HshPtn, In, RAssign
+              true
+            when Binary
+              parent.operator == :"=>"
+            else
+              false
+            end
           end
-        end
 
-        if [stack[-3], stack[-2]].any?(&is_match_var)
-          return(
-            s(
-              :match_var,
-              [node.value.value.to_sym],
-              source_map_variable(
-                name: source_range_node(node),
-                expression: source_range_node(node)
-              )
-            )
-          )
-        end
-
-        case node.value
-        when Const
+        if match_var
           s(
-            :casgn,
-            [nil, node.value.value.to_sym],
-            source_map_constant(
-              name: source_range_node(node.value),
-              expression: source_range_node(node)
-            )
-          )
-        when CVar, GVar, Ident, IVar, VarRef
-          s(
-            {
-              CVar => :cvasgn,
-              GVar => :gvasgn,
-              Ident => :lvasgn,
-              IVar => :ivasgn,
-              VarRef => :lvasgn
-            }[
-              node.value.class
-            ],
-            [node.value.value.to_sym],
+            :match_var,
+            [name],
             source_map_variable(
               name: source_range_node(node),
               expression: source_range_node(node)
             )
           )
+        elsif node.value.is_a?(Const)
+          s(
+            :casgn,
+            [nil, name],
+            source_map_constant(
+              name: source_range_node(node.value),
+              expression: source_range_node(node)
+            )
+          )
         else
-          s(:match_rest, [], nil)
+          location =
+            source_map_variable(
+              name: source_range_node(node),
+              expression: source_range_node(node)
+            )
+
+          case node.value
+          when CVar
+            s(:cvasgn, [name], location)
+          when GVar
+            s(:gvasgn, [name], location)
+          when Ident
+            s(:lvasgn, [name], location)
+          when IVar
+            s(:ivasgn, [name], location)
+          when VarRef
+            s(:lvasgn, [name], location)
+          else
+            s(:match_rest, [], nil)
+          end
         end
       end
 
@@ -2517,7 +2872,12 @@ module SyntaxTree
       private
 
       def block_children(node)
-        arguments = (node.block_var ? visit(node.block_var) : s(:args, [], nil))
+        arguments =
+          if node.block_var
+            visit(node.block_var)
+          else
+            s(:args, [], source_map_collection(expression: nil))
+          end
 
         type = :block
         if !node.block_var && (maximum = num_block_type(node.bodystmt))
@@ -2685,6 +3045,23 @@ module SyntaxTree
           operator,
           name,
           end_token
+        )
+      end
+
+      # Constructs a new source map for a for loop.
+      def source_map_for(
+        keyword: nil,
+        in_token: nil,
+        begin_token: nil,
+        end_token: nil,
+        expression:
+      )
+        ::Parser::Source::Map::For.new(
+          keyword,
+          in_token,
+          begin_token,
+          end_token,
+          expression
         )
       end
 
