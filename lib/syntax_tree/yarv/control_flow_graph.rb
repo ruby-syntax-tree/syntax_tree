@@ -101,6 +101,12 @@ module SyntaxTree
           @successors = []
         end
 
+        # Yield each instruction in this basic block along with its index from
+        # the original instruction sequence.
+        def each_with_index(&block)
+          insns.each.with_index(block_start, &block)
+        end
+
         # This method is used to verify that the basic block is well formed. It
         # checks that the only instruction in this basic block that branches is
         # the last instruction.
@@ -171,7 +177,6 @@ module SyntaxTree
         # block. They are keyed by the index of their first instruction.
         def build_basic_blocks
           block_starts = find_basic_block_starts
-          blocks = {}
 
           block_starts.each_with_index.to_h do |block_start, block_index|
             block_end = (block_starts[(block_index + 1)..] + [insns.length]).min

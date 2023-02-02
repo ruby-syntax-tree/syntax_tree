@@ -38,19 +38,19 @@ module SyntaxTree
         # blocks.
         block_flows = {}
         cfg.blocks.each do |block|
-          block_flows[block.block_start] = DataFlow.new
+          block_flows[block.id] = DataFlow.new
         end
 
         # Now, discover the data flow within each basic block. Using an abstract
         # stack, connect from consumers of data to the producers of that data.
         cfg.blocks.each do |block|
-          block_flow = block_flows.fetch(block.block_start)
+          block_flow = block_flows.fetch(block.id)
 
           stack = []
           stack_initial_depth = 0
 
           # Go through each instruction in the block...
-          block.insns.each.with_index(block.block_start) do |insn, index|
+          block.each_with_index do |insn, index|
             insn_flow = insn_flows[index]
 
             # How many values will be missing from the local stack to run this
@@ -107,9 +107,9 @@ module SyntaxTree
         stack = [*cfg.blocks]
         until stack.empty?
           succ = stack.pop
-          succ_flow = block_flows.fetch(succ.block_start)
+          succ_flow = block_flows.fetch(succ.id)
           succ.predecessors.each do |pred|
-            pred_flow = block_flows.fetch(pred.block_start)
+            pred_flow = block_flows.fetch(pred.id)
 
             # Does a predecessor block have fewer outputs than the successor
             # has inputs?
@@ -132,12 +132,12 @@ module SyntaxTree
 
         # Verify that we constructed the data flow graph correctly. Check that
         # the first block has no arguments.
-        raise unless block_flows.fetch(cfg.blocks.first.block_start).in.empty?
+        raise unless block_flows.fetch(cfg.blocks.first.id).in.empty?
 
         # Check all control flow edges between blocks pass the right number of
         # arguments.
         cfg.blocks.each do |pred|
-          pred_flow = block_flows.fetch(pred.block_start)
+          pred_flow = block_flows.fetch(pred.id)
 
           if pred.successors.empty?
             # With no successors, there should be no output arguments.
@@ -145,7 +145,7 @@ module SyntaxTree
           else
             # Check with successor...
             pred.successors.each do |succ|
-              succ_flow = block_flows.fetch(succ.block_start)
+              succ_flow = block_flows.fetch(succ.id)
 
               # The predecessor should have as many output arguments as the
               # success has input arguments.
@@ -170,12 +170,12 @@ module SyntaxTree
           end
           output.puts
 
-          block_flow = block_flows.fetch(block.block_start)
+          block_flow = block_flows.fetch(block.id)
           unless block_flow.in.empty?
             output.puts "         # in: #{block_flow.in.join(", ")}"
           end
 
-          block.insns.each.with_index(block.block_start) do |insn, index|
+          block.each_with_index do |insn, index|
             output.print("    ")
             output.print(insn.disasm(fmt))
 
