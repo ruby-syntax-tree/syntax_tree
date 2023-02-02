@@ -29,6 +29,7 @@ require_relative "syntax_tree/search"
 require_relative "syntax_tree/index"
 
 require_relative "syntax_tree/yarv"
+require_relative "syntax_tree/yarv/basic_block"
 require_relative "syntax_tree/yarv/bf"
 require_relative "syntax_tree/yarv/compiler"
 require_relative "syntax_tree/yarv/control_flow_graph"

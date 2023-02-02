@@ -40,8 +40,8 @@ module SyntaxTree
         blocks.each do |block|
           output.print(block.id)
 
-          unless block.predecessors.empty?
-            output.print(" # from: #{block.predecessors.map(&:id).join(", ")}")
+          unless block.incoming_blocks.empty?
+            output.print(" # from: #{block.incoming_blocks.map(&:id).join(", ")}")
           end
 
           output.puts
@@ -51,9 +51,9 @@ module SyntaxTree
             output.puts(insn.disasm(fmt))
           end
 
-          successors = block.successors.map(&:id)
-          successors << "leaves" if block.insns.last.leaves?
-          output.print("        # to: #{successors.join(", ")}") unless successors.empty?
+          dests = block.outgoing_blocks.map(&:id)
+          dests << "leaves" if block.insns.last.leaves?
+          output.print("        # to: #{dests.join(", ")}") unless dests.empty?
 
           output.puts
         end
@@ -70,49 +70,6 @@ module SyntaxTree
 
       def self.compile(iseq)
         Compiler.new(iseq).compile
-      end
-
-      # This object represents a single basic block, wherein all contained
-      # instructions do not branch except for the last one.
-      class BasicBlock
-        # This is the unique identifier for this basic block.
-        attr_reader :id
-
-        # This is the index into the list of instructions where this block
-        # starts.
-        attr_reader :block_start
-
-        # This is the set of instructions that this block contains.
-        attr_reader :insns
-
-        # This is an array of basic blocks that are predecessors to this block.
-        attr_reader :predecessors
-
-        # This is an array of basic blocks that are successors to this block.
-        attr_reader :successors
-
-        def initialize(block_start, insns)
-          @id = "block_#{block_start}"
-
-          @block_start = block_start
-          @insns = insns
-
-          @predecessors = []
-          @successors = []
-        end
-
-        # Yield each instruction in this basic block along with its index from
-        # the original instruction sequence.
-        def each_with_index(&block)
-          insns.each.with_index(block_start, &block)
-        end
-
-        # This method is used to verify that the basic block is well formed. It
-        # checks that the only instruction in this basic block that branches is
-        # the last instruction.
-        def verify
-          insns[0...-1].each { |insn| raise unless insn.branch_targets.empty? }
-        end
       end
 
       # This class is responsible for creating a control flow graph from the
@@ -186,22 +143,22 @@ module SyntaxTree
           end
         end
 
-        # Connect the blocks by letting them know which blocks precede them and
-        # which blocks succeed them.
+        # Connect the blocks by letting them know which blocks are incoming and
+        # outgoing from each block.
         def connect_basic_blocks(blocks)
           blocks.each do |block_start, block|
             insn = block.insns.last
 
             insn.branch_targets.each do |branch_target|
-              block.successors << blocks.fetch(labels[branch_target])
+              block.outgoing_blocks << blocks.fetch(labels[branch_target])
             end
 
             if (insn.branch_targets.empty? && !insn.leaves?) || insn.falls_through?
-              block.successors << blocks.fetch(block_start + block.insns.length)
+              block.outgoing_blocks << blocks.fetch(block_start + block.insns.length)
             end
 
-            block.successors.each do |successor|
-              successor.predecessors << block
+            block.outgoing_blocks.each do |outgoing_block|
+              outgoing_block.incoming_blocks << block
             end
           end
         end
