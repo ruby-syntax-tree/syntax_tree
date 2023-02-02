@@ -297,6 +297,69 @@ module SyntaxTree
       end
     end
 
+    def test_cfg
+      iseq = RubyVM::InstructionSequence.compile("100 + (14 < 0 ? -1 : +1)")
+      iseq = SyntaxTree::YARV::InstructionSequence.from(iseq.to_a)
+      cfg = SyntaxTree::YARV::ControlFlowGraph.compile(iseq)
+
+      assert_equal(<<~CFG, cfg.disasm)
+        == cfg <compiled>
+        block_0
+            putobject                              100
+            putobject                              14
+            putobject_INT2FIX_0_
+            opt_lt                                 <calldata!mid:<, argc:1, ARGS_SIMPLE>
+            branchunless                           13
+                # to: block_7, block_5
+        block_5 # from: block_0
+            putobject                              -1
+            jump                                   14
+                # to: block_8
+        block_7 # from: block_0
+            putobject_INT2FIX_1_
+                # to: block_8
+        block_8 # from: block_5, block_7
+            opt_plus                               <calldata!mid:+, argc:1, ARGS_SIMPLE>
+            leave
+                # to: leaves
+      CFG
+    end
+
+    def test_dfg
+      iseq = RubyVM::InstructionSequence.compile("100 + (14 < 0 ? -1 : +1)")
+      iseq = SyntaxTree::YARV::InstructionSequence.from(iseq.to_a)
+      cfg = SyntaxTree::YARV::ControlFlowGraph.compile(iseq)
+      dfg = SyntaxTree::YARV::DataFlowGraph.compile(cfg)
+
+      assert_equal(<<~DFG, dfg.disasm)
+        == dfg <compiled>
+        block_0
+            putobject                              100 # out: out_0
+            putobject                              14 # out: 3
+            putobject_INT2FIX_0_ # out: 3
+            opt_lt                                 <calldata!mid:<, argc:1, ARGS_SIMPLE> # in: 1, 2; out: 4
+            branchunless                           13 # in: 3
+                # to: block_7, block_5
+                # out: 0
+        block_5 # from: block_0
+                 # in: pass_0
+            putobject                              -1 # out: out_0
+            jump                                   14
+                # to: block_8
+                # out: pass_0, 5
+        block_7 # from: block_0
+                 # in: pass_0
+            putobject_INT2FIX_1_ # out: out_0
+                # to: block_8
+                # out: pass_0, 7
+        block_8 # from: block_5, block_7
+                 # in: in_0, in_1
+            opt_plus                               <calldata!mid:+, argc:1, ARGS_SIMPLE> # in: in_0, in_1; out: 9
+            leave # in: 8
+                # to: leaves
+      DFG
+    end
+
     private
 
     def assert_decompiles(expected, source)
