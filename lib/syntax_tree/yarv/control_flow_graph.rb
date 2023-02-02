@@ -105,7 +105,7 @@ module SyntaxTree
         # checks that the only instruction in this basic block that branches is
         # the last instruction.
         def verify
-          insns[0...-1].each { |insn| raise if insn.branches? }
+          insns[0...-1].each { |insn| raise unless insn.branch_targets.empty? }
         end
 
         def last
@@ -157,8 +157,13 @@ module SyntaxTree
           block_starts = Set.new([0])
 
           insns.each_with_index do |insn, index|
-            if insn.branches?
-              block_starts.add(labels[insn.label]) if insn.respond_to?(:label)
+            branch_targets = insn.branch_targets
+
+            if branch_targets.any?
+              branch_targets.each do |branch_target|
+                block_starts.add(labels[branch_target])
+              end
+
               block_starts.add(index + 1) if insn.falls_through?
             end
           end
@@ -186,11 +191,11 @@ module SyntaxTree
           blocks.each do |block_start, block|
             insn = block.last
 
-            if insn.branches? && insn.respond_to?(:label)
-              block.successors << blocks.fetch(labels[insn.label])
+            insn.branch_targets.each do |branch_target|
+              block.successors << blocks.fetch(labels[branch_target])
             end
 
-            if (!insn.branches? && !insn.leaves?) || insn.falls_through?
+            if (insn.branch_targets.empty? && !insn.leaves?) || insn.falls_through?
               block.successors << blocks.fetch(block_start + block.insns.length)
             end
 

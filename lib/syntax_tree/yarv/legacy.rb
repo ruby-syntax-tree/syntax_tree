@@ -115,8 +115,8 @@ module SyntaxTree
           vm.push(nil)
         end
 
-        def branches?
-          true
+        def branch_targets
+          [label]
         end
 
         def falls_through?

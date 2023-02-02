@@ -90,9 +90,9 @@ module SyntaxTree
         0
       end
 
-      # Whether or not this instruction is a branch instruction.
-      def branches?
-        false
+      # This returns an array of labels.
+      def branch_targets
+        []
       end
 
       # Whether or not this instruction leaves the current frame.
@@ -261,8 +261,8 @@ module SyntaxTree
         vm.jump(label) if vm.pop
       end
 
-      def branches?
-        true
+      def branch_targets
+        [label]
       end
 
       def falls_through?
@@ -322,8 +322,8 @@ module SyntaxTree
         vm.jump(label) if vm.pop.nil?
       end
 
-      def branches?
-        true
+      def branch_targets
+        [label]
       end
 
       def falls_through?
@@ -382,8 +382,8 @@ module SyntaxTree
         vm.jump(label) unless vm.pop
       end
 
-      def branches?
-        true
+      def branch_targets
+        [label]
       end
 
       def falls_through?
@@ -2237,8 +2237,8 @@ module SyntaxTree
         vm.jump(label)
       end
 
-      def branches?
-        true
+      def branch_targets
+        [label]
       end
     end
 
@@ -2281,10 +2281,6 @@ module SyntaxTree
 
       def call(vm)
         vm.leave
-      end
-
-      def branches?
-        true
       end
 
       def leaves?
@@ -2998,8 +2994,8 @@ module SyntaxTree
         vm.jump(case_dispatch_hash.fetch(vm.pop, else_label))
       end
 
-      def branches?
-        true
+      def branch_targets
+        case_dispatch_hash.values.push(else_label)
       end
 
       def falls_through?
