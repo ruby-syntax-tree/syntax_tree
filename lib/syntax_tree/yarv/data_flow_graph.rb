@@ -108,7 +108,7 @@ module SyntaxTree
         until stack.empty?
           succ = stack.pop
           succ_flow = block_flows.fetch(succ.block_start)
-          succ.preds.each do |pred|
+          succ.predecessors.each do |pred|
             pred_flow = block_flows.fetch(pred.block_start)
 
             # Does a predecessor block have fewer outputs than the successor
@@ -139,12 +139,12 @@ module SyntaxTree
         cfg.blocks.each do |pred|
           pred_flow = block_flows.fetch(pred.block_start)
 
-          if pred.succs.empty?
+          if pred.successors.empty?
             # With no successors, there should be no output arguments.
             raise unless pred_flow.out.empty?
           else
             # Check with successor...
-            pred.succs.each do |succ|
+            pred.successors.each do |succ|
               succ_flow = block_flows.fetch(succ.block_start)
 
               # The predecessor should have as many output arguments as the
@@ -165,8 +165,8 @@ module SyntaxTree
 
         cfg.blocks.each do |block|
           output.print(block.id)
-          unless block.preds.empty?
-            output.print(" # from: #{block.preds.map(&:id).join(", ")}")
+          unless block.predecessors.empty?
+            output.print(" # from: #{block.predecessors.map(&:id).join(", ")}")
           end
           output.puts
 
@@ -198,9 +198,9 @@ module SyntaxTree
             output.puts
           end
 
-          succs = block.succs.map(&:id)
-          succs << "leaves" if block.last.leaves?
-          output.puts("        # to: #{succs.join(", ")}") unless succs.empty?
+          successors = block.successors.map(&:id)
+          successors << "leaves" if block.last.leaves?
+          output.puts("        # to: #{successors.join(", ")}") unless successors.empty?
 
           unless block_flow.out.empty?
             output.puts "        # out: #{block_flow.out.join(", ")}"

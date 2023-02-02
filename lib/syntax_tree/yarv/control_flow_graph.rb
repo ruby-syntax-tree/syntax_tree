@@ -14,6 +14,64 @@ module SyntaxTree
     #     cfg = SyntaxTree::YARV::ControlFlowGraph.compile(iseq)
     #
     class ControlFlowGraph
+      # This is the instruction sequence that this control flow graph
+      # corresponds to.
+      attr_reader :iseq
+
+      # This is the list of instructions that this control flow graph contains.
+      # It is effectively the same as the list of instructions in the
+      # instruction sequence but with line numbers and events filtered out.
+      attr_reader :insns
+
+      # This is the set of basic blocks that this control-flow graph contains.
+      attr_reader :blocks
+
+      def initialize(iseq, insns, blocks)
+        @iseq = iseq
+        @insns = insns
+        @blocks = blocks
+      end
+
+      def disasm
+        fmt = Disassembler.new
+        output = StringIO.new
+        output.puts "== cfg #{iseq.name}"
+
+        blocks.each do |block|
+          output.print(block.id)
+
+          unless block.predecessors.empty?
+            output.print(" # from: #{block.predecessors.map(&:id).join(", ")}")
+          end
+
+          output.puts
+
+          block.insns.each do |insn|
+            output.print("    ")
+            output.puts(insn.disasm(fmt))
+          end
+
+          successors = block.successors.map(&:id)
+          successors << "leaves" if block.last.leaves?
+          output.print("        # to: #{successors.join(", ")}") unless successors.empty?
+
+          output.puts
+        end
+
+        output.string
+      end
+
+      # This method is used to verify that the control flow graph is well
+      # formed. It does this by checking that each basic block is itself well
+      # formed.
+      def verify
+        blocks.each(&:verify)
+      end
+
+      def self.compile(iseq)
+        Compiler.new(iseq).compile
+      end
+
       # This object represents a single basic block, wherein all contained
       # instructions do not branch except for the last one.
       class BasicBlock
@@ -28,10 +86,10 @@ module SyntaxTree
         attr_reader :insns
 
         # This is an array of basic blocks that are predecessors to this block.
-        attr_reader :preds
+        attr_reader :predecessors
 
         # This is an array of basic blocks that are successors to this block.
-        attr_reader :succs
+        attr_reader :successors
 
         def initialize(block_start, insns)
           @id = "block_#{block_start}"
@@ -39,8 +97,8 @@ module SyntaxTree
           @block_start = block_start
           @insns = insns
 
-          @preds = []
-          @succs = []
+          @predecessors = []
+          @successors = []
         end
 
         # This method is used to verify that the basic block is well formed. It
@@ -122,81 +180,25 @@ module SyntaxTree
           end
         end
 
-        # Now we need to connect the blocks by letting them know which blocks
-        # precede them and which blocks follow them.
+        # Connect the blocks by letting them know which blocks precede them and
+        # which blocks succeed them.
         def connect_basic_blocks(blocks)
           blocks.each do |block_start, block|
             insn = block.last
 
             if insn.branches? && insn.respond_to?(:label)
-              block.succs << blocks.fetch(labels[insn.label])
+              block.successors << blocks.fetch(labels[insn.label])
             end
 
             if (!insn.branches? && !insn.leaves?) || insn.falls_through?
-              block.succs << blocks.fetch(block_start + block.insns.length)
+              block.successors << blocks.fetch(block_start + block.insns.length)
             end
 
-            block.succs.each { |succ| succ.preds << block }
+            block.successors.each do |successor|
+              successor.predecessors << block
+            end
           end
         end
-      end
-
-      # This is the instruction sequence that this control flow graph
-      # corresponds to.
-      attr_reader :iseq
-
-      # This is the list of instructions that this control flow graph contains.
-      # It is effectively the same as the list of instructions in the
-      # instruction sequence but with line numbers and events filtered out.
-      attr_reader :insns
-
-      # This is the set of basic blocks that this control-flow graph contains.
-      attr_reader :blocks
-
-      def initialize(iseq, insns, blocks)
-        @iseq = iseq
-        @insns = insns
-        @blocks = blocks
-      end
-
-      def disasm
-        fmt = Disassembler.new
-        output = StringIO.new
-        output.puts "== cfg #{iseq.name}"
-
-        blocks.each do |block|
-          output.print(block.id)
-
-          unless block.preds.empty?
-            output.print(" # from: #{block.preds.map(&:id).join(", ")}")
-          end
-
-          output.puts
-
-          block.insns.each do |insn|
-            output.print("    ")
-            output.puts(insn.disasm(fmt))
-          end
-
-          succs = block.succs.map(&:id)
-          succs << "leaves" if block.last.leaves?
-          output.print("        # to: #{succs.join(", ")}") unless succs.empty?
-
-          output.puts
-        end
-
-        output.string
-      end
-
-      # This method is used to verify that the control flow graph is well
-      # formed. It does this by checking that each basic block is itself well
-      # formed.
-      def verify
-        blocks.each(&:verify)
-      end
-
-      def self.compile(iseq)
-        Compiler.new(iseq).compile
       end
     end
   end
