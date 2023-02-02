@@ -130,7 +130,6 @@ module SyntaxTree
 
       def disasm
         fmt = Disassembler.new
-
         output = StringIO.new
         output.puts "== cfg #{iseq.name}"
 
