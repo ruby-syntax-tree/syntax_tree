@@ -19,7 +19,7 @@ module SyntaxTree
       # @@class_variable
       # ~~~
       #
-      class GetClassVariable
+      class GetClassVariable < Instruction
         attr_reader :name
 
         def initialize(name)
@@ -44,10 +44,6 @@ module SyntaxTree
 
         def length
           2
-        end
-
-        def pops
-          0
         end
 
         def pushes
@@ -79,7 +75,7 @@ module SyntaxTree
       # Constant
       # ~~~
       #
-      class OptGetInlineCache
+      class OptGetInlineCache < Instruction
         attr_reader :label, :cache
 
         def initialize(label, cache)
@@ -111,20 +107,20 @@ module SyntaxTree
           3
         end
 
-        def pops
-          0
-        end
-
         def pushes
           1
         end
 
-        def canonical
-          self
-        end
-
         def call(vm)
           vm.push(nil)
+        end
+
+        def branches?
+          true
+        end
+
+        def falls_through?
+          true
         end
       end
 
@@ -143,7 +139,7 @@ module SyntaxTree
       # Constant
       # ~~~
       #
-      class OptSetInlineCache
+      class OptSetInlineCache < Instruction
         attr_reader :cache
 
         def initialize(cache)
@@ -178,10 +174,6 @@ module SyntaxTree
           1
         end
 
-        def canonical
-          self
-        end
-
         def call(vm)
         end
       end
@@ -200,7 +192,7 @@ module SyntaxTree
       # @@class_variable = 1
       # ~~~
       #
-      class SetClassVariable
+      class SetClassVariable < Instruction
         attr_reader :name
 
         def initialize(name)
@@ -229,10 +221,6 @@ module SyntaxTree
 
         def pops
           1
-        end
-
-        def pushes
-          0
         end
 
         def canonical

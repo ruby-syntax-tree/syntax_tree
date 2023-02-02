@@ -288,38 +288,12 @@ module SyntaxTree
       end
     end
 
-    instructions =
-      YARV.constants.map { YARV.const_get(_1) } +
-        YARV::Legacy.constants.map { YARV::Legacy.const_get(_1) } -
-        [
-          YARV::Assembler,
-          YARV::Bf,
-          YARV::CallData,
-          YARV::Compiler,
-          YARV::Decompiler,
-          YARV::Disassembler,
-          YARV::InstructionSequence,
-          YARV::Legacy,
-          YARV::LocalTable,
-          YARV::VM
-        ]
+    ObjectSpace.each_object(YARV::Instruction.singleton_class) do |instruction|
+      next if instruction == YARV::Instruction
 
-    interface = %i[
-      disasm
-      to_a
-      deconstruct_keys
-      length
-      pops
-      pushes
-      canonical
-      call
-      ==
-    ]
-
-    instructions.each do |instruction|
       define_method("test_instruction_interface_#{instruction.name}") do
-        instance_methods = instruction.instance_methods(false)
-        assert_empty(interface - instance_methods)
+        methods = instruction.instance_methods(false)
+        assert_empty(%i[disasm to_a deconstruct_keys call ==] - methods)
       end
     end
 
