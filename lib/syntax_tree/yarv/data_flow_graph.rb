@@ -199,7 +199,7 @@ module SyntaxTree
           end
 
           successors = block.successors.map(&:id)
-          successors << "leaves" if block.last.leaves?
+          successors << "leaves" if block.insns.last.leaves?
           output.puts("        # to: #{successors.join(", ")}") unless successors.empty?
 
           unless block_flow.out.empty?

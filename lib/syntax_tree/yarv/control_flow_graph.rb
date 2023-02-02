@@ -52,7 +52,7 @@ module SyntaxTree
           end
 
           successors = block.successors.map(&:id)
-          successors << "leaves" if block.last.leaves?
+          successors << "leaves" if block.insns.last.leaves?
           output.print("        # to: #{successors.join(", ")}") unless successors.empty?
 
           output.puts
@@ -106,10 +106,6 @@ module SyntaxTree
         # the last instruction.
         def verify
           insns[0...-1].each { |insn| raise unless insn.branch_targets.empty? }
-        end
-
-        def last
-          insns.last
         end
       end
 
@@ -189,7 +185,7 @@ module SyntaxTree
         # which blocks succeed them.
         def connect_basic_blocks(blocks)
           blocks.each do |block_start, block|
-            insn = block.last
+            insn = block.insns.last
 
             insn.branch_targets.each do |branch_target|
               block.successors << blocks.fetch(labels[branch_target])
