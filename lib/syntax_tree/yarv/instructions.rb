@@ -2,65 +2,48 @@
 
 module SyntaxTree
   module YARV
-    # This is an operand to various YARV instructions that represents the
-    # information about a specific call site.
-    class CallData
-      CALL_ARGS_SPLAT = 1 << 0
-      CALL_ARGS_BLOCKARG = 1 << 1
-      CALL_FCALL = 1 << 2
-      CALL_VCALL = 1 << 3
-      CALL_ARGS_SIMPLE = 1 << 4
-      CALL_BLOCKISEQ = 1 << 5
-      CALL_KWARG = 1 << 6
-      CALL_KW_SPLAT = 1 << 7
-      CALL_TAILCALL = 1 << 8
-      CALL_SUPER = 1 << 9
-      CALL_ZSUPER = 1 << 10
-      CALL_OPT_SEND = 1 << 11
-      CALL_KW_SPLAT_MUT = 1 << 12
-
-      attr_reader :method, :argc, :flags, :kw_arg
-
-      def initialize(
-        method,
-        argc = 0,
-        flags = CallData::CALL_ARGS_SIMPLE,
-        kw_arg = nil
-      )
-        @method = method
-        @argc = argc
-        @flags = flags
-        @kw_arg = kw_arg
+    # This is a base class for all YARV instructions. It provides a few
+    # convenience methods for working with instructions.
+    class Instruction
+      # This method creates an instruction that represents the canonical
+      # (non-specialized) form of this instruction. If this instruction is not
+      # a specialized instruction, then this method returns `self`.
+      def canonical
+        self
       end
 
-      def flag?(mask)
-        (flags & mask) > 0
+      # This returns the size of the instruction in terms of the number of slots
+      # it occupies in the instruction sequence. Effectively this is 1 plus the
+      # number of operands.
+      def length
+        1
       end
 
-      def to_h
-        result = { mid: method, flag: flags, orig_argc: argc }
-        result[:kw_arg] = kw_arg if kw_arg
-        result
+      # This returns the number of values that are pushed onto the stack.
+      def pushes
+        0
       end
 
-      def self.from(serialized)
-        new(
-          serialized[:mid],
-          serialized[:orig_argc],
-          serialized[:flag],
-          serialized[:kw_arg]
-        )
+      # This returns the number of values that are popped off the stack.
+      def pops
+        0
       end
-    end
 
-    # A convenience method for creating a CallData object.
-    def self.calldata(
-      method,
-      argc = 0,
-      flags = CallData::CALL_ARGS_SIMPLE,
-      kw_arg = nil
-    )
-      CallData.new(method, argc, flags, kw_arg)
+      # This returns an array of labels.
+      def branch_targets
+        []
+      end
+
+      # Whether or not this instruction leaves the current frame.
+      def leaves?
+        false
+      end
+
+      # Whether or not this instruction falls through to the next instruction if
+      # its branching fails.
+      def falls_through?
+        false
+      end
     end
 
     # ### Summary
@@ -76,7 +59,7 @@ module SyntaxTree
     # x[0]
     # ~~~
     #
-    class AdjustStack
+    class AdjustStack < Instruction
       attr_reader :number
 
       def initialize(number)
@@ -107,14 +90,6 @@ module SyntaxTree
         number
       end
 
-      def pushes
-        0
-      end
-
-      def canonical
-        self
-      end
-
       def call(vm)
         vm.pop(number)
       end
@@ -138,7 +113,7 @@ module SyntaxTree
     # "#{5}"
     # ~~~
     #
-    class AnyToString
+    class AnyToString < Instruction
       def disasm(fmt)
         fmt.instruction("anytostring")
       end
@@ -155,20 +130,12 @@ module SyntaxTree
         other.is_a?(AnyToString)
       end
 
-      def length
-        1
-      end
-
       def pops
         2
       end
 
       def pushes
         1
-      end
-
-      def canonical
-        self
       end
 
       def call(vm)
@@ -198,7 +165,7 @@ module SyntaxTree
     # puts x
     # ~~~
     #
-    class BranchIf
+    class BranchIf < Instruction
       attr_reader :label
 
       def initialize(label)
@@ -229,16 +196,16 @@ module SyntaxTree
         1
       end
 
-      def pushes
-        0
-      end
-
-      def canonical
-        self
-      end
-
       def call(vm)
         vm.jump(label) if vm.pop
+      end
+
+      def branch_targets
+        [label]
+      end
+
+      def falls_through?
+        true
       end
     end
 
@@ -259,7 +226,7 @@ module SyntaxTree
     # end
     # ~~~
     #
-    class BranchNil
+    class BranchNil < Instruction
       attr_reader :label
 
       def initialize(label)
@@ -290,16 +257,16 @@ module SyntaxTree
         1
       end
 
-      def pushes
-        0
-      end
-
-      def canonical
-        self
-      end
-
       def call(vm)
         vm.jump(label) if vm.pop.nil?
+      end
+
+      def branch_targets
+        [label]
+      end
+
+      def falls_through?
+        true
       end
     end
 
@@ -319,7 +286,7 @@ module SyntaxTree
     # end
     # ~~~
     #
-    class BranchUnless
+    class BranchUnless < Instruction
       attr_reader :label
 
       def initialize(label)
@@ -350,16 +317,16 @@ module SyntaxTree
         1
       end
 
-      def pushes
-        0
-      end
-
-      def canonical
-        self
-      end
-
       def call(vm)
         vm.jump(label) unless vm.pop
+      end
+
+      def branch_targets
+        [label]
+      end
+
+      def falls_through?
+        true
       end
     end
 
@@ -382,7 +349,7 @@ module SyntaxTree
     # evaluate(value: 3)
     # ~~~
     #
-    class CheckKeyword
+    class CheckKeyword < Instruction
       attr_reader :keyword_bits_index, :keyword_index
 
       def initialize(keyword_bits_index, keyword_index)
@@ -419,16 +386,8 @@ module SyntaxTree
         3
       end
 
-      def pops
-        0
-      end
-
       def pushes
         1
-      end
-
-      def canonical
-        self
       end
 
       def call(vm)
@@ -448,7 +407,7 @@ module SyntaxTree
     # foo in Foo
     # ~~~
     #
-    class CheckMatch
+    class CheckMatch < Instruction
       VM_CHECKMATCH_TYPE_WHEN = 1
       VM_CHECKMATCH_TYPE_CASE = 2
       VM_CHECKMATCH_TYPE_RESCUE = 3
@@ -487,10 +446,6 @@ module SyntaxTree
 
       def pushes
         1
-      end
-
-      def canonical
-        self
       end
 
       def call(vm)
@@ -536,7 +491,7 @@ module SyntaxTree
     # foo in [bar]
     # ~~~
     #
-    class CheckType
+    class CheckType < Instruction
       TYPE_OBJECT = 0x01
       TYPE_CLASS = 0x02
       TYPE_MODULE = 0x03
@@ -643,10 +598,6 @@ module SyntaxTree
         2
       end
 
-      def canonical
-        self
-      end
-
       def call(vm)
         object = vm.pop
         result =
@@ -713,7 +664,7 @@ module SyntaxTree
     # [1, *2]
     # ~~~
     #
-    class ConcatArray
+    class ConcatArray < Instruction
       def disasm(fmt)
         fmt.instruction("concatarray")
       end
@@ -730,20 +681,12 @@ module SyntaxTree
         other.is_a?(ConcatArray)
       end
 
-      def length
-        1
-      end
-
       def pops
         2
       end
 
       def pushes
         1
-      end
-
-      def canonical
-        self
       end
 
       def call(vm)
@@ -767,7 +710,7 @@ module SyntaxTree
     # "#{5}"
     # ~~~
     #
-    class ConcatStrings
+    class ConcatStrings < Instruction
       attr_reader :number
 
       def initialize(number)
@@ -802,10 +745,6 @@ module SyntaxTree
         1
       end
 
-      def canonical
-        self
-      end
-
       def call(vm)
         vm.push(vm.pop(number).join)
       end
@@ -826,7 +765,7 @@ module SyntaxTree
     # end
     # ~~~
     #
-    class DefineClass
+    class DefineClass < Instruction
       TYPE_CLASS = 0
       TYPE_SINGLETON_CLASS = 1
       TYPE_MODULE = 2
@@ -874,10 +813,6 @@ module SyntaxTree
         1
       end
 
-      def canonical
-        self
-      end
-
       def call(vm)
         object, superclass = vm.pop(2)
 
@@ -914,7 +849,7 @@ module SyntaxTree
     # defined?(x)
     # ~~~
     #
-    class Defined
+    class Defined < Instruction
       TYPE_NIL = 1
       TYPE_IVAR = 2
       TYPE_LVAR = 3
@@ -1011,10 +946,6 @@ module SyntaxTree
         1
       end
 
-      def canonical
-        self
-      end
-
       def call(vm)
         object = vm.pop
 
@@ -1069,7 +1000,7 @@ module SyntaxTree
     # def value = "value"
     # ~~~
     #
-    class DefineMethod
+    class DefineMethod < Instruction
       attr_reader :method_name, :method_iseq
 
       def initialize(method_name, method_iseq)
@@ -1100,18 +1031,6 @@ module SyntaxTree
 
       def length
         3
-      end
-
-      def pops
-        0
-      end
-
-      def pushes
-        0
-      end
-
-      def canonical
-        self
       end
 
       def call(vm)
@@ -1150,7 +1069,7 @@ module SyntaxTree
     # def self.value = "value"
     # ~~~
     #
-    class DefineSMethod
+    class DefineSMethod < Instruction
       attr_reader :method_name, :method_iseq
 
       def initialize(method_name, method_iseq)
@@ -1187,14 +1106,6 @@ module SyntaxTree
         1
       end
 
-      def pushes
-        0
-      end
-
-      def canonical
-        self
-      end
-
       def call(vm)
         name = method_name
         nesting = vm.frame.nesting
@@ -1227,7 +1138,7 @@ module SyntaxTree
     # $global = 5
     # ~~~
     #
-    class Dup
+    class Dup < Instruction
       def disasm(fmt)
         fmt.instruction("dup")
       end
@@ -1244,20 +1155,12 @@ module SyntaxTree
         other.is_a?(Dup)
       end
 
-      def length
-        1
-      end
-
       def pops
         1
       end
 
       def pushes
         2
-      end
-
-      def canonical
-        self
       end
 
       def call(vm)
@@ -1275,7 +1178,7 @@ module SyntaxTree
     # [true]
     # ~~~
     #
-    class DupArray
+    class DupArray < Instruction
       attr_reader :object
 
       def initialize(object)
@@ -1302,16 +1205,8 @@ module SyntaxTree
         2
       end
 
-      def pops
-        0
-      end
-
       def pushes
         1
-      end
-
-      def canonical
-        self
       end
 
       def call(vm)
@@ -1329,7 +1224,7 @@ module SyntaxTree
     # { a: 1 }
     # ~~~
     #
-    class DupHash
+    class DupHash < Instruction
       attr_reader :object
 
       def initialize(object)
@@ -1356,16 +1251,8 @@ module SyntaxTree
         2
       end
 
-      def pops
-        0
-      end
-
       def pushes
         1
-      end
-
-      def canonical
-        self
       end
 
       def call(vm)
@@ -1383,7 +1270,7 @@ module SyntaxTree
     # Object::X ||= true
     # ~~~
     #
-    class DupN
+    class DupN < Instruction
       attr_reader :number
 
       def initialize(number)
@@ -1410,16 +1297,8 @@ module SyntaxTree
         2
       end
 
-      def pops
-        0
-      end
-
       def pushes
         number
-      end
-
-      def canonical
-        self
       end
 
       def call(vm)
@@ -1441,7 +1320,7 @@ module SyntaxTree
     # x, = [true, false, nil]
     # ~~~
     #
-    class ExpandArray
+    class ExpandArray < Instruction
       attr_reader :number, :flags
 
       def initialize(number, flags)
@@ -1476,10 +1355,6 @@ module SyntaxTree
 
       def pushes
         number
-      end
-
-      def canonical
-        self
       end
 
       def call(vm)
@@ -1539,7 +1414,7 @@ module SyntaxTree
     # end
     # ~~~
     #
-    class GetBlockParam
+    class GetBlockParam < Instruction
       attr_reader :index, :level
 
       def initialize(index, level)
@@ -1570,16 +1445,8 @@ module SyntaxTree
         3
       end
 
-      def pops
-        0
-      end
-
       def pushes
         1
-      end
-
-      def canonical
-        self
       end
 
       def call(vm)
@@ -1602,7 +1469,7 @@ module SyntaxTree
     # end
     # ~~~
     #
-    class GetBlockParamProxy
+    class GetBlockParamProxy < Instruction
       attr_reader :index, :level
 
       def initialize(index, level)
@@ -1636,16 +1503,8 @@ module SyntaxTree
         3
       end
 
-      def pops
-        0
-      end
-
       def pushes
         1
-      end
-
-      def canonical
-        self
       end
 
       def call(vm)
@@ -1665,7 +1524,7 @@ module SyntaxTree
     # @@class_variable
     # ~~~
     #
-    class GetClassVariable
+    class GetClassVariable < Instruction
       attr_reader :name, :cache
 
       def initialize(name, cache)
@@ -1697,16 +1556,8 @@ module SyntaxTree
         3
       end
 
-      def pops
-        0
-      end
-
       def pushes
         1
-      end
-
-      def canonical
-        self
       end
 
       def call(vm)
@@ -1728,7 +1579,7 @@ module SyntaxTree
     # Constant
     # ~~~
     #
-    class GetConstant
+    class GetConstant < Instruction
       attr_reader :name
 
       def initialize(name)
@@ -1763,10 +1614,6 @@ module SyntaxTree
         1
       end
 
-      def canonical
-        self
-      end
-
       def call(vm)
         const_base, allow_nil = vm.pop(2)
 
@@ -1798,7 +1645,7 @@ module SyntaxTree
     # $$
     # ~~~
     #
-    class GetGlobal
+    class GetGlobal < Instruction
       attr_reader :name
 
       def initialize(name)
@@ -1825,16 +1672,8 @@ module SyntaxTree
         2
       end
 
-      def pops
-        0
-      end
-
       def pushes
         1
-      end
-
-      def canonical
-        self
       end
 
       def call(vm)
@@ -1861,7 +1700,7 @@ module SyntaxTree
     # @instance_variable
     # ~~~
     #
-    class GetInstanceVariable
+    class GetInstanceVariable < Instruction
       attr_reader :name, :cache
 
       def initialize(name, cache)
@@ -1893,16 +1732,8 @@ module SyntaxTree
         3
       end
 
-      def pops
-        0
-      end
-
       def pushes
         1
-      end
-
-      def canonical
-        self
       end
 
       def call(vm)
@@ -1925,7 +1756,7 @@ module SyntaxTree
     # tap { tap { value } }
     # ~~~
     #
-    class GetLocal
+    class GetLocal < Instruction
       attr_reader :index, :level
 
       def initialize(index, level)
@@ -1955,16 +1786,8 @@ module SyntaxTree
         3
       end
 
-      def pops
-        0
-      end
-
       def pushes
         1
-      end
-
-      def canonical
-        self
       end
 
       def call(vm)
@@ -1985,7 +1808,7 @@ module SyntaxTree
     # value
     # ~~~
     #
-    class GetLocalWC0
+    class GetLocalWC0 < Instruction
       attr_reader :index
 
       def initialize(index)
@@ -2010,10 +1833,6 @@ module SyntaxTree
 
       def length
         2
-      end
-
-      def pops
-        0
       end
 
       def pushes
@@ -2042,7 +1861,7 @@ module SyntaxTree
     # self.then { value }
     # ~~~
     #
-    class GetLocalWC1
+    class GetLocalWC1 < Instruction
       attr_reader :index
 
       def initialize(index)
@@ -2069,10 +1888,6 @@ module SyntaxTree
         2
       end
 
-      def pops
-        0
-      end
-
       def pushes
         1
       end
@@ -2096,7 +1911,7 @@ module SyntaxTree
     # 1 if (a == 1) .. (b == 2)
     # ~~~
     #
-    class GetSpecial
+    class GetSpecial < Instruction
       SVAR_LASTLINE = 0 # $_
       SVAR_BACKREF = 1 # $~
       SVAR_FLIPFLOP_START = 2 # flipflop
@@ -2128,16 +1943,8 @@ module SyntaxTree
         3
       end
 
-      def pops
-        0
-      end
-
       def pushes
         1
-      end
-
-      def canonical
-        self
       end
 
       def call(vm)
@@ -2163,7 +1970,7 @@ module SyntaxTree
     # :"#{"foo"}"
     # ~~~
     #
-    class Intern
+    class Intern < Instruction
       def disasm(fmt)
         fmt.instruction("intern")
       end
@@ -2180,20 +1987,12 @@ module SyntaxTree
         other.is_a?(Intern)
       end
 
-      def length
-        1
-      end
-
       def pops
         1
       end
 
       def pushes
         1
-      end
-
-      def canonical
-        self
       end
 
       def call(vm)
@@ -2215,7 +2014,7 @@ module SyntaxTree
     # end
     # ~~~
     #
-    class InvokeBlock
+    class InvokeBlock < Instruction
       attr_reader :calldata
 
       def initialize(calldata)
@@ -2250,10 +2049,6 @@ module SyntaxTree
         1
       end
 
-      def canonical
-        self
-      end
-
       def call(vm)
         vm.push(vm.frame_yield.block.call(*vm.pop(calldata.argc)))
       end
@@ -2273,7 +2068,7 @@ module SyntaxTree
     # end
     # ~~~
     #
-    class InvokeSuper
+    class InvokeSuper < Instruction
       attr_reader :calldata, :block_iseq
 
       def initialize(calldata, block_iseq)
@@ -2302,10 +2097,6 @@ module SyntaxTree
           other.block_iseq == block_iseq
       end
 
-      def length
-        1
-      end
-
       def pops
         argb = (calldata.flag?(CallData::CALL_ARGS_BLOCKARG) ? 1 : 0)
         argb + calldata.argc + 1
@@ -2313,10 +2104,6 @@ module SyntaxTree
 
       def pushes
         1
-      end
-
-      def canonical
-        self
       end
 
       def call(vm)
@@ -2358,7 +2145,7 @@ module SyntaxTree
     # end
     # ~~~
     #
-    class Jump
+    class Jump < Instruction
       attr_reader :label
 
       def initialize(label)
@@ -2385,20 +2172,12 @@ module SyntaxTree
         2
       end
 
-      def pops
-        0
-      end
-
-      def pushes
-        0
-      end
-
-      def canonical
-        self
-      end
-
       def call(vm)
         vm.jump(label)
+      end
+
+      def branch_targets
+        [label]
       end
     end
 
@@ -2412,7 +2191,7 @@ module SyntaxTree
     # ;;
     # ~~~
     #
-    class Leave
+    class Leave < Instruction
       def disasm(fmt)
         fmt.instruction("leave")
       end
@@ -2429,10 +2208,6 @@ module SyntaxTree
         other.is_a?(Leave)
       end
 
-      def length
-        1
-      end
-
       def pops
         1
       end
@@ -2443,12 +2218,12 @@ module SyntaxTree
         0
       end
 
-      def canonical
-        self
-      end
-
       def call(vm)
         vm.leave
+      end
+
+      def leaves?
+        true
       end
     end
 
@@ -2464,7 +2239,7 @@ module SyntaxTree
     # ["string"]
     # ~~~
     #
-    class NewArray
+    class NewArray < Instruction
       attr_reader :number
 
       def initialize(number)
@@ -2499,10 +2274,6 @@ module SyntaxTree
         1
       end
 
-      def canonical
-        self
-      end
-
       def call(vm)
         vm.push(vm.pop(number))
       end
@@ -2520,7 +2291,7 @@ module SyntaxTree
     # ["string", **{ foo: "bar" }]
     # ~~~
     #
-    class NewArrayKwSplat
+    class NewArrayKwSplat < Instruction
       attr_reader :number
 
       def initialize(number)
@@ -2555,10 +2326,6 @@ module SyntaxTree
         1
       end
 
-      def canonical
-        self
-      end
-
       def call(vm)
         vm.push(vm.pop(number))
       end
@@ -2578,7 +2345,7 @@ module SyntaxTree
     # end
     # ~~~
     #
-    class NewHash
+    class NewHash < Instruction
       attr_reader :number
 
       def initialize(number)
@@ -2613,10 +2380,6 @@ module SyntaxTree
         1
       end
 
-      def canonical
-        self
-      end
-
       def call(vm)
         vm.push(vm.pop(number).each_slice(2).to_h)
       end
@@ -2637,7 +2400,7 @@ module SyntaxTree
     # p (x..y), (x...y)
     # ~~~
     #
-    class NewRange
+    class NewRange < Instruction
       attr_reader :exclude_end
 
       def initialize(exclude_end)
@@ -2672,10 +2435,6 @@ module SyntaxTree
         1
       end
 
-      def canonical
-        self
-      end
-
       def call(vm)
         vm.push(Range.new(*vm.pop(2), exclude_end == 1))
       end
@@ -2692,7 +2451,7 @@ module SyntaxTree
     # raise rescue true
     # ~~~
     #
-    class Nop
+    class Nop < Instruction
       def disasm(fmt)
         fmt.instruction("nop")
       end
@@ -2707,22 +2466,6 @@ module SyntaxTree
 
       def ==(other)
         other.is_a?(Nop)
-      end
-
-      def length
-        1
-      end
-
-      def pops
-        0
-      end
-
-      def pushes
-        0
-      end
-
-      def canonical
-        self
       end
 
       def call(vm)
@@ -2743,7 +2486,7 @@ module SyntaxTree
     # "#{5}"
     # ~~~
     #
-    class ObjToString
+    class ObjToString < Instruction
       attr_reader :calldata
 
       def initialize(calldata)
@@ -2778,10 +2521,6 @@ module SyntaxTree
         1
       end
 
-      def canonical
-        self
-      end
-
       def call(vm)
         vm.push(vm.pop.to_s)
       end
@@ -2800,7 +2539,7 @@ module SyntaxTree
     # END { puts "END" }
     # ~~~
     #
-    class Once
+    class Once < Instruction
       attr_reader :iseq, :cache
 
       def initialize(iseq, cache)
@@ -2829,16 +2568,8 @@ module SyntaxTree
         3
       end
 
-      def pops
-        0
-      end
-
       def pushes
         1
-      end
-
-      def canonical
-        self
       end
 
       def call(vm)
@@ -2861,7 +2592,7 @@ module SyntaxTree
     # 2 & 3
     # ~~~
     #
-    class OptAnd
+    class OptAnd < Instruction
       attr_reader :calldata
 
       def initialize(calldata)
@@ -2917,7 +2648,7 @@ module SyntaxTree
     # 7[2]
     # ~~~
     #
-    class OptAref
+    class OptAref < Instruction
       attr_reader :calldata
 
       def initialize(calldata)
@@ -2974,7 +2705,7 @@ module SyntaxTree
     # { 'test' => true }['test']
     # ~~~
     #
-    class OptArefWith
+    class OptArefWith < Instruction
       attr_reader :object, :calldata
 
       def initialize(object, calldata)
@@ -3014,10 +2745,6 @@ module SyntaxTree
         1
       end
 
-      def canonical
-        self
-      end
-
       def call(vm)
         vm.push(vm.pop[object])
       end
@@ -3036,7 +2763,7 @@ module SyntaxTree
     # {}[:key] = value
     # ~~~
     #
-    class OptAset
+    class OptAset < Instruction
       attr_reader :calldata
 
       def initialize(calldata)
@@ -3092,7 +2819,7 @@ module SyntaxTree
     # {}["key"] = value
     # ~~~
     #
-    class OptAsetWith
+    class OptAsetWith < Instruction
       attr_reader :object, :calldata
 
       def initialize(object, calldata)
@@ -3132,10 +2859,6 @@ module SyntaxTree
         1
       end
 
-      def canonical
-        self
-      end
-
       def call(vm)
         hash, value = vm.pop(2)
         vm.push(hash[object] = value)
@@ -3165,7 +2888,7 @@ module SyntaxTree
     # end
     # ~~~
     #
-    class OptCaseDispatch
+    class OptCaseDispatch < Instruction
       attr_reader :case_dispatch_hash, :else_label
 
       def initialize(case_dispatch_hash, else_label)
@@ -3206,16 +2929,16 @@ module SyntaxTree
         1
       end
 
-      def pushes
-        0
-      end
-
-      def canonical
-        self
-      end
-
       def call(vm)
         vm.jump(case_dispatch_hash.fetch(vm.pop, else_label))
+      end
+
+      def branch_targets
+        case_dispatch_hash.values.push(else_label)
+      end
+
+      def falls_through?
+        true
       end
     end
 
@@ -3232,7 +2955,7 @@ module SyntaxTree
     # 2 / 3
     # ~~~
     #
-    class OptDiv
+    class OptDiv < Instruction
       attr_reader :calldata
 
       def initialize(calldata)
@@ -3288,7 +3011,7 @@ module SyntaxTree
     # "".empty?
     # ~~~
     #
-    class OptEmptyP
+    class OptEmptyP < Instruction
       attr_reader :calldata
 
       def initialize(calldata)
@@ -3345,7 +3068,7 @@ module SyntaxTree
     # 2 == 2
     # ~~~
     #
-    class OptEq
+    class OptEq < Instruction
       attr_reader :calldata
 
       def initialize(calldata)
@@ -3402,7 +3125,7 @@ module SyntaxTree
     # 4 >= 3
     # ~~~
     #
-    class OptGE
+    class OptGE < Instruction
       attr_reader :calldata
 
       def initialize(calldata)
@@ -3458,7 +3181,7 @@ module SyntaxTree
     # ::Object
     # ~~~
     #
-    class OptGetConstantPath
+    class OptGetConstantPath < Instruction
       attr_reader :names
 
       def initialize(names)
@@ -3486,16 +3209,8 @@ module SyntaxTree
         2
       end
 
-      def pops
-        0
-      end
-
       def pushes
         1
-      end
-
-      def canonical
-        self
       end
 
       def call(vm)
@@ -3523,7 +3238,7 @@ module SyntaxTree
     # 4 > 3
     # ~~~
     #
-    class OptGT
+    class OptGT < Instruction
       attr_reader :calldata
 
       def initialize(calldata)
@@ -3580,7 +3295,7 @@ module SyntaxTree
     # 3 <= 4
     # ~~~
     #
-    class OptLE
+    class OptLE < Instruction
       attr_reader :calldata
 
       def initialize(calldata)
@@ -3637,7 +3352,7 @@ module SyntaxTree
     # "".length
     # ~~~
     #
-    class OptLength
+    class OptLength < Instruction
       attr_reader :calldata
 
       def initialize(calldata)
@@ -3694,7 +3409,7 @@ module SyntaxTree
     # 3 < 4
     # ~~~
     #
-    class OptLT
+    class OptLT < Instruction
       attr_reader :calldata
 
       def initialize(calldata)
@@ -3751,7 +3466,7 @@ module SyntaxTree
     # "" << 2
     # ~~~
     #
-    class OptLTLT
+    class OptLTLT < Instruction
       attr_reader :calldata
 
       def initialize(calldata)
@@ -3809,7 +3524,7 @@ module SyntaxTree
     # 3 - 2
     # ~~~
     #
-    class OptMinus
+    class OptMinus < Instruction
       attr_reader :calldata
 
       def initialize(calldata)
@@ -3866,7 +3581,7 @@ module SyntaxTree
     # 4 % 2
     # ~~~
     #
-    class OptMod
+    class OptMod < Instruction
       attr_reader :calldata
 
       def initialize(calldata)
@@ -3923,7 +3638,7 @@ module SyntaxTree
     # 3 * 2
     # ~~~
     #
-    class OptMult
+    class OptMult < Instruction
       attr_reader :calldata
 
       def initialize(calldata)
@@ -3982,7 +3697,7 @@ module SyntaxTree
     # 2 != 2
     # ~~~
     #
-    class OptNEq
+    class OptNEq < Instruction
       attr_reader :eq_calldata, :neq_calldata
 
       def initialize(eq_calldata, neq_calldata)
@@ -4022,10 +3737,6 @@ module SyntaxTree
         1
       end
 
-      def canonical
-        self
-      end
-
       def call(vm)
         receiver, argument = vm.pop(2)
         vm.push(receiver != argument)
@@ -4044,7 +3755,7 @@ module SyntaxTree
     # [a, b, c].max
     # ~~~
     #
-    class OptNewArrayMax
+    class OptNewArrayMax < Instruction
       attr_reader :number
 
       def initialize(number)
@@ -4079,10 +3790,6 @@ module SyntaxTree
         1
       end
 
-      def canonical
-        self
-      end
-
       def call(vm)
         vm.push(vm.pop(number).max)
       end
@@ -4100,7 +3807,7 @@ module SyntaxTree
     # [a, b, c].min
     # ~~~
     #
-    class OptNewArrayMin
+    class OptNewArrayMin < Instruction
       attr_reader :number
 
       def initialize(number)
@@ -4135,10 +3842,6 @@ module SyntaxTree
         1
       end
 
-      def canonical
-        self
-      end
-
       def call(vm)
         vm.push(vm.pop(number).min)
       end
@@ -4157,7 +3860,7 @@ module SyntaxTree
     # "".nil?
     # ~~~
     #
-    class OptNilP
+    class OptNilP < Instruction
       attr_reader :calldata
 
       def initialize(calldata)
@@ -4212,7 +3915,7 @@ module SyntaxTree
     # !true
     # ~~~
     #
-    class OptNot
+    class OptNot < Instruction
       attr_reader :calldata
 
       def initialize(calldata)
@@ -4269,7 +3972,7 @@ module SyntaxTree
     # 2 | 3
     # ~~~
     #
-    class OptOr
+    class OptOr < Instruction
       attr_reader :calldata
 
       def initialize(calldata)
@@ -4326,7 +4029,7 @@ module SyntaxTree
     # 2 + 3
     # ~~~
     #
-    class OptPlus
+    class OptPlus < Instruction
       attr_reader :calldata
 
       def initialize(calldata)
@@ -4382,7 +4085,7 @@ module SyntaxTree
     # /a/ =~ "a"
     # ~~~
     #
-    class OptRegExpMatch2
+    class OptRegExpMatch2 < Instruction
       attr_reader :calldata
 
       def initialize(calldata)
@@ -4438,7 +4141,7 @@ module SyntaxTree
     # puts "Hello, world!"
     # ~~~
     #
-    class OptSendWithoutBlock
+    class OptSendWithoutBlock < Instruction
       attr_reader :calldata
 
       def initialize(calldata)
@@ -4495,7 +4198,7 @@ module SyntaxTree
     # "".size
     # ~~~
     #
-    class OptSize
+    class OptSize < Instruction
       attr_reader :calldata
 
       def initialize(calldata)
@@ -4551,7 +4254,7 @@ module SyntaxTree
     # "hello".freeze
     # ~~~
     #
-    class OptStrFreeze
+    class OptStrFreeze < Instruction
       attr_reader :object, :calldata
 
       def initialize(object, calldata)
@@ -4583,16 +4286,8 @@ module SyntaxTree
         3
       end
 
-      def pops
-        0
-      end
-
       def pushes
         1
-      end
-
-      def canonical
-        self
       end
 
       def call(vm)
@@ -4612,7 +4307,7 @@ module SyntaxTree
     # -"string"
     # ~~~
     #
-    class OptStrUMinus
+    class OptStrUMinus < Instruction
       attr_reader :object, :calldata
 
       def initialize(object, calldata)
@@ -4644,16 +4339,8 @@ module SyntaxTree
         3
       end
 
-      def pops
-        0
-      end
-
       def pushes
         1
-      end
-
-      def canonical
-        self
       end
 
       def call(vm)
@@ -4674,7 +4361,7 @@ module SyntaxTree
     # "".succ
     # ~~~
     #
-    class OptSucc
+    class OptSucc < Instruction
       attr_reader :calldata
 
       def initialize(calldata)
@@ -4728,7 +4415,7 @@ module SyntaxTree
     # a ||= 2
     # ~~~
     #
-    class Pop
+    class Pop < Instruction
       def disasm(fmt)
         fmt.instruction("pop")
       end
@@ -4745,20 +4432,8 @@ module SyntaxTree
         other.is_a?(Pop)
       end
 
-      def length
-        1
-      end
-
       def pops
         1
-      end
-
-      def pushes
-        0
-      end
-
-      def canonical
-        self
       end
 
       def call(vm)
@@ -4776,7 +4451,7 @@ module SyntaxTree
     # nil
     # ~~~
     #
-    class PutNil
+    class PutNil < Instruction
       def disasm(fmt)
         fmt.instruction("putnil")
       end
@@ -4791,14 +4466,6 @@ module SyntaxTree
 
       def ==(other)
         other.is_a?(PutNil)
-      end
-
-      def length
-        1
-      end
-
-      def pops
-        0
       end
 
       def pushes
@@ -4824,7 +4491,7 @@ module SyntaxTree
     # 5
     # ~~~
     #
-    class PutObject
+    class PutObject < Instruction
       attr_reader :object
 
       def initialize(object)
@@ -4851,16 +4518,8 @@ module SyntaxTree
         2
       end
 
-      def pops
-        0
-      end
-
       def pushes
         1
-      end
-
-      def canonical
-        self
       end
 
       def call(vm)
@@ -4880,7 +4539,7 @@ module SyntaxTree
     # 0
     # ~~~
     #
-    class PutObjectInt2Fix0
+    class PutObjectInt2Fix0 < Instruction
       def disasm(fmt)
         fmt.instruction("putobject_INT2FIX_0_")
       end
@@ -4895,14 +4554,6 @@ module SyntaxTree
 
       def ==(other)
         other.is_a?(PutObjectInt2Fix0)
-      end
-
-      def length
-        1
-      end
-
-      def pops
-        0
       end
 
       def pushes
@@ -4930,7 +4581,7 @@ module SyntaxTree
     # 1
     # ~~~
     #
-    class PutObjectInt2Fix1
+    class PutObjectInt2Fix1 < Instruction
       def disasm(fmt)
         fmt.instruction("putobject_INT2FIX_1_")
       end
@@ -4945,14 +4596,6 @@ module SyntaxTree
 
       def ==(other)
         other.is_a?(PutObjectInt2Fix1)
-      end
-
-      def length
-        1
-      end
-
-      def pops
-        0
       end
 
       def pushes
@@ -4978,7 +4621,7 @@ module SyntaxTree
     # puts "Hello, world!"
     # ~~~
     #
-    class PutSelf
+    class PutSelf < Instruction
       def disasm(fmt)
         fmt.instruction("putself")
       end
@@ -4995,20 +4638,8 @@ module SyntaxTree
         other.is_a?(PutSelf)
       end
 
-      def length
-        1
-      end
-
-      def pops
-        0
-      end
-
       def pushes
         1
-      end
-
-      def canonical
-        self
       end
 
       def call(vm)
@@ -5028,7 +4659,7 @@ module SyntaxTree
     # alias foo bar
     # ~~~
     #
-    class PutSpecialObject
+    class PutSpecialObject < Instruction
       OBJECT_VMCORE = 1
       OBJECT_CBASE = 2
       OBJECT_CONST_BASE = 3
@@ -5059,16 +4690,8 @@ module SyntaxTree
         2
       end
 
-      def pops
-        0
-      end
-
       def pushes
         1
-      end
-
-      def canonical
-        self
       end
 
       def call(vm)
@@ -5095,7 +4718,7 @@ module SyntaxTree
     # "foo"
     # ~~~
     #
-    class PutString
+    class PutString < Instruction
       attr_reader :object
 
       def initialize(object)
@@ -5122,16 +4745,8 @@ module SyntaxTree
         2
       end
 
-      def pops
-        0
-      end
-
       def pushes
         1
-      end
-
-      def canonical
-        self
       end
 
       def call(vm)
@@ -5152,7 +4767,7 @@ module SyntaxTree
     # "hello".tap { |i| p i }
     # ~~~
     #
-    class Send
+    class Send < Instruction
       attr_reader :calldata, :block_iseq
 
       def initialize(calldata, block_iseq)
@@ -5192,10 +4807,6 @@ module SyntaxTree
 
       def pushes
         1
-      end
-
-      def canonical
-        self
       end
 
       def call(vm)
@@ -5240,7 +4851,7 @@ module SyntaxTree
     # end
     # ~~~
     #
-    class SetBlockParam
+    class SetBlockParam < Instruction
       attr_reader :index, :level
 
       def initialize(index, level)
@@ -5275,14 +4886,6 @@ module SyntaxTree
         1
       end
 
-      def pushes
-        0
-      end
-
-      def canonical
-        self
-      end
-
       def call(vm)
         vm.local_set(index, level, vm.pop)
       end
@@ -5301,7 +4904,7 @@ module SyntaxTree
     # @@class_variable = 1
     # ~~~
     #
-    class SetClassVariable
+    class SetClassVariable < Instruction
       attr_reader :name, :cache
 
       def initialize(name, cache)
@@ -5337,14 +4940,6 @@ module SyntaxTree
         1
       end
 
-      def pushes
-        0
-      end
-
-      def canonical
-        self
-      end
-
       def call(vm)
         clazz = vm.frame._self
         clazz = clazz.class unless clazz.is_a?(Class)
@@ -5363,7 +4958,7 @@ module SyntaxTree
     # Constant = 1
     # ~~~
     #
-    class SetConstant
+    class SetConstant < Instruction
       attr_reader :name
 
       def initialize(name)
@@ -5394,14 +4989,6 @@ module SyntaxTree
         2
       end
 
-      def pushes
-        0
-      end
-
-      def canonical
-        self
-      end
-
       def call(vm)
         value, parent = vm.pop(2)
         parent.const_set(name, value)
@@ -5419,7 +5006,7 @@ module SyntaxTree
     # $global = 5
     # ~~~
     #
-    class SetGlobal
+    class SetGlobal < Instruction
       attr_reader :name
 
       def initialize(name)
@@ -5450,14 +5037,6 @@ module SyntaxTree
         1
       end
 
-      def pushes
-        0
-      end
-
-      def canonical
-        self
-      end
-
       def call(vm)
         # Evaluating the name of the global variable because there isn't a
         # reflection API for global variables.
@@ -5481,7 +5060,7 @@ module SyntaxTree
     # @instance_variable = 1
     # ~~~
     #
-    class SetInstanceVariable
+    class SetInstanceVariable < Instruction
       attr_reader :name, :cache
 
       def initialize(name, cache)
@@ -5517,14 +5096,6 @@ module SyntaxTree
         1
       end
 
-      def pushes
-        0
-      end
-
-      def canonical
-        self
-      end
-
       def call(vm)
         method = Object.instance_method(:instance_variable_set)
         method.bind(vm.frame._self).call(name, vm.pop)
@@ -5545,7 +5116,7 @@ module SyntaxTree
     # tap { tap { value = 10 } }
     # ~~~
     #
-    class SetLocal
+    class SetLocal < Instruction
       attr_reader :index, :level
 
       def initialize(index, level)
@@ -5579,14 +5150,6 @@ module SyntaxTree
         1
       end
 
-      def pushes
-        0
-      end
-
-      def canonical
-        self
-      end
-
       def call(vm)
         vm.local_set(index, level, vm.pop)
       end
@@ -5605,7 +5168,7 @@ module SyntaxTree
     # value = 5
     # ~~~
     #
-    class SetLocalWC0
+    class SetLocalWC0 < Instruction
       attr_reader :index
 
       def initialize(index)
@@ -5636,10 +5199,6 @@ module SyntaxTree
         1
       end
 
-      def pushes
-        0
-      end
-
       def canonical
         SetLocal.new(index, 0)
       end
@@ -5662,7 +5221,7 @@ module SyntaxTree
     # self.then { value = 10 }
     # ~~~
     #
-    class SetLocalWC1
+    class SetLocalWC1 < Instruction
       attr_reader :index
 
       def initialize(index)
@@ -5693,10 +5252,6 @@ module SyntaxTree
         1
       end
 
-      def pushes
-        0
-      end
-
       def canonical
         SetLocal.new(index, 1)
       end
@@ -5717,7 +5272,7 @@ module SyntaxTree
     # {}[:key] = 'val'
     # ~~~
     #
-    class SetN
+    class SetN < Instruction
       attr_reader :number
 
       def initialize(number)
@@ -5752,10 +5307,6 @@ module SyntaxTree
         1
       end
 
-      def canonical
-        self
-      end
-
       def call(vm)
         vm.stack[-number - 1] = vm.stack.last
       end
@@ -5773,7 +5324,7 @@ module SyntaxTree
     # baz if (foo == 1) .. (bar == 1)
     # ~~~
     #
-    class SetSpecial
+    class SetSpecial < Instruction
       attr_reader :key
 
       def initialize(key)
@@ -5804,14 +5355,6 @@ module SyntaxTree
         1
       end
 
-      def pushes
-        0
-      end
-
-      def canonical
-        self
-      end
-
       def call(vm)
         case key
         when GetSpecial::SVAR_LASTLINE
@@ -5836,7 +5379,7 @@ module SyntaxTree
     # x = *(5)
     # ~~~
     #
-    class SplatArray
+    class SplatArray < Instruction
       attr_reader :flag
 
       def initialize(flag)
@@ -5869,10 +5412,6 @@ module SyntaxTree
 
       def pushes
         1
-      end
-
-      def canonical
-        self
       end
 
       def call(vm)
@@ -5914,7 +5453,7 @@ module SyntaxTree
     # !!defined?([[]])
     # ~~~
     #
-    class Swap
+    class Swap < Instruction
       def disasm(fmt)
         fmt.instruction("swap")
       end
@@ -5931,20 +5470,12 @@ module SyntaxTree
         other.is_a?(Swap)
       end
 
-      def length
-        1
-      end
-
       def pops
         2
       end
 
       def pushes
         2
-      end
-
-      def canonical
-        self
       end
 
       def call(vm)
@@ -5965,7 +5496,7 @@ module SyntaxTree
     # [1, 2, 3].map { break 2 }
     # ~~~
     #
-    class Throw
+    class Throw < Instruction
       RUBY_TAG_NONE = 0x0
       RUBY_TAG_RETURN = 0x1
       RUBY_TAG_BREAK = 0x2
@@ -6011,10 +5542,6 @@ module SyntaxTree
 
       def pushes
         1
-      end
-
-      def canonical
-        self
       end
 
       def call(vm)
@@ -6072,7 +5599,7 @@ module SyntaxTree
     # end
     # ~~~
     #
-    class TopN
+    class TopN < Instruction
       attr_reader :number
 
       def initialize(number)
@@ -6099,16 +5626,8 @@ module SyntaxTree
         2
       end
 
-      def pops
-        0
-      end
-
       def pushes
         1
-      end
-
-      def canonical
-        self
       end
 
       def call(vm)
@@ -6127,7 +5646,7 @@ module SyntaxTree
     # /foo #{bar}/
     # ~~~
     #
-    class ToRegExp
+    class ToRegExp < Instruction
       attr_reader :options, :length
 
       def initialize(options, length)
@@ -6158,10 +5677,6 @@ module SyntaxTree
 
       def pushes
         1
-      end
-
-      def canonical
-        self
       end
 
       def call(vm)

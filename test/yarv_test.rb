@@ -288,39 +288,82 @@ module SyntaxTree
       end
     end
 
-    instructions =
-      YARV.constants.map { YARV.const_get(_1) } +
-        YARV::Legacy.constants.map { YARV::Legacy.const_get(_1) } -
-        [
-          YARV::Assembler,
-          YARV::Bf,
-          YARV::CallData,
-          YARV::Compiler,
-          YARV::Decompiler,
-          YARV::Disassembler,
-          YARV::InstructionSequence,
-          YARV::Legacy,
-          YARV::LocalTable,
-          YARV::VM
-        ]
+    ObjectSpace.each_object(YARV::Instruction.singleton_class) do |instruction|
+      next if instruction == YARV::Instruction
 
-    interface = %i[
-      disasm
-      to_a
-      deconstruct_keys
-      length
-      pops
-      pushes
-      canonical
-      call
-      ==
-    ]
-
-    instructions.each do |instruction|
       define_method("test_instruction_interface_#{instruction.name}") do
-        instance_methods = instruction.instance_methods(false)
-        assert_empty(interface - instance_methods)
+        methods = instruction.instance_methods(false)
+        assert_empty(%i[disasm to_a deconstruct_keys call ==] - methods)
       end
+    end
+
+    def test_cfg
+      iseq = RubyVM::InstructionSequence.compile("100 + (14 < 0 ? -1 : +1)")
+      iseq = SyntaxTree::YARV::InstructionSequence.from(iseq.to_a)
+      cfg = SyntaxTree::YARV::ControlFlowGraph.compile(iseq)
+
+      assert_equal(<<~CFG, cfg.disasm)
+        == cfg: #<ISeq:<compiled>@<compiled>:1 (1,0)-(1,0)>
+        block_0
+            0000 putobject                              100
+            0002 putobject                              14
+            0004 putobject_INT2FIX_0_
+            0005 opt_lt                                 <calldata!mid:<, argc:1, ARGS_SIMPLE>
+            0007 branchunless                           13
+            == to: block_13, block_9
+        block_9
+            == from: block_0
+            0009 putobject                              -1
+            0011 jump                                   14
+            == to: block_14
+        block_13
+            == from: block_0
+            0013 putobject_INT2FIX_1_
+            == to: block_14
+        block_14
+            == from: block_9, block_13
+            0014 opt_plus                               <calldata!mid:+, argc:1, ARGS_SIMPLE>
+            0016 leave
+            == to: leaves
+      CFG
+    end
+
+    def test_dfg
+      iseq = RubyVM::InstructionSequence.compile("100 + (14 < 0 ? -1 : +1)")
+      iseq = SyntaxTree::YARV::InstructionSequence.from(iseq.to_a)
+      cfg = SyntaxTree::YARV::ControlFlowGraph.compile(iseq)
+      dfg = SyntaxTree::YARV::DataFlowGraph.compile(cfg)
+
+      assert_equal(<<~DFG, dfg.disasm)
+        == dfg: #<ISeq:<compiled>@<compiled>:1 (1,0)-(1,0)>
+        block_0
+            0000 putobject                              100 # out: out_0
+            0002 putobject                              14 # out: 5
+            0004 putobject_INT2FIX_0_ # out: 5
+            0005 opt_lt                                 <calldata!mid:<, argc:1, ARGS_SIMPLE> # in: 2, 4; out: 7
+            0007 branchunless                           13 # in: 5
+            == to: block_13, block_9
+            == out: 0
+        block_9
+            == from: block_0
+            == in: pass_0
+            0009 putobject                              -1 # out: out_0
+            0011 jump                                   14
+            == to: block_14
+            == out: pass_0, 9
+        block_13
+            == from: block_0
+            == in: pass_0
+            0013 putobject_INT2FIX_1_ # out: out_0
+            == to: block_14
+            == out: pass_0, 13
+        block_14
+            == from: block_9, block_13
+            == in: in_0, in_1
+            0014 opt_plus                               <calldata!mid:+, argc:1, ARGS_SIMPLE> # in: in_0, in_1; out: 16
+            0016 leave # in: 14
+            == to: leaves
+      DFG
     end
 
     private

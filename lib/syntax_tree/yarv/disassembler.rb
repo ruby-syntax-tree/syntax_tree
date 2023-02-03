@@ -4,15 +4,16 @@ module SyntaxTree
   module YARV
     class Disassembler
       attr_reader :output, :queue
+
       attr_reader :current_prefix
       attr_accessor :current_iseq
 
-      def initialize
+      def initialize(current_iseq = nil)
         @output = StringIO.new
         @queue = []
 
         @current_prefix = ""
-        @current_iseq = nil
+        @current_iseq = current_iseq
       end
 
       ########################################################################
@@ -20,30 +21,7 @@ module SyntaxTree
       ########################################################################
 
       def calldata(value)
-        flag_names = []
-        flag_names << :ARGS_SPLAT if value.flag?(CallData::CALL_ARGS_SPLAT)
-        if value.flag?(CallData::CALL_ARGS_BLOCKARG)
-          flag_names << :ARGS_BLOCKARG
-        end
-        flag_names << :FCALL if value.flag?(CallData::CALL_FCALL)
-        flag_names << :VCALL if value.flag?(CallData::CALL_VCALL)
-        flag_names << :ARGS_SIMPLE if value.flag?(CallData::CALL_ARGS_SIMPLE)
-        flag_names << :BLOCKISEQ if value.flag?(CallData::CALL_BLOCKISEQ)
-        flag_names << :KWARG if value.flag?(CallData::CALL_KWARG)
-        flag_names << :KW_SPLAT if value.flag?(CallData::CALL_KW_SPLAT)
-        flag_names << :TAILCALL if value.flag?(CallData::CALL_TAILCALL)
-        flag_names << :SUPER if value.flag?(CallData::CALL_SUPER)
-        flag_names << :ZSUPER if value.flag?(CallData::CALL_ZSUPER)
-        flag_names << :OPT_SEND if value.flag?(CallData::CALL_OPT_SEND)
-        flag_names << :KW_SPLAT_MUT if value.flag?(CallData::CALL_KW_SPLAT_MUT)
-
-        parts = []
-        parts << "mid:#{value.method}" if value.method
-        parts << "argc:#{value.argc}"
-        parts << "kw:[#{value.kw_arg.join(", ")}]" if value.kw_arg
-        parts << flag_names.join("|") if flag_names.any?
-
-        "<calldata!#{parts.join(", ")}>"
+        value.inspect
       end
 
       def enqueue(iseq)
@@ -97,28 +75,79 @@ module SyntaxTree
       end
 
       ########################################################################
-      # Main entrypoint
+      # Entrypoints
       ########################################################################
+
+      def string
+        output.string
+      end
 
       def format!
         while (@current_iseq = queue.shift)
           output << "\n" if output.pos > 0
           format_iseq(@current_iseq)
         end
+      end
 
-        output.string
+      def format_insns!(insns, length = 0)
+        events = []
+        lines = []
+
+        insns.each do |insn|
+          case insn
+          when Integer
+            lines << insn
+          when Symbol
+            events << event(insn)
+          when InstructionSequence::Label
+            # skip
+          else
+            output << "#{current_prefix}%04d " % length
+
+            disasm = insn.disasm(self)
+            output << disasm
+
+            if lines.any?
+              output << " " * (65 - disasm.length) if disasm.length < 65
+            elsif events.any?
+              output << " " * (39 - disasm.length) if disasm.length < 39
+            end
+
+            if lines.any?
+              output << "(%4d)" % lines.last
+              lines.clear
+            end
+
+            if events.any?
+              output << "[#{events.join}]"
+              events.clear
+            end
+
+            # A hook here to allow for custom formatting of instructions after
+            # the main body has been processed.
+            yield insn, length if block_given?
+
+            output << "\n"
+            length += insn.length
+          end
+        end
+      end
+
+      def with_prefix(value)
+        previous = @current_prefix
+
+        begin
+          @current_prefix = value
+          yield value
+        ensure
+          @current_prefix = previous
+        end
       end
 
       private
 
       def format_iseq(iseq)
-        output << "#{current_prefix}== disasm: "
-        output << "#<ISeq:#{iseq.name}@<compiled>:1 "
-
-        location = Location.fixed(line: iseq.line, char: 0, column: 0)
-        output << "(#{location.start_line},#{location.start_column})-"
-        output << "(#{location.end_line},#{location.end_column})"
-        output << "> "
+        output << "#{current_prefix}== disasm: #{iseq.inspect} "
 
         if iseq.catch_table.any?
           output << "(catch: TRUE)\n"
@@ -157,55 +186,7 @@ module SyntaxTree
           output << "#{current_prefix}#{locals.join("    ")}\n"
         end
 
-        length = 0
-        events = []
-        lines = []
-
-        iseq.insns.each do |insn|
-          case insn
-          when Integer
-            lines << insn
-          when Symbol
-            events << event(insn)
-          when InstructionSequence::Label
-            # skip
-          else
-            output << "#{current_prefix}%04d " % length
-
-            disasm = insn.disasm(self)
-            output << disasm
-
-            if lines.any?
-              output << " " * (65 - disasm.length) if disasm.length < 65
-            elsif events.any?
-              output << " " * (39 - disasm.length) if disasm.length < 39
-            end
-
-            if lines.any?
-              output << "(%4d)" % lines.last
-              lines.clear
-            end
-
-            if events.any?
-              output << "[#{events.join}]"
-              events.clear
-            end
-
-            output << "\n"
-            length += insn.length
-          end
-        end
-      end
-
-      def with_prefix(value)
-        previous = @current_prefix
-
-        begin
-          @current_prefix = value
-          yield
-        ensure
-          @current_prefix = previous
-        end
+        format_insns!(iseq.insns)
       end
     end
   end
