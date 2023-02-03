@@ -33,7 +33,7 @@ module SyntaxTree
     private
 
     def filepaths
-      Dir.glob(File.expand_path("../lib/syntax_tree/{node,parser}.rb", __dir__))
+      Dir.glob(File.expand_path("../lib/syntax_tree/plugin/*.rb", __dir__))
     end
 
     # Ractors still warn about usage, so I'm disabling that warning here just to
