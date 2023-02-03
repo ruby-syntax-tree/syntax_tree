@@ -34,21 +34,21 @@ module SyntaxTree
 
       def disasm
         fmt = Disassembler.new(iseq)
-        fmt.output.puts("== cfg: #{iseq.inspect}")
+        fmt.puts("== cfg: #{iseq.inspect}")
 
         blocks.each do |block|
-          fmt.output.puts(block.id)
+          fmt.puts(block.id)
           fmt.with_prefix("    ") do |prefix|
             unless block.incoming_blocks.empty?
               from = block.incoming_blocks.map(&:id)
-              fmt.output.puts("#{prefix}== from: #{from.join(", ")}")
+              fmt.puts("#{prefix}== from: #{from.join(", ")}")
             end
 
             fmt.format_insns!(block.insns, block.block_start)
 
             to = block.outgoing_blocks.map(&:id)
             to << "leaves" if block.insns.last.leaves?
-            fmt.output.puts("#{prefix}== to: #{to.join(", ")}")
+            fmt.puts("#{prefix}== to: #{to.join(", ")}")
           end
         end
 

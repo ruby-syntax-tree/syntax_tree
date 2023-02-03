@@ -78,10 +78,6 @@ module SyntaxTree
       # Entrypoints
       ########################################################################
 
-      def string
-        output.string
-      end
-
       def format!
         while (@current_iseq = queue.shift)
           output << "\n" if output.pos > 0
@@ -131,6 +127,18 @@ module SyntaxTree
             length += insn.length
           end
         end
+      end
+
+      def print(string)
+        output.print(string)
+      end
+
+      def puts(string)
+        output.puts(string)
+      end
+
+      def string
+        output.string
       end
 
       def with_prefix(value)

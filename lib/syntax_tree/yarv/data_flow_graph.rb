@@ -6,6 +6,15 @@ module SyntaxTree
     # control-flow-graph. Data flow is discovered locally and then globally. The
     # graph only considers data flow through the stack - local variables and
     # objects are considered fully escaped in this analysis.
+    #
+    # You can use this class by calling the ::compile method and passing it a
+    # control flow graph. It will return a data flow graph object.
+    #
+    #     iseq = RubyVM::InstructionSequence.compile("1 + 2")
+    #     iseq = SyntaxTree::YARV::InstructionSequence.from(iseq.to_a)
+    #     cfg = SyntaxTree::YARV::ControlFlowGraph.compile(iseq)
+    #     dfg = SyntaxTree::YARV::DataFlowGraph.compile(cfg)
+    #
     class DataFlowGraph
       # This object represents the flow of data between instructions.
       class DataFlow
@@ -28,42 +37,42 @@ module SyntaxTree
 
       def disasm
         fmt = Disassembler.new(cfg.iseq)
-        fmt.output.puts("== dfg: #{cfg.iseq.inspect}")
+        fmt.puts("== dfg: #{cfg.iseq.inspect}")
 
         cfg.blocks.each do |block|
-          fmt.output.puts(block.id)
+          fmt.puts(block.id)
           fmt.with_prefix("    ") do |prefix|
             unless block.incoming_blocks.empty?
               from = block.incoming_blocks.map(&:id)
-              fmt.output.puts("#{prefix}== from: #{from.join(", ")}")
+              fmt.puts("#{prefix}== from: #{from.join(", ")}")
             end
 
             block_flow = block_flows.fetch(block.id)
             unless block_flow.in.empty?
-              fmt.output.puts("#{prefix}== in: #{block_flow.in.join(", ")}")
+              fmt.puts("#{prefix}== in: #{block_flow.in.join(", ")}")
             end
 
             fmt.format_insns!(block.insns, block.block_start) do |_, length|
               insn_flow = insn_flows[length]
               next if insn_flow.in.empty? && insn_flow.out.empty?
 
-              fmt.output.print(" # ")
+              fmt.print(" # ")
               unless insn_flow.in.empty?
-                fmt.output.print("in: #{insn_flow.in.join(", ")}")
-                fmt.output.print("; ") unless insn_flow.out.empty?
+                fmt.print("in: #{insn_flow.in.join(", ")}")
+                fmt.print("; ") unless insn_flow.out.empty?
               end
 
               unless insn_flow.out.empty?
-                fmt.output.print("out: #{insn_flow.out.join(", ")}")
+                fmt.print("out: #{insn_flow.out.join(", ")}")
               end
             end
 
             to = block.outgoing_blocks.map(&:id)
             to << "leaves" if block.insns.last.leaves?
-            fmt.output.puts("#{prefix}== to: #{to.join(", ")}")
+            fmt.puts("#{prefix}== to: #{to.join(", ")}")
 
             unless block_flow.out.empty?
-              fmt.output.puts("#{prefix}== out: #{block_flow.out.join(", ")}")
+              fmt.puts("#{prefix}== out: #{block_flow.out.join(", ")}")
             end
           end
         end
