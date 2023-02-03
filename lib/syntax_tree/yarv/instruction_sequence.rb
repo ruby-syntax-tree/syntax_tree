@@ -270,9 +270,10 @@ module SyntaxTree
       end
 
       def disasm
-        disassembler = Disassembler.new
-        disassembler.enqueue(self)
-        disassembler.format!
+        fmt = Disassembler.new
+        fmt.enqueue(self)
+        fmt.format!
+        fmt.string
       end
 
       # This method converts our linked list of instructions into a final array

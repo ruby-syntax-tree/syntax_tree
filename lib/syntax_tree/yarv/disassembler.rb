@@ -4,15 +4,16 @@ module SyntaxTree
   module YARV
     class Disassembler
       attr_reader :output, :queue
+
       attr_reader :current_prefix
       attr_accessor :current_iseq
 
-      def initialize
+      def initialize(current_iseq = nil)
         @output = StringIO.new
         @queue = []
 
         @current_prefix = ""
-        @current_iseq = nil
+        @current_iseq = current_iseq
       end
 
       ########################################################################
@@ -97,16 +98,69 @@ module SyntaxTree
       end
 
       ########################################################################
-      # Main entrypoint
+      # Entrypoints
       ########################################################################
+
+      def string
+        output.string
+      end
 
       def format!
         while (@current_iseq = queue.shift)
           output << "\n" if output.pos > 0
           format_iseq(@current_iseq)
         end
+      end
 
-        output.string
+      def format_insns!(insns, length = 0)
+        events = []
+        lines = []
+
+        insns.each do |insn|
+          case insn
+          when Integer
+            lines << insn
+          when Symbol
+            events << event(insn)
+          when InstructionSequence::Label
+            # skip
+          else
+            output << "#{current_prefix}%04d " % length
+
+            disasm = insn.disasm(self)
+            output << disasm
+
+            if lines.any?
+              output << " " * (65 - disasm.length) if disasm.length < 65
+            elsif events.any?
+              output << " " * (39 - disasm.length) if disasm.length < 39
+            end
+
+            if lines.any?
+              output << "(%4d)" % lines.last
+              lines.clear
+            end
+
+            if events.any?
+              output << "[#{events.join}]"
+              events.clear
+            end
+
+            output << "\n"
+            length += insn.length
+          end
+        end
+      end
+
+      def with_prefix(value)
+        previous = @current_prefix
+
+        begin
+          @current_prefix = value
+          yield
+        ensure
+          @current_prefix = previous
+        end
       end
 
       private
@@ -157,55 +211,7 @@ module SyntaxTree
           output << "#{current_prefix}#{locals.join("    ")}\n"
         end
 
-        length = 0
-        events = []
-        lines = []
-
-        iseq.insns.each do |insn|
-          case insn
-          when Integer
-            lines << insn
-          when Symbol
-            events << event(insn)
-          when InstructionSequence::Label
-            # skip
-          else
-            output << "#{current_prefix}%04d " % length
-
-            disasm = insn.disasm(self)
-            output << disasm
-
-            if lines.any?
-              output << " " * (65 - disasm.length) if disasm.length < 65
-            elsif events.any?
-              output << " " * (39 - disasm.length) if disasm.length < 39
-            end
-
-            if lines.any?
-              output << "(%4d)" % lines.last
-              lines.clear
-            end
-
-            if events.any?
-              output << "[#{events.join}]"
-              events.clear
-            end
-
-            output << "\n"
-            length += insn.length
-          end
-        end
-      end
-
-      def with_prefix(value)
-        previous = @current_prefix
-
-        begin
-          @current_prefix = value
-          yield
-        ensure
-          @current_prefix = previous
-        end
+        format_insns!(iseq.insns)
       end
     end
   end

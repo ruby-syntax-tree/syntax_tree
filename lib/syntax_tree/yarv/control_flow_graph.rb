@@ -33,32 +33,28 @@ module SyntaxTree
       end
 
       def disasm
-        fmt = Disassembler.new
-        output = StringIO.new
-        output.puts "== cfg #{iseq.name}"
+        fmt = Disassembler.new(iseq)
+        fmt.output.puts "== cfg #{iseq.name}"
 
         blocks.each do |block|
-          output.print(block.id)
+          fmt.output.print(block.id)
 
           unless block.incoming_blocks.empty?
-            output.print(" # from: #{block.incoming_blocks.map(&:id).join(", ")}")
+            fmt.output.print(" # from: #{block.incoming_blocks.map(&:id).join(", ")}")
           end
 
-          output.puts
+          fmt.output.puts
 
-          block.insns.each do |insn|
-            output.print("    ")
-            output.puts(insn.disasm(fmt))
-          end
+          fmt.with_prefix("    ") { fmt.format_insns!(block.insns) }
 
           dests = block.outgoing_blocks.map(&:id)
           dests << "leaves" if block.insns.last.leaves?
-          output.print("        # to: #{dests.join(", ")}") unless dests.empty?
+          fmt.output.print("        # to: #{dests.join(", ")}") unless dests.empty?
 
-          output.puts
+          fmt.output.puts
         end
 
-        output.string
+        fmt.string
       end
 
       # This method is used to verify that the control flow graph is well

@@ -305,22 +305,22 @@ module SyntaxTree
       assert_equal(<<~CFG, cfg.disasm)
         == cfg <compiled>
         block_0
-            putobject                              100
-            putobject                              14
-            putobject_INT2FIX_0_
-            opt_lt                                 <calldata!mid:<, argc:1, ARGS_SIMPLE>
-            branchunless                           13
+            0000 putobject                              100
+            0002 putobject                              14
+            0004 putobject_INT2FIX_0_
+            0005 opt_lt                                 <calldata!mid:<, argc:1, ARGS_SIMPLE>
+            0007 branchunless                           13
                 # to: block_7, block_5
         block_5 # from: block_0
-            putobject                              -1
-            jump                                   14
+            0000 putobject                              -1
+            0002 jump                                   14
                 # to: block_8
         block_7 # from: block_0
-            putobject_INT2FIX_1_
+            0000 putobject_INT2FIX_1_
                 # to: block_8
         block_8 # from: block_5, block_7
-            opt_plus                               <calldata!mid:+, argc:1, ARGS_SIMPLE>
-            leave
+            0000 opt_plus                               <calldata!mid:+, argc:1, ARGS_SIMPLE>
+            0002 leave
                 # to: leaves
       CFG
     end
