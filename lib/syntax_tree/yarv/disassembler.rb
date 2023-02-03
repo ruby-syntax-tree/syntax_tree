@@ -161,7 +161,7 @@ module SyntaxTree
 
         begin
           @current_prefix = value
-          yield
+          yield value
         ensure
           @current_prefix = previous
         end

@@ -32,27 +32,27 @@ module SyntaxTree
 
         cfg.blocks.each do |block|
           fmt.output.puts(block.id)
-          fmt.with_prefix("    ") do
+          fmt.with_prefix("    ") do |prefix|
             unless block.incoming_blocks.empty?
-              from = block.incoming_blocks.map(&:id).join(", ")
-              fmt.output.puts("#{fmt.current_prefix}== from: #{from}")
+              from = block.incoming_blocks.map(&:id)
+              fmt.output.puts("#{prefix}== from: #{from.join(", ")}")
             end
 
             block_flow = block_flows.fetch(block.id)
             unless block_flow.in.empty?
-              fmt.output.puts("#{fmt.current_prefix}== in: #{block_flow.in.join(", ")}")
+              fmt.output.puts("#{prefix}== in: #{block_flow.in.join(", ")}")
             end
 
-            fmt.format_insns!(block.insns, block.block_start) do |insn, length|
+            fmt.format_insns!(block.insns, block.block_start) do |_, length|
               insn_flow = insn_flows[length]
               next if insn_flow.in.empty? && insn_flow.out.empty?
-  
+
               fmt.output.print(" # ")
               unless insn_flow.in.empty?
                 fmt.output.print("in: #{insn_flow.in.join(", ")}")
                 fmt.output.print("; ") unless insn_flow.out.empty?
               end
-  
+
               unless insn_flow.out.empty?
                 fmt.output.print("out: #{insn_flow.out.join(", ")}")
               end
@@ -60,11 +60,11 @@ module SyntaxTree
 
             to = block.outgoing_blocks.map(&:id)
             to << "leaves" if block.insns.last.leaves?
-            fmt.output.puts("#{fmt.current_prefix}== to: #{to.join(", ")}")
+            fmt.output.puts("#{prefix}== to: #{to.join(", ")}")
 
             unless block_flow.out.empty?
-              fmt.output.puts("#{fmt.current_prefix}== out: #{block_flow.out.join(", ")}")
-            end  
+              fmt.output.puts("#{prefix}== out: #{block_flow.out.join(", ")}")
+            end
           end
         end
 
@@ -104,23 +104,20 @@ module SyntaxTree
       # This class is responsible for creating a data flow graph from the given
       # control flow graph.
       class Compiler
-        attr_reader :cfg, :insn_flows, :block_flows
+        # This is the control flow graph that is being compiled.
+        attr_reader :cfg
+
+        # This data structure will hold the data flow between instructions
+        # within individual basic blocks.
+        attr_reader :insn_flows
+
+        # This data structure will hold the data flow between basic blocks.
+        attr_reader :block_flows
 
         def initialize(cfg)
           @cfg = cfg
-
-          # This data structure will hold the data flow between instructions
-          # within individual basic blocks.
-          @insn_flows = {}
-          cfg.insns.each_key do |length|
-            @insn_flows[length] = DataFlow.new
-          end
-
-          # This data structure will hold the data flow between basic blocks.
-          @block_flows = {}
-          cfg.blocks.each do |block|
-            @block_flows[block.id] = DataFlow.new
-          end
+          @insn_flows = cfg.insns.to_h { |length, _| [length, DataFlow.new] }
+          @block_flows = cfg.blocks.to_h { |block| [block.id, DataFlow.new] }
         end
 
         def compile

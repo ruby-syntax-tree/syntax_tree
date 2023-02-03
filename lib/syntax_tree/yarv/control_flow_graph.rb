@@ -38,17 +38,17 @@ module SyntaxTree
 
         blocks.each do |block|
           fmt.output.puts(block.id)
-          fmt.with_prefix("    ") do
+          fmt.with_prefix("    ") do |prefix|
             unless block.incoming_blocks.empty?
-              from = block.incoming_blocks.map(&:id).join(", ")
-              fmt.output.puts("#{fmt.current_prefix}== from: #{from}")
+              from = block.incoming_blocks.map(&:id)
+              fmt.output.puts("#{prefix}== from: #{from.join(", ")}")
             end
 
             fmt.format_insns!(block.insns, block.block_start)
 
             to = block.outgoing_blocks.map(&:id)
             to << "leaves" if block.insns.last.leaves?
-            fmt.output.puts("#{fmt.current_prefix}== to: #{to.join(", ")}")
+            fmt.output.puts("#{prefix}== to: #{to.join(", ")}")
           end
         end
 
@@ -142,14 +142,19 @@ module SyntaxTree
 
           length = 0
           blocks =
-            iseq.insns.grep(Instruction).slice_after do |insn|
-              length += insn.length
-              block_starts.include?(length)
-            end
+            iseq
+              .insns
+              .grep(Instruction)
+              .slice_after do |insn|
+                length += insn.length
+                block_starts.include?(length)
+              end
 
-          block_starts.zip(blocks).to_h do |block_start, block_insns|
-            [block_start, BasicBlock.new(block_start, block_insns)]
-          end
+          block_starts
+            .zip(blocks)
+            .to_h do |block_start, block_insns|
+              [block_start, BasicBlock.new(block_start, block_insns)]
+            end
         end
 
         # Connect the blocks by letting them know which blocks are incoming and
@@ -162,7 +167,8 @@ module SyntaxTree
               block.outgoing_blocks << blocks.fetch(labels[branch_target])
             end
 
-            if (insn.branch_targets.empty? && !insn.leaves?) || insn.falls_through?
+            if (insn.branch_targets.empty? && !insn.leaves?) ||
+                 insn.falls_through?
               fall_through_start = block_start + block.insns.sum(&:length)
               block.outgoing_blocks << blocks.fetch(fall_through_start)
             end
