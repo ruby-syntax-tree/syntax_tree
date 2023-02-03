@@ -34,24 +34,23 @@ module SyntaxTree
 
       def disasm
         fmt = Disassembler.new(iseq)
-        fmt.output.puts "== cfg #{iseq.name}"
+        fmt.output.print("== cfg: #<ISeq:#{iseq.name}@<compiled>:1 ")
+        fmt.output.puts("(#{iseq.line},0)-(#{iseq.line},0)>")
 
         blocks.each do |block|
-          fmt.output.print(block.id)
+          fmt.output.puts(block.id)
+          fmt.with_prefix("    ") do
+            unless block.incoming_blocks.empty?
+              from = block.incoming_blocks.map(&:id).join(", ")
+              fmt.output.puts("#{fmt.current_prefix}== from: #{from}")
+            end
 
-          unless block.incoming_blocks.empty?
-            fmt.output.print(" # from: #{block.incoming_blocks.map(&:id).join(", ")}")
+            fmt.format_insns!(block.insns, block.block_start)
+
+            to = block.outgoing_blocks.map(&:id)
+            to << "leaves" if block.insns.last.leaves?
+            fmt.output.puts("#{fmt.current_prefix}== to: #{to.join(", ")}")
           end
-
-          fmt.output.puts
-
-          fmt.with_prefix("    ") { fmt.format_insns!(block.insns) }
-
-          dests = block.outgoing_blocks.map(&:id)
-          dests << "leaves" if block.insns.last.leaves?
-          fmt.output.print("        # to: #{dests.join(", ")}") unless dests.empty?
-
-          fmt.output.puts
         end
 
         fmt.string
@@ -71,23 +70,34 @@ module SyntaxTree
       # This class is responsible for creating a control flow graph from the
       # given instruction sequence.
       class Compiler
-        attr_reader :iseq, :labels, :insns
+        # This is the instruction sequence that is being compiled.
+        attr_reader :iseq
+
+        # This is a hash of indices in the YARV instruction sequence that point
+        # to their corresponding instruction.
+        attr_reader :insns
+
+        # This is a hash of labels that point to their corresponding index into
+        # the YARV instruction sequence. Note that this is not the same as the
+        # index into the list of instructions on the instruction sequence
+        # object. Instead, this is the index into the C array, so it includes
+        # operands.
+        attr_reader :labels
 
         def initialize(iseq)
           @iseq = iseq
 
-          # We need to find all of the instructions that immediately follow
-          # labels so that when we are looking at instructions that branch we
-          # know where they branch to.
+          @insns = {}
           @labels = {}
-          @insns = []
 
+          length = 0
           iseq.insns.each do |insn|
             case insn
             when Instruction
-              @insns << insn
+              @insns[length] = insn
+              length += insn.length
             when InstructionSequence::Label
-              @labels[insn] = @insns.length
+              @labels[insn] = length
             end
           end
         end
@@ -111,7 +121,7 @@ module SyntaxTree
         def find_basic_block_starts
           block_starts = Set.new([0])
 
-          insns.each_with_index do |insn, index|
+          insns.each do |index, insn|
             branch_targets = insn.branch_targets
 
             if branch_targets.any?
@@ -119,7 +129,7 @@ module SyntaxTree
                 block_starts.add(labels[branch_target])
               end
 
-              block_starts.add(index + 1) if insn.falls_through?
+              block_starts.add(index + insn.length) if insn.falls_through?
             end
           end
 
@@ -131,10 +141,14 @@ module SyntaxTree
         def build_basic_blocks
           block_starts = find_basic_block_starts
 
-          block_starts.each_with_index.to_h do |block_start, block_index|
-            block_end = (block_starts[(block_index + 1)..] + [insns.length]).min
-            block_insns = insns[block_start...block_end]
+          length = 0
+          blocks =
+            iseq.insns.grep(Instruction).slice_after do |insn|
+              length += insn.length
+              block_starts.include?(length)
+            end
 
+          block_starts.zip(blocks).to_h do |block_start, block_insns|
             [block_start, BasicBlock.new(block_start, block_insns)]
           end
         end
@@ -150,7 +164,8 @@ module SyntaxTree
             end
 
             if (insn.branch_targets.empty? && !insn.leaves?) || insn.falls_through?
-              block.outgoing_blocks << blocks.fetch(block_start + block.insns.length)
+              fall_through_start = block_start + block.insns.sum(&:length)
+              block.outgoing_blocks << blocks.fetch(fall_through_start)
             end
 
             block.outgoing_blocks.each do |outgoing_block|

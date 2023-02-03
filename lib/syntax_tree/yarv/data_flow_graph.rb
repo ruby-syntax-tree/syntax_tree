@@ -44,11 +44,11 @@ module SyntaxTree
             output.puts "         # in: #{block_flow.in.join(", ")}"
           end
 
-          block.each_with_index do |insn, index|
+          block.each_with_length do |insn, length|
             output.print("    ")
             output.print(insn.disasm(fmt))
 
-            insn_flow = insn_flows[index]
+            insn_flow = insn_flows[length]
             if insn_flow.in.empty? && insn_flow.out.empty?
               output.puts
               next
@@ -120,8 +120,8 @@ module SyntaxTree
           # This data structure will hold the data flow between instructions
           # within individual basic blocks.
           @insn_flows = {}
-          cfg.insns.each_with_index do |insn, index|
-            @insn_flows[index] = DataFlow.new
+          cfg.insns.each_key do |length|
+            @insn_flows[length] = DataFlow.new
           end
 
           # This data structure will hold the data flow between basic blocks.
@@ -147,8 +147,8 @@ module SyntaxTree
             stack = []
 
             # Go through each instruction in the block...
-            block.each_with_index do |insn, index|
-              insn_flow = insn_flows[index]
+            block.each_with_length do |insn, length|
+              insn_flow = insn_flows[length]
 
               # How many values will be missing from the local stack to run this
               # instruction?
@@ -172,7 +172,7 @@ module SyntaxTree
 
               # Record on our abstract stack that this instruction pushed
               # this value onto the stack.
-              insn.pushes.times { stack << index }
+              insn.pushes.times { stack << length }
             end
 
             # Values that are left on the stack after going through all
@@ -184,16 +184,16 @@ module SyntaxTree
           end
 
           # Go backwards and connect from producers to consumers.
-          cfg.insns.each_with_index do |insn, index|
+          cfg.insns.each_key do |length|
             # For every instruction that produced a value used in this
             # instruction...
-            insn_flows[index].in.each do |producer|
+            insn_flows[length].in.each do |producer|
               # If it's actually another instruction and not a basic block
               # argument...
               if producer.is_a?(Integer)
                 # Record in the producing instruction that it produces a value
                 # used by this construction.
-                insn_flows[producer].out << index
+                insn_flows[producer].out << length
               end
             end
           end

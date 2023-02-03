@@ -32,8 +32,14 @@ module SyntaxTree
 
       # Yield each instruction in this basic block along with its index from the
       # original instruction sequence.
-      def each_with_index(&block)
-        insns.each.with_index(block_start, &block)
+      def each_with_length
+        return enum_for(:each_with_length) unless block_given?
+
+        length = block_start
+        insns.each do |insn|
+          yield insn, length
+          length += insn.length
+        end
       end
 
       # This method is used to verify that the basic block is well formed. It

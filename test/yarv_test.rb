@@ -303,25 +303,28 @@ module SyntaxTree
       cfg = SyntaxTree::YARV::ControlFlowGraph.compile(iseq)
 
       assert_equal(<<~CFG, cfg.disasm)
-        == cfg <compiled>
+        == cfg: #<ISeq:<compiled>@<compiled>:1 (1,0)-(1,0)>
         block_0
             0000 putobject                              100
             0002 putobject                              14
             0004 putobject_INT2FIX_0_
             0005 opt_lt                                 <calldata!mid:<, argc:1, ARGS_SIMPLE>
             0007 branchunless                           13
-                # to: block_7, block_5
-        block_5 # from: block_0
-            0000 putobject                              -1
-            0002 jump                                   14
-                # to: block_8
-        block_7 # from: block_0
-            0000 putobject_INT2FIX_1_
-                # to: block_8
-        block_8 # from: block_5, block_7
-            0000 opt_plus                               <calldata!mid:+, argc:1, ARGS_SIMPLE>
-            0002 leave
-                # to: leaves
+            == to: block_13, block_9
+        block_9
+            == from: block_0
+            0009 putobject                              -1
+            0011 jump                                   14
+            == to: block_14
+        block_13
+            == from: block_0
+            0013 putobject_INT2FIX_1_
+            == to: block_14
+        block_14
+            == from: block_9, block_13
+            0014 opt_plus                               <calldata!mid:+, argc:1, ARGS_SIMPLE>
+            0016 leave
+            == to: leaves
       CFG
     end
 
@@ -335,27 +338,27 @@ module SyntaxTree
         == dfg <compiled>
         block_0
             putobject                              100 # out: out_0
-            putobject                              14 # out: 3
-            putobject_INT2FIX_0_ # out: 3
-            opt_lt                                 <calldata!mid:<, argc:1, ARGS_SIMPLE> # in: 1, 2; out: 4
-            branchunless                           13 # in: 3
-                # to: block_7, block_5
+            putobject                              14 # out: 5
+            putobject_INT2FIX_0_ # out: 5
+            opt_lt                                 <calldata!mid:<, argc:1, ARGS_SIMPLE> # in: 2, 4; out: 7
+            branchunless                           13 # in: 5
+                # to: block_13, block_9
                 # out: 0
-        block_5 # from: block_0
+        block_9 # from: block_0
                  # in: pass_0
             putobject                              -1 # out: out_0
             jump                                   14
-                # to: block_8
-                # out: pass_0, 5
-        block_7 # from: block_0
+                # to: block_14
+                # out: pass_0, 9
+        block_13 # from: block_0
                  # in: pass_0
             putobject_INT2FIX_1_ # out: out_0
-                # to: block_8
-                # out: pass_0, 7
-        block_8 # from: block_5, block_7
+                # to: block_14
+                # out: pass_0, 13
+        block_14 # from: block_9, block_13
                  # in: in_0, in_1
-            opt_plus                               <calldata!mid:+, argc:1, ARGS_SIMPLE> # in: in_0, in_1; out: 9
-            leave # in: 8
+            opt_plus                               <calldata!mid:+, argc:1, ARGS_SIMPLE> # in: in_0, in_1; out: 16
+            leave # in: 14
                 # to: leaves
       DFG
     end
