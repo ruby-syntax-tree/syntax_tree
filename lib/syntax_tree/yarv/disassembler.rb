@@ -21,30 +21,7 @@ module SyntaxTree
       ########################################################################
 
       def calldata(value)
-        flag_names = []
-        flag_names << :ARGS_SPLAT if value.flag?(CallData::CALL_ARGS_SPLAT)
-        if value.flag?(CallData::CALL_ARGS_BLOCKARG)
-          flag_names << :ARGS_BLOCKARG
-        end
-        flag_names << :FCALL if value.flag?(CallData::CALL_FCALL)
-        flag_names << :VCALL if value.flag?(CallData::CALL_VCALL)
-        flag_names << :ARGS_SIMPLE if value.flag?(CallData::CALL_ARGS_SIMPLE)
-        flag_names << :BLOCKISEQ if value.flag?(CallData::CALL_BLOCKISEQ)
-        flag_names << :KWARG if value.flag?(CallData::CALL_KWARG)
-        flag_names << :KW_SPLAT if value.flag?(CallData::CALL_KW_SPLAT)
-        flag_names << :TAILCALL if value.flag?(CallData::CALL_TAILCALL)
-        flag_names << :SUPER if value.flag?(CallData::CALL_SUPER)
-        flag_names << :ZSUPER if value.flag?(CallData::CALL_ZSUPER)
-        flag_names << :OPT_SEND if value.flag?(CallData::CALL_OPT_SEND)
-        flag_names << :KW_SPLAT_MUT if value.flag?(CallData::CALL_KW_SPLAT_MUT)
-
-        parts = []
-        parts << "mid:#{value.method}" if value.method
-        parts << "argc:#{value.argc}"
-        parts << "kw:[#{value.kw_arg.join(", ")}]" if value.kw_arg
-        parts << flag_names.join("|") if flag_names.any?
-
-        "<calldata!#{parts.join(", ")}>"
+        value.inspect
       end
 
       def enqueue(iseq)

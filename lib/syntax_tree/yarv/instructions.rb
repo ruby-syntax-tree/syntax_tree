@@ -2,67 +2,6 @@
 
 module SyntaxTree
   module YARV
-    # This is an operand to various YARV instructions that represents the
-    # information about a specific call site.
-    class CallData
-      CALL_ARGS_SPLAT = 1 << 0
-      CALL_ARGS_BLOCKARG = 1 << 1
-      CALL_FCALL = 1 << 2
-      CALL_VCALL = 1 << 3
-      CALL_ARGS_SIMPLE = 1 << 4
-      CALL_BLOCKISEQ = 1 << 5
-      CALL_KWARG = 1 << 6
-      CALL_KW_SPLAT = 1 << 7
-      CALL_TAILCALL = 1 << 8
-      CALL_SUPER = 1 << 9
-      CALL_ZSUPER = 1 << 10
-      CALL_OPT_SEND = 1 << 11
-      CALL_KW_SPLAT_MUT = 1 << 12
-
-      attr_reader :method, :argc, :flags, :kw_arg
-
-      def initialize(
-        method,
-        argc = 0,
-        flags = CallData::CALL_ARGS_SIMPLE,
-        kw_arg = nil
-      )
-        @method = method
-        @argc = argc
-        @flags = flags
-        @kw_arg = kw_arg
-      end
-
-      def flag?(mask)
-        (flags & mask) > 0
-      end
-
-      def to_h
-        result = { mid: method, flag: flags, orig_argc: argc }
-        result[:kw_arg] = kw_arg if kw_arg
-        result
-      end
-
-      def self.from(serialized)
-        new(
-          serialized[:mid],
-          serialized[:orig_argc],
-          serialized[:flag],
-          serialized[:kw_arg]
-        )
-      end
-    end
-
-    # A convenience method for creating a CallData object.
-    def self.calldata(
-      method,
-      argc = 0,
-      flags = CallData::CALL_ARGS_SIMPLE,
-      kw_arg = nil
-    )
-      CallData.new(method, argc, flags, kw_arg)
-    end
-
     # This is a base class for all YARV instructions. It provides a few
     # convenience methods for working with instructions.
     class Instruction
