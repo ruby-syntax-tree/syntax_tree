@@ -146,6 +146,10 @@ module SyntaxTree
               events.clear
             end
 
+            # A hook here to allow for custom formatting of instructions after
+            # the main body has been processed.
+            yield insn, length if block_given?
+
             output << "\n"
             length += insn.length
           end
@@ -166,13 +170,7 @@ module SyntaxTree
       private
 
       def format_iseq(iseq)
-        output << "#{current_prefix}== disasm: "
-        output << "#<ISeq:#{iseq.name}@<compiled>:1 "
-
-        location = Location.fixed(line: iseq.line, char: 0, column: 0)
-        output << "(#{location.start_line},#{location.start_column})-"
-        output << "(#{location.end_line},#{location.end_column})"
-        output << "> "
+        output << "#{current_prefix}== disasm: #{iseq.inspect} "
 
         if iseq.catch_table.any?
           output << "(catch: TRUE)\n"

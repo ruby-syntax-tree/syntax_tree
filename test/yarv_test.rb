@@ -335,31 +335,34 @@ module SyntaxTree
       dfg = SyntaxTree::YARV::DataFlowGraph.compile(cfg)
 
       assert_equal(<<~DFG, dfg.disasm)
-        == dfg <compiled>
+        == dfg: #<ISeq:<compiled>@<compiled>:1 (1,0)-(1,0)>
         block_0
-            putobject                              100 # out: out_0
-            putobject                              14 # out: 5
-            putobject_INT2FIX_0_ # out: 5
-            opt_lt                                 <calldata!mid:<, argc:1, ARGS_SIMPLE> # in: 2, 4; out: 7
-            branchunless                           13 # in: 5
-                # to: block_13, block_9
-                # out: 0
-        block_9 # from: block_0
-                 # in: pass_0
-            putobject                              -1 # out: out_0
-            jump                                   14
-                # to: block_14
-                # out: pass_0, 9
-        block_13 # from: block_0
-                 # in: pass_0
-            putobject_INT2FIX_1_ # out: out_0
-                # to: block_14
-                # out: pass_0, 13
-        block_14 # from: block_9, block_13
-                 # in: in_0, in_1
-            opt_plus                               <calldata!mid:+, argc:1, ARGS_SIMPLE> # in: in_0, in_1; out: 16
-            leave # in: 14
-                # to: leaves
+            0000 putobject                              100 # out: out_0
+            0002 putobject                              14 # out: 5
+            0004 putobject_INT2FIX_0_ # out: 5
+            0005 opt_lt                                 <calldata!mid:<, argc:1, ARGS_SIMPLE> # in: 2, 4; out: 7
+            0007 branchunless                           13 # in: 5
+            == to: block_13, block_9
+            == out: 0
+        block_9
+            == from: block_0
+            == in: pass_0
+            0009 putobject                              -1 # out: out_0
+            0011 jump                                   14
+            == to: block_14
+            == out: pass_0, 9
+        block_13
+            == from: block_0
+            == in: pass_0
+            0013 putobject_INT2FIX_1_ # out: out_0
+            == to: block_14
+            == out: pass_0, 13
+        block_14
+            == from: block_9, block_13
+            == in: in_0, in_1
+            0014 opt_plus                               <calldata!mid:+, argc:1, ARGS_SIMPLE> # in: in_0, in_1; out: 16
+            0016 leave # in: 14
+            == to: leaves
       DFG
     end
 

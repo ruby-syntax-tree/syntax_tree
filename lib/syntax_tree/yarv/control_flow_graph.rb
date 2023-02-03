@@ -34,8 +34,7 @@ module SyntaxTree
 
       def disasm
         fmt = Disassembler.new(iseq)
-        fmt.output.print("== cfg: #<ISeq:#{iseq.name}@<compiled>:1 ")
-        fmt.output.puts("(#{iseq.line},0)-(#{iseq.line},0)>")
+        fmt.output.puts("== cfg: #{iseq.inspect}")
 
         blocks.each do |block|
           fmt.output.puts(block.id)

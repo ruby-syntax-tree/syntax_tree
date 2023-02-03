@@ -276,6 +276,10 @@ module SyntaxTree
         fmt.string
       end
 
+      def inspect
+        "#<ISeq:#{name}@<compiled>:1 (#{line},#{0})-(#{line},#{0})>"
+      end
+
       # This method converts our linked list of instructions into a final array
       # and performs any other compilation steps necessary.
       def compile!

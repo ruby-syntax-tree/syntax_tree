@@ -27,56 +27,48 @@ module SyntaxTree
       end
 
       def disasm
-        fmt = Disassembler.new
-        output = StringIO.new
-        output.puts "== dfg #{cfg.iseq.name}"
+        fmt = Disassembler.new(cfg.iseq)
+        fmt.output.puts("== dfg: #{cfg.iseq.inspect}")
 
         cfg.blocks.each do |block|
-          output.print(block.id)
-          unless block.incoming_blocks.empty?
-            srcs = block.incoming_blocks.map(&:id)
-            output.print(" # from: #{srcs.join(", ")}")
-          end
-          output.puts
-
-          block_flow = block_flows.fetch(block.id)
-          unless block_flow.in.empty?
-            output.puts "         # in: #{block_flow.in.join(", ")}"
-          end
-
-          block.each_with_length do |insn, length|
-            output.print("    ")
-            output.print(insn.disasm(fmt))
-
-            insn_flow = insn_flows[length]
-            if insn_flow.in.empty? && insn_flow.out.empty?
-              output.puts
-              next
+          fmt.output.puts(block.id)
+          fmt.with_prefix("    ") do
+            unless block.incoming_blocks.empty?
+              from = block.incoming_blocks.map(&:id).join(", ")
+              fmt.output.puts("#{fmt.current_prefix}== from: #{from}")
             end
 
-            output.print(" # ")
-            unless insn_flow.in.empty?
-              output.print("in: #{insn_flow.in.join(", ")}")
-              output.print("; ") unless insn_flow.out.empty?
+            block_flow = block_flows.fetch(block.id)
+            unless block_flow.in.empty?
+              fmt.output.puts("#{fmt.current_prefix}== in: #{block_flow.in.join(", ")}")
             end
 
-            unless insn_flow.out.empty?
-              output.print("out: #{insn_flow.out.join(", ")}")
+            fmt.format_insns!(block.insns, block.block_start) do |insn, length|
+              insn_flow = insn_flows[length]
+              next if insn_flow.in.empty? && insn_flow.out.empty?
+  
+              fmt.output.print(" # ")
+              unless insn_flow.in.empty?
+                fmt.output.print("in: #{insn_flow.in.join(", ")}")
+                fmt.output.print("; ") unless insn_flow.out.empty?
+              end
+  
+              unless insn_flow.out.empty?
+                fmt.output.print("out: #{insn_flow.out.join(", ")}")
+              end
             end
 
-            output.puts
-          end
+            to = block.outgoing_blocks.map(&:id)
+            to << "leaves" if block.insns.last.leaves?
+            fmt.output.puts("#{fmt.current_prefix}== to: #{to.join(", ")}")
 
-          dests = block.outgoing_blocks.map(&:id)
-          dests << "leaves" if block.insns.last.leaves?
-          output.puts("        # to: #{dests.join(", ")}") unless dests.empty?
-
-          unless block_flow.out.empty?
-            output.puts "        # out: #{block_flow.out.join(", ")}"
+            unless block_flow.out.empty?
+              fmt.output.puts("#{fmt.current_prefix}== out: #{block_flow.out.join(", ")}")
+            end  
           end
         end
 
-        output.string
+        fmt.string
       end
 
       # Verify that we constructed the data flow graph correctly.
