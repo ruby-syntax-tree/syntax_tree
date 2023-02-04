@@ -43,6 +43,7 @@ require_relative "syntax_tree/yarv/instruction_sequence"
 require_relative "syntax_tree/yarv/instructions"
 require_relative "syntax_tree/yarv/legacy"
 require_relative "syntax_tree/yarv/local_table"
+require_relative "syntax_tree/yarv/sea_of_nodes"
 require_relative "syntax_tree/yarv/assembler"
 require_relative "syntax_tree/yarv/vm"
 

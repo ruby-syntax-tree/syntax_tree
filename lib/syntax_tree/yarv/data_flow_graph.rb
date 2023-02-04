@@ -27,6 +27,42 @@ module SyntaxTree
         end
       end
 
+      # This represents an object that goes on the stack that is passed between
+      # basic blocks.
+      class BlockArgument
+        attr_reader :name
+
+        def initialize(name)
+          @name = name
+        end
+
+        def local?
+          false
+        end
+
+        def to_str
+          name.to_s
+        end
+      end
+
+      # This represents an object that goes on the stack that is passed between
+      # instructions within a basic block.
+      class LocalArgument
+        attr_reader :name, :length
+
+        def initialize(length)
+          @length = length
+        end
+
+        def local?
+          true
+        end
+
+        def to_str
+          length.to_s
+        end
+      end
+
       attr_reader :cfg, :insn_flows, :block_flows
 
       def initialize(cfg, insn_flows, block_flows)
@@ -35,11 +71,15 @@ module SyntaxTree
         @block_flows = block_flows
       end
 
+      def blocks
+        cfg.blocks
+      end
+
       def disasm
         fmt = Disassembler.new(cfg.iseq)
         fmt.puts("== dfg: #{cfg.iseq.inspect}")
 
-        cfg.blocks.each do |block|
+        blocks.each do |block|
           fmt.puts(block.id)
           fmt.with_prefix("    ") do |prefix|
             unless block.incoming_blocks.empty?
@@ -80,6 +120,10 @@ module SyntaxTree
         fmt.string
       end
 
+      def to_son
+        SeaOfNodes.compile(self)
+      end
+
       def to_mermaid
         output = StringIO.new
         output.puts("flowchart TD")
@@ -87,7 +131,7 @@ module SyntaxTree
         fmt = Disassembler::Mermaid.new
         links = []
 
-        cfg.blocks.each do |block|
+        blocks.each do |block|
           block_flow = block_flows.fetch(block.id)
           graph_name =
             if block_flow.in.any?
@@ -123,7 +167,7 @@ module SyntaxTree
           output.puts("  end")
         end
 
-        cfg.blocks.each do |block|
+        blocks.each do |block|
           block.outgoing_blocks.each do |outgoing|
             offset =
               block.block_start + block.insns.sum(&:length) -
@@ -144,11 +188,11 @@ module SyntaxTree
       # Verify that we constructed the data flow graph correctly.
       def verify
         # Check that the first block has no arguments.
-        raise unless block_flows.fetch(cfg.blocks.first.id).in.empty?
+        raise unless block_flows.fetch(blocks.first.id).in.empty?
 
         # Check all control flow edges between blocks pass the right number of
         # arguments.
-        cfg.blocks.each do |block|
+        blocks.each do |block|
           block_flow = block_flows.fetch(block.id)
 
           if block.outgoing_blocks.empty?
@@ -191,8 +235,8 @@ module SyntaxTree
         end
 
         def compile
-          find_local_flow
-          find_global_flow
+          find_internal_flow
+          find_external_flow
           DataFlowGraph.new(cfg, insn_flows, block_flows).tap(&:verify)
         end
 
@@ -200,45 +244,53 @@ module SyntaxTree
 
         # Find the data flow within each basic block. Using an abstract stack,
         # connect from consumers of data to the producers of that data.
-        def find_local_flow
+        def find_internal_flow
           cfg.blocks.each do |block|
             block_flow = block_flows.fetch(block.id)
             stack = []
 
-            # Go through each instruction in the block...
+            # Go through each instruction in the block.
             block.each_with_length do |insn, length|
               insn_flow = insn_flows[length]
 
               # How many values will be missing from the local stack to run this
-              # instruction?
+              # instruction? This will be used to determine if the values that
+              # are being used by this instruction are coming from previous
+              # instructions or from previous basic blocks.
               missing = insn.pops - stack.size
 
-              # For every value the instruction pops off the stack...
+              # For every value the instruction pops off the stack.
               insn.pops.times do
                 # Was the value it pops off from another basic block?
                 if stack.empty?
-                  # This is a basic block argument.
+                  # If the stack is empty, then there aren't enough values being
+                  # pushed from previous instructions to fulfill the needs of
+                  # this instruction. In that case the values must be coming
+                  # from previous basic blocks.
                   missing -= 1
-                  name = :"in_#{missing}"
+                  argument = BlockArgument.new(:"in_#{missing}")
 
-                  insn_flow.in.unshift(name)
-                  block_flow.in.unshift(name)
+                  insn_flow.in.unshift(argument)
+                  block_flow.in.unshift(argument)
                 else
-                  # Connect this consumer to the producer of the value.
+                  # Since there are values in the stack, we can connect this
+                  # consumer to the producer of the value.
                   insn_flow.in.unshift(stack.pop)
                 end
               end
 
               # Record on our abstract stack that this instruction pushed
               # this value onto the stack.
-              insn.pushes.times { stack << length }
+              insn.pushes.times { stack << LocalArgument.new(length) }
             end
 
             # Values that are left on the stack after going through all
             # instructions are arguments to the basic block that we jump to.
             stack.reverse_each.with_index do |producer, index|
               block_flow.out << producer
-              insn_flows[producer].out << :"out_#{index}"
+
+              argument = BlockArgument.new(:"out_#{index}")
+              insn_flows[producer.length].out << argument
             end
           end
 
@@ -249,17 +301,17 @@ module SyntaxTree
             insn_flows[length].in.each do |producer|
               # If it's actually another instruction and not a basic block
               # argument...
-              if producer.is_a?(Integer)
+              if producer.is_a?(LocalArgument)
                 # Record in the producing instruction that it produces a value
                 # used by this construction.
-                insn_flows[producer].out << length
+                insn_flows[producer.length].out << LocalArgument.new(length)
               end
             end
           end
         end
 
         # Find the data that flows between basic blocks.
-        def find_global_flow
+        def find_external_flow
           stack = [*cfg.blocks]
 
           until stack.empty?
@@ -275,7 +327,7 @@ module SyntaxTree
                 # If so then add arguments to pass data through from the
                 # incoming block's incoming blocks.
                 (block_flow.in.size - incoming_flow.out.size).times do |index|
-                  name = :"pass_#{index}"
+                  name = BlockArgument.new(:"pass_#{index}")
 
                   incoming_flow.in.unshift(name)
                   incoming_flow.out.unshift(name)
@@ -283,7 +335,8 @@ module SyntaxTree
 
                 # Since we modified the incoming block, add it back to the stack
                 # so it'll be considered as an outgoing block again, and
-                # propogate the global data flow back up the control flow graph.
+                # propogate the external data flow back up the control flow
+                # graph.
                 stack << incoming_block
               end
             end

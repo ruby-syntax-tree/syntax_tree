@@ -366,6 +366,116 @@ module SyntaxTree
       DFG
     end
 
+    def test_son
+      iseq = RubyVM::InstructionSequence.compile("(14 < 0 ? -1 : +1) + 100")
+      iseq = SyntaxTree::YARV::InstructionSequence.from(iseq.to_a)
+      cfg = SyntaxTree::YARV::ControlFlowGraph.compile(iseq)
+      dfg = SyntaxTree::YARV::DataFlowGraph.compile(cfg)
+      son = SyntaxTree::YARV::SeaOfNodes.compile(dfg)
+
+      assert_equal(<<~SON, son.to_mermaid)
+        flowchart TD
+          node_0("0000 putobject 14")
+          node_2("0002 putobject_INT2FIX_0_")
+          node_3("0003 opt_lt &lt;calldata!mid:&lt;, argc:1, ARGS_SIMPLE&gt;")
+          node_5("0005 branchunless 0011")
+          node_7("0007 putobject -1")
+          node_9("0009 jump 0012")
+          node_11("0011 putobject_INT2FIX_1_")
+          node_12("0012 putobject 100")
+          node_14("0014 opt_plus &lt;calldata!mid:+, argc:1, ARGS_SIMPLE&gt;")
+          node_16("0016 leave")
+          node_1000("1000 ψ")
+          node_1001("1001 φ")
+          node_0 --> |0| node_3
+          linkStyle 0 stroke:green;
+          node_2 --> |1| node_3
+          linkStyle 1 stroke:green;
+          node_3 --> node_5
+          linkStyle 2 stroke:red;
+          node_3 --> |0| node_5
+          linkStyle 3 stroke:green;
+          node_5 --> |branch0| node_11
+          linkStyle 4 stroke:red;
+          node_5 --> |fallthrough| node_9
+          linkStyle 5 stroke:red;
+          node_7 --> |0009| node_1001
+          linkStyle 6 stroke:green;
+          node_9 --> |branch0| node_1000
+          linkStyle 7 stroke:red;
+          node_11 --> |branch0| node_1000
+          linkStyle 8 stroke:red;
+          node_11 --> |0011| node_1001
+          linkStyle 9 stroke:green;
+          node_12 --> |1| node_14
+          linkStyle 10 stroke:green;
+          node_14 --> node_16
+          linkStyle 11 stroke:red;
+          node_14 --> |0| node_16
+          linkStyle 12 stroke:green;
+          node_1000 --> node_14
+          linkStyle 13 stroke:red;
+          node_1001 -.-> node_1000
+          node_1001 --> |0| node_14
+          linkStyle 15 stroke:green;
+      SON
+    end
+
+    def test_son_indirect_basic_block_argument
+      iseq = RubyVM::InstructionSequence.compile("100 + (14 < 0 ? -1 : +1)")
+      iseq = SyntaxTree::YARV::InstructionSequence.from(iseq.to_a)
+      cfg = SyntaxTree::YARV::ControlFlowGraph.compile(iseq)
+      dfg = SyntaxTree::YARV::DataFlowGraph.compile(cfg)
+      son = SyntaxTree::YARV::SeaOfNodes.compile(dfg)
+
+      assert_equal(<<~SON, son.to_mermaid)
+        flowchart TD
+          node_0("0000 putobject 100")
+          node_2("0002 putobject 14")
+          node_4("0004 putobject_INT2FIX_0_")
+          node_5("0005 opt_lt &lt;calldata!mid:&lt;, argc:1, ARGS_SIMPLE&gt;")
+          node_7("0007 branchunless 0013")
+          node_9("0009 putobject -1")
+          node_11("0011 jump 0014")
+          node_13("0013 putobject_INT2FIX_1_")
+          node_14("0014 opt_plus &lt;calldata!mid:+, argc:1, ARGS_SIMPLE&gt;")
+          node_16("0016 leave")
+          node_1002("1002 ψ")
+          node_1004("1004 φ")
+          node_0 --> |0| node_14
+          linkStyle 0 stroke:green;
+          node_2 --> |0| node_5
+          linkStyle 1 stroke:green;
+          node_4 --> |1| node_5
+          linkStyle 2 stroke:green;
+          node_5 --> node_7
+          linkStyle 3 stroke:red;
+          node_5 --> |0| node_7
+          linkStyle 4 stroke:green;
+          node_7 --> |branch0| node_13
+          linkStyle 5 stroke:red;
+          node_7 --> |fallthrough| node_11
+          linkStyle 6 stroke:red;
+          node_9 --> |0011| node_1004
+          linkStyle 7 stroke:green;
+          node_11 --> |branch0| node_1002
+          linkStyle 8 stroke:red;
+          node_13 --> |branch0| node_1002
+          linkStyle 9 stroke:red;
+          node_13 --> |0013| node_1004
+          linkStyle 10 stroke:green;
+          node_14 --> node_16
+          linkStyle 11 stroke:red;
+          node_14 --> |0| node_16
+          linkStyle 12 stroke:green;
+          node_1002 --> node_14
+          linkStyle 13 stroke:red;
+          node_1004 -.-> node_1002
+          node_1004 --> |1| node_14
+          linkStyle 15 stroke:green;
+      SON
+    end
+
     private
 
     def assert_decompiles(expected, source)
