@@ -19,3 +19,8 @@
 %I[foo] # comment
 %
 %I{foo[]}
+%
+:\
+=begin
+=end
+symbol
