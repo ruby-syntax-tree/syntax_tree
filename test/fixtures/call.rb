@@ -60,3 +60,8 @@ end
 %
 a b do
 end.c d
+%
+self.
+=begin
+=end
+  to_s

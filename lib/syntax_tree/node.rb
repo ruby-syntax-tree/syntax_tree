@@ -4090,7 +4090,8 @@ module SyntaxTree
     def format(q)
       q.group do
         q.group do
-          q.text("def ")
+          q.text("def")
+          q.text(" ") if target || name.comments.empty?
 
           if target
             q.format(target)
@@ -4872,6 +4873,25 @@ module SyntaxTree
     def initialize(value:, location:)
       @value = value
       @location = location
+
+      @leading = false
+      @trailing = false
+    end
+
+    def leading!
+      @leading = true
+    end
+
+    def leading?
+      @leading
+    end
+
+    def trailing!
+      @trailing = true
+    end
+
+    def trailing?
+      @trailing
     end
 
     def inline?
@@ -4908,7 +4928,13 @@ module SyntaxTree
     end
 
     def format(q)
-      q.trim
+      if (q.parent.is_a?(DefNode) && q.parent.endless?) ||
+           q.parent.is_a?(Statements)
+        q.trim
+      else
+        q.breakable_return
+      end
+
       q.text(value)
     end
 
@@ -10465,6 +10491,7 @@ module SyntaxTree
 
     def format(q)
       q.text(":")
+      q.text("\\") if value.comments.any?
       q.format(value)
     end
 
