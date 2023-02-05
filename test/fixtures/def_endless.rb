@@ -22,3 +22,13 @@ rescue StandardError
 end
 
 def foo? = true
+%
+def a()
+=begin
+=end
+=1
+-
+def a() =
+=begin
+=end
+  1
