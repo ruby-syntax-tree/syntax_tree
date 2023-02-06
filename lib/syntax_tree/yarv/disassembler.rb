@@ -3,6 +3,41 @@
 module SyntaxTree
   module YARV
     class Disassembler
+      # This class is another object that handles disassembling a YARV
+      # instruction sequence but it does so in order to provide a label for a
+      # mermaid diagram.
+      class Mermaid
+        def calldata(value)
+          value.inspect
+        end
+
+        def enqueue(iseq)
+        end
+
+        def event(name)
+        end
+
+        def inline_storage(cache)
+          "<is:#{cache}>"
+        end
+
+        def instruction(name, operands = [])
+          operands.empty? ? name : "#{name} #{operands.join(", ")}"
+        end
+
+        def label(value)
+          "%04d" % value.name["label_".length..]
+        end
+
+        def local(index, **)
+          index.inspect
+        end
+
+        def object(value)
+          value.inspect
+        end
+      end
+
       attr_reader :output, :queue
 
       attr_reader :current_prefix

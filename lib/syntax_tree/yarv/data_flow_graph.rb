@@ -80,6 +80,67 @@ module SyntaxTree
         fmt.string
       end
 
+      def to_mermaid
+        output = StringIO.new
+        output.puts("flowchart TD")
+
+        fmt = Disassembler::Mermaid.new
+        links = []
+
+        cfg.blocks.each do |block|
+          block_flow = block_flows.fetch(block.id)
+          graph_name =
+            if block_flow.in.any?
+              "#{block.id} #{block_flows[block.id].in.join(", ")}"
+            else
+              block.id
+            end
+
+          output.puts("  subgraph \"#{CGI.escapeHTML(graph_name)}\"")
+          previous = nil
+
+          block.each_with_length do |insn, length|
+            node_id = "node_#{length}"
+            label = "%04d %s" % [length, insn.disasm(fmt)]
+
+            output.puts("    #{node_id}(\"#{CGI.escapeHTML(label)}\")")
+
+            if previous
+              output.puts("    #{previous} --> #{node_id}")
+              links << "red"
+            end
+
+            insn_flows[length].in.each do |input|
+              if input.is_a?(Integer)
+                output.puts("    node_#{input} --> #{node_id}")
+                links << "green"
+              end
+            end
+
+            previous = node_id
+          end
+
+          output.puts("  end")
+        end
+
+        cfg.blocks.each do |block|
+          block.outgoing_blocks.each do |outgoing|
+            offset =
+              block.block_start + block.insns.sum(&:length) -
+                block.insns.last.length
+
+            output.puts("  node_#{offset} --> node_#{outgoing.block_start}")
+            links << "red"
+          end
+        end
+
+        links.each_with_index do |color, index|
+          output.puts("  linkStyle #{index} stroke:#{color}")
+        end
+
+        output.string
+      end
+
       # Verify that we constructed the data flow graph correctly.
       def verify
         # Check that the first block has no arguments.

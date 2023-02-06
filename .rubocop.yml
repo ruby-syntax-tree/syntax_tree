@@ -90,6 +90,9 @@ Style/CaseLikeIf:
 Style/ClassVars:
   Enabled: false
 
+Style/CombinableLoops:
+  Enabled: false
+
 Style/DocumentDynamicEvalDefinition:
   Enabled: false
 
