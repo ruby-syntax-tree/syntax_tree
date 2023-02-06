@@ -82,6 +82,7 @@ module SyntaxTree
             offset =
               block.block_start + block.insns.sum(&:length) -
                 block.insns.last.length
+
             output.puts("  node_#{offset} --> node_#{outgoing.block_start}")
           end
         end
