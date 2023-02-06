@@ -134,12 +134,12 @@ module SyntaxTree
       accept(Visitor::JSONVisitor.new).to_json(*opts)
     end
 
-    def construct_keys
-      PrettierPrint.format(+"") { |q| accept(Visitor::MatchVisitor.new(q)) }
+    def to_mermaid
+      accept(Visitor::MermaidVisitor.new)
     end
 
-    def mermaid
-      accept(Visitor::MermaidVisitor.new)
+    def construct_keys
+      PrettierPrint.format(+"") { |q| accept(Visitor::MatchVisitor.new(q)) }
     end
   end
 

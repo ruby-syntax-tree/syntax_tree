@@ -55,6 +55,40 @@ module SyntaxTree
         fmt.string
       end
 
+      def to_mermaid
+        output = StringIO.new
+        output.puts("flowchart TD")
+
+        fmt = Disassembler::Mermaid.new
+        blocks.each do |block|
+          output.puts("  subgraph #{block.id}")
+          previous = nil
+
+          block.each_with_length do |insn, length|
+            node_id = "node_#{length}"
+            label = "%04d %s" % [length, insn.disasm(fmt)]
+
+            output.puts("    #{node_id}(\"#{CGI.escapeHTML(label)}\")")
+            output.puts("    #{previous} --> #{node_id}") if previous
+
+            previous = node_id
+          end
+
+          output.puts("  end")
+        end
+
+        blocks.each do |block|
+          block.outgoing_blocks.each do |outgoing|
+            offset =
+              block.block_start + block.insns.sum(&:length) -
+                block.insns.last.length
+            output.puts("  node_#{offset} --> node_#{outgoing.block_start}")
+          end
+        end
+
+        output.string
+      end
+
       # This method is used to verify that the control flow graph is well
       # formed. It does this by checking that each basic block is itself well
       # formed.
