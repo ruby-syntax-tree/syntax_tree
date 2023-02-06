@@ -131,7 +131,7 @@ module SyntaxTree
         end
       SOURCE
 
-      at = location(lines: 2..2, chars: 18..47)
+      at = location(lines: 2..2, chars: 18..48)
       assert_node(AryPtn, source, at: at) { |node| node.consequent.pattern }
     end
 

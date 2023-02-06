@@ -2149,6 +2149,14 @@ module SyntaxTree
       other.is_a?(BlockVar) && params === other.params &&
         ArrayMatch.call(locals, other.locals)
     end
+
+    # When a single required parameter is declared for a block, it gets
+    # automatically expanded if the values being yielded into it are an array.
+    def arg0?
+      params.requireds.length == 1 && params.optionals.empty? &&
+        params.rest.nil? && params.posts.empty? && params.keywords.empty? &&
+        params.keyword_rest.nil? && params.block.nil?
+    end
   end
 
   # BlockArg represents declaring a block parameter on a method definition.

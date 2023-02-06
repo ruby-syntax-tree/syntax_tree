@@ -670,18 +670,22 @@ module SyntaxTree
     #     (nil | Array[untyped]) posts
     #   ) -> AryPtn
     def on_aryptn(constant, requireds, rest, posts)
-      parts = [constant, *requireds, rest, *posts].compact
+      lbracket = find_token(LBracket)
+      lbracket ||= find_token(LParen) if constant
 
-      # If there aren't any parts (no constant, no positional arguments), then
-      # we're matching an empty array. In this case, we're going to look for the
-      # left and right brackets explicitly. Otherwise, we'll just use the bounds
-      # of the various parts.
-      location =
-        if parts.empty?
-          consume_token(LBracket).location.to(consume_token(RBracket).location)
-        else
-          parts[0].location.to(parts[-1].location)
-        end
+      rbracket = find_token(RBracket)
+      rbracket ||= find_token(RParen) if constant
+
+      parts = [constant, lbracket, *requireds, rest, *posts, rbracket].compact
+
+      # The location is going to be determined by the first part to the last
+      # part. This includes potential brackets.
+      location = parts[0].location.to(parts[-1].location)
+
+      # Now that we have the location calculated, we can remove the brackets
+      # from the list of tokens.
+      tokens.delete(lbracket) if lbracket
+      tokens.delete(rbracket) if rbracket
 
       # If there is a plain *, then we're going to fix up the location of it
       # here because it currently doesn't have anything to use for its precise
@@ -2353,23 +2357,30 @@ module SyntaxTree
 
     # :call-seq:
     #   on_method_add_block: (
-    #     (Call | Command | CommandCall) call,
+    #     (Break | Call | Command | CommandCall) call,
     #     Block block
-    #   ) -> MethodAddBlock
+    #   ) -> Break | MethodAddBlock
     def on_method_add_block(call, block)
       location = call.location.to(block.location)
 
       case call
+      when Break
+        parts = call.arguments.parts
+
+        node = parts.pop
+        copied =
+          node.copy(block: block, location: node.location.to(block.location))
+
+        copied.comments.concat(call.comments)
+        parts << copied
+
+        call.copy(location: location)
       when Command, CommandCall
         node = call.copy(block: block, location: location)
         node.comments.concat(call.comments)
         node
       else
-        MethodAddBlock.new(
-          call: call,
-          block: block,
-          location: call.location.to(block.location)
-        )
+        MethodAddBlock.new(call: call, block: block, location: location)
       end
     end
 
@@ -2592,19 +2603,40 @@ module SyntaxTree
       # have a `nil` for the value instead of a `false`.
       keywords&.map! { |(key, value)| [key, value || nil] }
 
-      parts = [
-        *requireds,
-        *optionals&.flatten(1),
-        rest,
-        *posts,
-        *keywords&.flatten(1),
-        (keyword_rest if keyword_rest != :nil),
-        (block if block != :&)
-      ].compact
+      # Here we're going to build up a list of all of the params so that we can
+      # determine our location information.
+      parts = []
+
+      requireds&.each { |required| parts << required.location }
+      optionals&.each do |(key, value)|
+        parts << key.location
+        parts << value.location if value
+      end
+
+      parts << rest.location if rest
+      posts&.each { |post| parts << post.location }
+
+      keywords&.each do |(key, value)|
+        parts << key.location
+        parts << value.location if value
+      end
+
+      if keyword_rest == :nil
+        # When we get a :nil here, it means that we have **nil syntax, which
+        # means this set of parameters accepts no more keyword arguments. In
+        # this case we need to go and find the location of these two tokens.
+        operator = consume_operator(:**)
+        parts << operator.location.to(consume_keyword(:nil).location)
+      elsif keyword_rest
+        parts << keyword_rest.location
+      end
+
+      parts << block.location if block && block != :&
+      parts = parts.compact
 
       location =
         if parts.any?
-          parts[0].location.to(parts[-1].location)
+          parts[0].to(parts[-1])
         else
           Location.fixed(line: lineno, char: char_pos, column: current_column)
         end
