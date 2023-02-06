@@ -127,17 +127,19 @@ module SyntaxTree
     end
 
     def pretty_print(q)
-      visitor = Visitor::PrettyPrintVisitor.new(q)
-      visitor.visit(self)
+      accept(Visitor::PrettyPrintVisitor.new(q))
     end
 
     def to_json(*opts)
-      visitor = Visitor::JSONVisitor.new
-      visitor.visit(self).to_json(*opts)
+      accept(Visitor::JSONVisitor.new).to_json(*opts)
     end
 
     def construct_keys
-      PrettierPrint.format(+"") { |q| Visitor::MatchVisitor.new(q).visit(self) }
+      PrettierPrint.format(+"") { |q| accept(Visitor::MatchVisitor.new(q)) }
+    end
+
+    def mermaid
+      accept(Visitor::MermaidVisitor.new)
     end
   end
 

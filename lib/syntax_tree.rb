@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require "cgi"
 require "etc"
 require "fiddle"
 require "json"
@@ -18,6 +19,7 @@ require_relative "syntax_tree/visitor"
 require_relative "syntax_tree/visitor/field_visitor"
 require_relative "syntax_tree/visitor/json_visitor"
 require_relative "syntax_tree/visitor/match_visitor"
+require_relative "syntax_tree/visitor/mermaid_visitor"
 require_relative "syntax_tree/visitor/mutation_visitor"
 require_relative "syntax_tree/visitor/pretty_print_visitor"
 require_relative "syntax_tree/visitor/environment"
