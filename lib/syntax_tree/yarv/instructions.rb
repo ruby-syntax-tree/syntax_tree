@@ -44,6 +44,13 @@ module SyntaxTree
       def falls_through?
         false
       end
+
+      # Does the instruction have side effects? Control-flow counts as a
+      # side-effect, as do some special-case instructions like Leave. By default
+      # every instruction is marked as having side effects.
+      def side_effects?
+        true
+      end
     end
 
     # ### Summary
@@ -1165,6 +1172,10 @@ module SyntaxTree
 
       def call(vm)
         vm.push(vm.stack.last.dup)
+      end
+
+      def side_effects?
+        false
       end
     end
 
@@ -2469,6 +2480,10 @@ module SyntaxTree
       end
 
       def call(vm)
+      end
+
+      def side_effects?
+        false
       end
     end
 
@@ -4439,6 +4454,10 @@ module SyntaxTree
       def call(vm)
         vm.pop
       end
+
+      def side_effects?
+        false
+      end
     end
 
     # ### Summary
@@ -4478,6 +4497,10 @@ module SyntaxTree
 
       def call(vm)
         canonical.call(vm)
+      end
+
+      def side_effects?
+        false
       end
     end
 
@@ -4525,6 +4548,10 @@ module SyntaxTree
       def call(vm)
         vm.push(object)
       end
+
+      def side_effects?
+        false
+      end
     end
 
     # ### Summary
@@ -4566,6 +4593,10 @@ module SyntaxTree
 
       def call(vm)
         canonical.call(vm)
+      end
+
+      def side_effects?
+        false
       end
     end
 
@@ -4609,6 +4640,10 @@ module SyntaxTree
       def call(vm)
         canonical.call(vm)
       end
+
+      def side_effects?
+        false
+      end
     end
 
     # ### Summary
@@ -4644,6 +4679,10 @@ module SyntaxTree
 
       def call(vm)
         vm.push(vm.frame._self)
+      end
+
+      def side_effects?
+        false
       end
     end
 

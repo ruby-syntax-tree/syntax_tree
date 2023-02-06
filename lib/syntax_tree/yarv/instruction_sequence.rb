@@ -269,6 +269,10 @@ module SyntaxTree
         ]
       end
 
+      def to_cfg
+        ControlFlowGraph.compile(self)
+      end
+
       def disasm
         fmt = Disassembler.new
         fmt.enqueue(self)

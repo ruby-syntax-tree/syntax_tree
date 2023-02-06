@@ -14,93 +14,6 @@ module SyntaxTree
     #     cfg = SyntaxTree::YARV::ControlFlowGraph.compile(iseq)
     #
     class ControlFlowGraph
-      # This is the instruction sequence that this control flow graph
-      # corresponds to.
-      attr_reader :iseq
-
-      # This is the list of instructions that this control flow graph contains.
-      # It is effectively the same as the list of instructions in the
-      # instruction sequence but with line numbers and events filtered out.
-      attr_reader :insns
-
-      # This is the set of basic blocks that this control-flow graph contains.
-      attr_reader :blocks
-
-      def initialize(iseq, insns, blocks)
-        @iseq = iseq
-        @insns = insns
-        @blocks = blocks
-      end
-
-      def disasm
-        fmt = Disassembler.new(iseq)
-        fmt.puts("== cfg: #{iseq.inspect}")
-
-        blocks.each do |block|
-          fmt.puts(block.id)
-          fmt.with_prefix("    ") do |prefix|
-            unless block.incoming_blocks.empty?
-              from = block.incoming_blocks.map(&:id)
-              fmt.puts("#{prefix}== from: #{from.join(", ")}")
-            end
-
-            fmt.format_insns!(block.insns, block.block_start)
-
-            to = block.outgoing_blocks.map(&:id)
-            to << "leaves" if block.insns.last.leaves?
-            fmt.puts("#{prefix}== to: #{to.join(", ")}")
-          end
-        end
-
-        fmt.string
-      end
-
-      def to_mermaid
-        output = StringIO.new
-        output.puts("flowchart TD")
-
-        fmt = Disassembler::Mermaid.new
-        blocks.each do |block|
-          output.puts("  subgraph #{block.id}")
-          previous = nil
-
-          block.each_with_length do |insn, length|
-            node_id = "node_#{length}"
-            label = "%04d %s" % [length, insn.disasm(fmt)]
-
-            output.puts("    #{node_id}(\"#{CGI.escapeHTML(label)}\")")
-            output.puts("    #{previous} --> #{node_id}") if previous
-
-            previous = node_id
-          end
-
-          output.puts("  end")
-        end
-
-        blocks.each do |block|
-          block.outgoing_blocks.each do |outgoing|
-            offset =
-              block.block_start + block.insns.sum(&:length) -
-                block.insns.last.length
-
-            output.puts("  node_#{offset} --> node_#{outgoing.block_start}")
-          end
-        end
-
-        output.string
-      end
-
-      # This method is used to verify that the control flow graph is well
-      # formed. It does this by checking that each basic block is itself well
-      # formed.
-      def verify
-        blocks.each(&:verify)
-      end
-
-      def self.compile(iseq)
-        Compiler.new(iseq).compile
-      end
-
       # This class is responsible for creating a control flow graph from the
       # given instruction sequence.
       class Compiler
@@ -139,7 +52,11 @@ module SyntaxTree
         # This method is used to compile the instruction sequence into a control
         # flow graph. It returns an instance of ControlFlowGraph.
         def compile
-          blocks = connect_basic_blocks(build_basic_blocks)
+          blocks = build_basic_blocks
+
+          connect_basic_blocks(blocks)
+          prune_basic_blocks(blocks)
+
           ControlFlowGraph.new(iseq, insns, blocks.values).tap(&:verify)
         end
 
@@ -187,7 +104,16 @@ module SyntaxTree
 
           block_starts
             .zip(blocks)
-            .to_h do |block_start, block_insns|
+            .to_h do |block_start, insns|
+              # It's possible that we have not detected a block start but still
+              # have branching instructions inside of a basic block. This can
+              # happen if you have an unconditional jump which is followed by
+              # instructions that are unreachable. As of Ruby 3.2, this is
+              # possible with something as simple as "1 => a". In this case we
+              # can discard all instructions that follow branching instructions.
+              block_insns =
+                insns.slice_after { |insn| insn.branch_targets.any? }.first
+
               [block_start, BasicBlock.new(block_start, block_insns)]
             end
         end
@@ -213,6 +139,114 @@ module SyntaxTree
             end
           end
         end
+
+        # If there are blocks that are unreachable, we can remove them from the
+        # graph entirely at this point.
+        def prune_basic_blocks(blocks)
+          visited = Set.new
+          queue = [blocks.fetch(0)]
+
+          until queue.empty?
+            current_block = queue.shift
+            next if visited.include?(current_block)
+
+            visited << current_block
+            queue.concat(current_block.outgoing_blocks)
+          end
+
+          blocks.select! { |_, block| visited.include?(block) }
+        end
+      end
+
+      # This is the instruction sequence that this control flow graph
+      # corresponds to.
+      attr_reader :iseq
+
+      # This is the list of instructions that this control flow graph contains.
+      # It is effectively the same as the list of instructions in the
+      # instruction sequence but with line numbers and events filtered out.
+      attr_reader :insns
+
+      # This is the set of basic blocks that this control-flow graph contains.
+      attr_reader :blocks
+
+      def initialize(iseq, insns, blocks)
+        @iseq = iseq
+        @insns = insns
+        @blocks = blocks
+      end
+
+      def disasm
+        fmt = Disassembler.new(iseq)
+        fmt.puts("== cfg: #{iseq.inspect}")
+
+        blocks.each do |block|
+          fmt.puts(block.id)
+          fmt.with_prefix("    ") do |prefix|
+            unless block.incoming_blocks.empty?
+              from = block.incoming_blocks.map(&:id)
+              fmt.puts("#{prefix}== from: #{from.join(", ")}")
+            end
+
+            fmt.format_insns!(block.insns, block.block_start)
+
+            to = block.outgoing_blocks.map(&:id)
+            to << "leaves" if block.insns.last.leaves?
+            fmt.puts("#{prefix}== to: #{to.join(", ")}")
+          end
+        end
+
+        fmt.string
+      end
+
+      def to_dfg
+        DataFlowGraph.compile(self)
+      end
+
+      def to_mermaid
+        output = StringIO.new
+        output.puts("flowchart TD")
+
+        fmt = Disassembler::Mermaid.new
+        blocks.each do |block|
+          output.puts("  subgraph #{block.id}")
+          previous = nil
+
+          block.each_with_length do |insn, length|
+            node_id = "node_#{length}"
+            label = "%04d %s" % [length, insn.disasm(fmt)]
+
+            output.puts("    #{node_id}(\"#{CGI.escapeHTML(label)}\")")
+            output.puts("    #{previous} --> #{node_id}") if previous
+
+            previous = node_id
+          end
+
+          output.puts("  end")
+        end
+
+        blocks.each do |block|
+          block.outgoing_blocks.each do |outgoing|
+            offset =
+              block.block_start + block.insns.sum(&:length) -
+                block.insns.last.length
+
+            output.puts("  node_#{offset} --> node_#{outgoing.block_start}")
+          end
+        end
+
+        output.string
+      end
+
+      # This method is used to verify that the control flow graph is well
+      # formed. It does this by checking that each basic block is itself well
+      # formed.
+      def verify
+        blocks.each(&:verify)
+      end
+
+      def self.compile(iseq)
+        Compiler.new(iseq).compile
       end
     end
   end
