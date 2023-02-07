@@ -641,8 +641,7 @@ module SyntaxTree
       end
 
       def visit_var_ref(node)
-        pins.shift
-        node.pin(stack[-2])
+        node.pin(stack[-2], pins.shift)
       end
 
       def self.visit(node, tokens)
@@ -1683,6 +1682,22 @@ module SyntaxTree
     #     VarField right
     #   ) -> FndPtn
     def on_fndptn(constant, left, values, right)
+      # The left and right of a find pattern are always going to be splats, so
+      # we're going to consume the * operators and use their location
+      # information to extend the location of the splats.
+      right, left =
+        [right, left].map do |node|
+          operator = consume_operator(:*)
+          location =
+            if node.value
+              operator.location.to(node.location)
+            else
+              operator.location
+            end
+
+          node.copy(location: location)
+        end
+
       # The opening of this find pattern is either going to be a left bracket, a
       # right left parenthesis, or the left splat. We're going to use this to
       # determine how to find the closing of the pattern, as well as determining
@@ -1791,7 +1806,7 @@ module SyntaxTree
           line: lineno,
           char: char_pos,
           column: current_column,
-          size: value.size + 1
+          size: value.size
         )
 
       # Here we're going to artificially create an extra node type so that if
@@ -1826,7 +1841,7 @@ module SyntaxTree
           line: lineno,
           char: char_pos,
           column: current_column,
-          size: value.size + 1
+          size: value.size
         )
 
       heredoc_end = HeredocEnd.new(value: value.chomp, location: location)
@@ -1841,9 +1856,9 @@ module SyntaxTree
             start_line: heredoc.location.start_line,
             start_char: heredoc.location.start_char,
             start_column: heredoc.location.start_column,
-            end_line: lineno,
-            end_char: char_pos,
-            end_column: current_column
+            end_line: location.end_line,
+            end_char: location.end_char,
+            end_column: location.end_column
           )
       )
     end
@@ -2357,14 +2372,14 @@ module SyntaxTree
 
     # :call-seq:
     #   on_method_add_block: (
-    #     (Break | Call | Command | CommandCall) call,
+    #     (Break | Call | Command | CommandCall, Next) call,
     #     Block block
     #   ) -> Break | MethodAddBlock
     def on_method_add_block(call, block)
       location = call.location.to(block.location)
 
       case call
-      when Break
+      when Break, Next
         parts = call.arguments.parts
 
         node = parts.pop

@@ -60,7 +60,7 @@ module SyntaxTree
         ARGUMENT
       SOURCE
 
-      at = location(lines: 1..3, chars: 6..28)
+      at = location(lines: 1..3, chars: 6..37)
       assert_node(ArgParen, source, at: at, &:arguments)
     end
 
@@ -533,7 +533,7 @@ module SyntaxTree
         HEREDOC
       SOURCE
 
-      at = location(lines: 1..3, chars: 0..22)
+      at = location(lines: 1..3, chars: 0..30)
       assert_node(Heredoc, source, at: at)
     end
 
@@ -544,7 +544,7 @@ module SyntaxTree
         HEREDOC
       SOURCE
 
-      at = location(chars: 0..11)
+      at = location(chars: 0..10)
       assert_node(HeredocBeg, source, at: at, &:beginning)
     end
 
@@ -555,7 +555,7 @@ module SyntaxTree
         HEREDOC
       SOURCE
 
-      at = location(lines: 3..3, chars: 22..31, columns: 0..9)
+      at = location(lines: 3..3, chars: 22..30, columns: 0..8)
       assert_node(HeredocEnd, source, at: at, &:ending)
     end
 
@@ -950,7 +950,7 @@ module SyntaxTree
     guard_version("3.1.0") do
       def test_pinned_var_ref
         source = "foo in ^bar"
-        at = location(chars: 8..11)
+        at = location(chars: 7..11)
 
         assert_node(PinnedVarRef, source, at: at, &:pattern)
       end
@@ -1008,7 +1008,7 @@ module SyntaxTree
         HEREDOC
       SOURCE
 
-      at = location(lines: 1..3, chars: 0..18)
+      at = location(lines: 1..3, chars: 0..26)
       assert_node(Heredoc, source, at: at)
     end
 

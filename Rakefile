@@ -4,18 +4,13 @@ require "bundler/gem_tasks"
 require "rake/testtask"
 require "syntax_tree/rake_tasks"
 
+Rake.add_rakelib "tasks"
+
 Rake::TestTask.new(:test) do |t|
   t.libs << "test"
   t.libs << "test/suites"
   t.libs << "lib"
-
-  # These are our own tests.
-  test_files = FileList["test/**/*_test.rb"]
-
-  # This is a big test file from the parser gem that tests its functionality.
-  test_files << "test/suites/parser/test/test_parser.rb"
-
-  t.test_files = test_files
+  t.test_files = FileList["test/**/*_test.rb"]
 end
 
 task default: :test
@@ -34,10 +29,3 @@ end
 
 SyntaxTree::Rake::CheckTask.new(&configure)
 SyntaxTree::Rake::WriteTask.new(&configure)
-
-desc "Run mspec tests using YARV emulation"
-task :spec do
-  Dir["./spec/ruby/language/**/*_spec.rb"].each do |filepath|
-    sh "exe/yarv ./spec/mspec/bin/mspec-tag #{filepath}"
-  end
-end
