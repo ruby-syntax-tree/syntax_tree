@@ -65,3 +65,10 @@ next [1]
 next([1, 2])
 -
 next 1, 2
+%
+next fun foo do end
+-
+next(
+  fun foo do
+  end
+)

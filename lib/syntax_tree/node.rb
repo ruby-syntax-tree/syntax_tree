@@ -11527,8 +11527,9 @@ module SyntaxTree
     #
     # To be clear, this method should just not exist. It's not good. It's a
     # place of shame. But it's necessary for now, so I'm keeping it.
-    def pin(parent)
-      replace = PinnedVarRef.new(value: value, location: location)
+    def pin(parent, pin)
+      replace =
+        PinnedVarRef.new(value: value, location: pin.location.to(location))
 
       parent
         .deconstruct_keys([])
