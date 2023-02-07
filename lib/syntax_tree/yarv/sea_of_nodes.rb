@@ -391,6 +391,30 @@ module SyntaxTree
                 connect_over(node)
                 remove(node)
               end
+            when Pop
+              from = node.inputs.find { |edge| edge.type == :data }.from
+              next unless from.is_a?(InsnNode)
+
+              removed =
+                if from.inputs.empty? && from.outputs.size == 1
+                  remove(from)
+                  true
+                elsif from.insn.is_a?(Dup)
+                  connect_over(from)
+                  remove(from)
+
+                  new_edge = node.inputs.last
+                  new_edge.from.outputs.delete(new_edge)
+                  node.inputs.delete(new_edge)
+                  true
+                else
+                  false
+                end
+
+              if removed
+                connect_over(node)
+                remove(node)
+              end
             end
           end
         end
