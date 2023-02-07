@@ -1,0 +1,1824 @@
+!!! assert_parses_args:2249:0
+def f (foo: 1, bar: 2, **baz, &b); end
+!!! assert_parses_args:2249:1
+def f (foo: 1, &b); end
+!!! assert_parses_args:2249:2
+def f **baz, &b; end
+!!! assert_parses_args:2249:3
+def f *, **; end
+!!! assert_parses_args:2249:4
+def f a, o=1, *r, &b; end
+!!! assert_parses_args:2249:5
+def f a, o=1, *r, p, &b; end
+!!! assert_parses_args:2249:6
+def f a, o=1, &b; end
+!!! assert_parses_args:2249:7
+def f a, o=1, p, &b; end
+!!! assert_parses_args:2249:8
+def f a, *r, &b; end
+!!! assert_parses_args:2249:9
+def f a, *r, p, &b; end
+!!! assert_parses_args:2249:10
+def f a, &b; end
+!!! assert_parses_args:2249:11
+def f o=1, *r, &b; end
+!!! assert_parses_args:2249:12
+def f o=1, *r, p, &b; end
+!!! assert_parses_args:2249:13
+def f o=1, &b; end
+!!! assert_parses_args:2249:14
+def f o=1, p, &b; end
+!!! assert_parses_args:2249:15
+def f *r, &b; end
+!!! assert_parses_args:2249:16
+def f *r, p, &b; end
+!!! assert_parses_args:2249:17
+def f &b; end
+!!! assert_parses_args:2249:18
+def f ; end
+!!! assert_parses_args:2249:19
+def f (((a))); end
+!!! assert_parses_args:2249:20
+def f ((a, a1)); end
+!!! assert_parses_args:2249:21
+def f ((a, *r)); end
+!!! assert_parses_args:2249:22
+def f ((a, *r, p)); end
+!!! assert_parses_args:2249:23
+def f ((a, *)); end
+!!! assert_parses_args:2249:24
+def f ((a, *, p)); end
+!!! assert_parses_args:2249:25
+def f ((*r)); end
+!!! assert_parses_args:2249:26
+def f ((*r, p)); end
+!!! assert_parses_args:2249:27
+def f ((*)); end
+!!! assert_parses_args:2249:28
+def f ((*, p)); end
+!!! assert_parses_args:2249:29
+def f foo:
+; end
+!!! assert_parses_args:2249:30
+def f foo: -1
+; end
+!!! assert_parses_blockargs:2506:0
+f{ |a| }
+!!! assert_parses_blockargs:2506:1
+f{ |a, b,| }
+!!! assert_parses_blockargs:2506:2
+f{ |a| }
+!!! assert_parses_blockargs:2506:3
+f{ |foo:| }
+!!! assert_parses_blockargs:2506:4
+f{  }
+!!! assert_parses_blockargs:2506:5
+f{ | | }
+!!! assert_parses_blockargs:2506:6
+f{ |;a| }
+!!! assert_parses_blockargs:2506:7
+f{ |;
+a
+| }
+!!! assert_parses_blockargs:2506:8
+f{ || }
+!!! assert_parses_blockargs:2506:9
+f{ |a| }
+!!! assert_parses_blockargs:2506:10
+f{ |a, c| }
+!!! assert_parses_blockargs:2506:11
+f{ |a,| }
+!!! assert_parses_blockargs:2506:12
+f{ |a, &b| }
+!!! assert_parses_blockargs:2506:13
+f{ |a, *s, &b| }
+!!! assert_parses_blockargs:2506:14
+f{ |a, *, &b| }
+!!! assert_parses_blockargs:2506:15
+f{ |a, *s| }
+!!! assert_parses_blockargs:2506:16
+f{ |a, *| }
+!!! assert_parses_blockargs:2506:17
+f{ |*s, &b| }
+!!! assert_parses_blockargs:2506:18
+f{ |*, &b| }
+!!! assert_parses_blockargs:2506:19
+f{ |*s| }
+!!! assert_parses_blockargs:2506:20
+f{ |*| }
+!!! assert_parses_blockargs:2506:21
+f{ |&b| }
+!!! assert_parses_blockargs:2506:22
+f{ |a, o=1, o1=2, *r, &b| }
+!!! assert_parses_blockargs:2506:23
+f{ |a, o=1, *r, p, &b| }
+!!! assert_parses_blockargs:2506:24
+f{ |a, o=1, &b| }
+!!! assert_parses_blockargs:2506:25
+f{ |a, o=1, p, &b| }
+!!! assert_parses_blockargs:2506:26
+f{ |a, *r, p, &b| }
+!!! assert_parses_blockargs:2506:27
+f{ |o=1, *r, &b| }
+!!! assert_parses_blockargs:2506:28
+f{ |o=1, *r, p, &b| }
+!!! assert_parses_blockargs:2506:29
+f{ |o=1, &b| }
+!!! assert_parses_blockargs:2506:30
+f{ |o=1, p, &b| }
+!!! assert_parses_blockargs:2506:31
+f{ |*r, p, &b| }
+!!! assert_parses_blockargs:2506:32
+f{ |foo: 1, bar: 2, **baz, &b| }
+!!! assert_parses_blockargs:2506:33
+f{ |foo: 1, &b| }
+!!! assert_parses_blockargs:2506:34
+f{ |**baz, &b| }
+!!! assert_parses_pattern_match:8503:0
+case foo; in self then true; end
+!!! assert_parses_pattern_match:8503:1
+case foo; in 1..2 then true; end
+!!! assert_parses_pattern_match:8503:2
+case foo; in 1.. then true; end
+!!! assert_parses_pattern_match:8503:3
+case foo; in ..2 then true; end
+!!! assert_parses_pattern_match:8503:4
+case foo; in 1...2 then true; end
+!!! assert_parses_pattern_match:8503:5
+case foo; in 1... then true; end
+!!! assert_parses_pattern_match:8503:6
+case foo; in ...2 then true; end
+!!! assert_parses_pattern_match:8503:7
+case foo; in [*x, 1 => a, *y] then true; end
+!!! assert_parses_pattern_match:8503:8
+case foo; in String(*, 1, *) then true; end
+!!! assert_parses_pattern_match:8503:9
+case foo; in Array[*, 1, *] then true; end
+!!! assert_parses_pattern_match:8503:10
+case foo; in *, 42, * then true; end
+!!! assert_parses_pattern_match:8503:11
+case foo; in x, then nil; end
+!!! assert_parses_pattern_match:8503:12
+case foo; in *x then nil; end
+!!! assert_parses_pattern_match:8503:13
+case foo; in * then nil; end
+!!! assert_parses_pattern_match:8503:14
+case foo; in x, y then nil; end
+!!! assert_parses_pattern_match:8503:15
+case foo; in x, y, then nil; end
+!!! assert_parses_pattern_match:8503:16
+case foo; in x, *y, z then nil; end
+!!! assert_parses_pattern_match:8503:17
+case foo; in *x, y, z then nil; end
+!!! assert_parses_pattern_match:8503:18
+case foo; in 1, "a", [], {} then nil; end
+!!! assert_parses_pattern_match:8503:19
+case foo; in ->{ 42 } then true; end
+!!! assert_parses_pattern_match:8503:20
+case foo; in A(1, 2) then true; end
+!!! assert_parses_pattern_match:8503:21
+case foo; in A(x:) then true; end
+!!! assert_parses_pattern_match:8503:22
+case foo; in A() then true; end
+!!! assert_parses_pattern_match:8503:23
+case foo; in A[1, 2] then true; end
+!!! assert_parses_pattern_match:8503:24
+case foo; in A[x:] then true; end
+!!! assert_parses_pattern_match:8503:25
+case foo; in A[] then true; end
+!!! assert_parses_pattern_match:8503:26
+case foo; in x then x; end
+!!! assert_parses_pattern_match:8503:27
+case foo; in {} then true; end
+!!! assert_parses_pattern_match:8503:28
+case foo; in a: 1 then true; end
+!!! assert_parses_pattern_match:8503:29
+case foo; in { a: 1 } then true; end
+!!! assert_parses_pattern_match:8503:30
+case foo; in { a: 1, } then true; end
+!!! assert_parses_pattern_match:8503:31
+case foo; in a: then true; end
+!!! assert_parses_pattern_match:8503:32
+case foo; in **a then true; end
+!!! assert_parses_pattern_match:8503:33
+case foo; in ** then true; end
+!!! assert_parses_pattern_match:8503:34
+case foo; in a: 1, b: 2 then true; end
+!!! assert_parses_pattern_match:8503:35
+case foo; in a:, b: then true; end
+!!! assert_parses_pattern_match:8503:36
+case foo; in a: 1, _a:, ** then true; end
+!!! assert_parses_pattern_match:8503:37
+case foo; 
+        in {a: 1
+        }
+          false
+      ; end
+!!! assert_parses_pattern_match:8503:38
+case foo; 
+        in {a:
+              2}
+          false
+      ; end
+!!! assert_parses_pattern_match:8503:39
+case foo; 
+        in {Foo: 42
+        }
+          false
+      ; end
+!!! assert_parses_pattern_match:8503:40
+case foo; 
+        in a: {b:}, c:
+          p c
+      ; end
+!!! assert_parses_pattern_match:8503:41
+case foo; 
+        in {a:
+        }
+          true
+      ; end
+!!! assert_parses_pattern_match:8503:42
+case foo; in A then true; end
+!!! assert_parses_pattern_match:8503:43
+case foo; in A::B then true; end
+!!! assert_parses_pattern_match:8503:44
+case foo; in ::A then true; end
+!!! assert_parses_pattern_match:8503:45
+case foo; in [x] then nil; end
+!!! assert_parses_pattern_match:8503:46
+case foo; in [x,] then nil; end
+!!! assert_parses_pattern_match:8503:47
+case foo; in [x, y] then true; end
+!!! assert_parses_pattern_match:8503:48
+case foo; in [x, y,] then true; end
+!!! assert_parses_pattern_match:8503:49
+case foo; in [x, y, *] then true; end
+!!! assert_parses_pattern_match:8503:50
+case foo; in [x, y, *z] then true; end
+!!! assert_parses_pattern_match:8503:51
+case foo; in [x, *y, z] then true; end
+!!! assert_parses_pattern_match:8503:52
+case foo; in [x, *, y] then true; end
+!!! assert_parses_pattern_match:8503:53
+case foo; in [*x, y] then true; end
+!!! assert_parses_pattern_match:8503:54
+case foo; in [*, x] then true; end
+!!! assert_parses_pattern_match:8503:55
+case foo; in (1) then true; end
+!!! assert_parses_pattern_match:8503:56
+case foo; in x if true; nil; end
+!!! assert_parses_pattern_match:8503:57
+case foo; in x unless true; nil; end
+!!! assert_parses_pattern_match:8503:58
+case foo; in 1; end
+!!! assert_parses_pattern_match:8503:59
+case foo; in ^foo then nil; end
+!!! assert_parses_pattern_match:8503:60
+case foo; in "a": then true; end
+!!! assert_parses_pattern_match:8503:61
+case foo; in "#{ 'a' }": then true; end
+!!! assert_parses_pattern_match:8503:62
+case foo; in "#{ %q{a} }": then true; end
+!!! assert_parses_pattern_match:8503:63
+case foo; in "#{ %Q{a} }": then true; end
+!!! assert_parses_pattern_match:8503:64
+case foo; in "a": 1 then true; end
+!!! assert_parses_pattern_match:8503:65
+case foo; in "#{ 'a' }": 1 then true; end
+!!! assert_parses_pattern_match:8503:66
+case foo; in "#{ %q{a} }": 1 then true; end
+!!! assert_parses_pattern_match:8503:67
+case foo; in "#{ %Q{a} }": 1 then true; end
+!!! assert_parses_pattern_match:8503:68
+case foo; in ^(42) then nil; end
+!!! assert_parses_pattern_match:8503:69
+case foo; in { foo: ^(42) } then nil; end
+!!! assert_parses_pattern_match:8503:70
+case foo; in ^(0+0) then nil; end
+!!! assert_parses_pattern_match:8503:71
+case foo; in ^@a; end
+!!! assert_parses_pattern_match:8503:72
+case foo; in ^@@TestPatternMatching; end
+!!! assert_parses_pattern_match:8503:73
+case foo; in ^$TestPatternMatching; end
+!!! assert_parses_pattern_match:8503:74
+case foo; in ^(1
+); end
+!!! assert_parses_pattern_match:8503:75
+case foo; in 1 | 2 then true; end
+!!! assert_parses_pattern_match:8503:76
+case foo; in 1 => a then true; end
+!!! assert_parses_pattern_match:8503:77
+case foo; in **nil then true; end
+!!! block in test_endless_comparison_method:10392:0
+def ===(other) = do_something
+!!! block in test_endless_comparison_method:10392:1
+def ==(other) = do_something
+!!! block in test_endless_comparison_method:10392:2
+def !=(other) = do_something
+!!! block in test_endless_comparison_method:10392:3
+def <=(other) = do_something
+!!! block in test_endless_comparison_method:10392:4
+def >=(other) = do_something
+!!! block in test_endless_comparison_method:10392:5
+def !=(other) = do_something
+!!! block in test_parser_slash_slash_n_escaping_in_literals:7327:0
+'a\
+b'
+!!! block in test_parser_slash_slash_n_escaping_in_literals:7327:1
+<<-'HERE'
+a\
+b
+HERE
+!!! block in test_parser_slash_slash_n_escaping_in_literals:7327:2
+%q{a\
+b}
+!!! block in test_parser_slash_slash_n_escaping_in_literals:7327:3
+"a\
+b"
+!!! block in test_parser_slash_slash_n_escaping_in_literals:7327:4
+<<-"HERE"
+a\
+b
+HERE
+!!! block in test_parser_slash_slash_n_escaping_in_literals:7327:5
+%{a\
+b}
+!!! block in test_parser_slash_slash_n_escaping_in_literals:7327:6
+%Q{a\
+b}
+!!! block in test_parser_slash_slash_n_escaping_in_literals:7327:7
+%w{a\
+b}
+!!! block in test_parser_slash_slash_n_escaping_in_literals:7327:8
+%W{a\
+b}
+!!! block in test_parser_slash_slash_n_escaping_in_literals:7327:9
+%i{a\
+b}
+!!! block in test_parser_slash_slash_n_escaping_in_literals:7327:10
+%I{a\
+b}
+!!! block in test_parser_slash_slash_n_escaping_in_literals:7327:11
+:'a\
+b'
+!!! block in test_parser_slash_slash_n_escaping_in_literals:7327:12
+%s{a\
+b}
+!!! block in test_parser_slash_slash_n_escaping_in_literals:7327:13
+:"a\
+b"
+!!! block in test_parser_slash_slash_n_escaping_in_literals:7327:14
+/a\
+b/
+!!! block in test_parser_slash_slash_n_escaping_in_literals:7327:15
+%r{a\
+b}
+!!! block in test_parser_slash_slash_n_escaping_in_literals:7327:16
+%x{a\
+b}
+!!! block in test_parser_slash_slash_n_escaping_in_literals:7327:17
+`a\
+b`
+!!! block in test_parser_slash_slash_n_escaping_in_literals:7327:18
+<<-`HERE`
+a\
+b
+HERE
+!!! block in test_ruby_bug_11873_a:6017:0
+a b{c d}, :e do end
+!!! block in test_ruby_bug_11873_a:6017:1
+a b{c d}, 1 do end
+!!! block in test_ruby_bug_11873_a:6017:2
+a b{c d}, 1.0 do end
+!!! block in test_ruby_bug_11873_a:6017:3
+a b{c d}, 1.0r do end
+!!! block in test_ruby_bug_11873_a:6017:4
+a b{c d}, 1.0i do end
+!!! block in test_ruby_bug_11873_a:6022:0
+a b{c(d)}, :e do end
+!!! block in test_ruby_bug_11873_a:6022:1
+a b{c(d)}, 1 do end
+!!! block in test_ruby_bug_11873_a:6022:2
+a b{c(d)}, 1.0 do end
+!!! block in test_ruby_bug_11873_a:6022:3
+a b{c(d)}, 1.0r do end
+!!! block in test_ruby_bug_11873_a:6022:4
+a b{c(d)}, 1.0i do end
+!!! block in test_ruby_bug_11873_a:6036:0
+a b(c d), :e do end
+!!! block in test_ruby_bug_11873_a:6036:1
+a b(c d), 1 do end
+!!! block in test_ruby_bug_11873_a:6036:2
+a b(c d), 1.0 do end
+!!! block in test_ruby_bug_11873_a:6036:3
+a b(c d), 1.0r do end
+!!! block in test_ruby_bug_11873_a:6036:4
+a b(c d), 1.0i do end
+!!! block in test_ruby_bug_11873_a:6041:0
+a b(c(d)), :e do end
+!!! block in test_ruby_bug_11873_a:6041:1
+a b(c(d)), 1 do end
+!!! block in test_ruby_bug_11873_a:6041:2
+a b(c(d)), 1.0 do end
+!!! block in test_ruby_bug_11873_a:6041:3
+a b(c(d)), 1.0r do end
+!!! block in test_ruby_bug_11873_a:6041:4
+a b(c(d)), 1.0i do end
+!!! test___ENCODING__:1037
+__ENCODING__
+!!! test___ENCODING___legacy_:1046
+__ENCODING__
+!!! test_alias:2020
+alias :foo bar
+!!! test_alias_gvar:2032
+alias $a $b
+!!! test_alias_gvar:2037
+alias $a $+
+!!! test_ambiuous_quoted_label_in_ternary_operator:7204
+a ? b & '': nil
+!!! test_and:4447
+foo and bar
+!!! test_and:4453
+foo && bar
+!!! test_and_asgn:1748
+foo.a &&= 1
+!!! test_and_asgn:1758
+foo[0, 1] &&= 2
+!!! test_and_or_masgn:4475
+foo && (a, b = bar)
+!!! test_and_or_masgn:4484
+foo || (a, b = bar)
+!!! test_anonymous_blockarg:10861
+def foo(&); bar(&); end
+!!! test_arg:2055
+def f(foo); end
+!!! test_arg:2066
+def f(foo, bar); end
+!!! test_arg_duplicate_ignored:2958
+def foo(_, _); end
+!!! test_arg_duplicate_ignored:2972
+def foo(_a, _a); end
+!!! test_arg_label:3012
+def foo() a:b end
+!!! test_arg_label:3019
+def foo
+ a:b end
+!!! test_arg_label:3026
+f { || a:b }
+!!! test_arg_scope:2238
+lambda{|;a|a}
+!!! test_args_args_assocs:4077
+fun(foo, :foo => 1)
+!!! test_args_args_assocs:4083
+fun(foo, :foo => 1, &baz)
+!!! test_args_args_assocs_comma:4092
+foo[bar, :baz => 1,]
+!!! test_args_args_comma:3941
+foo[bar,]
+!!! test_args_args_star:3908
+fun(foo, *bar)
+!!! test_args_args_star:3913
+fun(foo, *bar, &baz)
+!!! test_args_assocs:4001
+fun(:foo => 1)
+!!! test_args_assocs:4006
+fun(:foo => 1, &baz)
+!!! test_args_assocs:4012
+self[:bar => 1]
+!!! test_args_assocs:4021
+self.[]= foo, :a => 1
+!!! test_args_assocs:4031
+yield(:foo => 42)
+!!! test_args_assocs:4039
+super(:foo => 42)
+!!! test_args_assocs_comma:4068
+foo[:baz => 1,]
+!!! test_args_assocs_legacy:3951
+fun(:foo => 1)
+!!! test_args_assocs_legacy:3956
+fun(:foo => 1, &baz)
+!!! test_args_assocs_legacy:3962
+self[:bar => 1]
+!!! test_args_assocs_legacy:3971
+self.[]= foo, :a => 1
+!!! test_args_assocs_legacy:3981
+yield(:foo => 42)
+!!! test_args_assocs_legacy:3989
+super(:foo => 42)
+!!! test_args_block_pass:3934
+fun(&bar)
+!!! test_args_cmd:3901
+fun(f bar)
+!!! test_args_star:3921
+fun(*bar)
+!!! test_args_star:3926
+fun(*bar, &baz)
+!!! test_array_assocs:629
+[ 1 => 2 ]
+!!! test_array_assocs:637
+[ 1, 2 => 3 ]
+!!! test_array_plain:589
+[1, 2]
+!!! test_array_splat:598
+[1, *foo, 2]
+!!! test_array_splat:611
+[1, *foo]
+!!! test_array_splat:622
+[*foo]
+!!! test_array_symbols:695
+%i[foo bar]
+!!! test_array_symbols_empty:732
+%i[]
+!!! test_array_symbols_empty:740
+%I()
+!!! test_array_symbols_interp:706
+%I[foo #{bar}]
+!!! test_array_symbols_interp:721
+%I[foo#{bar}]
+!!! test_array_words:647
+%w[foo bar]
+!!! test_array_words_empty:682
+%w[]
+!!! test_array_words_empty:689
+%W()
+!!! test_array_words_interp:657
+%W[foo #{bar}]
+!!! test_array_words_interp:671
+%W[foo #{bar}foo#@baz]
+!!! test_asgn_cmd:1126
+foo = m foo
+!!! test_asgn_cmd:1130
+foo = bar = m foo
+!!! test_asgn_mrhs:1449
+foo = bar, 1
+!!! test_asgn_mrhs:1456
+foo = *bar
+!!! test_asgn_mrhs:1461
+foo = baz, *bar
+!!! test_back_ref:995
+$+
+!!! test_bang:3434
+!foo
+!!! test_bang_cmd:3448
+!m foo
+!!! test_begin_cmdarg:5526
+p begin 1.times do 1 end end
+!!! test_beginless_erange_after_newline:935
+foo
+...100
+!!! test_beginless_irange_after_newline:923
+foo
+..100
+!!! test_beginless_range:903
+..100
+!!! test_beginless_range:912
+...100
+!!! test_blockarg:2187
+def f(&block); end
+!!! test_break:5037
+break(foo)
+!!! test_break:5051
+break foo
+!!! test_break:5057
+break()
+!!! test_break:5064
+break
+!!! test_break_block:5072
+break fun foo do end
+!!! test_bug_435:7067
+"#{-> foo {}}"
+!!! test_bug_447:7046
+m [] do end
+!!! test_bug_447:7055
+m [], 1 do end
+!!! test_bug_452:7080
+td (1_500).toString(); td.num do; end
+!!! test_bug_466:7096
+foo "#{(1+1).to_i}" do; end
+!!! test_bug_473:7113
+m "#{[]}"
+!!! test_bug_480:7124
+m "#{}#{()}"
+!!! test_bug_481:7136
+m def x(); end; 1.tap do end
+!!! test_bug_ascii_8bit_in_literal:5880
+# coding:utf-8
+         "\xD0\xBF\xD1\x80\xD0\xBE\xD0\xB2\xD0\xB5\xD1\x80\xD0\xBA\xD0\xB0"
+!!! test_bug_cmd_string_lookahead:5752
+desc "foo" do end
+!!! test_bug_cmdarg:5549
+assert dogs
+!!! test_bug_cmdarg:5554
+assert do: true
+!!! test_bug_cmdarg:5562
+f x: -> do meth do end end
+!!! test_bug_def_no_paren_eql_begin:5799
+def foo
+=begin
+=end
+end
+!!! test_bug_do_block_in_call_args:5762
+bar def foo; self.each do end end
+!!! test_bug_do_block_in_cmdarg:5777
+tap (proc do end)
+!!! test_bug_do_block_in_hash_brace:6569
+p :foo, {a: proc do end, b: proc do end}
+!!! test_bug_do_block_in_hash_brace:6587
+p :foo, {:a => proc do end, b: proc do end}
+!!! test_bug_do_block_in_hash_brace:6605
+p :foo, {"a": proc do end, b: proc do end}
+!!! test_bug_do_block_in_hash_brace:6623
+p :foo, {proc do end => proc do end, b: proc do end}
+!!! test_bug_do_block_in_hash_brace:6643
+p :foo, {** proc do end, b: proc do end}
+!!! test_bug_heredoc_do:5835
+f <<-TABLE do
+TABLE
+end
+!!! test_bug_interp_single:5789
+"#{1}"
+!!! test_bug_interp_single:5793
+%W"#{1}"
+!!! test_bug_lambda_leakage:6550
+->(scope) {}; scope
+!!! test_bug_regex_verification:6563
+/#)/x
+!!! test_bug_rescue_empty_else:5813
+begin; rescue LoadError; else; end
+!!! test_bug_while_not_parens_do:5805
+while not (true) do end
+!!! test_case_cond:4844
+case; when foo; 'foo'; end
+!!! test_case_cond_else:4857
+case; when foo; 'foo'; else 'bar'; end
+!!! test_case_expr:4816
+case foo; when 'bar'; bar; end
+!!! test_case_expr_else:4830
+case foo; when 'bar'; bar; else baz; end
+!!! test_casgn_scoped:1192
+Bar::Foo = 10
+!!! test_casgn_toplevel:1181
+::Foo = 10
+!!! test_casgn_unscoped:1203
+Foo = 10
+!!! test_character:248
+?a
+!!! test_class:1827
+class Foo; end
+!!! test_class:1837
+class Foo end
+!!! test_class_definition_in_while_cond:6870
+while class Foo; tap do end; end; break; end
+!!! test_class_definition_in_while_cond:6882
+while class Foo a = tap do end; end; break; end
+!!! test_class_definition_in_while_cond:6895
+while class << self; tap do end; end; break; end
+!!! test_class_definition_in_while_cond:6907
+while class << self; a = tap do end; end; break; end
+!!! test_class_super:1848
+class Foo < Bar; end
+!!! test_class_super_label:1860
+class Foo < a:b; end
+!!! test_comments_before_leading_dot__27:7750
+a #
+#
+.foo
+!!! test_comments_before_leading_dot__27:7757
+a #
+  #
+.foo
+!!! test_comments_before_leading_dot__27:7764
+a #
+#
+&.foo
+!!! test_comments_before_leading_dot__27:7771
+a #
+  #
+&.foo
+!!! test_complex:156
+42i
+!!! test_complex:162
+42ri
+!!! test_complex:168
+42.1i
+!!! test_complex:174
+42.1ri
+!!! test_cond_begin:4686
+if (bar); foo; end
+!!! test_cond_begin_masgn:4695
+if (bar; a, b = foo); end
+!!! test_cond_eflipflop:4758
+if foo...bar; end
+!!! test_cond_eflipflop:4772
+!(foo...bar)
+!!! test_cond_iflipflop:4735
+if foo..bar; end
+!!! test_cond_iflipflop:4749
+!(foo..bar)
+!!! test_cond_match_current_line:4781
+if /wat/; end
+!!! test_cond_match_current_line:4801
+!/wat/
+!!! test_const_op_asgn:1536
+A += 1
+!!! test_const_op_asgn:1542
+::A += 1
+!!! test_const_op_asgn:1550
+B::A += 1
+!!! test_const_op_asgn:1558
+def x; self::A ||= 1; end
+!!! test_const_op_asgn:1567
+def x; ::A ||= 1; end
+!!! test_const_scoped:1020
+Bar::Foo
+!!! test_const_toplevel:1011
+::Foo
+!!! test_const_unscoped:1029
+Foo
+!!! test_control_meta_escape_chars_in_regexp__since_31:10686
+/\c\xFF/
+!!! test_control_meta_escape_chars_in_regexp__since_31:10692
+/\c\M-\xFF/
+!!! test_control_meta_escape_chars_in_regexp__since_31:10698
+/\C-\xFF/
+!!! test_control_meta_escape_chars_in_regexp__since_31:10704
+/\C-\M-\xFF/
+!!! test_control_meta_escape_chars_in_regexp__since_31:10710
+/\M-\xFF/
+!!! test_control_meta_escape_chars_in_regexp__since_31:10716
+/\M-\C-\xFF/
+!!! test_control_meta_escape_chars_in_regexp__since_31:10722
+/\M-\c\xFF/
+!!! test_cpath:1807
+module ::Foo; end
+!!! test_cpath:1813
+module Bar::Foo; end
+!!! test_cvar:973
+@@foo
+!!! test_cvasgn:1106
+@@var = 10
+!!! test_dedenting_heredoc:297
+p <<~E
+E
+!!! test_dedenting_heredoc:304
+p <<~E
+  E
+!!! test_dedenting_heredoc:311
+p <<~E
+  x
+E
+!!! test_dedenting_heredoc:318
+p <<~E
+  ð
+E
+!!! test_dedenting_heredoc:325
+p <<~E
+  x
+    y
+E
+!!! test_dedenting_heredoc:334
+p <<~E
+	x
+    y
+E
+!!! test_dedenting_heredoc:343
+p <<~E
+	x
+        y
+E
+!!! test_dedenting_heredoc:352
+p <<~E
+    	x
+        y
+E
+!!! test_dedenting_heredoc:361
+p <<~E
+        	x
+	y
+E
+!!! test_dedenting_heredoc:370
+p <<~E
+  x
+
+y
+E
+!!! test_dedenting_heredoc:380
+p <<~E
+  x
+    
+  y
+E
+!!! test_dedenting_heredoc:390
+p <<~E
+    x
+  \  y
+E
+!!! test_dedenting_heredoc:399
+p <<~E
+    x
+  \	y
+E
+!!! test_dedenting_heredoc:408
+p <<~"E"
+    x
+  #{foo}
+E
+!!! test_dedenting_heredoc:419
+p <<~`E`
+    x
+  #{foo}
+E
+!!! test_dedenting_heredoc:430
+p <<~"E"
+    x
+  #{"  y"}
+E
+!!! test_dedenting_interpolating_heredoc_fake_line_continuation:459
+<<~'FOO'
+  baz\\
+  qux
+FOO
+!!! test_dedenting_non_interpolating_heredoc_line_continuation:451
+<<~'FOO'
+  baz\
+  qux
+FOO
+!!! test_def:1899
+def foo; end
+!!! test_def:1907
+def String; end
+!!! test_def:1911
+def String=; end
+!!! test_def:1915
+def until; end
+!!! test_def:1919
+def BEGIN; end
+!!! test_def:1923
+def END; end
+!!! test_defined:1058
+defined? foo
+!!! test_defined:1064
+defined?(foo)
+!!! test_defined:1072
+defined? @foo
+!!! test_defs:1929
+def self.foo; end
+!!! test_defs:1937
+def self::foo; end
+!!! test_defs:1945
+def (foo).foo; end
+!!! test_defs:1949
+def String.foo; end
+!!! test_defs:1954
+def String::foo; end
+!!! test_empty_stmt:60
+!!! test_endless_method:9786
+def foo() = 42
+!!! test_endless_method:9798
+def inc(x) = x + 1
+!!! test_endless_method:9811
+def obj.foo() = 42
+!!! test_endless_method:9823
+def obj.inc(x) = x + 1
+!!! test_endless_method_command_syntax:9880
+def foo = puts "Hello"
+!!! test_endless_method_command_syntax:9892
+def foo() = puts "Hello"
+!!! test_endless_method_command_syntax:9904
+def foo(x) = puts x
+!!! test_endless_method_command_syntax:9917
+def obj.foo = puts "Hello"
+!!! test_endless_method_command_syntax:9931
+def obj.foo() = puts "Hello"
+!!! test_endless_method_command_syntax:9945
+def rescued(x) = raise "to be caught" rescue "instance #{x}"
+!!! test_endless_method_command_syntax:9964
+def self.rescued(x) = raise "to be caught" rescue "class #{x}"
+!!! test_endless_method_command_syntax:9985
+def obj.foo(x) = puts x
+!!! test_endless_method_forwarded_args_legacy:9840
+def foo(...) = bar(...)
+!!! test_endless_method_with_rescue_mod:9855
+def m() = 1 rescue 2
+!!! test_endless_method_with_rescue_mod:9866
+def self.m() = 1 rescue 2
+!!! test_endless_method_without_args:10404
+def foo = 42
+!!! test_endless_method_without_args:10412
+def foo = 42 rescue nil
+!!! test_endless_method_without_args:10423
+def self.foo = 42
+!!! test_endless_method_without_args:10432
+def self.foo = 42 rescue nil
+!!! test_ensure:5261
+begin; meth; ensure; bar; end
+!!! test_ensure_empty:5274
+begin ensure end
+!!! test_false:96
+false
+!!! test_float:129
+1.33
+!!! test_float:134
+-1.33
+!!! test_for:5002
+for a in foo do p a; end
+!!! test_for:5014
+for a in foo; p a; end
+!!! test_for_mlhs:5023
+for a, b in foo; p a, b; end
+!!! test_forward_arg:7899
+def foo(...); bar(...); end
+!!! test_forward_arg_with_open_args:10745
+def foo ...
+end
+!!! test_forward_arg_with_open_args:10752
+def foo a, b = 1, ...
+end
+!!! test_forward_arg_with_open_args:10770
+def foo(a, ...) bar(...) end
+!!! test_forward_arg_with_open_args:10781
+def foo a, ...
+  bar(...)
+end
+!!! test_forward_arg_with_open_args:10792
+def foo b = 1, ...
+  bar(...)
+end
+!!! test_forward_arg_with_open_args:10804
+def foo ...; bar(...); end
+!!! test_forward_arg_with_open_args:10814
+def foo a, ...; bar(...); end
+!!! test_forward_arg_with_open_args:10825
+def foo b = 1, ...; bar(...); end
+!!! test_forward_arg_with_open_args:10837
+(def foo ...
+  bar(...)
+end)
+!!! test_forward_arg_with_open_args:10848
+(def foo ...; bar(...); end)
+!!! test_forward_args_legacy:7863
+def foo(...); bar(...); end
+!!! test_forward_args_legacy:7875
+def foo(...); super(...); end
+!!! test_forward_args_legacy:7887
+def foo(...); end
+!!! test_forwarded_argument_with_kwrestarg:10962
+def foo(argument, **); bar(argument, **); end
+!!! test_forwarded_argument_with_restarg:10923
+def foo(argument, *); bar(argument, *); end
+!!! test_forwarded_kwrestarg:10943
+def foo(**); bar(**); end
+!!! test_forwarded_restarg:10905
+def foo(*); bar(*); end
+!!! test_gvar:980
+$foo
+!!! test_gvasgn:1116
+$var = 10
+!!! test_hash_empty:750
+{ }
+!!! test_hash_hashrocket:759
+{ 1 => 2 }
+!!! test_hash_hashrocket:768
+{ 1 => 2, :foo => "bar" }
+!!! test_hash_kwsplat:821
+{ foo: 2, **bar }
+!!! test_hash_label:776
+{ foo: 2 }
+!!! test_hash_label_end:789
+{ 'foo': 2 }
+!!! test_hash_label_end:802
+{ 'foo': 2, 'bar': {}}
+!!! test_hash_label_end:810
+f(a ? "a":1)
+!!! test_hash_pair_value_omission:10040
+{a:, b:}
+!!! test_hash_pair_value_omission:10054
+{puts:}
+!!! test_hash_pair_value_omission:10065
+{BAR:}
+!!! test_heredoc:263
+<<HERE
+foo
+bar
+HERE
+!!! test_heredoc:270
+<<'HERE'
+foo
+bar
+HERE
+!!! test_heredoc:277
+<<`HERE`
+foo
+bar
+HERE
+!!! test_if:4497
+if foo then bar; end
+!!! test_if:4505
+if foo; bar; end
+!!! test_if_else:4554
+if foo then bar; else baz; end
+!!! test_if_else:4563
+if foo; bar; else baz; end
+!!! test_if_elsif:4592
+if foo; bar; elsif baz; 1; else 2; end
+!!! test_if_masgn__24:4634
+if (a, b = foo); end
+!!! test_if_mod:4521
+bar if foo
+!!! test_if_nl_then:4514
+if foo
+then bar end
+!!! test_if_while_after_class__since_32:10983
+module if true; Object end::Kernel; end
+!!! test_if_while_after_class__since_32:10993
+module while true; break Object end::Kernel; end
+!!! test_if_while_after_class__since_32:11004
+class if true; Object end::Kernel; end
+!!! test_if_while_after_class__since_32:11014
+class while true; break Object end::Kernel; end
+!!! test_int:103
+42
+!!! test_int:108
++42
+!!! test_int:114
+-42
+!!! test_int___LINE__:122
+__LINE__
+!!! test_interp_digit_var:8075
+ '#@1' 
+!!! test_interp_digit_var:8081
+ '#@@1' 
+!!! test_interp_digit_var:8090
+<<-'HERE'
+#@1
+HERE
+!!! test_interp_digit_var:8096
+<<-'HERE'
+#@@1
+HERE
+!!! test_interp_digit_var:8103
+ %q{#@1} 
+!!! test_interp_digit_var:8109
+ %q{#@@1} 
+!!! test_interp_digit_var:8128
+ "#@1" 
+!!! test_interp_digit_var:8134
+ "#@@1" 
+!!! test_interp_digit_var:8155
+<<-"HERE"
+#@1
+HERE
+!!! test_interp_digit_var:8161
+<<-"HERE"
+#@@1
+HERE
+!!! test_interp_digit_var:8180
+ %{#@1} 
+!!! test_interp_digit_var:8186
+ %{#@@1} 
+!!! test_interp_digit_var:8205
+ %Q{#@1} 
+!!! test_interp_digit_var:8211
+ %Q{#@@1} 
+!!! test_interp_digit_var:8218
+ %w[ #@1 ] 
+!!! test_interp_digit_var:8225
+ %w[ #@@1 ] 
+!!! test_interp_digit_var:8245
+ %W[#@1] 
+!!! test_interp_digit_var:8252
+ %W[#@@1] 
+!!! test_interp_digit_var:8260
+ %i[ #@1 ] 
+!!! test_interp_digit_var:8267
+ %i[ #@@1 ] 
+!!! test_interp_digit_var:8287
+ %I[#@1] 
+!!! test_interp_digit_var:8294
+ %I[#@@1] 
+!!! test_interp_digit_var:8302
+ :'#@1' 
+!!! test_interp_digit_var:8308
+ :'#@@1' 
+!!! test_interp_digit_var:8315
+ %s{#@1} 
+!!! test_interp_digit_var:8321
+ %s{#@@1} 
+!!! test_interp_digit_var:8340
+ :"#@1" 
+!!! test_interp_digit_var:8346
+ :"#@@1" 
+!!! test_interp_digit_var:8365
+ /#@1/ 
+!!! test_interp_digit_var:8373
+ /#@@1/ 
+!!! test_interp_digit_var:8394
+ %r{#@1} 
+!!! test_interp_digit_var:8402
+ %r{#@@1} 
+!!! test_interp_digit_var:8423
+ %x{#@1} 
+!!! test_interp_digit_var:8430
+ %x{#@@1} 
+!!! test_interp_digit_var:8450
+ `#@1` 
+!!! test_interp_digit_var:8457
+ `#@@1` 
+!!! test_interp_digit_var:8479
+<<-`HERE`
+#@1
+HERE
+!!! test_interp_digit_var:8486
+<<-`HERE`
+#@@1
+HERE
+!!! test_ivar:966
+@foo
+!!! test_ivasgn:1096
+@var = 10
+!!! test_keyword_argument_omission:10084
+foo(a:, b:)
+!!! test_kwarg:2113
+def f(foo:); end
+!!! test_kwbegin_compstmt:5500
+begin foo!; bar! end
+!!! test_kwnilarg:2156
+def f(**nil); end
+!!! test_kwnilarg:2165
+m { |**nil| }
+!!! test_kwnilarg:2175
+->(**nil) {}
+!!! test_kwoptarg:2124
+def f(foo: 1); end
+!!! test_kwrestarg_named:2135
+def f(**foo); end
+!!! test_kwrestarg_unnamed:2146
+def f(**); end
+!!! test_lbrace_arg_after_command_args:7235
+let (:a) { m do; end }
+!!! test_lparenarg_after_lvar__since_25:6679
+meth (-1.3).abs
+!!! test_lparenarg_after_lvar__since_25:6688
+foo (-1.3).abs
+!!! test_lvar:959
+foo
+!!! test_lvar_injecting_match:3778
+/(?<match>bar)/ =~ 'bar'; match
+!!! test_lvasgn:1084
+var = 10; var
+!!! test_masgn:1247
+foo, bar = 1, 2
+!!! test_masgn:1258
+(foo, bar) = 1, 2
+!!! test_masgn:1268
+foo, bar, baz = 1, 2
+!!! test_masgn_attr:1390
+self.a, self[1, 2] = foo
+!!! test_masgn_attr:1403
+self::a, foo = foo
+!!! test_masgn_attr:1411
+self.A, foo = foo
+!!! test_masgn_cmd:1439
+foo, bar = m foo
+!!! test_masgn_const:1421
+self::A, foo = foo
+!!! test_masgn_const:1429
+::A, foo = foo
+!!! test_masgn_nested:1365
+a, (b, c) = foo
+!!! test_masgn_nested:1379
+((b, )) = foo
+!!! test_masgn_splat:1279
+@foo, @@bar = *foo
+!!! test_masgn_splat:1288
+a, b = *foo, bar
+!!! test_masgn_splat:1296
+a, *b = bar
+!!! test_masgn_splat:1302
+a, *b, c = bar
+!!! test_masgn_splat:1313
+a, * = bar
+!!! test_masgn_splat:1319
+a, *, c = bar
+!!! test_masgn_splat:1330
+*b = bar
+!!! test_masgn_splat:1336
+*b, c = bar
+!!! test_masgn_splat:1346
+* = bar
+!!! test_masgn_splat:1352
+*, c, d = bar
+!!! test_method_definition_in_while_cond:6816
+while def foo; tap do end; end; break; end
+!!! test_method_definition_in_while_cond:6828
+while def self.foo; tap do end; end; break; end
+!!! test_method_definition_in_while_cond:6841
+while def foo a = tap do end; end; break; end
+!!! test_method_definition_in_while_cond:6854
+while def self.foo a = tap do end; end; break; end
+!!! test_module:1789
+module Foo; end
+!!! test_multiple_pattern_matches:11086
+{a: 0} => a:
+{a: 0} => a:
+!!! test_multiple_pattern_matches:11102
+{a: 0} in a:
+{a: 0} in a:
+!!! test_newline_in_hash_argument:11035
+obj.set foo:
+1
+!!! test_newline_in_hash_argument:11046
+obj.set "foo":
+1
+!!! test_newline_in_hash_argument:11057
+case foo
+in a:
+0
+true
+in "b":
+0
+true
+end
+!!! test_next:5131
+next(foo)
+!!! test_next:5145
+next foo
+!!! test_next:5151
+next()
+!!! test_next:5158
+next
+!!! test_next_block:5166
+next fun foo do end
+!!! test_nil:66
+nil
+!!! test_nil_expression:73
+()
+!!! test_nil_expression:80
+begin end
+!!! test_non_lvar_injecting_match:3793
+/#{1}(?<match>bar)/ =~ 'bar'
+!!! test_not:3462
+not foo
+!!! test_not:3468
+not(foo)
+!!! test_not:3474
+not()
+!!! test_not_cmd:3488
+not m foo
+!!! test_not_masgn__24:4672
+!(a, b = foo)
+!!! test_nth_ref:1002
+$10
+!!! test_numbered_args_after_27:7358
+m { _1 + _9 }
+!!! test_numbered_args_after_27:7373
+m do _1 + _9 end
+!!! test_numbered_args_after_27:7390
+-> { _1 + _9}
+!!! test_numbered_args_after_27:7405
+-> do _1 + _9 end
+!!! test_numparam_outside_block:7512
+class A; _1; end
+!!! test_numparam_outside_block:7520
+module A; _1; end
+!!! test_numparam_outside_block:7528
+class << foo; _1; end
+!!! test_numparam_outside_block:7536
+def self.m; _1; end
+!!! test_numparam_outside_block:7545
+_1
+!!! test_op_asgn:1606
+foo.a += 1
+!!! test_op_asgn:1616
+foo::a += 1
+!!! test_op_asgn:1622
+foo.A += 1
+!!! test_op_asgn_cmd:1630
+foo.a += m foo
+!!! test_op_asgn_cmd:1636
+foo::a += m foo
+!!! test_op_asgn_cmd:1642
+foo.A += m foo
+!!! test_op_asgn_cmd:1654
+foo::A += m foo
+!!! test_op_asgn_index:1664
+foo[0, 1] += 2
+!!! test_op_asgn_index_cmd:1678
+foo[0, 1] += m foo
+!!! test_optarg:2074
+def f foo = 1; end
+!!! test_optarg:2084
+def f(foo=1, bar=2); end
+!!! test_or:4461
+foo or bar
+!!! test_or:4467
+foo || bar
+!!! test_or_asgn:1724
+foo.a ||= 1
+!!! test_or_asgn:1734
+foo[0, 1] ||= 2
+!!! test_parser_bug_272:6528
+a @b do |c|;end
+!!! test_parser_bug_490:7151
+def m; class << self; class C; end; end; end
+!!! test_parser_bug_490:7162
+def m; class << self; module M; end; end; end
+!!! test_parser_bug_490:7173
+def m; class << self; A = nil; end; end
+!!! test_parser_bug_507:7265
+m = -> *args do end
+!!! test_parser_bug_518:7277
+class A < B
+end
+!!! test_parser_bug_525:7287
+m1 :k => m2 do; m3() do end; end
+!!! test_parser_bug_604:7737
+m a + b do end
+!!! test_parser_bug_640:443
+<<~FOO
+  baz\
+  qux
+FOO
+!!! test_parser_bug_645:9774
+-> (arg={}) {}
+!!! test_parser_bug_830:10630
+/\(/
+!!! test_parser_drops_truncated_parts_of_squiggly_heredoc:10446
+<<~HERE
+  #{}
+HERE
+!!! test_pattern_matching__FILE__LINE_literals:9473
+        case [__FILE__, __LINE__ + 1, __ENCODING__]
+          in [__FILE__, __LINE__, __ENCODING__]
+        end
+!!! test_pattern_matching_blank_else:9390
+case 1; in 2; 3; else; end
+!!! test_pattern_matching_else:9376
+case 1; in 2; 3; else; 4; end
+!!! test_pattern_matching_single_line:9540
+1 => [a]; a
+!!! test_pattern_matching_single_line:9552
+1 in [a]; a
+!!! test_pattern_matching_single_line_allowed_omission_of_parentheses:9566
+[1, 2] => a, b; a
+!!! test_pattern_matching_single_line_allowed_omission_of_parentheses:9581
+{a: 1} => a:; a
+!!! test_pattern_matching_single_line_allowed_omission_of_parentheses:9596
+[1, 2] in a, b; a
+!!! test_pattern_matching_single_line_allowed_omission_of_parentheses:9611
+{a: 1} in a:; a
+!!! test_pattern_matching_single_line_allowed_omission_of_parentheses:9626
+{key: :value} in key: value; value
+!!! test_pattern_matching_single_line_allowed_omission_of_parentheses:9643
+{key: :value} => key: value; value
+!!! test_postexe:5486
+END { 1 }
+!!! test_preexe:5467
+BEGIN { 1 }
+!!! test_procarg0:2803
+m { |foo| } 
+!!! test_procarg0:2812
+m { |(foo, bar)| } 
+!!! test_range_endless:869
+1..
+!!! test_range_endless:877
+1...
+!!! test_range_exclusive:861
+1...2
+!!! test_range_inclusive:853
+1..2
+!!! test_rational:142
+42r
+!!! test_rational:148
+42.1r
+!!! test_redo:5178
+redo
+!!! test_regex_interp:551
+/foo#{bar}baz/
+!!! test_regex_plain:541
+/source/im
+!!! test_resbody_list:5398
+begin; meth; rescue Exception; bar; end
+!!! test_resbody_list_mrhs:5411
+begin; meth; rescue Exception, foo; bar; end
+!!! test_resbody_list_var:5444
+begin; meth; rescue foo => ex; bar; end
+!!! test_resbody_var:5426
+begin; meth; rescue => ex; bar; end
+!!! test_resbody_var:5434
+begin; meth; rescue => @ex; bar; end
+!!! test_rescue:5188
+begin; meth; rescue; foo; end
+!!! test_rescue_else:5203
+begin; meth; rescue; foo; else; bar; end
+!!! test_rescue_else_ensure:5302
+begin; meth; rescue; baz; else foo; ensure; bar end
+!!! test_rescue_ensure:5286
+begin; meth; rescue; baz; ensure; bar; end
+!!! test_rescue_in_lambda_block:6928
+-> do rescue; end
+!!! test_rescue_mod:5319
+meth rescue bar
+!!! test_rescue_mod_asgn:5331
+foo = meth rescue bar
+!!! test_rescue_mod_masgn:5345
+foo, bar = meth rescue [1, 2]
+!!! test_rescue_mod_op_assign:5365
+foo += meth rescue bar
+!!! test_rescue_without_begin_end:5381
+meth do; foo; rescue; bar; end
+!!! test_restarg_named:2094
+def f(*foo); end
+!!! test_restarg_unnamed:2104
+def f(*); end
+!!! test_retry:5457
+retry
+!!! test_return:5084
+return(foo)
+!!! test_return:5098
+return foo
+!!! test_return:5104
+return()
+!!! test_return:5111
+return
+!!! test_return_block:5119
+return fun foo do end
+!!! test_ruby_bug_10279:5905
+{a: if true then 42 end}
+!!! test_ruby_bug_10653:5915
+true ? 1.tap do |n| p n end : 0
+!!! test_ruby_bug_10653:5945
+false ? raise {} : tap {}
+!!! test_ruby_bug_10653:5958
+false ? raise do end : tap do end
+!!! test_ruby_bug_11107:5973
+p ->() do a() do end end
+!!! test_ruby_bug_11380:5985
+p -> { :hello }, a: 1 do end
+!!! test_ruby_bug_11873:6353
+a b{c d}, "x" do end
+!!! test_ruby_bug_11873:6367
+a b(c d), "x" do end
+!!! test_ruby_bug_11873:6380
+a b{c(d)}, "x" do end
+!!! test_ruby_bug_11873:6394
+a b(c(d)), "x" do end
+!!! test_ruby_bug_11873:6407
+a b{c d}, /x/ do end
+!!! test_ruby_bug_11873:6421
+a b(c d), /x/ do end
+!!! test_ruby_bug_11873:6434
+a b{c(d)}, /x/ do end
+!!! test_ruby_bug_11873:6448
+a b(c(d)), /x/ do end
+!!! test_ruby_bug_11873:6461
+a b{c d}, /x/m do end
+!!! test_ruby_bug_11873:6475
+a b(c d), /x/m do end
+!!! test_ruby_bug_11873:6488
+a b{c(d)}, /x/m do end
+!!! test_ruby_bug_11873:6502
+a b(c(d)), /x/m do end
+!!! test_ruby_bug_11873_b:6050
+p p{p(p);p p}, tap do end
+!!! test_ruby_bug_11989:6069
+p <<~"E"
+  x\n   y
+E
+!!! test_ruby_bug_11990:6078
+p <<~E "  y"
+  x
+E
+!!! test_ruby_bug_12073:6089
+a = 1; a b: 1
+!!! test_ruby_bug_12073:6102
+def foo raise; raise A::B, ''; end
+!!! test_ruby_bug_12402:6116
+foo = raise(bar) rescue nil
+!!! test_ruby_bug_12402:6127
+foo += raise(bar) rescue nil
+!!! test_ruby_bug_12402:6139
+foo[0] += raise(bar) rescue nil
+!!! test_ruby_bug_12402:6153
+foo.m += raise(bar) rescue nil
+!!! test_ruby_bug_12402:6166
+foo::m += raise(bar) rescue nil
+!!! test_ruby_bug_12402:6179
+foo.C += raise(bar) rescue nil
+!!! test_ruby_bug_12402:6192
+foo::C ||= raise(bar) rescue nil
+!!! test_ruby_bug_12402:6205
+foo = raise bar rescue nil
+!!! test_ruby_bug_12402:6216
+foo += raise bar rescue nil
+!!! test_ruby_bug_12402:6228
+foo[0] += raise bar rescue nil
+!!! test_ruby_bug_12402:6242
+foo.m += raise bar rescue nil
+!!! test_ruby_bug_12402:6255
+foo::m += raise bar rescue nil
+!!! test_ruby_bug_12402:6268
+foo.C += raise bar rescue nil
+!!! test_ruby_bug_12402:6281
+foo::C ||= raise bar rescue nil
+!!! test_ruby_bug_12669:6296
+a = b = raise :x
+!!! test_ruby_bug_12669:6305
+a += b = raise :x
+!!! test_ruby_bug_12669:6314
+a = b += raise :x
+!!! test_ruby_bug_12669:6323
+a += b += raise :x
+!!! test_ruby_bug_12686:6334
+f (g rescue nil)
+!!! test_ruby_bug_13547:7018
+meth[] {}
+!!! test_ruby_bug_14690:7250
+let () { m(a) do; end }
+!!! test_ruby_bug_15789:7622
+m ->(a = ->{_1}) {a}
+!!! test_ruby_bug_15789:7636
+m ->(a: ->{_1}) {a}
+!!! test_ruby_bug_9669:5889
+def a b:
+return
+end
+!!! test_ruby_bug_9669:5895
+o = {
+a:
+1
+}
+!!! test_sclass:1884
+class << foo; nil; end
+!!! test_self:952
+self
+!!! test_send_attr_asgn:3528
+foo.a = 1
+!!! test_send_attr_asgn:3536
+foo::a = 1
+!!! test_send_attr_asgn:3544
+foo.A = 1
+!!! test_send_attr_asgn:3552
+foo::A = 1
+!!! test_send_attr_asgn_conditional:3751
+a&.b = 1
+!!! test_send_binary_op:3308
+foo + 1
+!!! test_send_binary_op:3314
+foo - 1
+!!! test_send_binary_op:3318
+foo * 1
+!!! test_send_binary_op:3322
+foo / 1
+!!! test_send_binary_op:3326
+foo % 1
+!!! test_send_binary_op:3330
+foo ** 1
+!!! test_send_binary_op:3334
+foo | 1
+!!! test_send_binary_op:3338
+foo ^ 1
+!!! test_send_binary_op:3342
+foo & 1
+!!! test_send_binary_op:3346
+foo <=> 1
+!!! test_send_binary_op:3350
+foo < 1
+!!! test_send_binary_op:3354
+foo <= 1
+!!! test_send_binary_op:3358
+foo > 1
+!!! test_send_binary_op:3362
+foo >= 1
+!!! test_send_binary_op:3366
+foo == 1
+!!! test_send_binary_op:3376
+foo != 1
+!!! test_send_binary_op:3382
+foo === 1
+!!! test_send_binary_op:3386
+foo =~ 1
+!!! test_send_binary_op:3396
+foo !~ 1
+!!! test_send_binary_op:3402
+foo << 1
+!!! test_send_binary_op:3406
+foo >> 1
+!!! test_send_block_chain_cmd:3201
+meth 1 do end.fun bar
+!!! test_send_block_chain_cmd:3212
+meth 1 do end.fun(bar)
+!!! test_send_block_chain_cmd:3225
+meth 1 do end::fun bar
+!!! test_send_block_chain_cmd:3236
+meth 1 do end::fun(bar)
+!!! test_send_block_chain_cmd:3249
+meth 1 do end.fun bar do end
+!!! test_send_block_chain_cmd:3261
+meth 1 do end.fun(bar) {}
+!!! test_send_block_chain_cmd:3273
+meth 1 do end.fun {}
+!!! test_send_block_conditional:3759
+foo&.bar {}
+!!! test_send_call:3721
+foo.(1)
+!!! test_send_call:3731
+foo::(1)
+!!! test_send_conditional:3743
+a&.b
+!!! test_send_index:3562
+foo[1, 2]
+!!! test_send_index_asgn:3591
+foo[1, 2] = 3
+!!! test_send_index_asgn_legacy:3603
+foo[1, 2] = 3
+!!! test_send_index_cmd:3584
+foo[m bar]
+!!! test_send_index_legacy:3573
+foo[1, 2]
+!!! test_send_lambda:3615
+->{ }
+!!! test_send_lambda:3625
+-> * { }
+!!! test_send_lambda:3636
+-> do end
+!!! test_send_lambda_args:3648
+->(a) { }
+!!! test_send_lambda_args:3662
+-> (a) { }
+!!! test_send_lambda_args_noparen:3686
+-> a: 1 { }
+!!! test_send_lambda_args_noparen:3695
+-> a: { }
+!!! test_send_lambda_args_shadow:3673
+->(a; foo, bar) { }
+!!! test_send_lambda_legacy:3707
+->{ }
+!!! test_send_op_asgn_conditional:3770
+a&.b &&= 1
+!!! test_send_plain:3105
+foo.fun
+!!! test_send_plain:3112
+foo::fun
+!!! test_send_plain:3119
+foo::Fun()
+!!! test_send_plain_cmd:3128
+foo.fun bar
+!!! test_send_plain_cmd:3135
+foo::fun bar
+!!! test_send_plain_cmd:3142
+foo::Fun bar
+!!! test_send_self:3044
+fun
+!!! test_send_self:3050
+fun!
+!!! test_send_self:3056
+fun(1)
+!!! test_send_self_block:3066
+fun { }
+!!! test_send_self_block:3070
+fun() { }
+!!! test_send_self_block:3074
+fun(1) { }
+!!! test_send_self_block:3078
+fun do end
+!!! test_send_unary_op:3412
+-foo
+!!! test_send_unary_op:3418
++foo
+!!! test_send_unary_op:3422
+~foo
+!!! test_slash_newline_in_heredocs:7186
+<<~E
+    1 \
+    2
+    3
+E
+!!! test_slash_newline_in_heredocs:7194
+<<-E
+    1 \
+    2
+    3
+E
+!!! test_space_args_arg:4132
+fun (1)
+!!! test_space_args_arg_block:4146
+fun (1) {}
+!!! test_space_args_arg_block:4160
+foo.fun (1) {}
+!!! test_space_args_arg_block:4176
+foo::fun (1) {}
+!!! test_space_args_arg_call:4198
+fun (1).to_i
+!!! test_space_args_arg_newline:4138
+fun (1
+)
+!!! test_space_args_block:4430
+fun () {}
+!!! test_space_args_cmd:4125
+fun (f bar)
+!!! test_string___FILE__:241
+__FILE__
+!!! test_string_concat:226
+"foo#@a" "bar"
+!!! test_string_dvar:215
+"#@a #@@a #$a"
+!!! test_string_interp:200
+"foo#{bar}baz"
+!!! test_string_plain:184
+'foobar'
+!!! test_string_plain:191
+%q(foobar)
+!!! test_super:3807
+super(foo)
+!!! test_super:3815
+super foo
+!!! test_super:3821
+super()
+!!! test_super_block:3839
+super foo, bar do end
+!!! test_super_block:3845
+super do end
+!!! test_symbol_interp:484
+:"foo#{bar}baz"
+!!! test_symbol_plain:469
+:foo
+!!! test_symbol_plain:475
+:'foo'
+!!! test_ternary:4605
+foo ? 1 : 2
+!!! test_ternary_ambiguous_symbol:4614
+t=1;(foo)?t:T
+!!! test_trailing_forward_arg:8022
+def foo(a, b, ...); bar(a, 42, ...); end
+!!! test_true:89
+true
+!!! test_unary_num_pow_precedence:3505
++2.0 ** 10
+!!! test_unary_num_pow_precedence:3512
+-2 ** 10
+!!! test_unary_num_pow_precedence:3519
+-2.0 ** 10
+!!! test_undef:2003
+undef foo, :bar, :"foo#{1}"
+!!! test_unless:4529
+unless foo then bar; end
+!!! test_unless:4537
+unless foo; bar; end
+!!! test_unless_else:4573
+unless foo then bar; else baz; end
+!!! test_unless_else:4582
+unless foo; bar; else baz; end
+!!! test_unless_mod:4546
+bar unless foo
+!!! test_until:4948
+until foo do meth end
+!!! test_until:4955
+until foo; meth end
+!!! test_until_mod:4963
+meth until foo
+!!! test_until_post:4978
+begin meth end until foo
+!!! test_var_and_asgn:1714
+a &&= 1
+!!! test_var_op_asgn:1498
+a += 1
+!!! test_var_op_asgn:1504
+@a |= 1
+!!! test_var_op_asgn:1510
+@@var |= 10
+!!! test_var_op_asgn:1514
+def a; @@var |= 10; end
+!!! test_var_op_asgn_cmd:1521
+foo += m foo
+!!! test_var_or_asgn:1706
+a ||= 1
+!!! test_when_multi:4895
+case foo; when 'bar', 'baz'; bar; end
+!!! test_when_splat:4904
+case foo; when 1, *baz; bar; when *foo; end
+!!! test_when_then:4883
+case foo; when 'bar' then bar; end
+!!! test_while:4924
+while foo do meth end
+!!! test_while:4932
+while foo; meth end
+!!! test_while_mod:4941
+meth while foo
+!!! test_while_post:4970
+begin meth end while foo
+!!! test_xstring_interp:524
+`foo#{bar}baz`
+!!! test_xstring_plain:515
+`foobar`
+!!! test_yield:3855
+yield(foo)
+!!! test_yield:3863
+yield foo
+!!! test_yield:3869
+yield()
+!!! test_yield:3877
+yield
+!!! test_zsuper:3831
+super
