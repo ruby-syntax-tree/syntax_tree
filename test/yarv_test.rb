@@ -302,7 +302,7 @@ module SyntaxTree
       iseq = SyntaxTree::YARV::InstructionSequence.from(iseq.to_a)
       cfg = SyntaxTree::YARV::ControlFlowGraph.compile(iseq)
 
-      assert_equal(<<~CFG, cfg.disasm)
+      assert_equal(<<~DISASM, cfg.disasm)
         == cfg: #<ISeq:<compiled>@<compiled>:1 (1,0)-(1,0)>
         block_0
             0000 putobject                              100
@@ -325,7 +325,7 @@ module SyntaxTree
             0014 opt_plus                               <calldata!mid:+, argc:1, ARGS_SIMPLE>
             0016 leave
             == to: leaves
-      CFG
+      DISASM
     end
 
     def test_dfg
@@ -334,7 +334,7 @@ module SyntaxTree
       cfg = SyntaxTree::YARV::ControlFlowGraph.compile(iseq)
       dfg = SyntaxTree::YARV::DataFlowGraph.compile(cfg)
 
-      assert_equal(<<~DFG, dfg.disasm)
+      assert_equal(<<~DISASM, dfg.disasm)
         == dfg: #<ISeq:<compiled>@<compiled>:1 (1,0)-(1,0)>
         block_0
             0000 putobject                              100 # out: out_0
@@ -363,7 +363,7 @@ module SyntaxTree
             0014 opt_plus                               <calldata!mid:+, argc:1, ARGS_SIMPLE> # in: in_0, in_1; out: 16
             0016 leave # in: 14
             == to: leaves
-      DFG
+      DISASM
     end
 
     def test_son
@@ -373,14 +373,13 @@ module SyntaxTree
       dfg = SyntaxTree::YARV::DataFlowGraph.compile(cfg)
       son = SyntaxTree::YARV::SeaOfNodes.compile(dfg)
 
-      assert_equal(<<~SON, son.to_mermaid)
+      assert_equal(<<~MERMAID, son.to_mermaid)
         flowchart TD
           node_0("0000 putobject 14")
           node_2("0002 putobject_INT2FIX_0_")
           node_3("0003 opt_lt &lt;calldata!mid:&lt;, argc:1, ARGS_SIMPLE&gt;")
           node_5("0005 branchunless 0011")
           node_7("0007 putobject -1")
-          node_9("0009 jump 0012")
           node_11("0011 putobject_INT2FIX_1_")
           node_12("0012 putobject 100")
           node_14("0014 opt_plus &lt;calldata!mid:+, argc:1, ARGS_SIMPLE&gt;")
@@ -397,28 +396,26 @@ module SyntaxTree
           linkStyle 3 stroke:green;
           node_5 --> |branch0| node_11
           linkStyle 4 stroke:red;
-          node_5 --> |fallthrough| node_9
+          node_5 --> |fallthrough| node_1000
           linkStyle 5 stroke:red;
           node_7 --> |0009| node_1001
           linkStyle 6 stroke:green;
-          node_9 --> |branch0| node_1000
-          linkStyle 7 stroke:red;
           node_11 --> |branch0| node_1000
-          linkStyle 8 stroke:red;
+          linkStyle 7 stroke:red;
           node_11 --> |0011| node_1001
-          linkStyle 9 stroke:green;
+          linkStyle 8 stroke:green;
           node_12 --> |1| node_14
-          linkStyle 10 stroke:green;
+          linkStyle 9 stroke:green;
           node_14 --> node_16
-          linkStyle 11 stroke:red;
+          linkStyle 10 stroke:red;
           node_14 --> |0| node_16
-          linkStyle 12 stroke:green;
+          linkStyle 11 stroke:green;
           node_1000 --> node_14
-          linkStyle 13 stroke:red;
+          linkStyle 12 stroke:red;
           node_1001 -.-> node_1000
           node_1001 --> |0| node_14
-          linkStyle 15 stroke:green;
-      SON
+          linkStyle 14 stroke:green;
+      MERMAID
     end
 
     def test_son_indirect_basic_block_argument
@@ -428,7 +425,7 @@ module SyntaxTree
       dfg = SyntaxTree::YARV::DataFlowGraph.compile(cfg)
       son = SyntaxTree::YARV::SeaOfNodes.compile(dfg)
 
-      assert_equal(<<~SON, son.to_mermaid)
+      assert_equal(<<~MERMAID, son.to_mermaid)
         flowchart TD
           node_0("0000 putobject 100")
           node_2("0002 putobject 14")
@@ -436,7 +433,6 @@ module SyntaxTree
           node_5("0005 opt_lt &lt;calldata!mid:&lt;, argc:1, ARGS_SIMPLE&gt;")
           node_7("0007 branchunless 0013")
           node_9("0009 putobject -1")
-          node_11("0011 jump 0014")
           node_13("0013 putobject_INT2FIX_1_")
           node_14("0014 opt_plus &lt;calldata!mid:+, argc:1, ARGS_SIMPLE&gt;")
           node_16("0016 leave")
@@ -454,26 +450,24 @@ module SyntaxTree
           linkStyle 4 stroke:green;
           node_7 --> |branch0| node_13
           linkStyle 5 stroke:red;
-          node_7 --> |fallthrough| node_11
+          node_7 --> |fallthrough| node_1002
           linkStyle 6 stroke:red;
           node_9 --> |0011| node_1004
           linkStyle 7 stroke:green;
-          node_11 --> |branch0| node_1002
-          linkStyle 8 stroke:red;
           node_13 --> |branch0| node_1002
-          linkStyle 9 stroke:red;
+          linkStyle 8 stroke:red;
           node_13 --> |0013| node_1004
-          linkStyle 10 stroke:green;
+          linkStyle 9 stroke:green;
           node_14 --> node_16
-          linkStyle 11 stroke:red;
+          linkStyle 10 stroke:red;
           node_14 --> |0| node_16
-          linkStyle 12 stroke:green;
+          linkStyle 11 stroke:green;
           node_1002 --> node_14
-          linkStyle 13 stroke:red;
+          linkStyle 12 stroke:red;
           node_1004 -.-> node_1002
           node_1004 --> |1| node_14
-          linkStyle 15 stroke:green;
-      SON
+          linkStyle 14 stroke:green;
+      MERMAID
     end
 
     private

@@ -118,7 +118,8 @@ module SyntaxTree
 
           connect_local_graphs_control(local_graphs)
           connect_local_graphs_data(local_graphs)
-          cleanup
+          cleanup_phi_nodes
+          cleanup_insn_nodes
 
           SeaOfNodes.new(dfg, nodes, local_graphs).tap(&:verify)
         end
@@ -311,23 +312,13 @@ module SyntaxTree
         # We don't always build things in an optimal way. Go back and fix up
         # some mess we left. Ideally we wouldn't create these problems in the
         # first place.
-        def cleanup
+        def cleanup_phi_nodes
           nodes.dup.each do |node| # dup because we're mutating
             next unless node.is_a?(PhiNode)
 
             if node.inputs.size == 1
               # Remove phi nodes with a single input.
-              node.inputs.each do |producer_edge|
-                node.outputs.each do |consumer_edge|
-                  connect(
-                    producer_edge.from,
-                    consumer_edge.to,
-                    producer_edge.type,
-                    consumer_edge.label
-                  )
-                end
-              end
-
+              connect_over(node)
               remove(node)
             elsif node.inputs.map(&:from).uniq.size == 1
               # Remove phi nodes where all inputs are the same.
@@ -344,6 +335,66 @@ module SyntaxTree
           end
         end
 
+        # Eliminate as many unnecessary nodes as we can.
+        def cleanup_insn_nodes
+          nodes.dup.each do |node|
+            next unless node.is_a?(InsnNode)
+
+            case node.insn
+            when AdjustStack
+              # If there are any inputs to the adjust stack that are immediately
+              # discarded, we can remove them from the input list.
+              number = node.insn.number
+
+              node.inputs.dup.each do |input_edge|
+                next if input_edge.type != :data
+
+                from = input_edge.from
+                next unless from.is_a?(InsnNode)
+
+                if from.inputs.empty? && from.outputs.size == 1
+                  number -= 1
+                  remove(input_edge.from)
+                elsif from.insn.is_a?(Dup)
+                  number -= 1
+                  connect_over(from)
+                  remove(from)
+
+                  new_edge = node.inputs.last
+                  new_edge.from.outputs.delete(new_edge)
+                  node.inputs.delete(new_edge)
+                end
+              end
+
+              if number == 0
+                connect_over(node)
+                remove(node)
+              else
+                next_node =
+                  if number == 1
+                    InsnNode.new(Pop.new, node.offset)
+                  else
+                    InsnNode.new(AdjustStack.new(number), node.offset)
+                  end
+
+                next_node.inputs.concat(node.inputs)
+                next_node.outputs.concat(node.outputs)
+
+                # Dynamically finding the index of the node in the nodes array
+                # because we're mutating the array as we go.
+                nodes[nodes.index(node)] = next_node
+              end
+            when Jump
+              # When you have a jump instruction that only has one input and one
+              # output, you can just connect over top of it and remove it.
+              if node.inputs.size == 1 && node.outputs.size == 1
+                connect_over(node)
+                remove(node)
+              end
+            end
+          end
+        end
+
         # Connect one node to another.
         def connect(from, to, type, label = nil)
           raise if from == to
@@ -352,6 +403,20 @@ module SyntaxTree
           edge = Edge.new(from, to, type, label)
           from.outputs << edge
           to.inputs << edge
+        end
+
+        # Connect all of the inputs to all of the outputs of a node.
+        def connect_over(node)
+          node.inputs.each do |producer_edge|
+            node.outputs.each do |consumer_edge|
+              connect(
+                producer_edge.from,
+                consumer_edge.to,
+                producer_edge.type,
+                producer_edge.label
+              )
+            end
+          end
         end
 
         # Remove a node from the graph.
