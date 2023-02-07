@@ -203,6 +203,10 @@ module SyntaxTree
         DataFlowGraph.compile(self)
       end
 
+      def to_son
+        to_dfg.to_son
+      end
+
       def to_mermaid
         output = StringIO.new
         output.puts("flowchart TD")
