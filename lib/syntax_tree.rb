@@ -2,7 +2,6 @@
 
 require "cgi"
 require "etc"
-require "fiddle"
 require "json"
 require "pp"
 require "prettier_print"
