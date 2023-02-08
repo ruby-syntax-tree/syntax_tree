@@ -138,7 +138,7 @@ module SyntaxTree
         # going to just print out the node as it was seen in the source.
         doc =
           if last_leading&.ignore?
-            range = source[node.location.start_char...node.location.end_char]
+            range = source[node.start_char...node.end_char]
             first = true
 
             range.each_line(chomp: true) do |line|

@@ -256,8 +256,34 @@ module SyntaxTree
       tokens[index] if index
     end
 
+    def find_token_between(type, left, right)
+      bounds = left.location.end_char...right.location.start_char
+      index =
+        tokens.rindex do |token|
+          char = token.location.start_char
+          break if char < bounds.begin
+
+          token.is_a?(type) && bounds.cover?(char)
+        end
+
+      tokens[index] if index
+    end
+
     def find_keyword(name)
       index = tokens.rindex { |token| token.is_a?(Kw) && (token.name == name) }
+      tokens[index] if index
+    end
+
+    def find_keyword_between(name, left, right)
+      bounds = left.location.end_char...right.location.start_char
+      index =
+        tokens.rindex do |token|
+          char = token.location.start_char
+          break if char < bounds.begin
+
+          token.is_a?(Kw) && (token.name == name) && bounds.cover?(char)
+        end
+
       tokens[index] if index
     end
 
@@ -645,7 +671,7 @@ module SyntaxTree
       end
 
       def self.visit(node, tokens)
-        start_char = node.location.start_char
+        start_char = node.start_char
         allocated = []
 
         tokens.reverse_each do |token|
@@ -874,13 +900,34 @@ module SyntaxTree
     #   on_block_var: (Params params, (nil | Array[Ident]) locals) -> BlockVar
     def on_block_var(params, locals)
       index =
-        tokens.rindex do |node|
-          node.is_a?(Op) && %w[| ||].include?(node.value) &&
-            node.location.start_char < params.location.start_char
-        end
+        tokens.rindex { |node| node.is_a?(Op) && %w[| ||].include?(node.value) }
 
-      beginning = tokens[index]
-      ending = tokens[-1]
+      ending = tokens.delete_at(index)
+      beginning = ending.value == "||" ? ending : consume_operator(:|)
+
+      # If there are no parameters, then we didn't have anything to base the
+      # location information of off. Now that we have an opening of the
+      # block, we can correct this.
+      if params.empty?
+        start_line = params.location.start_line
+        start_char =
+          (
+            if beginning.value == "||"
+              beginning.location.start_char
+            else
+              find_next_statement_start(beginning.location.end_char)
+            end
+          )
+
+        location =
+          Location.fixed(
+            line: start_line,
+            char: start_char,
+            column: start_char - line_counts[start_line - 1].start
+          )
+
+        params = params.copy(location: location)
+      end
 
       BlockVar.new(
         params: params,
@@ -1762,15 +1809,13 @@ module SyntaxTree
 
       # Consume the do keyword if it exists so that it doesn't get confused for
       # some other block
-      keyword = find_keyword(:do)
-      if keyword &&
-           keyword.location.start_char > collection.location.end_char &&
-           keyword.location.end_char < ending.location.start_char
+      if (keyword = find_keyword_between(:do, collection, ending))
         tokens.delete(keyword)
       end
 
       start_char =
         find_next_statement_start((keyword || collection).location.end_char)
+
       statements.bind(
         start_char,
         start_char -
@@ -1984,7 +2029,12 @@ module SyntaxTree
       beginning = consume_keyword(:if)
       ending = consequent || consume_keyword(:end)
 
-      start_char = find_next_statement_start(predicate.location.end_char)
+      if (keyword = find_keyword_between(:then, predicate, ending))
+        tokens.delete(keyword)
+      end
+
+      start_char =
+        find_next_statement_start((keyword || predicate).location.end_char)
       statements.bind(
         start_char,
         start_char - line_counts[predicate.location.end_line - 1].start,
@@ -2068,7 +2118,8 @@ module SyntaxTree
         statements_start = token
       end
 
-      start_char = find_next_statement_start(statements_start.location.end_char)
+      start_char =
+        find_next_statement_start((token || statements_start).location.end_char)
       statements.bind(
         start_char,
         start_char -
@@ -2194,12 +2245,19 @@ module SyntaxTree
             token.location.start_char > beginning.location.start_char
         end
 
+      if braces
+        opening = consume_token(TLamBeg)
+        closing = consume_token(RBrace)
+      else
+        opening = consume_keyword(:do)
+        closing = consume_keyword(:end)
+      end
+
       # We need to do some special mapping here. Since ripper doesn't support
-      # capturing lambda var until 3.2, we need to normalize all of that here.
+      # capturing lambda vars, we need to normalize all of that here.
       params =
-        case params
-        when Paren
-          # In this case we've gotten to the <3.2 parentheses wrapping a set of
+        if params.is_a?(Paren)
+          # In this case we've gotten to the parentheses wrapping a set of
           # parameters case. Here we need to manually scan for lambda locals.
           range = (params.location.start_char + 1)...params.location.end_char
           locals = lambda_locals(source[range])
@@ -2221,24 +2279,27 @@ module SyntaxTree
 
           node.comments.concat(params.comments)
           node
-        when Params
-          # In this case we've gotten to the <3.2 plain set of parameters. In
-          # this case there cannot be lambda locals, so we will wrap the
-          # parameters into a lambda var that has no locals.
-          LambdaVar.new(params: params, locals: [], location: params.location)
-        when LambdaVar
-          # In this case we've gotten to 3.2+ lambda var. In this case we don't
-          # need to do anything and can just the value as given.
-          params
-        end
+        else
+          # If there are no parameters, then we didn't have anything to base the
+          # location information of off. Now that we have an opening of the
+          # block, we can correct this.
+          if params.empty?
+            opening_location = opening.location
+            location =
+              Location.fixed(
+                line: opening_location.start_line,
+                char: opening_location.start_char,
+                column: opening_location.start_column
+              )
 
-      if braces
-        opening = consume_token(TLamBeg)
-        closing = consume_token(RBrace)
-      else
-        opening = consume_keyword(:do)
-        closing = consume_keyword(:end)
-      end
+            params = params.copy(location: location)
+          end
+
+          # In this case we've gotten to the plain set of parameters. In this
+          # case there cannot be lambda locals, so we will wrap the parameters
+          # into a lambda var that has no locals.
+          LambdaVar.new(params: params, locals: [], location: params.location)
+        end
 
       start_char = find_next_statement_start(opening.location.end_char)
       statements.bind(
@@ -3134,7 +3195,7 @@ module SyntaxTree
       exceptions = exceptions[0] if exceptions.is_a?(Array)
 
       last_node = variable || exceptions || keyword
-      start_char = find_next_statement_start(last_node.location.end_char)
+      start_char = find_next_statement_start(last_node.end_char)
       statements.bind(
         start_char,
         start_char - line_counts[last_node.location.start_line - 1].start,
@@ -3156,7 +3217,7 @@ module SyntaxTree
                 start_char: keyword.location.end_char + 1,
                 start_column: keyword.location.end_column + 1,
                 end_line: last_node.location.end_line,
-                end_char: last_node.location.end_char,
+                end_char: last_node.end_char,
                 end_column: last_node.location.end_column
               )
           )
@@ -3267,9 +3328,27 @@ module SyntaxTree
       )
     end
 
-    # def on_semicolon(value)
-    #   value
-    # end
+    class Semicolon
+      attr_reader :location
+
+      def initialize(location:)
+        @location = location
+      end
+    end
+
+    # :call-seq:
+    #   on_semicolon: (String value) -> Semicolon
+    def on_semicolon(value)
+      tokens << Semicolon.new(
+        location:
+          Location.token(
+            line: lineno,
+            char: char_pos,
+            column: current_column,
+            size: value.size
+          )
+      )
+    end
 
     # def on_sp(value)
     #   value
@@ -3706,7 +3785,12 @@ module SyntaxTree
       beginning = consume_keyword(:unless)
       ending = consequent || consume_keyword(:end)
 
-      start_char = find_next_statement_start(predicate.location.end_char)
+      if (keyword = find_keyword_between(:then, predicate, ending))
+        tokens.delete(keyword)
+      end
+
+      start_char =
+        find_next_statement_start((keyword || predicate).location.end_char)
       statements.bind(
         start_char,
         start_char - line_counts[predicate.location.end_line - 1].start,
@@ -3742,16 +3826,16 @@ module SyntaxTree
       beginning = consume_keyword(:until)
       ending = consume_keyword(:end)
 
-      # Consume the do keyword if it exists so that it doesn't get confused for
-      # some other block
-      keyword = find_keyword(:do)
-      if keyword && keyword.location.start_char > predicate.location.end_char &&
-           keyword.location.end_char < ending.location.start_char
-        tokens.delete(keyword)
-      end
+      delimiter =
+        find_keyword_between(:do, predicate, statements) ||
+          find_token_between(Semicolon, predicate, statements)
+
+      tokens.delete(delimiter) if delimiter
 
       # Update the Statements location information
-      start_char = find_next_statement_start(predicate.location.end_char)
+      start_char =
+        find_next_statement_start((delimiter || predicate).location.end_char)
+
       statements.bind(
         start_char,
         start_char - line_counts[predicate.location.end_line - 1].start,
@@ -3845,7 +3929,8 @@ module SyntaxTree
         statements_start = token
       end
 
-      start_char = find_next_statement_start(statements_start.location.end_char)
+      start_char =
+        find_next_statement_start((token || statements_start).location.end_char)
 
       statements.bind(
         start_char,
@@ -3869,16 +3954,16 @@ module SyntaxTree
       beginning = consume_keyword(:while)
       ending = consume_keyword(:end)
 
-      # Consume the do keyword if it exists so that it doesn't get confused for
-      # some other block
-      keyword = find_keyword(:do)
-      if keyword && keyword.location.start_char > predicate.location.end_char &&
-           keyword.location.end_char < ending.location.start_char
-        tokens.delete(keyword)
-      end
+      delimiter =
+        find_keyword_between(:do, predicate, statements) ||
+          find_token_between(Semicolon, predicate, statements)
+
+      tokens.delete(delimiter) if delimiter
 
       # Update the Statements location information
-      start_char = find_next_statement_start(predicate.location.end_char)
+      start_char =
+        find_next_statement_start((delimiter || predicate).location.end_char)
+
       statements.bind(
         start_char,
         start_char - line_counts[predicate.location.end_line - 1].start,

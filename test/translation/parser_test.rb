@@ -113,7 +113,7 @@ module SyntaxTree
           name = prefix[4..]
           next if all_failures.any? { |pattern| File.fnmatch?(pattern, name) }
 
-          define_method(name) { assert_parses(lines.join("\n")) }
+          define_method(name) { assert_parses("#{lines.join("\n")}\n") }
         end
 
       private

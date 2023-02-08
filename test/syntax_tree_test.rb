@@ -22,7 +22,7 @@ module SyntaxTree
       SOURCE
 
       bodystmt = SyntaxTree.parse(source).statements.body.first.bodystmt
-      assert_equal(20, bodystmt.location.start_char)
+      assert_equal(20, bodystmt.start_char)
     end
 
     def test_parse_error

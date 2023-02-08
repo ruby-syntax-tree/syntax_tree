@@ -27,9 +27,9 @@ module SyntaxTree
         s(
           :alias,
           [visit(node.left), visit(node.right)],
-          source_map_keyword_bare(
-            source_range_length(node.location.start_char, 5),
-            source_range_node(node)
+          smap_keyword_bare(
+            srange_length(node.start_char, 5),
+            srange_node(node)
           )
         )
       end
@@ -41,26 +41,20 @@ module SyntaxTree
             s(
               :index,
               [visit(node.collection)],
-              source_map_index(
-                begin_token:
-                  source_range_find(
-                    node.collection.location.end_char,
-                    node.location.end_char,
-                    "["
-                  ),
-                end_token: source_range_length(node.location.end_char, -1),
-                expression: source_range_node(node)
+              smap_index(
+                srange_find(node.collection.end_char, node.end_char, "["),
+                srange_length(node.end_char, -1),
+                srange_node(node)
               )
             )
           else
             s(
               :index,
               [visit(node.collection)].concat(visit_all(node.index.parts)),
-              source_map_index(
-                begin_token:
-                  source_range_find_between(node.collection, node.index, "["),
-                end_token: source_range_length(node.location.end_char, -1),
-                expression: source_range_node(node)
+              smap_index(
+                srange_find_between(node.collection, node.index, "["),
+                srange_length(node.end_char, -1),
+                srange_node(node)
               )
             )
           end
@@ -69,31 +63,25 @@ module SyntaxTree
             s(
               :send,
               [visit(node.collection), :[]],
-              source_map_send(
-                selector:
-                  source_range_find(
-                    node.collection.location.end_char,
-                    node.location.end_char,
-                    "[]"
-                  ),
-                expression: source_range_node(node)
+              smap_send_bare(
+                srange_find(node.collection.end_char, node.end_char, "[]"),
+                srange_node(node)
               )
             )
           else
             s(
               :send,
               [visit(node.collection), :[], *visit_all(node.index.parts)],
-              source_map_send(
-                selector:
-                  source_range(
-                    source_range_find_between(
-                      node.collection,
-                      node.index,
-                      "["
-                    ).begin_pos,
-                    node.location.end_char
-                  ),
-                expression: source_range_node(node)
+              smap_send_bare(
+                srange(
+                  srange_find_between(
+                    node.collection,
+                    node.index,
+                    "["
+                  ).begin_pos,
+                  node.end_char
+                ),
+                srange_node(node)
               )
             )
           end
@@ -107,26 +95,20 @@ module SyntaxTree
             s(
               :indexasgn,
               [visit(node.collection)],
-              source_map_index(
-                begin_token:
-                  source_range_find(
-                    node.collection.location.end_char,
-                    node.location.end_char,
-                    "["
-                  ),
-                end_token: source_range_length(node.location.end_char, -1),
-                expression: source_range_node(node)
+              smap_index(
+                srange_find(node.collection.end_char, node.end_char, "["),
+                srange_length(node.end_char, -1),
+                srange_node(node)
               )
             )
           else
             s(
               :indexasgn,
               [visit(node.collection)].concat(visit_all(node.index.parts)),
-              source_map_index(
-                begin_token:
-                  source_range_find_between(node.collection, node.index, "["),
-                end_token: source_range_length(node.location.end_char, -1),
-                expression: source_range_node(node)
+              smap_index(
+                srange_find_between(node.collection, node.index, "["),
+                srange_length(node.end_char, -1),
+                srange_node(node)
               )
             )
           end
@@ -135,14 +117,9 @@ module SyntaxTree
             s(
               :send,
               [visit(node.collection), :[]=],
-              source_map_send(
-                selector:
-                  source_range_find(
-                    node.collection.location.end_char,
-                    node.location.end_char,
-                    "[]"
-                  ),
-                expression: source_range_node(node)
+              smap_send_bare(
+                srange_find(node.collection.end_char, node.end_char, "[]"),
+                srange_node(node)
               )
             )
           else
@@ -151,17 +128,16 @@ module SyntaxTree
               [visit(node.collection), :[]=].concat(
                 visit_all(node.index.parts)
               ),
-              source_map_send(
-                selector:
-                  source_range(
-                    source_range_find_between(
-                      node.collection,
-                      node.index,
-                      "["
-                    ).begin_pos,
-                    node.location.end_char
-                  ),
-                expression: source_range_node(node)
+              smap_send_bare(
+                srange(
+                  srange_find_between(
+                    node.collection,
+                    node.index,
+                    "["
+                  ).begin_pos,
+                  node.end_char
+                ),
+                srange_node(node)
               )
             )
           end
@@ -173,10 +149,7 @@ module SyntaxTree
         s(
           :block_pass,
           [visit(node.value)],
-          source_map_operator(
-            source_range_length(node.location.start_char, 1),
-            source_range_node(node)
-          )
+          smap_operator(srange_length(node.start_char, 1), srange_node(node))
         )
       end
 
@@ -184,32 +157,26 @@ module SyntaxTree
       def visit_arg_star(node)
         if stack[-3].is_a?(MLHSParen) && stack[-3].contents.is_a?(MLHS)
           if node.value.nil?
-            s(:restarg, [], source_map_variable(nil, source_range_node(node)))
+            s(:restarg, [], smap_variable(nil, srange_node(node)))
           else
             s(
               :restarg,
               [node.value.value.to_sym],
-              source_map_variable(
-                source_range_node(node.value),
-                source_range_node(node)
-              )
+              smap_variable(srange_node(node.value), srange_node(node))
             )
           end
         else
           s(
             :splat,
             node.value.nil? ? [] : [visit(node.value)],
-            source_map_operator(
-              source_range_length(node.location.start_char, 1),
-              source_range_node(node)
-            )
+            smap_operator(srange_length(node.start_char, 1), srange_node(node))
           )
         end
       end
 
       # Visit an ArgsForward node.
       def visit_args_forward(node)
-        s(:forwarded_args, [], source_map(expression: source_range_node(node)))
+        s(:forwarded_args, [], smap(srange_node(node)))
       end
 
       # Visit an ArrayLiteral node.
@@ -218,12 +185,12 @@ module SyntaxTree
           :array,
           node.contents ? visit_all(node.contents.parts) : [],
           if node.lbracket.nil?
-            source_map_collection(expression: source_range_node(node))
+            smap_collection_bare(srange_node(node))
           else
-            source_map_collection(
-              begin_token: source_range_node(node.lbracket),
-              end_token: source_range_length(node.location.end_char, -1),
-              expression: source_range_node(node)
+            smap_collection(
+              srange_node(node.lbracket),
+              srange_length(node.end_char, -1),
+              srange_node(node)
             )
           end
         )
@@ -237,8 +204,7 @@ module SyntaxTree
         if node.rest.is_a?(VarField)
           if !node.rest.value.nil?
             children << s(:match_rest, [visit(node.rest)], nil)
-          elsif node.posts.empty? &&
-                node.rest.location.start_char == node.rest.location.end_char
+          elsif node.posts.empty? && node.rest.start_char == node.rest.end_char
             # Here we have an implicit rest, as in [foo,]. parser has a specific
             # type for these patterns.
             type = :array_pattern_with_tail
@@ -255,34 +221,29 @@ module SyntaxTree
               s(
                 type,
                 children + visit_all(node.posts),
-                source_map_collection(
-                  expression:
-                    source_range(
-                      node.constant.location.end_char + 1,
-                      node.location.end_char - 1
-                    )
+                smap_collection_bare(
+                  srange(node.constant.end_char + 1, node.end_char - 1)
                 )
               )
             ],
-            source_map_collection(
-              begin_token:
-                source_range_length(node.constant.location.end_char, 1),
-              end_token: source_range_length(node.location.end_char, -1),
-              expression: source_range_node(node)
+            smap_collection(
+              srange_length(node.constant.end_char, 1),
+              srange_length(node.end_char, -1),
+              srange_node(node)
             )
           )
         else
           s(
             type,
             children + visit_all(node.posts),
-            if buffer.source[node.location.start_char] == "["
-              source_map_collection(
-                begin_token: source_range_length(node.location.start_char, 1),
-                end_token: source_range_length(node.location.end_char, -1),
-                expression: source_range_node(node)
+            if buffer.source[node.start_char] == "["
+              smap_collection(
+                srange_length(node.start_char, 1),
+                srange_length(node.end_char, -1),
+                srange_node(node)
               )
             else
-              source_map_collection(expression: source_range_node(node))
+              smap_collection_bare(srange_node(node))
             end
           )
         end
@@ -294,10 +255,8 @@ module SyntaxTree
         location =
           target
             .location
-            .with_operator(
-              source_range_find_between(node.target, node.value, "=")
-            )
-            .with_expression(source_range_node(node))
+            .with_operator(srange_find_between(node.target, node.value, "="))
+            .with_expression(srange_node(node))
 
         s(target.type, target.children + [visit(node.value)], location)
       end
@@ -305,17 +264,13 @@ module SyntaxTree
       # Visit an Assoc node.
       def visit_assoc(node)
         if node.value.nil?
-          expression =
-            source_range(node.location.start_char, node.location.end_char - 1)
+          expression = srange(node.start_char, node.end_char - 1)
 
           type, location =
             if node.key.value.start_with?(/[A-Z]/)
-              [:const, source_map_constant(nil, expression, expression)]
+              [:const, smap_constant(nil, expression, expression)]
             else
-              [
-                :send,
-                source_map_send(selector: expression, expression: expression)
-              ]
+              [:send, smap_send_bare(expression, expression)]
             end
 
           s(
@@ -324,19 +279,19 @@ module SyntaxTree
               visit(node.key),
               s(type, [nil, node.key.value.chomp(":").to_sym], location)
             ],
-            source_map_operator(
-              source_range_length(node.key.location.end_char, -1),
-              source_range_node(node)
+            smap_operator(
+              srange_length(node.key.end_char, -1),
+              srange_node(node)
             )
           )
         else
           s(
             :pair,
             [visit(node.key), visit(node.value)],
-            source_map_operator(
-              source_range_search_between(node.key, node.value, "=>") ||
-                source_range_length(node.key.location.end_char, -1),
-              source_range_node(node)
+            smap_operator(
+              srange_search_between(node.key, node.value, "=>") ||
+                srange_length(node.key.end_char, -1),
+              srange_node(node)
             )
           )
         end
@@ -347,16 +302,13 @@ module SyntaxTree
         s(
           :kwsplat,
           [visit(node.value)],
-          source_map_operator(
-            source_range_length(node.location.start_char, 2),
-            source_range_node(node)
-          )
+          smap_operator(srange_length(node.start_char, 2), srange_node(node))
         )
       end
 
       # Visit a Backref node.
       def visit_backref(node)
-        location = source_map(expression: source_range_node(node))
+        location = smap(srange_node(node))
 
         if node.value.match?(/^\$\d+$/)
           s(:nth_ref, [node.value[1..].to_i], location)
@@ -375,7 +327,7 @@ module SyntaxTree
             :hash
           end,
           visit_all(node.assocs),
-          source_map_collection(expression: source_range_node(node))
+          smap_collection_bare(srange_node(node))
         )
       end
 
@@ -384,15 +336,11 @@ module SyntaxTree
         s(
           :preexe,
           [visit(node.statements)],
-          source_map_keyword(
-            source_range_length(node.location.start_char, 5),
-            source_range_find(
-              node.location.start_char + 5,
-              node.statements.location.start_char,
-              "{"
-            ),
-            source_range_length(node.location.end_char, -1),
-            source_range_node(node)
+          smap_keyword(
+            srange_length(node.start_char, 5),
+            srange_find(node.start_char + 5, node.statements.start_char, "{"),
+            srange_length(node.end_char, -1),
+            srange_node(node)
           )
         )
       end
@@ -400,10 +348,10 @@ module SyntaxTree
       # Visit a Begin node.
       def visit_begin(node)
         location =
-          source_map_collection(
-            begin_token: source_range_length(node.location.start_char, 5),
-            end_token: source_range_length(node.location.end_char, -3),
-            expression: source_range_node(node)
+          smap_collection(
+            srange_length(node.start_char, 5),
+            srange_length(node.end_char, -3),
+            srange_node(node)
           )
 
         if node.bodystmt.empty?
@@ -439,13 +387,9 @@ module SyntaxTree
               node.operator
             ),
             [visit(node.left), visit(node.right)],
-            source_map_operator(
-              source_range_find_between(
-                node.left,
-                node.right,
-                node.operator.to_s
-              ),
-              source_range_node(node)
+            smap_operator(
+              srange_find_between(node.left, node.right, node.operator.to_s),
+              srange_node(node)
             )
           )
         when :=~
@@ -459,13 +403,9 @@ module SyntaxTree
             s(
               :match_with_lvasgn,
               [visit(node.left), visit(node.right)],
-              source_map_operator(
-                source_range_find_between(
-                  node.left,
-                  node.right,
-                  node.operator.to_s
-                ),
-                source_range_node(node)
+              smap_operator(
+                srange_find_between(node.left, node.right, node.operator.to_s),
+                srange_node(node)
               )
             )
           else
@@ -479,15 +419,12 @@ module SyntaxTree
       # Visit a BlockArg node.
       def visit_blockarg(node)
         if node.name.nil?
-          s(:blockarg, [nil], source_map_variable(nil, source_range_node(node)))
+          s(:blockarg, [nil], smap_variable(nil, srange_node(node)))
         else
           s(
             :blockarg,
             [node.name.value.to_sym],
-            source_map_variable(
-              source_range_node(node.name),
-              source_range_node(node)
-            )
+            smap_variable(srange_node(node.name), srange_node(node))
           )
         end
       end
@@ -499,10 +436,7 @@ module SyntaxTree
             s(
               :shadowarg,
               [local.value.to_sym],
-              source_map_variable(
-                source_range_node(local),
-                source_range_node(local)
-              )
+              smap_variable(srange_node(local), srange_node(local))
             )
           end
 
@@ -522,13 +456,13 @@ module SyntaxTree
                     s(
                       :arg,
                       [required.value.to_sym],
-                      source_map_variable(
-                        source_range_node(required),
-                        source_range_node(required)
+                      smap_variable(
+                        srange_node(required),
+                        srange_node(required)
                       )
                     )
                   ],
-                  source_map_collection(expression: source_range_node(required))
+                  smap_collection_bare(srange_node(required))
                 )
               else
                 child = visit(required)
@@ -543,10 +477,10 @@ module SyntaxTree
         s(
           :args,
           children + shadowargs,
-          source_map_collection(
-            begin_token: source_range_length(node.location.start_char, 1),
-            end_token: source_range_length(node.location.end_char, -1),
-            expression: source_range_node(node)
+          smap_collection(
+            srange_length(node.start_char, 1),
+            srange_length(node.end_char, -1),
+            srange_node(node)
           )
         )
       end
@@ -566,17 +500,12 @@ module SyntaxTree
             children << visit(node.else_clause)
 
             location =
-              source_map_condition(
-                else_token:
-                  source_range_length(
-                    node.else_clause.location.start_char - 3,
-                    -4
-                  ),
-                expression:
-                  source_range(
-                    location.expression.begin_pos,
-                    node.else_clause.location.end_char
-                  )
+              smap_condition(
+                nil,
+                nil,
+                srange_length(node.else_clause.start_char - 3, -4),
+                nil,
+                srange(location.expression.begin_pos, node.else_clause.end_char)
               )
           end
 
@@ -608,9 +537,9 @@ module SyntaxTree
         s(
           :break,
           visit_all(node.arguments.parts),
-          source_map_keyword_bare(
-            source_range_length(node.location.start_char, 5),
-            source_range_node(node)
+          smap_keyword_bare(
+            srange_length(node.start_char, 5),
+            srange_node(node)
           )
         )
       end
@@ -638,17 +567,18 @@ module SyntaxTree
 
         else_token =
           if clauses.last.is_a?(Else)
-            source_range_length(clauses.last.location.start_char, 4)
+            srange_length(clauses.last.start_char, 4)
           end
 
         s(
           node.consequent.is_a?(In) ? :case_match : :case,
           [visit(node.value)] + clauses.map { |clause| visit(clause) },
-          source_map_condition(
-            keyword: source_range_length(node.location.start_char, 4),
-            else_token: else_token,
-            end_token: source_range_length(node.location.end_char, -3),
-            expression: source_range_node(node)
+          smap_condition(
+            srange_length(node.start_char, 4),
+            nil,
+            else_token,
+            srange_length(node.end_char, -3),
+            srange_node(node)
           )
         )
       end
@@ -658,9 +588,10 @@ module SyntaxTree
         s(
           :str,
           [node.value[1..]],
-          source_map_collection(
-            begin_token: source_range_length(node.location.start_char, 1),
-            expression: source_range_node(node)
+          smap_collection(
+            srange_length(node.start_char, 1),
+            nil,
+            srange_node(node)
           )
         )
       end
@@ -669,18 +600,18 @@ module SyntaxTree
       def visit_class(node)
         operator =
           if node.superclass
-            source_range_find_between(node.constant, node.superclass, "<")
+            srange_find_between(node.constant, node.superclass, "<")
           end
 
         s(
           :class,
           [visit(node.constant), visit(node.superclass), visit(node.bodystmt)],
-          source_map_definition(
-            keyword: source_range_length(node.location.start_char, 5),
-            operator: operator,
-            name: source_range_node(node.constant),
-            end_token: source_range_length(node.location.end_char, -3)
-          ).with_expression(source_range_node(node))
+          smap_definition(
+            srange_length(node.start_char, 5),
+            operator,
+            srange_node(node.constant),
+            srange_length(node.end_char, -3)
+          ).with_expression(srange_node(node))
         )
       end
 
@@ -721,18 +652,17 @@ module SyntaxTree
             children += visit_all(node.arguments.arguments.parts)
           end
 
-          begin_token =
-            source_range_length(node.arguments.location.start_char, 1)
-          end_token = source_range_length(node.arguments.location.end_char, -1)
+          begin_token = srange_length(node.arguments.start_char, 1)
+          end_token = srange_length(node.arguments.end_char, -1)
         end
 
         dot_bound =
           if node.arguments
-            node.arguments.location.start_char
+            node.arguments.start_char
           elsif node.block
-            node.block.location.start_char
+            node.block.start_char
           else
-            node.location.end_char
+            node.end_char
           end
 
         call =
@@ -743,37 +673,31 @@ module SyntaxTree
               :send
             end,
             children,
-            source_map_send(
-              dot:
-                if node.operator == :"::"
-                  source_range_find(
-                    node.receiver.location.end_char,
-                    if node.message == :call
-                      dot_bound
-                    else
-                      node.message.location.start_char
-                    end,
-                    "::"
-                  )
-                elsif node.operator
-                  source_range_node(node.operator)
-                end,
-              begin_token: begin_token,
-              end_token: end_token,
-              selector:
-                node.message == :call ? nil : source_range_node(node.message),
-              expression:
-                if node.arguments.is_a?(ArgParen) ||
-                     (node.arguments.is_a?(Args) && node.arguments.parts.any?)
-                  source_range(
-                    node.location.start_char,
-                    node.arguments.location.end_char
-                  )
-                elsif node.block
-                  source_range_node(node.message)
-                else
-                  source_range_node(node)
-                end
+            smap_send(
+              if node.operator == :"::"
+                srange_find(
+                  node.receiver.end_char,
+                  if node.message == :call
+                    dot_bound
+                  else
+                    node.message.start_char
+                  end,
+                  "::"
+                )
+              elsif node.operator
+                srange_node(node.operator)
+              end,
+              node.message == :call ? nil : srange_node(node.message),
+              begin_token,
+              end_token,
+              if node.arguments.is_a?(ArgParen) ||
+                   (node.arguments.is_a?(Args) && node.arguments.parts.any?)
+                srange(node.start_char, node.arguments.end_char)
+              elsif node.block
+                srange_node(node.message)
+              else
+                srange_node(node)
+              end
             )
           )
 
@@ -783,14 +707,13 @@ module SyntaxTree
           s(
             type,
             [call, arguments, visit(node.block.bodystmt)],
-            source_map_collection(
-              begin_token: source_range_node(node.block.opening),
-              end_token:
-                source_range_length(
-                  node.location.end_char,
-                  node.block.opening.is_a?(Kw) ? -3 : -1
-                ),
-              expression: source_range_node(node)
+            smap_collection(
+              srange_node(node.block.opening),
+              srange_length(
+                node.end_char,
+                node.block.opening.is_a?(Kw) ? -3 : -1
+              ),
+              srange_node(node)
             )
           )
         else
@@ -803,11 +726,7 @@ module SyntaxTree
         s(
           :const,
           [nil, node.value.to_sym],
-          source_map_constant(
-            nil,
-            source_range_node(node),
-            source_range_node(node)
-          )
+          smap_constant(nil, srange_node(node), srange_node(node))
         )
       end
 
@@ -820,10 +739,10 @@ module SyntaxTree
           s(
             :casgn,
             [visit(node.parent), node.constant.value.to_sym],
-            source_map_constant(
-              source_range_find_between(node.parent, node.constant, "::"),
-              source_range_node(node.constant),
-              source_range_node(node)
+            smap_constant(
+              srange_find_between(node.parent, node.constant, "::"),
+              srange_node(node.constant),
+              srange_node(node)
             )
           )
         end
@@ -834,10 +753,10 @@ module SyntaxTree
         s(
           :const,
           [visit(node.parent), node.constant.value.to_sym],
-          source_map_constant(
-            source_range_find_between(node.parent, node.constant, "::"),
-            source_range_node(node.constant),
-            source_range_node(node)
+          smap_constant(
+            srange_find_between(node.parent, node.constant, "::"),
+            srange_node(node.constant),
+            srange_node(node)
           )
         )
       end
@@ -847,11 +766,7 @@ module SyntaxTree
         s(
           :const,
           [nil, node.constant.value.to_sym],
-          source_map_constant(
-            nil,
-            source_range_node(node.constant),
-            source_range_node(node)
-          )
+          smap_constant(nil, srange_node(node.constant), srange_node(node))
         )
       end
 
@@ -860,7 +775,7 @@ module SyntaxTree
         s(
           :cvar,
           [node.value.to_sym],
-          source_map_variable(source_range_node(node), source_range_node(node))
+          smap_variable(srange_node(node), srange_node(node))
         )
       end
 
@@ -875,7 +790,7 @@ module SyntaxTree
             s(
               child.type,
               child.children,
-              source_map_collection(expression: nil)
+              smap_collection_bare(child.location&.expression)
             )
           when Paren
             child = visit(node.params.contents)
@@ -883,37 +798,38 @@ module SyntaxTree
             s(
               child.type,
               child.children,
-              source_map_collection(
-                begin_token:
-                  source_range_length(node.params.location.start_char, 1),
-                end_token:
-                  source_range_length(node.params.location.end_char, -1),
-                expression: source_range_node(node.params)
+              smap_collection(
+                srange_length(node.params.start_char, 1),
+                srange_length(node.params.end_char, -1),
+                srange_node(node.params)
               )
             )
           else
-            s(:args, [], source_map_collection(expression: nil))
+            s(:args, [], smap_collection_bare(nil))
           end
 
         location =
           if node.endless?
-            source_map_method_definition(
-              keyword: source_range_length(node.location.start_char, 3),
-              assignment:
-                source_range_find_between(
-                  (node.params || node.name),
-                  node.bodystmt,
-                  "="
-                ),
-              name: source_range_node(node.name),
-              expression: source_range_node(node)
+            smap_method_definition(
+              srange_length(node.start_char, 3),
+              nil,
+              srange_node(node.name),
+              nil,
+              srange_find_between(
+                (node.params || node.name),
+                node.bodystmt,
+                "="
+              ),
+              srange_node(node)
             )
           else
-            source_map_method_definition(
-              keyword: source_range_length(node.location.start_char, 3),
-              name: source_range_node(node.name),
-              end_token: source_range_length(node.location.end_char, -3),
-              expression: source_range_node(node)
+            smap_method_definition(
+              srange_length(node.start_char, 3),
+              nil,
+              srange_node(node.name),
+              srange_length(node.end_char, -3),
+              nil,
+              srange_node(node)
             )
           end
 
@@ -923,13 +839,13 @@ module SyntaxTree
           s(
             :defs,
             [visit(target), name, args, visit(node.bodystmt)],
-            source_map_method_definition(
-              keyword: location.keyword,
-              assignment: location.assignment,
-              operator: source_range_node(node.operator),
-              name: location.name,
-              end_token: location.end,
-              expression: location.expression
+            smap_method_definition(
+              location.keyword,
+              srange_node(node.operator),
+              location.name,
+              location.end,
+              location.assignment,
+              location.expression
             )
           )
         else
@@ -939,23 +855,23 @@ module SyntaxTree
 
       # Visit a Defined node.
       def visit_defined(node)
-        paren_range = (node.location.start_char + 8)...node.location.end_char
+        paren_range = (node.start_char + 8)...node.end_char
         begin_token, end_token =
           if buffer.source[paren_range].include?("(")
             [
-              source_range_find(paren_range.begin, paren_range.end, "("),
-              source_range_length(node.location.end_char, -1)
+              srange_find(paren_range.begin, paren_range.end, "("),
+              srange_length(node.end_char, -1)
             ]
           end
 
         s(
           :defined?,
           [visit(node.value)],
-          source_map_keyword(
-            source_range_length(node.location.start_char, 8),
+          smap_keyword(
+            srange_length(node.start_char, 8),
             begin_token,
             end_token,
-            source_range_node(node)
+            srange_node(node)
           )
         )
       end
@@ -964,17 +880,13 @@ module SyntaxTree
       def visit_dyna_symbol(node)
         location =
           if node.quote
-            source_map_collection(
-              begin_token:
-                source_range_length(
-                  node.location.start_char,
-                  node.quote.length
-                ),
-              end_token: source_range_length(node.location.end_char, -1),
-              expression: source_range_node(node)
+            smap_collection(
+              srange_length(node.start_char, node.quote.length),
+              srange_length(node.end_char, -1),
+              srange_node(node)
             )
           else
-            source_map_collection(expression: source_range_node(node))
+            smap_collection_bare(srange_node(node))
           end
 
         if node.parts.length == 1 && node.parts.first.is_a?(TStringContent)
@@ -998,16 +910,12 @@ module SyntaxTree
         else_token =
           case node.consequent
           when Elsif
-            source_range_length(node.consequent.location.start_char, 5)
+            srange_length(node.consequent.start_char, 5)
           when Else
-            source_range_length(node.consequent.location.start_char, 4)
+            srange_length(node.consequent.start_char, 4)
           end
 
-        expression =
-          source_range(
-            node.location.start_char,
-            node.statements.location.end_char - 1
-          )
+        expression = srange(node.start_char, node.statements.end_char - 1)
 
         s(
           :if,
@@ -1016,10 +924,12 @@ module SyntaxTree
             visit(node.statements),
             visit(node.consequent)
           ],
-          source_map_condition(
-            keyword: source_range_length(node.location.start_char, 5),
-            else_token: else_token,
-            expression: expression
+          smap_condition(
+            srange_length(node.start_char, 5),
+            nil,
+            else_token,
+            nil,
+            expression
           )
         )
       end
@@ -1029,35 +939,34 @@ module SyntaxTree
         s(
           :postexe,
           [visit(node.statements)],
-          source_map_keyword(
-            source_range_length(node.location.start_char, 3),
-            source_range_find(
-              node.location.start_char + 3,
-              node.statements.location.start_char,
-              "{"
-            ),
-            source_range_length(node.location.end_char, -1),
-            source_range_node(node)
+          smap_keyword(
+            srange_length(node.start_char, 3),
+            srange_find(node.start_char + 3, node.statements.start_char, "{"),
+            srange_length(node.end_char, -1),
+            srange_node(node)
           )
         )
       end
 
       # Visit an Ensure node.
       def visit_ensure(node)
-        start_char = node.location.start_char
+        start_char = node.start_char
         end_char =
           if node.statements.empty?
             start_char + 6
           else
-            node.statements.body.last.location.end_char
+            node.statements.body.last.end_char
           end
 
         s(
           :ensure,
           [visit(node.statements)],
-          source_map_condition(
-            keyword: source_range_length(start_char, 6),
-            expression: source_range(start_char, end_char)
+          smap_condition(
+            srange_length(start_char, 6),
+            nil,
+            nil,
+            nil,
+            srange(start_char, end_char)
           )
         )
       end
@@ -1090,15 +999,11 @@ module SyntaxTree
       # Visit a FloatLiteral node.
       def visit_float(node)
         operator =
-          if %w[+ -].include?(buffer.source[node.location.start_char])
-            source_range_length(node.location.start_char, 1)
+          if %w[+ -].include?(buffer.source[node.start_char])
+            srange_length(node.start_char, 1)
           end
 
-        s(
-          :float,
-          [node.value.to_f],
-          source_map_operator(operator, source_range_node(node))
-        )
+        s(:float, [node.value.to_f], smap_operator(operator, srange_node(node)))
       end
 
       # Visit a FndPtn node.
@@ -1106,9 +1011,9 @@ module SyntaxTree
         left, right =
           [node.left, node.right].map do |child|
             location =
-              source_map_operator(
-                source_range_length(child.location.start_char, 1),
-                source_range_node(child)
+              smap_operator(
+                srange_length(child.start_char, 1),
+                srange_node(child)
               )
 
             if child.is_a?(VarField) && child.value.nil?
@@ -1122,10 +1027,10 @@ module SyntaxTree
           s(
             :find_pattern,
             [left, *visit_all(node.values), right],
-            source_map_collection(
-              begin_token: source_range_length(node.location.start_char, 1),
-              end_token: source_range_length(node.location.end_char, -1),
-              expression: source_range_node(node)
+            smap_collection(
+              srange_length(node.start_char, 1),
+              srange_length(node.end_char, -1),
+              srange_node(node)
             )
           )
 
@@ -1141,12 +1046,12 @@ module SyntaxTree
         s(
           :for,
           [visit(node.index), visit(node.collection), visit(node.statements)],
-          source_map_for(
-            source_range_length(node.location.start_char, 3),
-            source_range_find_between(node.index, node.collection, "in"),
-            source_range_search_between(node.collection, node.statements, "do"),
-            source_range_length(node.location.end_char, -3),
-            source_range_node(node)
+          smap_for(
+            srange_length(node.start_char, 3),
+            srange_find_between(node.index, node.collection, "in"),
+            srange_search_between(node.collection, node.statements, "do"),
+            srange_length(node.end_char, -3),
+            srange_node(node)
           )
         )
       end
@@ -1156,7 +1061,7 @@ module SyntaxTree
         s(
           :gvar,
           [node.value.to_sym],
-          source_map_variable(source_range_node(node), source_range_node(node))
+          smap_variable(srange_node(node), srange_node(node))
         )
       end
 
@@ -1165,10 +1070,10 @@ module SyntaxTree
         s(
           :hash,
           visit_all(node.assocs),
-          source_map_collection(
-            begin_token: source_range_length(node.location.start_char, 1),
-            end_token: source_range_length(node.location.end_char, -1),
-            expression: source_range_node(node)
+          smap_collection(
+            srange_length(node.start_char, 1),
+            srange_length(node.end_char, -1),
+            srange_node(node)
           )
         )
       end
@@ -1260,20 +1165,17 @@ module SyntaxTree
 
         heredoc_segments.trim!
         location =
-          source_map_heredoc(
-            source_range_node(node.beginning),
-            source_range(
+          smap_heredoc(
+            srange_node(node.beginning),
+            srange(
               if node.parts.empty?
-                node.beginning.location.end_char
+                node.beginning.end_char
               else
-                node.parts.first.location.start_char
+                node.parts.first.start_char
               end,
-              node.ending.location.start_char
+              node.ending.start_char
             ),
-            source_range(
-              node.ending.location.start_char,
-              node.ending.location.end_char - 1
-            )
+            srange(node.ending.start_char, node.ending.end_char - 1)
           )
 
         if node.beginning.value.match?(/`\w+`\z/)
@@ -1326,7 +1228,7 @@ module SyntaxTree
         s(
           :lvar,
           [node.value.to_sym],
-          source_map_variable(source_range_node(node), source_range_node(node))
+          smap_variable(srange_node(node), srange_node(node))
         )
       end
 
@@ -1359,40 +1261,40 @@ module SyntaxTree
           :if,
           [predicate, visit(node.statements), visit(node.consequent)],
           if node.modifier?
-            source_map_keyword_bare(
-              source_range_find_between(node.statements, node.predicate, "if"),
-              source_range_node(node)
+            smap_keyword_bare(
+              srange_find_between(node.statements, node.predicate, "if"),
+              srange_node(node)
             )
           else
-            begin_start = node.predicate.location.end_char
+            begin_start = node.predicate.end_char
             begin_end =
               if node.statements.empty?
-                node.statements.location.end_char
+                node.statements.end_char
               else
-                node.statements.body.first.location.start_char
+                node.statements.body.first.start_char
               end
 
             begin_token =
               if buffer.source[begin_start...begin_end].include?("then")
-                source_range_find(begin_start, begin_end, "then")
+                srange_find(begin_start, begin_end, "then")
               elsif buffer.source[begin_start...begin_end].include?(";")
-                source_range_find(begin_start, begin_end, ";")
+                srange_find(begin_start, begin_end, ";")
               end
 
             else_token =
               case node.consequent
               when Elsif
-                source_range_length(node.consequent.location.start_char, 5)
+                srange_length(node.consequent.start_char, 5)
               when Else
-                source_range_length(node.consequent.location.start_char, 4)
+                srange_length(node.consequent.start_char, 4)
               end
 
-            source_map_condition(
-              keyword: source_range_length(node.location.start_char, 2),
-              begin_token: begin_token,
-              else_token: else_token,
-              end_token: source_range_length(node.location.end_char, -3),
-              expression: source_range_node(node)
+            smap_condition(
+              srange_length(node.start_char, 2),
+              begin_token,
+              else_token,
+              srange_length(node.end_char, -3),
+              srange_node(node)
             )
           end
         )
@@ -1403,7 +1305,11 @@ module SyntaxTree
         s(
           :if,
           [visit(node.predicate), visit(node.truthy), visit(node.falsy)],
-          nil
+          smap_ternary(
+            srange_find_between(node.predicate, node.truthy, "?"),
+            srange_find_between(node.truthy, node.falsy, ":"),
+            srange_node(node)
+          )
         )
       end
 
@@ -1417,7 +1323,7 @@ module SyntaxTree
             # case. Maybe there's an API for this but I can't find it.
             eval(node.value)
           ],
-          source_map_operator(nil, source_range_node(node))
+          smap_operator(nil, srange_node(node))
         )
       end
 
@@ -1446,23 +1352,23 @@ module SyntaxTree
           )
         else
           begin_token =
-            source_range_search_between(node.pattern, node.statements, "then")
+            srange_search_between(node.pattern, node.statements, "then")
 
           end_char =
             if begin_token || node.statements.empty?
-              node.statements.location.end_char - 1
+              node.statements.end_char - 1
             else
-              node.statements.body.last.location.start_char
+              node.statements.body.last.start_char
             end
 
           s(
             :in_pattern,
             [visit(node.pattern), nil, visit(node.statements)],
-            source_map_keyword(
-              source_range_length(node.location.start_char, 2),
+            smap_keyword(
+              srange_length(node.start_char, 2),
               begin_token,
               nil,
-              source_range(node.location.start_char, end_char)
+              srange(node.start_char, end_char)
             )
           )
         end
@@ -1471,15 +1377,11 @@ module SyntaxTree
       # Visit an Int node.
       def visit_int(node)
         operator =
-          if %w[+ -].include?(buffer.source[node.location.start_char])
-            source_range_length(node.location.start_char, 1)
+          if %w[+ -].include?(buffer.source[node.start_char])
+            srange_length(node.start_char, 1)
           end
 
-        s(
-          :int,
-          [node.value.to_i],
-          source_map_operator(operator, source_range_node(node))
-        )
+        s(:int, [node.value.to_i], smap_operator(operator, srange_node(node)))
       end
 
       # Visit an IVar node.
@@ -1487,13 +1389,13 @@ module SyntaxTree
         s(
           :ivar,
           [node.value.to_sym],
-          source_map_variable(source_range_node(node), source_range_node(node))
+          smap_variable(srange_node(node), srange_node(node))
         )
       end
 
       # Visit a Kw node.
       def visit_kw(node)
-        location = source_map(expression: source_range_node(node))
+        location = smap(srange_node(node))
 
         case node.value
         when "__FILE__"
@@ -1514,15 +1416,12 @@ module SyntaxTree
       # Visit a KwRestParam node.
       def visit_kwrest_param(node)
         if node.name.nil?
-          s(:kwrestarg, [], source_map_variable(nil, source_range_node(node)))
+          s(:kwrestarg, [], smap_variable(nil, srange_node(node)))
         else
           s(
             :kwrestarg,
             [node.name.value.to_sym],
-            source_map_variable(
-              source_range_node(node.name),
-              source_range_node(node)
-            )
+            smap_variable(srange_node(node.name), srange_node(node))
           )
         end
       end
@@ -1532,10 +1431,7 @@ module SyntaxTree
         s(
           :sym,
           [node.value.chomp(":").to_sym],
-          source_map_collection(
-            expression:
-              source_range(node.location.start_char, node.location.end_char - 1)
-          )
+          smap_collection_bare(srange(node.start_char, node.end_char - 1))
         )
       end
 
@@ -1550,42 +1446,30 @@ module SyntaxTree
           args_node = maximum
         end
 
-        begin_start = node.params.location.end_char
         begin_token, end_token =
-          if buffer.source[begin_start - 1] == "{"
-            [
-              source_range_length(begin_start, -1),
-              source_range_length(node.location.end_char, -1)
-            ]
+          if (srange = srange_search_between(node.params, node.statements, "{"))
+            [srange, srange_length(node.end_char, -1)]
           else
             [
-              source_range_length(begin_start, -2),
-              source_range_length(node.location.end_char, -3)
+              srange_find_between(node.params, node.statements, "do"),
+              srange_length(node.end_char, -3)
             ]
           end
 
-        selector = source_range_length(node.location.start_char, 2)
+        selector = srange_length(node.start_char, 2)
 
         s(
           type,
           [
             if ::Parser::Builders::Default.emit_lambda
-              s(:lambda, [], source_map(expression: selector))
+              s(:lambda, [], smap(selector))
             else
-              s(
-                :send,
-                [nil, :lambda],
-                source_map_send(selector: selector, expression: selector)
-              )
+              s(:send, [nil, :lambda], smap_send_bare(selector, selector))
             end,
             args_node,
             visit(node.statements)
           ],
-          source_map_collection(
-            begin_token: begin_token,
-            end_token: end_token,
-            expression: source_range_node(node)
-          )
+          smap_collection(begin_token, end_token, srange_node(node))
         )
       end
 
@@ -1596,21 +1480,18 @@ module SyntaxTree
             s(
               :shadowarg,
               [local.value.to_sym],
-              source_map_variable(
-                source_range_node(local),
-                source_range_node(local)
-              )
+              smap_variable(srange_node(local), srange_node(local))
             )
           end
 
         location =
-          if node.location.start_char == node.location.end_char
-            source_map_collection(expression: nil)
+          if node.start_char == node.end_char
+            smap_collection_bare(nil)
           else
-            source_map_collection(
-              begin_token: source_range_length(node.location.start_char, 1),
-              end_token: source_range_length(node.location.end_char, -1),
-              expression: source_range_node(node)
+            smap_collection(
+              srange_length(node.start_char, 1),
+              srange_length(node.end_char, -1),
+              srange_node(node)
             )
           end
 
@@ -1622,9 +1503,9 @@ module SyntaxTree
         s(
           :masgn,
           [visit(node.target), visit(node.value)],
-          source_map_operator(
-            source_range_find_between(node.target, node.value, "="),
-            source_range_node(node)
+          smap_operator(
+            srange_find_between(node.target, node.value, "="),
+            srange_node(node)
           )
         )
       end
@@ -1678,16 +1559,13 @@ module SyntaxTree
               s(
                 :arg,
                 [part.value.to_sym],
-                source_map_variable(
-                  source_range_node(part),
-                  source_range_node(part)
-                )
+                smap_variable(srange_node(part), srange_node(part))
               )
             else
               visit(part)
             end
           end,
-          source_map_collection(expression: source_range_node(node))
+          smap_collection_bare(srange_node(node))
         )
       end
 
@@ -1698,10 +1576,10 @@ module SyntaxTree
         s(
           child.type,
           child.children,
-          source_map_collection(
-            begin_token: source_range_length(node.location.start_char, 1),
-            end_token: source_range_length(node.location.end_char, -1),
-            expression: source_range_node(node)
+          smap_collection(
+            srange_length(node.start_char, 1),
+            srange_length(node.end_char, -1),
+            srange_node(node)
           )
         )
       end
@@ -1711,11 +1589,12 @@ module SyntaxTree
         s(
           :module,
           [visit(node.constant), visit(node.bodystmt)],
-          source_map_definition(
-            keyword: source_range_length(node.location.start_char, 6),
-            name: source_range_node(node.constant),
-            end_token: source_range_length(node.location.end_char, -3)
-          ).with_expression(source_range_node(node))
+          smap_definition(
+            srange_length(node.start_char, 6),
+            nil,
+            srange_node(node.constant),
+            srange_length(node.end_char, -3)
+          ).with_expression(srange_node(node))
         )
       end
 
@@ -1735,9 +1614,9 @@ module SyntaxTree
         s(
           :next,
           visit_all(node.arguments.parts),
-          source_map_keyword_bare(
-            source_range_length(node.location.start_char, 4),
-            source_range_node(node)
+          smap_keyword_bare(
+            srange_length(node.start_char, 4),
+            srange_node(node)
           )
         )
       end
@@ -1745,8 +1624,8 @@ module SyntaxTree
       # Visit a Not node.
       def visit_not(node)
         if node.statement.nil?
-          begin_token = source_range_find(node.location.start_char, nil, "(")
-          end_token = source_range_find(node.location.start_char, nil, ")")
+          begin_token = srange_find(node.start_char, nil, "(")
+          end_token = srange_find(node.start_char, nil, ")")
 
           s(
             :send,
@@ -1754,40 +1633,38 @@ module SyntaxTree
               s(
                 :begin,
                 [],
-                source_map_collection(
-                  begin_token: begin_token,
-                  end_token: end_token,
-                  expression: begin_token.join(end_token)
+                smap_collection(
+                  begin_token,
+                  end_token,
+                  begin_token.join(end_token)
                 )
               ),
               :!
             ],
-            source_map_send(
-              selector: source_range_length(node.location.start_char, 3),
-              expression: source_range_node(node)
-            )
+            smap_send_bare(srange_length(node.start_char, 3), srange_node(node))
           )
         else
           begin_token, end_token =
             if node.parentheses?
               [
-                source_range_find(
-                  node.location.start_char + 3,
-                  node.statement.location.start_char,
+                srange_find(
+                  node.start_char + 3,
+                  node.statement.start_char,
                   "("
                 ),
-                source_range_length(node.location.end_char, -1)
+                srange_length(node.end_char, -1)
               ]
             end
 
           s(
             :send,
             [visit(node.statement), :!],
-            source_map_send(
-              begin_token: begin_token,
-              end_token: end_token,
-              selector: source_range_length(node.location.start_char, 3),
-              expression: source_range_node(node)
+            smap_send(
+              nil,
+              srange_length(node.start_char, 3),
+              begin_token,
+              end_token,
+              srange_node(node)
             )
           )
         end
@@ -1795,60 +1672,22 @@ module SyntaxTree
 
       # Visit an OpAssign node.
       def visit_opassign(node)
+        target = visit(node.target)
         location =
-          case node.target
-          when ARefField
-            source_map_index(
-              begin_token:
-                source_range_find(
-                  node.target.collection.location.end_char,
-                  if node.target.index
-                    node.target.index.location.start_char
-                  else
-                    node.target.location.end_char
-                  end,
-                  "["
-                ),
-              end_token: source_range_length(node.target.location.end_char, -1),
-              expression: source_range_node(node)
-            )
-          when Field
-            source_map_send(
-              dot:
-                if node.target.operator == :"::"
-                  source_range_find_between(
-                    node.target.parent,
-                    node.target.name,
-                    "::"
-                  )
-                else
-                  source_range_node(node.target.operator)
-                end,
-              selector: source_range_node(node.target.name),
-              expression: source_range_node(node)
-            )
-          else
-            source_map_variable(
-              source_range_node(node.target),
-              source_range_node(node)
-            )
-          end
-
-        location = location.with_operator(source_range_node(node.operator))
+          target
+            .location
+            .with_expression(srange_node(node))
+            .with_operator(srange_node(node.operator))
 
         case node.operator.value
         when "||="
-          s(:or_asgn, [visit(node.target), visit(node.value)], location)
+          s(:or_asgn, [target, visit(node.value)], location)
         when "&&="
-          s(:and_asgn, [visit(node.target), visit(node.value)], location)
+          s(:and_asgn, [target, visit(node.value)], location)
         else
           s(
             :op_asgn,
-            [
-              visit(node.target),
-              node.operator.value.chomp("=").to_sym,
-              visit(node.value)
-            ],
+            [target, node.operator.value.chomp("=").to_sym, visit(node.value)],
             location
           )
         end
@@ -1867,10 +1706,7 @@ module SyntaxTree
               s(
                 :arg,
                 [required.value.to_sym],
-                source_map_variable(
-                  source_range_node(required),
-                  source_range_node(required)
-                )
+                smap_variable(srange_node(required), srange_node(required))
               )
             end
           end
@@ -1880,10 +1716,10 @@ module SyntaxTree
             s(
               :optarg,
               [name.value.to_sym, visit(value)],
-              source_map_variable(
-                source_range_node(name),
-                source_range_node(name).join(source_range_node(value))
-              ).with_operator(source_range_find_between(name, value, "="))
+              smap_variable(
+                srange_node(name),
+                srange_node(name).join(srange_node(value))
+              ).with_operator(srange_find_between(name, value, "="))
             )
           end
 
@@ -1896,10 +1732,7 @@ module SyntaxTree
             s(
               :arg,
               [post.value.to_sym],
-              source_map_variable(
-                source_range_node(post),
-                source_range_node(post)
-              )
+              smap_variable(srange_node(post), srange_node(post))
             )
           end
 
@@ -1911,24 +1744,18 @@ module SyntaxTree
               s(
                 :kwoptarg,
                 [key, visit(value)],
-                source_map_variable(
-                  source_range(
-                    name.location.start_char,
-                    name.location.end_char - 1
-                  ),
-                  source_range_node(name).join(source_range_node(value))
+                smap_variable(
+                  srange(name.start_char, name.end_char - 1),
+                  srange_node(name).join(srange_node(value))
                 )
               )
             else
               s(
                 :kwarg,
                 [key],
-                source_map_variable(
-                  source_range(
-                    name.location.start_char,
-                    name.location.end_char - 1
-                  ),
-                  source_range_node(name)
+                smap_variable(
+                  srange(name.start_char, name.end_char - 1),
+                  srange_node(name)
                 )
               )
             end
@@ -1941,10 +1768,7 @@ module SyntaxTree
           children << s(
             :kwnilarg,
             [],
-            source_map_variable(
-              source_range_length(node.location.end_char, -3),
-              source_range_node(node)
-            )
+            smap_variable(srange_length(node.end_char, -3), srange_node(node))
           )
         else
           children << visit(node.keyword_rest)
@@ -1953,8 +1777,7 @@ module SyntaxTree
         children << visit(node.block) if node.block
 
         if node.keyword_rest.is_a?(ArgsForward)
-          location =
-            source_map(expression: source_range_node(node.keyword_rest))
+          location = smap(srange_node(node.keyword_rest))
 
           # If there are no other arguments and we have the emit_forward_arg
           # option enabled, then the entire argument list is represented by a
@@ -1970,16 +1793,23 @@ module SyntaxTree
           children.insert(index, s(:forward_arg, [], location))
         end
 
-        s(:args, children, nil)
+        location =
+          unless children.empty?
+            first = children.first.location.expression
+            last = children.last.location.expression
+            smap_collection_bare(first.join(last))
+          end
+
+        s(:args, children, location)
       end
 
       # Visit a Paren node.
       def visit_paren(node)
         location =
-          source_map_collection(
-            begin_token: source_range_length(node.location.start_char, 1),
-            end_token: source_range_length(node.location.end_char, -1),
-            expression: source_range_node(node)
+          smap_collection(
+            srange_length(node.start_char, 1),
+            srange_length(node.end_char, -1),
+            srange_node(node)
           )
 
         if node.contents.nil? ||
@@ -1999,22 +1829,14 @@ module SyntaxTree
             s(
               :begin,
               [visit(node.statement)],
-              source_map_collection(
-                begin_token:
-                  source_range_length(node.location.start_char + 1, 1),
-                end_token: source_range_length(node.location.end_char, -1),
-                expression:
-                  source_range(
-                    node.location.start_char + 1,
-                    node.location.end_char
-                  )
+              smap_collection(
+                srange_length(node.start_char + 1, 1),
+                srange_length(node.end_char, -1),
+                srange(node.start_char + 1, node.end_char)
               )
             )
           ],
-          source_map_send(
-            selector: source_range_length(node.location.start_char, 1),
-            expression: source_range_node(node)
-          )
+          smap_send_bare(srange_length(node.start_char, 1), srange_node(node))
         )
       end
 
@@ -2023,10 +1845,7 @@ module SyntaxTree
         s(
           :pin,
           [visit(node.value)],
-          source_map_send(
-            selector: source_range_length(node.location.start_char, 1),
-            expression: source_range_node(node)
-          )
+          smap_send_bare(srange_length(node.start_char, 1), srange_node(node))
         )
       end
 
@@ -2067,10 +1886,7 @@ module SyntaxTree
         s(
           node.operator.value == ".." ? :irange : :erange,
           [visit(node.left), visit(node.right)],
-          source_map_operator(
-            source_range_node(node.operator),
-            source_range_node(node)
-          )
+          smap_operator(srange_node(node.operator), srange_node(node))
         )
       end
 
@@ -2079,32 +1895,18 @@ module SyntaxTree
         s(
           node.operator.value == "=>" ? :match_pattern : :match_pattern_p,
           [visit(node.value), visit(node.pattern)],
-          source_map_operator(
-            source_range_node(node.operator),
-            source_range_node(node)
-          )
+          smap_operator(srange_node(node.operator), srange_node(node))
         )
       end
 
       # Visit a Rational node.
       def visit_rational(node)
-        s(
-          :rational,
-          [node.value.to_r],
-          source_map_operator(nil, source_range_node(node))
-        )
+        s(:rational, [node.value.to_r], smap_operator(nil, srange_node(node)))
       end
 
       # Visit a Redo node.
       def visit_redo(node)
-        s(
-          :redo,
-          [],
-          source_map_keyword_bare(
-            source_range_node(node),
-            source_range_node(node)
-          )
-        )
+        s(:redo, [], smap_keyword_bare(srange_node(node), srange_node(node)))
       end
 
       # Visit a RegexpLiteral node.
@@ -2115,27 +1917,13 @@ module SyntaxTree
             s(
               :regopt,
               node.ending.scan(/[a-z]/).sort.map(&:to_sym),
-              source_map(
-                expression:
-                  source_range_length(
-                    node.location.end_char,
-                    -(node.ending.length - 1)
-                  )
-              )
+              smap(srange_length(node.end_char, -(node.ending.length - 1)))
             )
           ),
-          source_map_collection(
-            begin_token:
-              source_range_length(
-                node.location.start_char,
-                node.beginning.length
-              ),
-            end_token:
-              source_range_length(
-                node.location.end_char - node.ending.length,
-                1
-              ),
-            expression: source_range_node(node)
+          smap_collection(
+            srange_length(node.start_char, node.beginning.length),
+            srange_length(node.end_char - node.ending.length, 1),
+            srange_node(node)
           )
         )
       end
@@ -2145,13 +1933,13 @@ module SyntaxTree
         # In the parser gem, there is a separation between the rescue node and
         # the rescue body. They have different bounds, so we have to calculate
         # those here.
-        start_char = node.location.start_char
+        start_char = node.start_char
 
         body_end_char =
           if node.statements.empty?
             start_char + 6
           else
-            node.statements.body.last.location.end_char
+            node.statements.body.last.end_char
           end
 
         end_char =
@@ -2162,16 +1950,16 @@ module SyntaxTree
             if end_node.statements.empty?
               start_char + 6
             else
-              end_node.statements.body.last.location.end_char
+              end_node.statements.body.last.end_char
             end
           else
             body_end_char
           end
 
         # These locations are reused for multiple children.
-        keyword = source_range_length(start_char, 6)
-        body_expression = source_range(start_char, body_end_char)
-        expression = source_range(start_char, end_char)
+        keyword = srange_length(start_char, 6)
+        body_expression = srange(start_char, body_end_char)
+        expression = srange(start_char, end_char)
 
         exceptions =
           case node.exception&.exceptions
@@ -2208,19 +1996,13 @@ module SyntaxTree
             s(
               :resbody,
               [nil, nil, visit(node.statements)],
-              source_map_rescue_body(
-                keyword: keyword,
-                expression: body_expression
-              )
+              smap_rescue_body(keyword, nil, nil, body_expression)
             )
           elsif node.exception.variable.nil?
             s(
               :resbody,
               [exceptions, nil, visit(node.statements)],
-              source_map_rescue_body(
-                keyword: keyword,
-                expression: body_expression
-              )
+              smap_rescue_body(keyword, nil, nil, body_expression)
             )
           else
             s(
@@ -2230,15 +2012,15 @@ module SyntaxTree
                 visit(node.exception.variable),
                 visit(node.statements)
               ],
-              source_map_rescue_body(
-                keyword: keyword,
-                assoc:
-                  source_range_find(
-                    node.location.start_char + 6,
-                    node.exception.variable.location.start_char,
-                    "=>"
-                  ),
-                expression: body_expression
+              smap_rescue_body(
+                keyword,
+                srange_find(
+                  node.start_char + 6,
+                  node.exception.variable.start_char,
+                  "=>"
+                ),
+                nil,
+                body_expression
               )
             )
           end
@@ -2250,13 +2032,12 @@ module SyntaxTree
           children << nil
         end
 
-        s(:rescue, children, source_map_condition(expression: expression))
+        s(:rescue, children, smap_condition_bare(expression))
       end
 
       # Visit a RescueMod node.
       def visit_rescue_mod(node)
-        keyword =
-          source_range_find_between(node.statement, node.value, "rescue")
+        keyword = srange_find_between(node.statement, node.value, "rescue")
 
         s(
           :rescue,
@@ -2265,14 +2046,16 @@ module SyntaxTree
             s(
               :resbody,
               [nil, nil, visit(node.value)],
-              source_map_rescue_body(
-                keyword: keyword,
-                expression: keyword.join(source_range_node(node.value))
+              smap_rescue_body(
+                keyword,
+                nil,
+                nil,
+                keyword.join(srange_node(node.value))
               )
             ),
             nil
           ],
-          source_map_condition(expression: source_range_node(node))
+          smap_condition_bare(srange_node(node))
         )
       end
 
@@ -2282,26 +2065,16 @@ module SyntaxTree
           s(
             :restarg,
             [node.name.value.to_sym],
-            source_map_variable(
-              source_range_node(node.name),
-              source_range_node(node)
-            )
+            smap_variable(srange_node(node.name), srange_node(node))
           )
         else
-          s(:restarg, [], source_map_variable(nil, source_range_node(node)))
+          s(:restarg, [], smap_variable(nil, srange_node(node)))
         end
       end
 
       # Visit a Retry node.
       def visit_retry(node)
-        s(
-          :retry,
-          [],
-          source_map_keyword_bare(
-            source_range_node(node),
-            source_range_node(node)
-          )
-        )
+        s(:retry, [], smap_keyword_bare(srange_node(node), srange_node(node)))
       end
 
       # Visit a ReturnNode node.
@@ -2309,9 +2082,9 @@ module SyntaxTree
         s(
           :return,
           node.arguments ? visit_all(node.arguments.parts) : [],
-          source_map_keyword_bare(
-            source_range_length(node.location.start_char, 6),
-            source_range_node(node)
+          smap_keyword_bare(
+            srange_length(node.start_char, 6),
+            srange_node(node)
           )
         )
       end
@@ -2321,16 +2094,12 @@ module SyntaxTree
         s(
           :sclass,
           [visit(node.target), visit(node.bodystmt)],
-          source_map_definition(
-            keyword: source_range_length(node.location.start_char, 5),
-            operator:
-              source_range_find(
-                node.location.start_char + 5,
-                node.target.location.start_char,
-                "<<"
-              ),
-            end_token: source_range_length(node.location.end_char, -3)
-          ).with_expression(source_range_node(node))
+          smap_definition(
+            srange_length(node.start_char, 5),
+            srange_find(node.start_char + 5, node.target.start_char, "<<"),
+            nil,
+            srange_length(node.end_char, -3)
+          ).with_expression(srange_node(node))
         )
       end
 
@@ -2351,12 +2120,8 @@ module SyntaxTree
           s(
             :begin,
             visit_all(children),
-            source_map_collection(
-              expression:
-                source_range(
-                  children.first.location.start_char,
-                  children.last.location.end_char
-                )
+            smap_collection_bare(
+              srange(children.first.start_char, children.last.end_char)
             )
           )
         end
@@ -2364,15 +2129,11 @@ module SyntaxTree
 
       # Visit a StringConcat node.
       def visit_string_concat(node)
-        location = source_map_collection(expression: source_range_node(node))
-
-        s(:dstr, [visit(node.left), visit(node.right)], location)
-      end
-
-      # Visit a StringContent node.
-      def visit_string_content(node)
-        # Can get here if you're inside a hash pattern, e.g., in "a": 1
-        s(:sym, [node.parts.first.value.to_sym], nil)
+        s(
+          :dstr,
+          [visit(node.left), visit(node.right)],
+          smap_collection_bare(srange_node(node))
+        )
       end
 
       # Visit a StringDVar node.
@@ -2385,10 +2146,10 @@ module SyntaxTree
         s(
           :begin,
           visit(node.statements).then { |child| child ? [child] : [] },
-          source_map_collection(
-            begin_token: source_range_length(node.location.start_char, 2),
-            end_token: source_range_length(node.location.end_char, -1),
-            expression: source_range_node(node)
+          smap_collection(
+            srange_length(node.start_char, 2),
+            srange_length(node.end_char, -1),
+            srange_node(node)
           )
         )
       end
@@ -2397,17 +2158,13 @@ module SyntaxTree
       def visit_string_literal(node)
         location =
           if node.quote
-            source_map_collection(
-              begin_token:
-                source_range_length(
-                  node.location.start_char,
-                  node.quote.length
-                ),
-              end_token: source_range_length(node.location.end_char, -1),
-              expression: source_range_node(node)
+            smap_collection(
+              srange_length(node.start_char, node.quote.length),
+              srange_length(node.end_char, -1),
+              srange_node(node)
             )
           else
-            source_map_collection(expression: source_range_node(node))
+            smap_collection_bare(srange_node(node))
           end
 
         if node.parts.empty?
@@ -2426,9 +2183,9 @@ module SyntaxTree
           s(
             :super,
             visit_all(node.arguments.parts),
-            source_map_keyword_bare(
-              source_range_length(node.location.start_char, 5),
-              source_range_node(node)
+            smap_keyword_bare(
+              srange_length(node.start_char, 5),
+              srange_node(node)
             )
           )
         else
@@ -2437,15 +2194,11 @@ module SyntaxTree
             s(
               :super,
               [],
-              source_map_keyword(
-                source_range_length(node.location.start_char, 5),
-                source_range_find(
-                  node.location.start_char + 5,
-                  node.location.end_char,
-                  "("
-                ),
-                source_range_length(node.location.end_char, -1),
-                source_range_node(node)
+              smap_keyword(
+                srange_length(node.start_char, 5),
+                srange_find(node.start_char + 5, node.end_char, "("),
+                srange_length(node.end_char, -1),
+                srange_node(node)
               )
             )
           when ArgsForward
@@ -2454,15 +2207,11 @@ module SyntaxTree
             s(
               :super,
               visit_all(node.arguments.arguments.parts),
-              source_map_keyword(
-                source_range_length(node.location.start_char, 5),
-                source_range_find(
-                  node.location.start_char + 5,
-                  node.location.end_char,
-                  "("
-                ),
-                source_range_length(node.location.end_char, -1),
-                source_range_node(node)
+              smap_keyword(
+                srange_length(node.start_char, 5),
+                srange_find(node.start_char + 5, node.end_char, "("),
+                srange_length(node.end_char, -1),
+                srange_node(node)
               )
             )
           end
@@ -2472,17 +2221,14 @@ module SyntaxTree
       # Visit a SymbolLiteral node.
       def visit_symbol_literal(node)
         begin_token =
-          if buffer.source[node.location.start_char] == ":"
-            source_range_length(node.location.start_char, 1)
+          if buffer.source[node.start_char] == ":"
+            srange_length(node.start_char, 1)
           end
 
         s(
           :sym,
           [node.value.value.to_sym],
-          source_map_collection(
-            begin_token: begin_token,
-            expression: source_range_node(node)
-          )
+          smap_collection(begin_token, nil, srange_node(node))
         )
       end
 
@@ -2517,19 +2263,13 @@ module SyntaxTree
         s(
           :casgn,
           [
-            s(
-              :cbase,
-              [],
-              source_map(
-                expression: source_range_length(node.location.start_char, 2)
-              )
-            ),
+            s(:cbase, [], smap(srange_length(node.start_char, 2))),
             node.constant.value.to_sym
           ],
-          source_map_constant(
-            source_range_length(node.location.start_char, 2),
-            source_range_node(node.constant),
-            source_range_node(node)
+          smap_constant(
+            srange_length(node.start_char, 2),
+            srange_node(node.constant),
+            srange_node(node)
           )
         )
       end
@@ -2539,19 +2279,13 @@ module SyntaxTree
         s(
           :const,
           [
-            s(
-              :cbase,
-              [],
-              source_map(
-                expression: source_range_length(node.location.start_char, 2)
-              )
-            ),
+            s(:cbase, [], smap(srange_length(node.start_char, 2))),
             node.constant.value.to_sym
           ],
-          source_map_constant(
-            source_range_length(node.location.start_char, 2),
-            source_range_node(node.constant),
-            source_range_node(node)
+          smap_constant(
+            srange_length(node.start_char, 2),
+            srange_node(node.constant),
+            srange_node(node)
           )
         )
       end
@@ -2563,7 +2297,7 @@ module SyntaxTree
         s(
           :str,
           ["\"#{dumped}\"".undump],
-          source_map_collection(expression: source_range_node(node))
+          smap_collection_bare(srange_node(node))
         )
       end
 
@@ -2593,9 +2327,9 @@ module SyntaxTree
         s(
           :undef,
           visit_all(node.symbols),
-          source_map_keyword_bare(
-            source_range_length(node.location.start_char, 5),
-            source_range_node(node)
+          smap_keyword_bare(
+            srange_length(node.start_char, 5),
+            srange_node(node)
           )
         )
       end
@@ -2625,19 +2359,17 @@ module SyntaxTree
           :if,
           [predicate, visit(node.consequent), visit(node.statements)],
           if node.modifier?
-            source_map_keyword_bare(
-              source_range_find_between(
-                node.statements,
-                node.predicate,
-                "unless"
-              ),
-              source_range_node(node)
+            smap_keyword_bare(
+              srange_find_between(node.statements, node.predicate, "unless"),
+              srange_node(node)
             )
           else
-            source_map_condition(
-              keyword: source_range_length(node.location.start_char, 6),
-              end_token: source_range_length(node.location.end_char, -3),
-              expression: source_range_node(node)
+            smap_condition(
+              srange_length(node.start_char, 6),
+              srange_search_between(node.predicate, node.statements, "then"),
+              nil,
+              srange_length(node.end_char, -3),
+              srange_node(node)
             )
           end
         )
@@ -2649,20 +2381,17 @@ module SyntaxTree
           loop_post?(node) ? :until_post : :until,
           [visit(node.predicate), visit(node.statements)],
           if node.modifier?
-            source_map_keyword_bare(
-              source_range_find_between(
-                node.statements,
-                node.predicate,
-                "until"
-              ),
-              source_range_node(node)
+            smap_keyword_bare(
+              srange_find_between(node.statements, node.predicate, "until"),
+              srange_node(node)
             )
           else
-            source_map_keyword(
-              source_range_length(node.location.start_char, 5),
-              nil,
-              source_range_length(node.location.end_char, -3),
-              source_range_node(node)
+            smap_keyword(
+              srange_length(node.start_char, 5),
+              srange_search_between(node.predicate, node.statements, "do") ||
+                srange_search_between(node.predicate, node.statements, ";"),
+              srange_length(node.end_char, -3),
+              srange_node(node)
             )
           end
         )
@@ -2687,27 +2416,16 @@ module SyntaxTree
           s(
             :match_var,
             [name],
-            source_map_variable(
-              source_range_node(node.value),
-              source_range_node(node.value)
-            )
+            smap_variable(srange_node(node.value), srange_node(node.value))
           )
         elsif node.value.is_a?(Const)
           s(
             :casgn,
             [nil, name],
-            source_map_constant(
-              nil,
-              source_range_node(node.value),
-              source_range_node(node)
-            )
+            smap_constant(nil, srange_node(node.value), srange_node(node))
           )
         else
-          location =
-            source_map_variable(
-              source_range_node(node),
-              source_range_node(node)
-            )
+          location = smap_variable(srange_node(node), srange_node(node))
 
           case node.value
           when CVar
@@ -2747,27 +2465,27 @@ module SyntaxTree
 
       # Visit a When node.
       def visit_when(node)
-        keyword = source_range_length(node.location.start_char, 4)
+        keyword = srange_length(node.start_char, 4)
         begin_token =
-          if buffer.source[node.statements.location.start_char] == ";"
-            source_range_length(node.statements.location.start_char, 1)
+          if buffer.source[node.statements.start_char] == ";"
+            srange_length(node.statements.start_char, 1)
           end
 
         end_char =
           if node.statements.body.empty?
-            node.statements.location.end_char
+            node.statements.end_char
           else
-            node.statements.body.last.location.end_char
+            node.statements.body.last.end_char
           end
 
         s(
           :when,
           visit_all(node.arguments.parts) + [visit(node.statements)],
-          source_map_keyword(
+          smap_keyword(
             keyword,
             begin_token,
             nil,
-            source_range(keyword.begin_pos, end_char)
+            srange(keyword.begin_pos, end_char)
           )
         )
       end
@@ -2778,20 +2496,17 @@ module SyntaxTree
           loop_post?(node) ? :while_post : :while,
           [visit(node.predicate), visit(node.statements)],
           if node.modifier?
-            source_map_keyword_bare(
-              source_range_find_between(
-                node.statements,
-                node.predicate,
-                "while"
-              ),
-              source_range_node(node)
+            smap_keyword_bare(
+              srange_find_between(node.statements, node.predicate, "while"),
+              srange_node(node)
             )
           else
-            source_map_keyword(
-              source_range_length(node.location.start_char, 5),
-              nil,
-              source_range_length(node.location.end_char, -3),
-              source_range_node(node)
+            smap_keyword(
+              srange_length(node.start_char, 5),
+              srange_search_between(node.predicate, node.statements, "do") ||
+                srange_search_between(node.predicate, node.statements, ";"),
+              srange_length(node.end_char, -3),
+              srange_node(node)
             )
           end
         )
@@ -2824,10 +2539,13 @@ module SyntaxTree
         s(
           :xstr,
           visit_all(node.parts),
-          source_map_collection(
-            begin_token: source_range_length(node.location.start_char, 1),
-            end_token: source_range_length(node.location.end_char, -1),
-            expression: source_range_node(node)
+          smap_collection(
+            srange_length(
+              node.start_char,
+              buffer.source[node.start_char] == "%" ? 3 : 1
+            ),
+            srange_length(node.end_char, -1),
+            srange_node(node)
           )
         )
       end
@@ -2838,29 +2556,29 @@ module SyntaxTree
           s(
             :yield,
             [],
-            source_map_keyword_bare(
-              source_range_length(node.location.start_char, 5),
-              source_range_node(node)
+            smap_keyword_bare(
+              srange_length(node.start_char, 5),
+              srange_node(node)
             )
           )
         when Args
           s(
             :yield,
             visit_all(node.arguments.parts),
-            source_map_keyword_bare(
-              source_range_length(node.location.start_char, 5),
-              source_range_node(node)
+            smap_keyword_bare(
+              srange_length(node.start_char, 5),
+              srange_node(node)
             )
           )
         else
           s(
             :yield,
             visit_all(node.arguments.contents.parts),
-            source_map_keyword(
-              source_range_length(node.location.start_char, 5),
-              source_range_length(node.arguments.location.start_char, 1),
-              source_range_length(node.location.end_char, -1),
-              source_range_node(node)
+            smap_keyword(
+              srange_length(node.start_char, 5),
+              srange_length(node.arguments.start_char, 1),
+              srange_length(node.end_char, -1),
+              srange_node(node)
             )
           )
         end
@@ -2871,9 +2589,9 @@ module SyntaxTree
         s(
           :zsuper,
           [],
-          source_map_keyword_bare(
-            source_range_length(node.location.start_char, 5),
-            source_range_node(node)
+          smap_keyword_bare(
+            srange_length(node.start_char, 5),
+            srange_node(node)
           )
         )
       end
@@ -2885,7 +2603,7 @@ module SyntaxTree
           if node.block_var
             visit(node.block_var)
           else
-            s(:args, [], source_map_collection(expression: nil))
+            s(:args, [], smap_collection_bare(nil))
           end
 
         type = :block
@@ -2923,10 +2641,10 @@ module SyntaxTree
               location:
                 Location.new(
                   start_line: node.location.start_line,
-                  start_char: node.location.start_char,
+                  start_char: node.start_char,
                   start_column: node.location.start_column,
                   end_line: node.location.start_line,
-                  end_char: node.location.start_char + length,
+                  end_char: node.start_char + length,
                   end_column: node.location.start_column + length
                 )
             ),
@@ -2940,8 +2658,8 @@ module SyntaxTree
       def canonical_binary(node)
         operator = node.operator.to_s
 
-        start_char = node.left.location.end_char
-        end_char = node.right.location.start_char
+        start_char = node.left.end_char
+        end_char = node.right.start_char
 
         index = buffer.source[start_char...end_char].index(operator)
         start_line =
@@ -3007,12 +2725,12 @@ module SyntaxTree
       end
 
       # Constructs a plain source map just for an expression.
-      def source_map(expression:)
+      def smap(expression)
         ::Parser::Source::Map.new(expression)
       end
 
       # Constructs a new source map for a collection.
-      def source_map_collection(begin_token: nil, end_token: nil, expression:)
+      def smap_collection(begin_token, end_token, expression)
         ::Parser::Source::Map::Collection.new(
           begin_token,
           end_token,
@@ -3020,13 +2738,18 @@ module SyntaxTree
         )
       end
 
+      # Constructs a new source map for a collection without a begin or end.
+      def smap_collection_bare(expression)
+        smap_collection(nil, nil, expression)
+      end
+
       # Constructs a new source map for a conditional expression.
-      def source_map_condition(
-        keyword: nil,
-        begin_token: nil,
-        else_token: nil,
-        end_token: nil,
-        expression:
+      def smap_condition(
+        keyword,
+        begin_token,
+        else_token,
+        end_token,
+        expression
       )
         ::Parser::Source::Map::Condition.new(
           keyword,
@@ -3037,18 +2760,19 @@ module SyntaxTree
         )
       end
 
+      # Constructs a new source map for a conditional expression with no begin
+      # or end.
+      def smap_condition_bare(expression)
+        smap_condition(nil, nil, nil, nil, expression)
+      end
+
       # Constructs a new source map for a constant reference.
-      def source_map_constant(double_colon, name, expression)
+      def smap_constant(double_colon, name, expression)
         ::Parser::Source::Map::Constant.new(double_colon, name, expression)
       end
 
       # Constructs a new source map for a class definition.
-      def source_map_definition(
-        keyword: nil,
-        operator: nil,
-        name: nil,
-        end_token: nil
-      )
+      def smap_definition(keyword, operator, name, end_token)
         ::Parser::Source::Map::Definition.new(
           keyword,
           operator,
@@ -3058,7 +2782,7 @@ module SyntaxTree
       end
 
       # Constructs a new source map for a for loop.
-      def source_map_for(keyword, in_token, begin_token, end_token, expression)
+      def smap_for(keyword, in_token, begin_token, end_token, expression)
         ::Parser::Source::Map::For.new(
           keyword,
           in_token,
@@ -3069,7 +2793,7 @@ module SyntaxTree
       end
 
       # Constructs a new source map for a heredoc.
-      def source_map_heredoc(expression, heredoc_body, heredoc_end)
+      def smap_heredoc(expression, heredoc_body, heredoc_end)
         ::Parser::Source::Map::Heredoc.new(
           expression,
           heredoc_body,
@@ -3078,12 +2802,12 @@ module SyntaxTree
       end
 
       # Construct a source map for an index operation.
-      def source_map_index(begin_token: nil, end_token: nil, expression:)
+      def smap_index(begin_token, end_token, expression)
         ::Parser::Source::Map::Index.new(begin_token, end_token, expression)
       end
 
       # Constructs a new source map for the use of a keyword.
-      def source_map_keyword(keyword, begin_token, end_token, expression)
+      def smap_keyword(keyword, begin_token, end_token, expression)
         ::Parser::Source::Map::Keyword.new(
           keyword,
           begin_token,
@@ -3094,18 +2818,18 @@ module SyntaxTree
 
       # Constructs a new source map for the use of a keyword without a begin or
       # end token.
-      def source_map_keyword_bare(keyword, expression)
-        source_map_keyword(keyword, nil, nil, expression)
+      def smap_keyword_bare(keyword, expression)
+        smap_keyword(keyword, nil, nil, expression)
       end
 
       # Constructs a new source map for a method definition.
-      def source_map_method_definition(
-        keyword: nil,
-        operator: nil,
-        name: nil,
-        end_token: nil,
-        assignment: nil,
-        expression:
+      def smap_method_definition(
+        keyword,
+        operator,
+        name,
+        end_token,
+        assignment,
+        expression
       )
         ::Parser::Source::Map::MethodDefinition.new(
           keyword,
@@ -3118,17 +2842,12 @@ module SyntaxTree
       end
 
       # Constructs a new source map for an operator.
-      def source_map_operator(operator, expression)
+      def smap_operator(operator, expression)
         ::Parser::Source::Map::Operator.new(operator, expression)
       end
 
       # Constructs a source map for the body of a rescue clause.
-      def source_map_rescue_body(
-        keyword: nil,
-        assoc: nil,
-        begin_token: nil,
-        expression:
-      )
+      def smap_rescue_body(keyword, assoc, begin_token, expression)
         ::Parser::Source::Map::RescueBody.new(
           keyword,
           assoc,
@@ -3138,13 +2857,7 @@ module SyntaxTree
       end
 
       # Constructs a new source map for a method call.
-      def source_map_send(
-        dot: nil,
-        selector: nil,
-        begin_token: nil,
-        end_token: nil,
-        expression:
-      )
+      def smap_send(dot, selector, begin_token, end_token, expression)
         ::Parser::Source::Map::Send.new(
           dot,
           selector,
@@ -3154,74 +2867,76 @@ module SyntaxTree
         )
       end
 
+      # Constructs a new source map for a method call without a begin or end.
+      def smap_send_bare(selector, expression)
+        smap_send(nil, selector, nil, nil, expression)
+      end
+
+      # Constructs a new source map for a ternary expression.
+      def smap_ternary(question, colon, expression)
+        ::Parser::Source::Map::Ternary.new(question, colon, expression)
+      end
+
       # Constructs a new source map for a variable.
-      def source_map_variable(name, expression)
+      def smap_variable(name, expression)
         ::Parser::Source::Map::Variable.new(name, expression)
       end
 
       # Constructs a new source range from the given start and end offsets.
-      def source_range(start_char, end_char)
+      def srange(start_char, end_char)
         ::Parser::Source::Range.new(buffer, start_char, end_char)
       end
 
       # Constructs a new source range by finding the given needle in the given
       # range of the source. If the needle is not found, returns nil.
-      def source_range_search(start_char, end_char, needle)
+      def srange_search(start_char, end_char, needle)
         index = buffer.source[start_char...end_char].index(needle)
         return unless index
 
         offset = start_char + index
-        source_range(offset, offset + needle.length)
+        srange(offset, offset + needle.length)
       end
 
       # Constructs a new source range by searching for the given needle between
       # the end location of the start node and the start location of the end
       # node. If the needle is not found, returns nil.
-      def source_range_search_between(start_node, end_node, needle)
-        source_range_search(
-          start_node.location.end_char,
-          end_node.location.start_char,
-          needle
-        )
+      def srange_search_between(start_node, end_node, needle)
+        srange_search(start_node.end_char, end_node.start_char, needle)
       end
 
       # Constructs a new source range by finding the given needle in the given
       # range of the source. If it needle is not found, raises an error.
-      def source_range_find(start_char, end_char, needle)
-        source_range = source_range_search(start_char, end_char, needle)
+      def srange_find(start_char, end_char, needle)
+        srange = srange_search(start_char, end_char, needle)
 
-        unless source_range
+        unless srange
           slice = buffer.source[start_char...end_char].inspect
           raise "Could not find #{needle.inspect} in #{slice}"
         end
 
-        source_range
+        srange
       end
 
       # Constructs a new source range by finding the given needle between the
       # end location of the start node and the start location of the end node.
       # If the needle is not found, returns raises an error.
-      def source_range_find_between(start_node, end_node, needle)
-        source_range_find(
-          start_node.location.end_char,
-          end_node.location.start_char,
-          needle
-        )
+      def srange_find_between(start_node, end_node, needle)
+        srange_find(start_node.end_char, end_node.start_char, needle)
       end
 
       # Constructs a new source range from the given start offset and length.
-      def source_range_length(start_char, length)
+      def srange_length(start_char, length)
         if length > 0
-          source_range(start_char, start_char + length)
+          srange(start_char, start_char + length)
         else
-          source_range(start_char + length, start_char)
+          srange(start_char + length, start_char)
         end
       end
 
       # Constructs a new source range using the given node's location.
-      def source_range_node(node)
+      def srange_node(node)
         location = node.location
-        source_range(location.start_char, location.end_char)
+        srange(location.start_char, location.end_char)
       end
     end
   end
