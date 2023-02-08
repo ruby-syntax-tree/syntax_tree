@@ -30,6 +30,9 @@ Lint/AmbiguousRange:
 Lint/BooleanSymbol:
   Enabled: false
 
+Lint/Debugger:
+  Enabled: false
+
 Lint/DuplicateBranch:
   Enabled: false
 
