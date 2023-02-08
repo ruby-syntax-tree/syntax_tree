@@ -1539,7 +1539,7 @@ module SyntaxTree
     private
 
     def format_contents(q)
-      q.parent.format_key(q, key)
+      (q.parent || HashKeyFormatter::Identity.new).format_key(q, key)
       return unless value
 
       if key.comments.empty? && AssignFormatting.skip_indent?(value)
@@ -1753,6 +1753,20 @@ module SyntaxTree
         end
 
         q.text(" =>")
+      end
+    end
+
+    # When formatting a single assoc node without the context of the parent
+    # hash, this formatter is used. It uses whatever is present in the node,
+    # because there is nothing to be consistent with.
+    class Identity
+      def format_key(q, key)
+        if key.is_a?(Label)
+          q.format(key)
+        else
+          q.format(key)
+          q.text(" =>")
+        end
       end
     end
 
@@ -4328,7 +4342,7 @@ module SyntaxTree
       # are no parentheses around the arguments to that command, so we need to
       # break the block.
       case q.parent
-      when Command, CommandCall
+      when nil, Command, CommandCall
         q.break_parent
         format_break(q, break_opening, break_closing)
         return
@@ -4382,7 +4396,7 @@ module SyntaxTree
     # If we're a sibling of a control-flow keyword, then we're going to have to
     # use the do..end bounds.
     def forced_do_end_bounds?(q)
-      case q.parent.call
+      case q.parent&.call
       when Break, Next, ReturnNode, Super
         true
       else
