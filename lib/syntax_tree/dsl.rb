@@ -347,16 +347,6 @@ module SyntaxTree
       )
     end
 
-    # Create a new Elsif node.
-    def Elsif(predicate, statements, consequent)
-      Elsif.new(
-        predicate: predicate,
-        statements: statements,
-        consequent: consequent,
-        location: Location.default
-      )
-    end
-
     # Create a new EmbDoc node.
     def EmbDoc(value)
       EmbDoc.new(value: value, location: Location.default)
@@ -478,8 +468,9 @@ module SyntaxTree
     end
 
     # Create a new IfNode node.
-    def IfNode(predicate, statements, consequent)
+    def IfNode(keyword, predicate, statements, consequent)
       IfNode.new(
+        keyword: keyword,
         predicate: predicate,
         statements: statements,
         consequent: consequent,
