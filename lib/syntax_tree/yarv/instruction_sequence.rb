@@ -7,6 +7,28 @@ module SyntaxTree
     # list of instructions along with the metadata pertaining to them. It also
     # functions as a builder for the instruction sequence.
     class InstructionSequence
+      # This provides a handle to the rb_iseq_load function, which allows you
+      # to pass a serialized iseq to Ruby and have it return a
+      # RubyVM::InstructionSequence object.
+      def self.iseq_load(iseq)
+        require "fiddle"
+
+        @iseq_load_function ||=
+          Fiddle::Function.new(
+            Fiddle::Handle::DEFAULT["rb_iseq_load"],
+            [Fiddle::TYPE_VOIDP] * 3,
+            Fiddle::TYPE_VOIDP
+          )
+
+        Fiddle.dlunwrap(@iseq_load_function.call(Fiddle.dlwrap(iseq), 0, nil))
+      rescue LoadError
+        raise "Could not load the Fiddle library"
+      rescue NameError
+        raise "Unable to find rb_iseq_load"
+      rescue Fiddle::DLError
+        raise "Unable to perform a dynamic load"
+      end
+
       # When the list of instructions is first being created, it's stored as a
       # linked list. This is to make it easier to perform peephole optimizations
       # and other transformations like instruction specialization.
@@ -59,19 +81,6 @@ module SyntaxTree
       end
 
       MAGIC = "YARVInstructionSequence/SimpleDataFormat"
-
-      # This provides a handle to the rb_iseq_load function, which allows you to
-      # pass a serialized iseq to Ruby and have it return a
-      # RubyVM::InstructionSequence object.
-      ISEQ_LOAD =
-        begin
-          Fiddle::Function.new(
-            Fiddle::Handle::DEFAULT["rb_iseq_load"],
-            [Fiddle::TYPE_VOIDP] * 3,
-            Fiddle::TYPE_VOIDP
-          )
-        rescue NameError, Fiddle::DLError
-        end
 
       # This object is used to track the size of the stack at any given time. It
       # is effectively a mini symbolic interpreter. It's necessary because when
@@ -221,8 +230,7 @@ module SyntaxTree
       end
 
       def eval
-        raise "Unsupported platform" if ISEQ_LOAD.nil?
-        Fiddle.dlunwrap(ISEQ_LOAD.call(Fiddle.dlwrap(to_a), 0, nil)).eval
+        InstructionSequence.iseq_load(to_a).eval
       end
 
       def to_a
