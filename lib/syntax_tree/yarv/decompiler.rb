@@ -77,7 +77,7 @@ module SyntaxTree
               Next(Args([]))
             ]
 
-            clause << IfNode(clause.pop, Statements(body), nil)
+            clause << IfNode(Kw("if"), clause.pop, Statements(body), nil)
           when Dup
             clause << clause.last
           when DupHash
