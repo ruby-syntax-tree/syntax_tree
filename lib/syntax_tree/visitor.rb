@@ -131,9 +131,6 @@ module SyntaxTree
     # Visit an Else node.
     alias visit_else visit_child_nodes
 
-    # Visit an Elsif node.
-    alias visit_elsif visit_child_nodes
-
     # Visit an EmbDoc node.
     alias visit_embdoc visit_child_nodes
 
