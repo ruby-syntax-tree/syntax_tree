@@ -21,6 +21,10 @@ module SyntaxTree
         def ===(value)
           value.is_a?(Array) && value.all? { type === _1 }
         end
+
+        def inspect
+          "Array<#{type.inspect}>"
+        end
       end
 
       # Represents a tuple type that holds a number of types in order.
@@ -35,6 +39,10 @@ module SyntaxTree
           value.is_a?(Array) && value.length == types.length &&
             value.zip(types).all? { _2 === _1 }
         end
+
+        def inspect
+          "[#{types.map(&:inspect).join(", ")}]"
+        end
       end
 
       # Represents a union type that can be one of a number of types.
@@ -47,6 +55,10 @@ module SyntaxTree
 
         def ===(value)
           types.any? { _1 === value }
+        end
+
+        def inspect
+          types.map(&:inspect).join(" | ")
         end
       end
 

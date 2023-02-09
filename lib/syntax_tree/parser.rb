@@ -908,6 +908,13 @@ module SyntaxTree
     #     (nil | Ensure) ensure_clause
     #   ) -> BodyStmt
     def on_bodystmt(statements, rescue_clause, else_clause, ensure_clause)
+      # In certain versions of Ruby, the `statements` argument can be any node
+      # in the case that we're inside of an endless method definition. In this
+      # case we'll wrap it in a Statements node to be consistent.
+      unless statements.is_a?(Statements)
+        statements = Statements.new(self, body: [statements], location: statements.location)
+      end
+
       parts = [statements, rescue_clause, else_clause, ensure_clause].compact
 
       BodyStmt.new(
@@ -1157,13 +1164,23 @@ module SyntaxTree
     end
 
     # :call-seq:
-    #   on_const_path_field: (untyped parent, Const constant) -> ConstPathField
+    #   on_const_path_field: (untyped parent, Const constant) ->
+    #     ConstPathField | Field
     def on_const_path_field(parent, constant)
-      ConstPathField.new(
-        parent: parent,
-        constant: constant,
-        location: parent.location.to(constant.location)
-      )
+      if constant.is_a?(Const)
+        ConstPathField.new(
+          parent: parent,
+          constant: constant,
+          location: parent.location.to(constant.location)
+        )
+      else
+        Field.new(
+          parent: parent,
+          operator: consume_operator(:"::"),
+          name: constant,
+          location: parent.location.to(constant.location)
+        )
+      end
     end
 
     # :call-seq:
@@ -1866,10 +1883,40 @@ module SyntaxTree
     # :call-seq:
     #   on_hshptn: (
     #     (nil | untyped) constant,
-    #     Array[[Label, untyped]] keywords,
+    #     Array[[Label | StringContent, untyped]] keywords,
     #     (nil | VarField) keyword_rest
     #   ) -> HshPtn
     def on_hshptn(constant, keywords, keyword_rest)
+      keywords =
+        (keywords || []).map do |(label, value)|
+          if label.is_a?(Label)
+            [label, value]
+          else
+            tstring_beg_index =
+              tokens.rindex do |token|
+                token.is_a?(TStringBeg) && token.location.start_char < label.location.start_char
+              end
+
+            tstring_beg = tokens.delete_at(tstring_beg_index)
+
+            label_end_index =
+              tokens.rindex do |token|
+                token.is_a?(LabelEnd) && token.location.start_char == label.location.end_char
+              end
+
+            label_end = tokens.delete_at(label_end_index)
+
+            [
+              DynaSymbol.new(
+                parts: label.parts,
+                quote: label_end.value[0],
+                location: tstring_beg.location.to(label_end.location)
+              ),
+              value
+            ] 
+          end
+        end
+
       if keyword_rest
         # We're doing this to delete the token from the list so that it doesn't
         # confuse future patterns by thinking they have an extra ** on the end.
@@ -1882,7 +1929,7 @@ module SyntaxTree
         keyword_rest = VarField.new(value: nil, location: token.location)
       end
 
-      parts = [constant, *keywords&.flatten(1), keyword_rest].compact
+      parts = [constant, *keywords.flatten(1), keyword_rest].compact
 
       # If there's no constant, there may be braces, so we're going to look for
       # those to get our bounds.
@@ -1899,7 +1946,7 @@ module SyntaxTree
 
       HshPtn.new(
         constant: constant,
-        keywords: keywords || [],
+        keywords: keywords,
         keyword_rest: keyword_rest,
         location: parts[0].location.to(parts[-1].location)
       )
@@ -2379,7 +2426,7 @@ module SyntaxTree
       location = call.location.to(block.location)
 
       case call
-      when Break, Next
+      when Break, Next, ReturnNode
         parts = call.arguments.parts
 
         node = parts.pop

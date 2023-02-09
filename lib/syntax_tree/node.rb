@@ -1131,7 +1131,8 @@ module SyntaxTree
       end
     end
 
-    # [LBracket] the bracket that opens this array
+    # [nil | LBracket | QSymbolsBeg | QWordsBeg | SymbolsBeg | WordsBeg] the
+    # bracket that opens this array
     attr_reader :lbracket
 
     # [nil | Args] the contents of the array
@@ -1485,7 +1486,7 @@ module SyntaxTree
     # [Node] the key of this pair
     attr_reader :key
 
-    # [Node] the value of this pair
+    # [nil | Node] the value of this pair
     attr_reader :value
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
@@ -3508,16 +3509,16 @@ module SyntaxTree
   #     object.method argument
   #
   class CommandCall < Node
-    # [Node] the receiver of the message
+    # [nil | Node] the receiver of the message
     attr_reader :receiver
 
-    # [:"::" | Op | Period] the operator used to send the message
+    # [nil | :"::" | Op | Period] the operator used to send the message
     attr_reader :operator
 
-    # [Const | Ident | Op] the message being send
+    # [:call | Const | Ident | Op] the message being send
     attr_reader :message
 
-    # [nil | Args] the arguments going along with the message
+    # [nil | Args | ArgParen] the arguments going along with the message
     attr_reader :arguments
 
     # [nil | BlockNode] the block associated with this method call
@@ -4603,7 +4604,7 @@ module SyntaxTree
     # dynamic symbol
     attr_reader :parts
 
-    # [String] the quote used to delimit the dynamic symbol
+    # [nil | String] the quote used to delimit the dynamic symbol
     attr_reader :quote
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
@@ -5947,7 +5948,7 @@ module SyntaxTree
       end
 
       def format(q)
-        q.format(key)
+        HashKeyFormatter::Labels.new.format_key(q, key)
 
         if value
           q.text(" ")
@@ -5978,8 +5979,8 @@ module SyntaxTree
     # [nil | Node] the optional constant wrapper
     attr_reader :constant
 
-    # [Array[ [Label, Node] ]] the set of tuples representing the keywords
-    # that should be matched against in the pattern
+    # [Array[ [DynaSymbol | Label, nil | Node] ]] the set of tuples
+    # representing the keywords that should be matched against in the pattern
     attr_reader :keywords
 
     # [nil | VarField] an optional parameter to gather up all remaining keywords
@@ -7510,7 +7511,7 @@ module SyntaxTree
   #     method {}
   #
   class MethodAddBlock < Node
-    # [CallNode | Command | CommandCall] the method call
+    # [ARef | CallNode | Command | CommandCall | Super | ZSuper] the method call
     attr_reader :call
 
     # [BlockNode] the block being sent with the method call
@@ -7585,8 +7586,12 @@ module SyntaxTree
   #     first, second, third = value
   #
   class MLHS < Node
-    # [Array[ARefField | ArgStar | Field | Ident | MLHSParen | VarField]] the
-    # parts of the left-hand side of a multiple assignment
+    # [
+    #   Array[
+    #     ARefField | ArgStar | ConstPathField | Field | Ident | MLHSParen |
+    #       TopConstField | VarField
+    #   ]
+    # ] the parts of the left-hand side of a multiple assignment
     attr_reader :parts
 
     # [boolean] whether or not there is a trailing comma at the end of this
@@ -8211,7 +8216,7 @@ module SyntaxTree
       end
     end
 
-    # [Array[ Ident ]] any required parameters
+    # [Array[ Ident | MLHSParen ]] any required parameters
     attr_reader :requireds
 
     # [Array[ [ Ident, Node ] ]] any optional parameters and their default
@@ -8226,11 +8231,12 @@ module SyntaxTree
     # parameter
     attr_reader :posts
 
-    # [Array[ [ Ident, nil | Node ] ]] any keyword parameters and their
+    # [Array[ [ Label, nil | Node ] ]] any keyword parameters and their
     # optional default values
     attr_reader :keywords
 
-    # [nil | :nil | KwRestParam] the optional keyword rest parameter
+    # [nil | :nil | ArgsForward | KwRestParam] the optional keyword rest
+    # parameter
     attr_reader :keyword_rest
 
     # [nil | BlockArg] the optional block parameter
@@ -9268,7 +9274,7 @@ module SyntaxTree
   #     end
   #
   class RescueEx < Node
-    # [Node] the list of exceptions being rescued
+    # [nil | Node] the list of exceptions being rescued
     attr_reader :exceptions
 
     # [nil | Field | VarField] the expression being used to capture the raised
@@ -9346,7 +9352,7 @@ module SyntaxTree
     # [Kw] the rescue keyword
     attr_reader :keyword
 
-    # [RescueEx] the exceptions being rescued
+    # [nil | RescueEx] the exceptions being rescued
     attr_reader :exception
 
     # [Statements] the expressions to evaluate when an error is rescued
@@ -9995,9 +10001,13 @@ module SyntaxTree
     # string
     attr_reader :parts
 
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
     def initialize(parts:, location:)
       @parts = parts
       @location = location
+      @comments = []
     end
 
     def accept(visitor)
@@ -10024,6 +10034,33 @@ module SyntaxTree
     def ===(other)
       other.is_a?(StringContent) && ArrayMatch.call(parts, other.parts)
     end
+
+    def format(q)
+      q.text(q.quote)
+      q.group do
+        parts.each do |part|
+          if part.is_a?(TStringContent)
+            value = Quotes.normalize(part.value, q.quote)
+            first = true
+
+            value.each_line(chomp: true) do |line|
+              if first
+                first = false
+              else
+                q.breakable_return
+              end
+
+              q.text(line)
+            end
+
+            q.breakable_return if value.end_with?("\n")
+          else
+            q.format(part)
+          end
+        end
+      end
+      q.text(q.quote)
+    end
   end
 
   # StringConcat represents concatenating two strings together using a backward
@@ -10033,7 +10070,8 @@ module SyntaxTree
   #       "second"
   #
   class StringConcat < Node
-    # [StringConcat | StringLiteral] the left side of the concatenation
+    # [Heredoc | StringConcat | StringLiteral] the left side of the
+    # concatenation
     attr_reader :left
 
     # [StringLiteral] the right side of the concatenation
@@ -10230,7 +10268,7 @@ module SyntaxTree
     # string literal
     attr_reader :parts
 
-    # [String] which quote was used by the string literal
+    # [nil | String] which quote was used by the string literal
     attr_reader :quote
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
@@ -10475,8 +10513,8 @@ module SyntaxTree
   #     :symbol
   #
   class SymbolLiteral < Node
-    # [Backtick | Const | CVar | GVar | Ident | IVar | Kw | Op] the value of the
-    # symbol
+    # [Backtick | Const | CVar | GVar | Ident | IVar | Kw | Op | TStringContent]
+    # the value of the symbol
     attr_reader :value
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
@@ -11430,7 +11468,7 @@ module SyntaxTree
   #
   # In the example above, the VarField node represents the +variable+ token.
   class VarField < Node
-    # [nil | Const | CVar | GVar | Ident | IVar] the target of this node
+    # [nil | :nil | Const | CVar | GVar | Ident | IVar] the target of this node
     attr_reader :value
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
@@ -11569,7 +11607,7 @@ module SyntaxTree
   # This can be a plain local variable like the example above. It can also be a
   # a class variable, a global variable, or an instance variable.
   class PinnedVarRef < Node
-    # [VarRef] the value of this node
+    # [Const | CVar | GVar | Ident | IVar] the value of this node
     attr_reader :value
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node

@@ -1068,7 +1068,7 @@ module SyntaxTree
           case stack[-2]
           when Assign, MLHS
             Ident.new(
-              value: :"#{node.name.value}=",
+              value: "#{node.name.value}=",
               location: node.name.location
             )
           else
@@ -1295,11 +1295,11 @@ module SyntaxTree
             next s(:pair, [visit(keyword), visit(value)], nil) if value
 
             case keyword
-            when Label
-              s(:match_var, [keyword.value.chomp(":").to_sym], nil)
-            when StringContent
+            when DynaSymbol
               raise if keyword.parts.length > 1
               s(:match_var, [keyword.parts.first.value.to_sym], nil)
+            when Label
+              s(:match_var, [keyword.value.chomp(":").to_sym], nil)
             end
           end
 
@@ -2364,13 +2364,10 @@ module SyntaxTree
 
       # Visit a StringConcat node.
       def visit_string_concat(node)
-        visit_string_literal(
-          StringLiteral.new(
-            parts: [node.left, node.right],
-            quote: nil,
-            location: node.location
-          )
-        )
+        location =
+          source_map_collection(expression: source_range_node(node))
+
+        s(:dstr, [visit(node.left), visit(node.right)], location)
       end
 
       # Visit a StringContent node.

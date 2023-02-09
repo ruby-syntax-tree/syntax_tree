@@ -1050,11 +1050,11 @@ module SyntaxTree
         visit_if(
           IfNode.new(
             predicate: node.predicate,
-            statements: node.truthy,
+            statements: Statements.new(nil, body: [node.truthy], location: Location.default),
             consequent:
               Else.new(
                 keyword: Kw.new(value: "else", location: Location.default),
-                statements: node.falsy,
+                statements: Statements.new(nil, body: [node.falsy], location: Location.default),
                 location: Location.default
               ),
             location: Location.default

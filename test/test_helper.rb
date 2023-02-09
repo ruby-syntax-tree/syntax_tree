@@ -11,6 +11,36 @@ $LOAD_PATH.unshift(File.expand_path("../lib", __dir__))
 require "syntax_tree"
 require "syntax_tree/cli"
 
+require "syntax_tree/reflection"
+
+SyntaxTree::Reflection.nodes.each do |name, node|
+  next if name == :Statements
+
+  clazz = SyntaxTree.const_get(name)
+  parameters = clazz.instance_method(:initialize).parameters
+
+  # First, verify that all of the parameters listed in the list of attributes.
+  # If there are any parameters that aren't listed in the attributes, then
+  # something went wrong with the parsing in the reflection module.
+  raise unless (parameters.map(&:last) - node.attributes.keys).empty?
+
+  # Now we're going to use an alias chain to redefine the initialize method to
+  # include type checking.
+  clazz.alias_method(:initialize_without_verify, :initialize)
+  clazz.define_method(:initialize) do |**kwargs|
+    kwargs.each do |kwarg, value|
+      attribute = node.attributes.fetch(kwarg)
+
+      unless attribute.type === value
+        raise TypeError, "invalid type for #{name}##{kwarg}, expected " \
+          "#{attribute.type.inspect}, got #{value.inspect}"
+      end
+    end
+
+    initialize_without_verify(**kwargs)
+  end
+end
+
 require "json"
 require "tempfile"
 require "pp"
