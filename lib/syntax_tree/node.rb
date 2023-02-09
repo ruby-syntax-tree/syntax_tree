@@ -2275,7 +2275,7 @@ module SyntaxTree
       @comments = []
     end
 
-    def bind(start_char, start_column, end_char, end_column)
+    def bind(parser, start_char, start_column, end_char, end_column)
       @location =
         Location.new(
           start_line: location.start_line,
@@ -2289,6 +2289,7 @@ module SyntaxTree
       # Here we're going to determine the bounds for the statements
       consequent = rescue_clause || else_clause || ensure_clause
       statements.bind(
+        parser,
         start_char,
         start_column,
         consequent ? consequent.location.start_char : end_char,
@@ -9816,23 +9817,19 @@ module SyntaxTree
   # propagate that onto void_stmt nodes inside the stmts in order to make sure
   # all comments get printed appropriately.
   class Statements < Node
-    # [Parser] the parser that is generating this node
-    attr_reader :parser
-
     # [Array[ Node ]] the list of expressions contained within this node
     attr_reader :body
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(parser, body:, location:)
-      @parser = parser
+    def initialize(body:, location:)
       @body = body
       @location = location
       @comments = []
     end
 
-    def bind(start_char, start_column, end_char, end_column)
+    def bind(parser, start_char, start_column, end_char, end_column)
       @location =
         Location.new(
           start_line: location.start_line,
@@ -9858,7 +9855,7 @@ module SyntaxTree
         body[0] = VoidStmt.new(location: location)
       end
 
-      attach_comments(start_char, end_char)
+      attach_comments(parser, start_char, end_char)
     end
 
     def bind_end(end_char, end_column)
@@ -9890,7 +9887,6 @@ module SyntaxTree
     def copy(body: nil, location: nil)
       node =
         Statements.new(
-          parser,
           body: body || self.body,
           location: location || self.location
         )
@@ -9902,7 +9898,7 @@ module SyntaxTree
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
-      { parser: parser, body: body, location: location, comments: comments }
+      { body: body, location: location, comments: comments }
     end
 
     def format(q)
@@ -9962,7 +9958,7 @@ module SyntaxTree
     # As efficiently as possible, gather up all of the comments that have been
     # found while this statements list was being parsed and add them into the
     # body.
-    def attach_comments(start_char, end_char)
+    def attach_comments(parser, start_char, end_char)
       parser_comments = parser.comments
 
       comment_index = 0

@@ -1051,17 +1051,12 @@ module SyntaxTree
           IfNode.new(
             predicate: node.predicate,
             statements:
-              Statements.new(
-                nil,
-                body: [node.truthy],
-                location: Location.default
-              ),
+              Statements.new(body: [node.truthy], location: Location.default),
             consequent:
               Else.new(
                 keyword: Kw.new(value: "else", location: Location.default),
                 statements:
                   Statements.new(
-                    nil,
                     body: [node.falsy],
                     location: Location.default
                   ),

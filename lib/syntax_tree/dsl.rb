@@ -791,7 +791,7 @@ module SyntaxTree
 
     # Create a new Statements node.
     def Statements(body)
-      Statements.new(nil, body: body, location: Location.default)
+      Statements.new(body: body, location: Location.default)
     end
 
     # Create a new StringContent node.
