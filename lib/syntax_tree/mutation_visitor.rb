@@ -500,11 +500,6 @@ module SyntaxTree
         )
       end
 
-      # Visit a LambdaVar node.
-      def visit_lambda_var(node)
-        node.copy(params: visit(node.params), locals: visit_all(node.locals))
-      end
-
       # Visit a LBrace node.
       def visit_lbrace(node)
         node.copy

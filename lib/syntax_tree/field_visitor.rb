@@ -526,14 +526,6 @@ module SyntaxTree
         end
       end
 
-      def visit_lambda_var(node)
-        node(node, "lambda_var") do
-          field("params", node.params)
-          list("locals", node.locals) if node.locals.any?
-          comments(node)
-        end
-      end
-
       def visit_lbrace(node)
         visit_token(node, "lbrace")
       end
