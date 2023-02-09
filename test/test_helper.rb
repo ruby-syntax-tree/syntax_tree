@@ -11,8 +11,10 @@ $LOAD_PATH.unshift(File.expand_path("../lib", __dir__))
 require "syntax_tree"
 require "syntax_tree/cli"
 
+# Here we are going to establish type verification whenever a new node is
+# created. We do this through the reflection module, which in turn parses the
+# source code of the node classes.
 require "syntax_tree/reflection"
-
 SyntaxTree::Reflection.nodes.each do |name, node|
   next if name == :Statements
 
