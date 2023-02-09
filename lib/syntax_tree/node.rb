@@ -9324,6 +9324,48 @@ module SyntaxTree
     end
   end
 
+  # RemovedNode is a blank node used in places of nodes that have been removed.
+  class RemovedNode < Node
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(location:)
+      @location = location
+      @comments = []
+    end
+
+    def accept(visitor)
+      visitor.visit_removed_node(self)
+    end
+
+    def child_nodes
+      []
+    end
+
+    def copy(location: self.location)
+      node = RemovedNode.new(
+        location: location
+      )
+
+      node.comments.concat(comments.map(&:copy))
+
+      node
+    end
+
+    alias deconstruct child_nodes
+
+    def deconstruct_keys(_keys)
+      { location: location, comments: comments }
+    end
+
+    def format(_q)
+    end
+
+    def ===(other)
+      other.is_a?(RemovedNode)
+    end
+  end
+
   # RescueEx represents the list of exceptions being rescued in a rescue clause.
   #
   #     begin

@@ -4,10 +4,11 @@ module SyntaxTree
   # This visitor walks through the tree and copies each node as it is being
   # visited. This is useful for mutating the tree before it is formatted.
   class MutationVisitor < BasicVisitor
-    attr_reader :mutations
+    attr_reader :mutations, :removals
 
     def initialize
       @mutations = []
+      @removals = []
     end
 
     # Create a new mutation based on the given query that will mutate the node
@@ -19,12 +20,22 @@ module SyntaxTree
       mutations << [Pattern.new(query).compile, block]
     end
 
+    def remove(query)
+      @removals << Pattern.new(query).compile
+    end
+
     # This is the base visit method for each node in the tree. It first creates
     # a copy of the node using the visit_* methods defined below. Then it checks
     # each mutation in sequence and calls it if it finds a match.
     def visit(node)
       return unless node
       result = node.accept(self)
+
+      removals.each do |removal_pattern|
+        if removal_pattern.call(result)
+          return RemovedNode.new(location: result.location)
+        end
+      end
 
       mutations.each do |(pattern, mutation)|
         result = mutation.call(result) if pattern.call(result)
