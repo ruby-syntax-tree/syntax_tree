@@ -126,6 +126,14 @@ module SyntaxTree
       raise NotImplementedError
     end
 
+    def start_char
+      location.start_char
+    end
+
+    def end_char
+      location.end_char
+    end
+
     def pretty_print(q)
       accept(Visitor::PrettyPrintVisitor.new(q))
     end
