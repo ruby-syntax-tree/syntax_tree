@@ -210,12 +210,17 @@ module SyntaxTree
     end
 
     # Create a new ClassDeclaration node.
-    def ClassDeclaration(constant, superclass, bodystmt)
+    def ClassDeclaration(
+      constant,
+      superclass,
+      bodystmt,
+      location = Location.default
+    )
       ClassDeclaration.new(
         constant: constant,
         superclass: superclass,
         bodystmt: bodystmt,
-        location: Location.default
+        location: location
       )
     end
 
@@ -225,12 +230,12 @@ module SyntaxTree
     end
 
     # Create a new Command node.
-    def Command(message, arguments, block)
+    def Command(message, arguments, block, location = Location.default)
       Command.new(
         message: message,
         arguments: arguments,
         block: block,
-        location: Location.default
+        location: location
       )
     end
 
@@ -247,8 +252,8 @@ module SyntaxTree
     end
 
     # Create a new Comment node.
-    def Comment(value, inline)
-      Comment.new(value: value, inline: inline, location: Location.default)
+    def Comment(value, inline, location = Location.default)
+      Comment.new(value: value, inline: inline, location: location)
     end
 
     # Create a new Const node.
@@ -285,14 +290,21 @@ module SyntaxTree
     end
 
     # Create a new DefNode node.
-    def DefNode(target, operator, name, params, bodystmt)
+    def DefNode(
+      target,
+      operator,
+      name,
+      params,
+      bodystmt,
+      location = Location.default
+    )
       DefNode.new(
         target: target,
         operator: operator,
         name: name,
         params: params,
         bodystmt: bodystmt,
-        location: Location.default
+        location: location
       )
     end
 
@@ -565,8 +577,8 @@ module SyntaxTree
     end
 
     # Create a new MethodAddBlock node.
-    def MethodAddBlock(call, block)
-      MethodAddBlock.new(call: call, block: block, location: Location.default)
+    def MethodAddBlock(call, block, location = Location.default)
+      MethodAddBlock.new(call: call, block: block, location: location)
     end
 
     # Create a new MLHS node.

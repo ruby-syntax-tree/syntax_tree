@@ -32,8 +32,9 @@ SyntaxTree::Reflection.nodes.each do |name, node|
       attribute = node.attributes.fetch(kwarg)
 
       unless attribute.type === value
-        raise TypeError, "invalid type for #{name}##{kwarg}, expected " \
-          "#{attribute.type.inspect}, got #{value.inspect}"
+        raise TypeError,
+              "invalid type for #{name}##{kwarg}, expected " \
+                "#{attribute.type.inspect}, got #{value.inspect}"
       end
     end
 

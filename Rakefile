@@ -16,7 +16,16 @@ task default: :test
 
 configure = ->(task) do
   task.source_files =
-    FileList[%w[Gemfile Rakefile syntax_tree.gemspec lib/**/*.rb test/*.rb]]
+    FileList[
+      %w[
+        Gemfile
+        Rakefile
+        syntax_tree.gemspec
+        lib/**/*.rb
+        tasks/*.rake
+        test/*.rb
+      ]
+    ]
 
   # Since Syntax Tree supports back to Ruby 2.7.0, we need to make sure that we
   # format our code such that it's compatible with that version. This actually

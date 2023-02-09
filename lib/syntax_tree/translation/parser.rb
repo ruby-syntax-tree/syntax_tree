@@ -2364,8 +2364,7 @@ module SyntaxTree
 
       # Visit a StringConcat node.
       def visit_string_concat(node)
-        location =
-          source_map_collection(expression: source_range_node(node))
+        location = source_map_collection(expression: source_range_node(node))
 
         s(:dstr, [visit(node.left), visit(node.right)], location)
       end

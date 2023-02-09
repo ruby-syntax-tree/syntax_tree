@@ -912,7 +912,12 @@ module SyntaxTree
       # in the case that we're inside of an endless method definition. In this
       # case we'll wrap it in a Statements node to be consistent.
       unless statements.is_a?(Statements)
-        statements = Statements.new(self, body: [statements], location: statements.location)
+        statements =
+          Statements.new(
+            self,
+            body: [statements],
+            location: statements.location
+          )
       end
 
       parts = [statements, rescue_clause, else_clause, ensure_clause].compact
@@ -1894,14 +1899,16 @@ module SyntaxTree
           else
             tstring_beg_index =
               tokens.rindex do |token|
-                token.is_a?(TStringBeg) && token.location.start_char < label.location.start_char
+                token.is_a?(TStringBeg) &&
+                  token.location.start_char < label.location.start_char
               end
 
             tstring_beg = tokens.delete_at(tstring_beg_index)
 
             label_end_index =
               tokens.rindex do |token|
-                token.is_a?(LabelEnd) && token.location.start_char == label.location.end_char
+                token.is_a?(LabelEnd) &&
+                  token.location.start_char == label.location.end_char
               end
 
             label_end = tokens.delete_at(label_end_index)
@@ -1913,7 +1920,7 @@ module SyntaxTree
                 location: tstring_beg.location.to(label_end.location)
               ),
               value
-            ] 
+            ]
           end
         end
 

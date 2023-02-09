@@ -34,10 +34,10 @@ module SyntaxTree
         def initialize(types)
           @types = types
         end
-      
+
         def ===(value)
           value.is_a?(Array) && value.length == types.length &&
-            value.zip(types).all? { _2 === _1 }
+            value.zip(types).all? { |item, type| type === item }
         end
 
         def inspect
@@ -64,16 +64,20 @@ module SyntaxTree
 
       class << self
         def parse(comment)
+          comment = comment.gsub(/\n/, " ")
+
           unless comment.start_with?("[")
             raise "Comment does not start with a bracket: #{comment.inspect}"
           end
 
           count = 1
           found =
-            comment.chars[1..].find.with_index(1) do |char, index|
-              count += { "[" => 1, "]" => -1 }.fetch(char, 0)
-              break index if count == 0
-            end
+            comment.chars[1..]
+              .find
+              .with_index(1) do |char, index|
+                count += { "[" => 1, "]" => -1 }.fetch(char, 0)
+                break index if count == 0
+              end
 
           # If we weren't able to find the end of the balanced brackets, then
           # the comment is malformed.
@@ -209,7 +213,7 @@ module SyntaxTree
           attribute =
             Attribute.new(
               statement.arguments.parts.first.value.value.to_sym,
-              parse_comments(statements, statement_index).join(" ")
+              "#{parse_comments(statements, statement_index).join("\n")}\n"
             )
 
           # Ensure that we don't already have an attribute named the same as
@@ -223,10 +227,11 @@ module SyntaxTree
       end
 
       # Finally, set it up in the hash of nodes so that we can use it later.
+      comments = parse_comments(main_statements, main_statement_index)
       node =
         Node.new(
           main_statement.constant.constant.value.to_sym,
-          parse_comments(main_statements, main_statement_index).join("\n"),
+          "#{comments.join("\n")}\n",
           attributes
         )
 
