@@ -29,6 +29,11 @@ module SyntaxTree
       assert_raises(Parser::ParseError) { SyntaxTree.parse("<>") }
     end
 
+    def test_marshalable
+      node = SyntaxTree.parse("1 + 2")
+      assert_operator(node, :===, Marshal.load(Marshal.dump(node)))
+    end
+
     def test_maxwidth_format
       assert_equal("foo +\n  bar\n", SyntaxTree.format("foo + bar", 5))
     end
