@@ -557,7 +557,7 @@ module SyntaxTree
   #     collection[]
   #
   class ARef < Node
-    # [untyped] the value being indexed
+    # [Node] the value being indexed
     attr_reader :collection
 
     # [nil | Args] the value being passed within the brackets
@@ -635,7 +635,7 @@ module SyntaxTree
   #     collection[index] = value
   #
   class ARefField < Node
-    # [untyped] the value being indexed
+    # [Node] the value being indexed
     attr_reader :collection
 
     # [nil | Args] the value being passed within the brackets
@@ -810,7 +810,7 @@ module SyntaxTree
   #     method(first, second, third)
   #
   class Args < Node
-    # [Array[ untyped ]] the arguments that this node wraps
+    # [Array[ Node ]] the arguments that this node wraps
     attr_reader :parts
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
@@ -876,7 +876,7 @@ module SyntaxTree
   #     method(&expression)
   #
   class ArgBlock < Node
-    # [nil | untyped] the expression being turned into a block
+    # [nil | Node] the expression being turned into a block
     attr_reader :value
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
@@ -928,7 +928,7 @@ module SyntaxTree
   #     method(*arguments)
   #
   class ArgStar < Node
-    # [nil | untyped] the expression being splatted
+    # [nil | Node] the expression being splatted
     attr_reader :value
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
@@ -1131,7 +1131,8 @@ module SyntaxTree
       end
     end
 
-    # [LBracket] the bracket that opens this array
+    # [nil | LBracket | QSymbolsBeg | QWordsBeg | SymbolsBeg | WordsBeg] the
+    # bracket that opens this array
     attr_reader :lbracket
 
     # [nil | Args] the contents of the array
@@ -1289,7 +1290,7 @@ module SyntaxTree
     # [nil | VarRef] the optional constant wrapper
     attr_reader :constant
 
-    # [Array[ untyped ]] the regular positional arguments that this array
+    # [Array[ Node ]] the regular positional arguments that this array
     # pattern is matching against
     attr_reader :requireds
 
@@ -1297,7 +1298,7 @@ module SyntaxTree
     # positional arguments
     attr_reader :rest
 
-    # [Array[ untyped ]] the list of positional arguments occurring after the
+    # [Array[ Node ]] the list of positional arguments occurring after the
     # optional star if there is one
     attr_reader :posts
 
@@ -1407,7 +1408,7 @@ module SyntaxTree
     # to assign the result of the expression to
     attr_reader :target
 
-    # [untyped] the expression to be assigned
+    # [Node] the expression to be assigned
     attr_reader :value
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
@@ -1482,10 +1483,10 @@ module SyntaxTree
   #
   # In the above example, the would be two Assoc nodes.
   class Assoc < Node
-    # [untyped] the key of this pair
+    # [Node] the key of this pair
     attr_reader :key
 
-    # [untyped] the value of this pair
+    # [nil | Node] the value of this pair
     attr_reader :value
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
@@ -1560,7 +1561,7 @@ module SyntaxTree
   #     { **pairs }
   #
   class AssocSplat < Node
-    # [nil | untyped] the expression that is being splatted
+    # [nil | Node] the expression that is being splatted
     attr_reader :value
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
@@ -1924,7 +1925,7 @@ module SyntaxTree
   #     end
   #
   class PinnedBegin < Node
-    # [untyped] the expression being pinned
+    # [Node] the expression being pinned
     attr_reader :statement
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
@@ -2005,13 +2006,13 @@ module SyntaxTree
             }
     end
 
-    # [untyped] the left-hand side of the expression
+    # [Node] the left-hand side of the expression
     attr_reader :left
 
     # [Symbol] the operator used between the two expressions
     attr_reader :operator
 
-    # [untyped] the right-hand side of the expression
+    # [Node] the right-hand side of the expression
     attr_reader :right
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
@@ -2670,7 +2671,7 @@ module SyntaxTree
   # Of course there are a lot of caveats to that, including trailing operators
   # when necessary, where comments are places, how blocks are aligned, etc.
   class CallChainFormatter
-    # [Call | MethodAddBlock] the top of the call chain
+    # [CallNode | MethodAddBlock] the top of the call chain
     attr_reader :node
 
     def initialize(node)
@@ -2891,7 +2892,7 @@ module SyntaxTree
   #     receiver.message
   #
   class CallNode < Node
-    # [nil | untyped] the receiver of the method call
+    # [nil | Node] the receiver of the method call
     attr_reader :receiver
 
     # [nil | :"::" | Op | Period] the operator being used to send the message
@@ -3067,7 +3068,7 @@ module SyntaxTree
     # [Kw] the keyword that opens this expression
     attr_reader :keyword
 
-    # [nil | untyped] optional value being switched on
+    # [nil | Node] optional value being switched on
     attr_reader :value
 
     # [In | When] the next clause in the chain
@@ -3146,14 +3147,14 @@ module SyntaxTree
   #     value => pattern
   #
   class RAssign < Node
-    # [untyped] the left-hand expression
+    # [Node] the left-hand expression
     attr_reader :value
 
     # [Kw | Op] the operator being used to match against the pattern, which is
     # either => or in
     attr_reader :operator
 
-    # [untyped] the pattern on the right-hand side of the expression
+    # [Node] the pattern on the right-hand side of the expression
     attr_reader :pattern
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
@@ -3264,7 +3265,7 @@ module SyntaxTree
     # defined
     attr_reader :constant
 
-    # [nil | untyped] the optional superclass declaration
+    # [nil | Node] the optional superclass declaration
     attr_reader :superclass
 
     # [BodyStmt] the expressions to execute within the context of the class
@@ -3402,7 +3403,7 @@ module SyntaxTree
     # [Args] the arguments being sent with the message
     attr_reader :arguments
 
-    # [nil | Block] the optional block being passed to the method
+    # [nil | BlockNode] the optional block being passed to the method
     attr_reader :block
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
@@ -3508,19 +3509,19 @@ module SyntaxTree
   #     object.method argument
   #
   class CommandCall < Node
-    # [untyped] the receiver of the message
+    # [nil | Node] the receiver of the message
     attr_reader :receiver
 
-    # [:"::" | Op | Period] the operator used to send the message
+    # [nil | :"::" | Op | Period] the operator used to send the message
     attr_reader :operator
 
-    # [Const | Ident | Op] the message being send
+    # [:call | Const | Ident | Op] the message being send
     attr_reader :message
 
-    # [nil | Args] the arguments going along with the message
+    # [nil | Args | ArgParen] the arguments going along with the message
     attr_reader :arguments
 
-    # [nil | Block] the block associated with this method call
+    # [nil | BlockNode] the block associated with this method call
     attr_reader :block
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
@@ -3806,7 +3807,7 @@ module SyntaxTree
   #     object::Const = value
   #
   class ConstPathField < Node
-    # [untyped] the source of the constant
+    # [Node] the source of the constant
     attr_reader :parent
 
     # [Const] the constant itself
@@ -3870,7 +3871,7 @@ module SyntaxTree
   #     object::Const
   #
   class ConstPathRef < Node
-    # [untyped] the source of the constant
+    # [Node] the source of the constant
     attr_reader :parent
 
     # [Const] the constant itself
@@ -4039,7 +4040,7 @@ module SyntaxTree
   #     def object.method(param) result end
   #
   class DefNode < Node
-    # [nil | untyped] the target where the method is being defined
+    # [nil | Node] the target where the method is being defined
     attr_reader :target
 
     # [nil | Op | Period] the operator being used to declare the method
@@ -4051,7 +4052,7 @@ module SyntaxTree
     # [nil | Params | Paren] the parameter declaration for the method
     attr_reader :params
 
-    # [BodyStmt | untyped] the expressions to be executed by the method
+    # [BodyStmt | Node] the expressions to be executed by the method
     attr_reader :bodystmt
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
@@ -4185,7 +4186,7 @@ module SyntaxTree
   #     defined?(variable)
   #
   class Defined < Node
-    # [untyped] the value being sent to the keyword
+    # [Node] the value being sent to the keyword
     attr_reader :value
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
@@ -4476,13 +4477,13 @@ module SyntaxTree
   #
   # One of the sides of the expression may be nil, but not both.
   class RangeNode < Node
-    # [nil | untyped] the left side of the expression
+    # [nil | Node] the left side of the expression
     attr_reader :left
 
     # [Op] the operator used for this range
     attr_reader :operator
 
-    # [nil | untyped] the right side of the expression
+    # [nil | Node] the right side of the expression
     attr_reader :right
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
@@ -4603,7 +4604,7 @@ module SyntaxTree
     # dynamic symbol
     attr_reader :parts
 
-    # [String] the quote used to delimit the dynamic symbol
+    # [nil | String] the quote used to delimit the dynamic symbol
     attr_reader :quote
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
@@ -4801,7 +4802,7 @@ module SyntaxTree
   #     end
   #
   class Elsif < Node
-    # [untyped] the expression to be checked
+    # [Node] the expression to be checked
     attr_reader :predicate
 
     # [Statements] the expressions to be executed
@@ -5227,7 +5228,7 @@ module SyntaxTree
   #     object.variable = value
   #
   class Field < Node
-    # [untyped] the parent object that owns the field being assigned
+    # [Node] the parent object that owns the field being assigned
     attr_reader :parent
 
     # [:"::" | Op | Period] the operator being used for the assignment
@@ -5353,13 +5354,13 @@ module SyntaxTree
   #     end
   #
   class FndPtn < Node
-    # [nil | untyped] the optional constant wrapper
+    # [nil | Node] the optional constant wrapper
     attr_reader :constant
 
     # [VarField] the splat on the left-hand side
     attr_reader :left
 
-    # [Array[ untyped ]] the list of positional expressions in the pattern that
+    # [Array[ Node ]] the list of positional expressions in the pattern that
     # are being matched
     attr_reader :values
 
@@ -5455,7 +5456,7 @@ module SyntaxTree
     # pull values out of the object being enumerated
     attr_reader :index
 
-    # [untyped] the object being enumerated in the loop
+    # [Node] the object being enumerated in the loop
     attr_reader :collection
 
     # [Statements] the statements to be executed
@@ -5934,7 +5935,7 @@ module SyntaxTree
       # [Label] the keyword being used
       attr_reader :key
 
-      # [untyped] the optional value for the keyword
+      # [Node] the optional value for the keyword
       attr_reader :value
 
       def initialize(key, value)
@@ -5947,7 +5948,7 @@ module SyntaxTree
       end
 
       def format(q)
-        q.format(key)
+        HashKeyFormatter::Labels.new.format_key(q, key)
 
         if value
           q.text(" ")
@@ -5975,11 +5976,11 @@ module SyntaxTree
       end
     end
 
-    # [nil | untyped] the optional constant wrapper
+    # [nil | Node] the optional constant wrapper
     attr_reader :constant
 
-    # [Array[ [Label, untyped] ]] the set of tuples representing the keywords
-    # that should be matched against in the pattern
+    # [Array[ [DynaSymbol | Label, nil | Node] ]] the set of tuples
+    # representing the keywords that should be matched against in the pattern
     attr_reader :keywords
 
     # [nil | VarField] an optional parameter to gather up all remaining keywords
@@ -6404,7 +6405,7 @@ module SyntaxTree
   #     end
   #
   class IfNode < Node
-    # [untyped] the expression to be checked
+    # [Node] the expression to be checked
     attr_reader :predicate
 
     # [Statements] the expressions to be executed
@@ -6477,13 +6478,13 @@ module SyntaxTree
   #     predicate ? truthy : falsy
   #
   class IfOp < Node
-    # [untyped] the expression to be checked
+    # [Node] the expression to be checked
     attr_reader :predicate
 
-    # [untyped] the expression to be executed if the predicate is truthy
+    # [Node] the expression to be executed if the predicate is truthy
     attr_reader :truthy
 
-    # [untyped] the expression to be executed if the predicate is falsy
+    # [Node] the expression to be executed if the predicate is falsy
     attr_reader :falsy
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
@@ -6667,7 +6668,7 @@ module SyntaxTree
   #     end
   #
   class In < Node
-    # [untyped] the pattern to check against
+    # [Node] the pattern to check against
     attr_reader :pattern
 
     # [Statements] the expressions to execute if the pattern matched
@@ -7450,7 +7451,7 @@ module SyntaxTree
     # [MLHS | MLHSParen] the target of the multiple assignment
     attr_reader :target
 
-    # [untyped] the value being assigned
+    # [Node] the value being assigned
     attr_reader :value
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
@@ -7510,10 +7511,10 @@ module SyntaxTree
   #     method {}
   #
   class MethodAddBlock < Node
-    # [Call | Command | CommandCall] the method call
+    # [ARef | CallNode | Command | CommandCall | Super | ZSuper] the method call
     attr_reader :call
 
-    # [Block] the block being sent with the method call
+    # [BlockNode] the block being sent with the method call
     attr_reader :block
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
@@ -7585,8 +7586,12 @@ module SyntaxTree
   #     first, second, third = value
   #
   class MLHS < Node
-    # Array[ARefField | ArgStar | Field | Ident | MLHSParen | VarField] the
-    # parts of the left-hand side of a multiple assignment
+    # [
+    #   Array[
+    #     ARefField | ArgStar | ConstPathField | Field | Ident | MLHSParen |
+    #       TopConstField | VarField
+    #   ]
+    # ] the parts of the left-hand side of a multiple assignment
     attr_reader :parts
 
     # [boolean] whether or not there is a trailing comma at the end of this
@@ -7812,7 +7817,7 @@ module SyntaxTree
   #     values = first, second, third
   #
   class MRHS < Node
-    # Array[untyped] the parts that are being assigned
+    # [Array[Node]] the parts that are being assigned
     attr_reader :parts
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
@@ -7988,7 +7993,7 @@ module SyntaxTree
     # [Op] the operator being used for the assignment
     attr_reader :operator
 
-    # [untyped] the expression to be assigned
+    # [Node] the expression to be assigned
     attr_reader :value
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
@@ -8145,7 +8150,7 @@ module SyntaxTree
       # [Ident] the name of the parameter
       attr_reader :name
 
-      # [untyped] the value of the parameter
+      # [Node] the value of the parameter
       attr_reader :value
 
       def initialize(name, value)
@@ -8170,7 +8175,7 @@ module SyntaxTree
       # [Ident] the name of the parameter
       attr_reader :name
 
-      # [nil | untyped] the value of the parameter
+      # [nil | Node] the value of the parameter
       attr_reader :value
 
       def initialize(name, value)
@@ -8211,10 +8216,10 @@ module SyntaxTree
       end
     end
 
-    # [Array[ Ident ]] any required parameters
+    # [Array[ Ident | MLHSParen ]] any required parameters
     attr_reader :requireds
 
-    # [Array[ [ Ident, untyped ] ]] any optional parameters and their default
+    # [Array[ [ Ident, Node ] ]] any optional parameters and their default
     # values
     attr_reader :optionals
 
@@ -8226,11 +8231,12 @@ module SyntaxTree
     # parameter
     attr_reader :posts
 
-    # [Array[ [ Ident, nil | untyped ] ]] any keyword parameters and their
+    # [Array[ [ Label, nil | Node ] ]] any keyword parameters and their
     # optional default values
     attr_reader :keywords
 
-    # [nil | :nil | KwRestParam] the optional keyword rest parameter
+    # [nil | :nil | ArgsForward | KwRestParam] the optional keyword rest
+    # parameter
     attr_reader :keyword_rest
 
     # [nil | BlockArg] the optional block parameter
@@ -8419,7 +8425,7 @@ module SyntaxTree
     # [LParen] the left parenthesis that opened this statement
     attr_reader :lparen
 
-    # [nil | untyped] the expression inside the parentheses
+    # [nil | Node] the expression inside the parentheses
     attr_reader :contents
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
@@ -9268,7 +9274,7 @@ module SyntaxTree
   #     end
   #
   class RescueEx < Node
-    # [untyped] the list of exceptions being rescued
+    # [nil | Node] the list of exceptions being rescued
     attr_reader :exceptions
 
     # [nil | Field | VarField] the expression being used to capture the raised
@@ -9346,7 +9352,7 @@ module SyntaxTree
     # [Kw] the rescue keyword
     attr_reader :keyword
 
-    # [RescueEx] the exceptions being rescued
+    # [nil | RescueEx] the exceptions being rescued
     attr_reader :exception
 
     # [Statements] the expressions to evaluate when an error is rescued
@@ -9466,10 +9472,10 @@ module SyntaxTree
   #     expression rescue value
   #
   class RescueMod < Node
-    # [untyped] the expression to execute
+    # [Node] the expression to execute
     attr_reader :statement
 
-    # [untyped] the value to use if the executed expression raises an error
+    # [Node] the value to use if the executed expression raises an error
     attr_reader :value
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
@@ -9728,7 +9734,7 @@ module SyntaxTree
   #     end
   #
   class SClass < Node
-    # [untyped] the target of the singleton class to enter
+    # [Node] the target of the singleton class to enter
     attr_reader :target
 
     # [BodyStmt] the expressions to be executed
@@ -9802,10 +9808,10 @@ module SyntaxTree
   # propagate that onto void_stmt nodes inside the stmts in order to make sure
   # all comments get printed appropriately.
   class Statements < Node
-    # [SyntaxTree] the parser that is generating this node
+    # [Parser] the parser that is generating this node
     attr_reader :parser
 
-    # [Array[ untyped ]] the list of expressions contained within this node
+    # [Array[ Node ]] the list of expressions contained within this node
     attr_reader :body
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
@@ -9995,9 +10001,13 @@ module SyntaxTree
     # string
     attr_reader :parts
 
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
     def initialize(parts:, location:)
       @parts = parts
       @location = location
+      @comments = []
     end
 
     def accept(visitor)
@@ -10024,6 +10034,33 @@ module SyntaxTree
     def ===(other)
       other.is_a?(StringContent) && ArrayMatch.call(parts, other.parts)
     end
+
+    def format(q)
+      q.text(q.quote)
+      q.group do
+        parts.each do |part|
+          if part.is_a?(TStringContent)
+            value = Quotes.normalize(part.value, q.quote)
+            first = true
+
+            value.each_line(chomp: true) do |line|
+              if first
+                first = false
+              else
+                q.breakable_return
+              end
+
+              q.text(line)
+            end
+
+            q.breakable_return if value.end_with?("\n")
+          else
+            q.format(part)
+          end
+        end
+      end
+      q.text(q.quote)
+    end
   end
 
   # StringConcat represents concatenating two strings together using a backward
@@ -10033,7 +10070,8 @@ module SyntaxTree
   #       "second"
   #
   class StringConcat < Node
-    # [StringConcat | StringLiteral] the left side of the concatenation
+    # [Heredoc | StringConcat | StringLiteral] the left side of the
+    # concatenation
     attr_reader :left
 
     # [StringLiteral] the right side of the concatenation
@@ -10230,7 +10268,7 @@ module SyntaxTree
     # string literal
     attr_reader :parts
 
-    # [String] which quote was used by the string literal
+    # [nil | String] which quote was used by the string literal
     attr_reader :quote
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
@@ -10475,8 +10513,8 @@ module SyntaxTree
   #     :symbol
   #
   class SymbolLiteral < Node
-    # [Backtick | Const | CVar | GVar | Ident | IVar | Kw | Op] the value of the
-    # symbol
+    # [Backtick | Const | CVar | GVar | Ident | IVar | Kw | Op | TStringContent]
+    # the value of the symbol
     attr_reader :value
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
@@ -10985,7 +11023,7 @@ module SyntaxTree
   #     not value
   #
   class Not < Node
-    # [nil | untyped] the statement on which to operate
+    # [nil | Node] the statement on which to operate
     attr_reader :statement
 
     # [boolean] whether or not parentheses were used
@@ -11072,7 +11110,7 @@ module SyntaxTree
     # [String] the operator being used
     attr_reader :operator
 
-    # [untyped] the statement on which to operate
+    # [Node] the statement on which to operate
     attr_reader :statement
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
@@ -11216,7 +11254,7 @@ module SyntaxTree
   #     end
   #
   class UnlessNode < Node
-    # [untyped] the expression to be checked
+    # [Node] the expression to be checked
     attr_reader :predicate
 
     # [Statements] the expressions to be executed
@@ -11362,7 +11400,7 @@ module SyntaxTree
   #     end
   #
   class UntilNode < Node
-    # [untyped] the expression to be checked
+    # [Node] the expression to be checked
     attr_reader :predicate
 
     # [Statements] the expressions to be executed
@@ -11430,7 +11468,7 @@ module SyntaxTree
   #
   # In the example above, the VarField node represents the +variable+ token.
   class VarField < Node
-    # [nil | Const | CVar | GVar | Ident | IVar] the target of this node
+    # [nil | :nil | Const | CVar | GVar | Ident | IVar] the target of this node
     attr_reader :value
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
@@ -11569,7 +11607,7 @@ module SyntaxTree
   # This can be a plain local variable like the example above. It can also be a
   # a class variable, a global variable, or an instance variable.
   class PinnedVarRef < Node
-    # [VarRef] the value of this node
+    # [Const | CVar | GVar | Ident | IVar] the value of this node
     attr_reader :value
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
@@ -11683,9 +11721,6 @@ module SyntaxTree
   #     ;;
   #
   class VoidStmt < Node
-    # [Location] the location of this node
-    attr_reader :location
-
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
@@ -11846,7 +11881,7 @@ module SyntaxTree
   #     end
   #
   class WhileNode < Node
-    # [untyped] the expression to be checked
+    # [Node] the expression to be checked
     attr_reader :predicate
 
     # [Statements] the expressions to be executed

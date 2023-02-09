@@ -151,7 +151,7 @@ module SyntaxTree
               elsif argc == 1 && method.end_with?("=")
                 receiver, argument = clause.pop(2)
                 clause << Assign(
-                  CallNode(receiver, Period("."), Ident(method[0..-2]), nil),
+                  Field(receiver, Period("."), Ident(method[0..-2])),
                   argument
                 )
               else
