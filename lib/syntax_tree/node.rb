@@ -2131,12 +2131,17 @@ module SyntaxTree
     end
   end
 
-  # BlockVar represents the parameters being declared for a block. Effectively
-  # this node is everything contained within the pipes. This includes all of the
-  # various parameter types, as well as block-local variable declarations.
+  # BlockVar represents the parameters being declared for a block or lambda.
+  # This includes all of the various parameter types, as well as
+  # block-local/lambda-local variable declarations.
   #
   #     method do |positional, optional = value, keyword:, &block; local|
   #     end
+  #
+  #     OR
+  #
+  #    -> (positional, optional = value, keyword:, &block; local) do
+  #    end
   #
   class BlockVar < Node
     # [Params] the parameters being declared with the block
@@ -2148,10 +2153,15 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(params:, locals:, location:)
+    # [boolean] whether or not the variables are within pipes
+    attr_reader :pipe
+    alias pipe? pipe
+
+    def initialize(params:, locals:, location:, pipe:)
       @params = params
       @locals = locals
       @location = location
+      @pipe = pipe
       @comments = []
     end
 
@@ -2163,12 +2173,13 @@ module SyntaxTree
       [params, *locals]
     end
 
-    def copy(params: nil, locals: nil, location: nil)
+    def copy(params: nil, locals: nil, location: nil, pipe: nil)
       node =
         BlockVar.new(
           params: params || self.params,
           locals: locals || self.locals,
-          location: location || self.location
+          location: location || self.location,
+          pipe: pipe || self.pipe
         )
 
       node.comments.concat(comments.map(&:copy))
@@ -2178,7 +2189,13 @@ module SyntaxTree
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
-      { params: params, locals: locals, location: location, comments: comments }
+      {
+        params: params,
+        locals: locals,
+        location: location,
+        comments: comments,
+        pipe: pipe
+      }
     end
 
     # Within the pipes of the block declaration, we don't want any spaces. So
@@ -2194,21 +2211,21 @@ module SyntaxTree
     SEPARATOR = Separator.new.freeze
 
     def format(q)
-      q.text("|")
-      q.group do
-        q.remove_breaks(q.format(params))
+      pipe? ? q.remove_breaks(q.format(params)) : q.format(params)
 
-        if locals.any?
-          q.text("; ")
-          q.seplist(locals, SEPARATOR) { |local| q.format(local) }
-        end
+      if locals.any?
+        q.text("; ")
+        q.seplist(locals, SEPARATOR) { |local| q.format(local) }
       end
-      q.text("|")
     end
 
     def ===(other)
       other.is_a?(BlockVar) && params === other.params &&
         ArrayMatch.call(locals, other.locals)
+    end
+
+    def empty?
+      params.empty? && locals.empty?
     end
 
     # When a single required parameter is declared for a block, it gets
@@ -4486,8 +4503,9 @@ module SyntaxTree
       q.format(BlockOpenFormatter.new(break_opening, opening), stackable: false)
 
       if block_var
-        q.text(" ")
-        q.format(block_var)
+        q.text(" |")
+        q.group { q.format(block_var) }
+        q.text("|")
       end
 
       unless bodystmt.empty?
@@ -4507,7 +4525,9 @@ module SyntaxTree
 
       if block_var
         q.breakable_space
-        q.format(block_var)
+        q.text("|")
+        q.group { q.format(block_var) }
+        q.text("|")
         q.breakable_space
       end
 
@@ -7140,7 +7160,7 @@ module SyntaxTree
   #     ->(value) { value * 2 }
   #
   class Lambda < Node
-    # [LambdaVar | Paren] the parameter declaration for this lambda
+    # [BlockVar | Paren] the parameter declaration for this lambda
     attr_reader :params
 
     # [BodyStmt | Statements] the expressions to be executed in this lambda
@@ -7255,76 +7275,6 @@ module SyntaxTree
     def ===(other)
       other.is_a?(Lambda) && params === other.params &&
         statements === other.statements
-    end
-  end
-
-  # LambdaVar represents the parameters being declared for a lambda. Effectively
-  # this node is everything contained within the parentheses. This includes all
-  # of the various parameter types, as well as block-local variable
-  # declarations.
-  #
-  #     -> (positional, optional = value, keyword:, &block; local) do
-  #     end
-  #
-  class LambdaVar < Node
-    # [Params] the parameters being declared with the block
-    attr_reader :params
-
-    # [Array[ Ident ]] the list of block-local variable declarations
-    attr_reader :locals
-
-    # [Array[ Comment | EmbDoc ]] the comments attached to this node
-    attr_reader :comments
-
-    def initialize(params:, locals:, location:)
-      @params = params
-      @locals = locals
-      @location = location
-      @comments = []
-    end
-
-    def accept(visitor)
-      visitor.visit_lambda_var(self)
-    end
-
-    def child_nodes
-      [params, *locals]
-    end
-
-    def copy(params: nil, locals: nil, location: nil)
-      node =
-        LambdaVar.new(
-          params: params || self.params,
-          locals: locals || self.locals,
-          location: location || self.location
-        )
-
-      node.comments.concat(comments.map(&:copy))
-      node
-    end
-
-    alias deconstruct child_nodes
-
-    def deconstruct_keys(_keys)
-      { params: params, locals: locals, location: location, comments: comments }
-    end
-
-    def empty?
-      params.empty? && locals.empty?
-    end
-
-    def format(q)
-      q.format(params)
-
-      if locals.any?
-        q.text("; ")
-        q.seplist(locals, BlockVar::SEPARATOR) { |local| q.format(local) }
-      end
-    end
-
-    def ===(other)
-      other.is_a?(LambdaVar) && params === other.params &&
-        ArrayMatch.call(locals, other.locals)
     end
   end
 

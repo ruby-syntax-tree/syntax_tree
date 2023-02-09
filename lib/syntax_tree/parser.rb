@@ -937,7 +937,8 @@ module SyntaxTree
       BlockVar.new(
         params: params,
         locals: locals || [],
-        location: beginning.location.to(ending.location)
+        location: beginning.location.to(ending.location),
+        pipe: true
       )
     end
 
@@ -2296,10 +2297,11 @@ module SyntaxTree
             Paren.new(
               lparen: params.lparen,
               contents:
-                LambdaVar.new(
+                BlockVar.new(
                   params: params.contents,
                   locals: locals,
-                  location: location
+                  location: location,
+                  pipe: false
                 ),
               location: params.location
             )
@@ -2324,8 +2326,13 @@ module SyntaxTree
 
           # In this case we've gotten to the plain set of parameters. In this
           # case there cannot be lambda locals, so we will wrap the parameters
-          # into a lambda var that has no locals.
-          LambdaVar.new(params: params, locals: [], location: params.location)
+          # into a block var that has no locals.
+          BlockVar.new(
+            params: params,
+            locals: [],
+            location: params.location,
+            pipe: false
+          )
         end
 
       start_char = find_next_statement_start(opening.location.end_char)
@@ -2345,12 +2352,17 @@ module SyntaxTree
     end
 
     # :call-seq:
-    #   on_lambda_var: (Params params, Array[ Ident ] locals) -> LambdaVar
+    #   on_lambda_var: (Params params, Array[ Ident ] locals) -> BlockVar
     def on_lambda_var(params, locals)
       location = params.location
       location = location.to(locals.last.location) if locals.any?
 
-      LambdaVar.new(params: params, locals: locals || [], location: location)
+      BlockVar.new(
+        params: params,
+        locals: locals || [],
+        location: location,
+        pipe: false
+      )
     end
 
     # Ripper doesn't support capturing lambda local variables until 3.2. To
