@@ -5,6 +5,73 @@ module SyntaxTree
     # This visitor is responsible for converting the syntax tree produced by
     # Syntax Tree into the syntax tree produced by the whitequark/parser gem.
     class Parser < BasicVisitor
+      # Heredocs are represented _very_ differently in the parser gem from how
+      # they are represented in the Syntax Tree AST. This class is responsible
+      # for handling the translation.
+      class HeredocBuilder
+        Line = Struct.new(:value, :segments)
+
+        attr_reader :node, :segments
+
+        def initialize(node)
+          @node = node
+          @segments = []
+        end
+
+        def <<(segment)
+          if segment.type == :str && segments.last &&
+               segments.last.type == :str &&
+               !segments.last.children.first.end_with?("\n")
+            segments.last.children.first << segment.children.first
+          else
+            segments << segment
+          end
+        end
+
+        def trim!
+          return unless node.beginning.value[2] == "~"
+          lines = [Line.new(+"", [])]
+
+          segments.each do |segment|
+            lines.last.segments << segment
+
+            if segment.type == :str
+              lines.last.value << segment.children.first
+              lines << Line.new(+"", []) if lines.last.value.end_with?("\n")
+            end
+          end
+
+          lines.pop if lines.last.value.empty?
+          return if lines.empty?
+
+          segments.clear
+          lines.each do |line|
+            remaining = node.dedent
+
+            line.segments.each do |segment|
+              if segment.type == :str
+                if remaining > 0
+                  whitespace = segment.children.first[/^\s{0,#{remaining}}/]
+                  segment.children.first.sub!(/^#{whitespace}/, "")
+                  remaining -= whitespace.length
+                end
+
+                if node.beginning.value[3] != "'" && segments.any? &&
+                     segments.last.type == :str &&
+                     segments.last.children.first.end_with?("\\\n")
+                  segments.last.children.first.gsub!(/\\\n\z/, "")
+                  segments.last.children.first.concat(segment.children.first)
+                elsif !segment.children.first.empty?
+                  segments << segment
+                end
+              else
+                segments << segment
+              end
+            end
+          end
+        end
+      end
+
       attr_reader :buffer, :stack
 
       def initialize(buffer)
@@ -665,6 +732,25 @@ module SyntaxTree
             node.end_char
           end
 
+        expression =
+          if node.arguments.is_a?(ArgParen)
+            srange(node.start_char, node.arguments.end_char)
+          elsif node.arguments.is_a?(Args) && node.arguments.parts.any?
+            last_part = node.arguments.parts.last
+            end_char =
+              if last_part.is_a?(Heredoc)
+                last_part.beginning.end_char
+              else
+                last_part.end_char
+              end
+
+            srange(node.start_char, end_char)
+          elsif node.block
+            srange_node(node.message)
+          else
+            srange_node(node)
+          end
+
         call =
           s(
             if node.operator.is_a?(Op) && node.operator.value == "&."
@@ -690,14 +776,7 @@ module SyntaxTree
               node.message == :call ? nil : srange_node(node.message),
               begin_token,
               end_token,
-              if node.arguments.is_a?(ArgParen) ||
-                   (node.arguments.is_a?(Args) && node.arguments.parts.any?)
-                srange(node.start_char, node.arguments.end_char)
-              elsif node.block
-                srange_node(node.message)
-              else
-                srange_node(node)
-              end
+              expression
             )
           )
 
@@ -1049,7 +1128,8 @@ module SyntaxTree
           smap_for(
             srange_length(node.start_char, 3),
             srange_find_between(node.index, node.collection, "in"),
-            srange_search_between(node.collection, node.statements, "do"),
+            srange_search_between(node.collection, node.statements, "do") ||
+              srange_search_between(node.collection, node.statements, ";"),
             srange_length(node.end_char, -3),
             srange_node(node)
           )
@@ -1078,98 +1158,43 @@ module SyntaxTree
         )
       end
 
-      # Heredocs are represented _very_ differently in the parser gem from how
-      # they are represented in the Syntax Tree AST. This class is responsible
-      # for handling the translation.
-      class HeredocSegments
-        HeredocLine = Struct.new(:value, :segments)
-
-        attr_reader :node, :segments
-
-        def initialize(node)
-          @node = node
-          @segments = []
-        end
-
-        def <<(segment)
-          if segment.type == :str && segments.last &&
-               segments.last.type == :str &&
-               !segments.last.children.first.end_with?("\n")
-            segments.last.children.first << segment.children.first
-          else
-            segments << segment
-          end
-        end
-
-        def trim!
-          return unless node.beginning.value[2] == "~"
-          lines = [HeredocLine.new(+"", [])]
-
-          segments.each do |segment|
-            lines.last.segments << segment
-
-            if segment.type == :str
-              lines.last.value << segment.children.first
-
-              if lines.last.value.end_with?("\n")
-                lines << HeredocLine.new(+"", [])
-              end
-            end
-          end
-
-          lines.pop if lines.last.value.empty?
-          return if lines.empty?
-
-          segments.clear
-          lines.each do |line|
-            remaining = node.dedent
-
-            line.segments.each do |segment|
-              if segment.type == :str
-                if remaining > 0
-                  whitespace = segment.children.first[/^\s{0,#{remaining}}/]
-                  segment.children.first.sub!(/^#{whitespace}/, "")
-                  remaining -= whitespace.length
-                end
-
-                if node.beginning.value[3] != "'" && segments.any? &&
-                     segments.last.type == :str &&
-                     segments.last.children.first.end_with?("\\\n")
-                  segments.last.children.first.gsub!(/\\\n\z/, "")
-                  segments.last.children.first.concat(segment.children.first)
-                elsif !segment.children.first.empty?
-                  segments << segment
-                end
-              else
-                segments << segment
-              end
-            end
-          end
-        end
-      end
-
       # Visit a Heredoc node.
       def visit_heredoc(node)
-        heredoc_segments = HeredocSegments.new(node)
+        heredoc = HeredocBuilder.new(node)
 
+        # For each part of the heredoc, if it's a string content node, split it
+        # into multiple string content nodes, one for each line. Otherwise,
+        # visit the node as normal.
         node.parts.each do |part|
           if part.is_a?(TStringContent) && part.value.count("\n") > 1
-            part
-              .value
-              .split("\n")
-              .each { |line| heredoc_segments << s(:str, ["#{line}\n"], nil) }
+            index = part.start_char
+            lines = part.value.split("\n")
+
+            lines.each do |line|
+              length = line.length + 1
+              location = smap_collection_bare(srange_length(index, length))
+
+              heredoc << s(:str, ["#{line}\n"], location)
+              index += length
+            end
           else
-            heredoc_segments << visit(part)
+            heredoc << visit(part)
           end
         end
 
-        heredoc_segments.trim!
+        # Now that we have all of the pieces on the heredoc, we can trim it if
+        # it is a heredoc that supports trimming (i.e., it has a ~ on the
+        # declaration).
+        heredoc.trim!
+
+        # Generate the location for the heredoc, which goes from the declaration
+        # to the ending delimiter.
         location =
           smap_heredoc(
             srange_node(node.beginning),
             srange(
               if node.parts.empty?
-                node.beginning.end_char
+                node.beginning.end_char + 1
               else
                 node.parts.first.start_char
               end,
@@ -1178,15 +1203,15 @@ module SyntaxTree
             srange(node.ending.start_char, node.ending.end_char - 1)
           )
 
+        # Finally, decide which kind of heredoc node to generate based on its
+        # declaration and contents.
         if node.beginning.value.match?(/`\w+`\z/)
-          s(:xstr, heredoc_segments.segments, location)
-        elsif heredoc_segments.segments.length > 1
-          s(:dstr, heredoc_segments.segments, location)
-        elsif heredoc_segments.segments.empty?
-          s(:dstr, [], location)
-        else
-          segment = heredoc_segments.segments.first
+          s(:xstr, heredoc.segments, location)
+        elsif heredoc.segments.length == 1
+          segment = heredoc.segments.first
           s(segment.type, segment.children, location)
+        else
+          s(:dstr, heredoc.segments, location)
         end
       end
 

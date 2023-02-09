@@ -275,7 +275,7 @@ module SyntaxTree
     end
 
     def find_keyword_between(name, left, right)
-      bounds = left.location.end_char...right.location.start_char
+      bounds = left.end_char...right.start_char
       index =
         tokens.rindex do |token|
           char = token.location.start_char
@@ -1807,19 +1807,19 @@ module SyntaxTree
       in_keyword = consume_keyword(:in)
       ending = consume_keyword(:end)
 
-      # Consume the do keyword if it exists so that it doesn't get confused for
-      # some other block
-      if (keyword = find_keyword_between(:do, collection, ending))
-        tokens.delete(keyword)
-      end
+      delimiter =
+        find_keyword_between(:do, collection, ending) ||
+          find_token_between(Semicolon, collection, ending)
+
+      tokens.delete(delimiter) if delimiter
 
       start_char =
-        find_next_statement_start((keyword || collection).location.end_char)
+        find_next_statement_start((delimiter || collection).location.end_char)
 
       statements.bind(
         start_char,
         start_char -
-          line_counts[(keyword || collection).location.end_line - 1].start,
+          line_counts[(delimiter || collection).location.end_line - 1].start,
         ending.location.start_char,
         ending.location.start_column
       )
@@ -3328,10 +3328,13 @@ module SyntaxTree
       )
     end
 
+    # Semicolons are tokens that get added to the token list but never get
+    # attached to the AST. Because of this they only need to track their
+    # associated location so they can be used for computing bounds.
     class Semicolon
       attr_reader :location
 
-      def initialize(location:)
+      def initialize(location)
         @location = location
       end
     end
@@ -3340,13 +3343,12 @@ module SyntaxTree
     #   on_semicolon: (String value) -> Semicolon
     def on_semicolon(value)
       tokens << Semicolon.new(
-        location:
-          Location.token(
-            line: lineno,
-            char: char_pos,
-            column: current_column,
-            size: value.size
-          )
+        Location.token(
+          line: lineno,
+          char: char_pos,
+          column: current_column,
+          size: value.size
+        )
       )
     end
 
