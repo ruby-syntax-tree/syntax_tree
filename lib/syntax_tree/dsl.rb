@@ -146,8 +146,13 @@ module SyntaxTree
     end
 
     # Create a new BlockVar node.
-    def BlockVar(params, locals)
-      BlockVar.new(params: params, locals: locals, location: Location.default)
+    def BlockVar(params, locals, pipe)
+      BlockVar.new(
+        params: params,
+        locals: locals,
+        location: Location.default,
+        pipe: pipe
+      )
     end
 
     # Create a new BlockArg node.
@@ -549,11 +554,6 @@ module SyntaxTree
         statements: statements,
         location: Location.default
       )
-    end
-
-    # Create a new LambdaVar node.
-    def LambdaVar(params, locals)
-      LambdaVar.new(params: params, locals: locals, location: Location.default)
     end
 
     # Create a new LBrace node.
