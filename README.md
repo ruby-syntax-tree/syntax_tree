@@ -341,7 +341,7 @@ This function takes an input string containing Ruby code, parses it into its und
 
 ### SyntaxTree.mutation(&block)
 
-This function yields a new mutation visitor to the block, and then returns the initialized visitor. It's effectively a shortcut for creating a `SyntaxTree::Visitor::MutationVisitor` without having to remember the class name. For more information on that visitor, see the definition below.
+This function yields a new mutation visitor to the block, and then returns the initialized visitor. It's effectively a shortcut for creating a `SyntaxTree::MutationVisitor` without having to remember the class name. For more information on that visitor, see the definition below.
 
 ### SyntaxTree.search(source, query, &block)
 
@@ -558,7 +558,7 @@ The `MutationVisitor` is a visitor that can be used to mutate the tree. It works
 
 ```ruby
 # Create a new visitor
-visitor = SyntaxTree::Visitor::MutationVisitor.new
+visitor = SyntaxTree::MutationVisitor.new
 
 # Specify that it should mutate If nodes with assignments in their predicates
 visitor.mutate("IfNode[predicate: Assign | OpAssign]") do |node|

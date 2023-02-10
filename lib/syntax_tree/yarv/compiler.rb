@@ -8,7 +8,7 @@ module SyntaxTree
     #
     # You use this as with any other visitor. First you parse code into a tree,
     # then you visit it with this compiler. Visiting the root node of the tree
-    # will return a SyntaxTree::Visitor::Compiler::InstructionSequence object.
+    # will return a SyntaxTree::YARV::Compiler::InstructionSequence object.
     # With that object you can call #to_a on it, which will return a serialized
     # form of the instruction sequence as an array. This array _should_ mirror
     # the array given by RubyVM::InstructionSequence#to_a.

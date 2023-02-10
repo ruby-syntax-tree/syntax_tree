@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require "stringio"
+
 require_relative "yarv/basic_block"
 require_relative "yarv/bf"
 require_relative "yarv/calldata"

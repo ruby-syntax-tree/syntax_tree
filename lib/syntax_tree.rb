@@ -1,32 +1,15 @@
 # frozen_string_literal: true
 
-require "etc"
-require "json"
-require "pp"
 require "prettier_print"
 require "ripper"
-require "stringio"
 
-require_relative "syntax_tree/formatter"
 require_relative "syntax_tree/node"
-require_relative "syntax_tree/version"
-
 require_relative "syntax_tree/basic_visitor"
 require_relative "syntax_tree/visitor"
-require_relative "syntax_tree/visitor/field_visitor"
-require_relative "syntax_tree/visitor/json_visitor"
-require_relative "syntax_tree/visitor/match_visitor"
-require_relative "syntax_tree/visitor/mermaid_visitor"
-require_relative "syntax_tree/visitor/mutation_visitor"
-require_relative "syntax_tree/visitor/pretty_print_visitor"
-require_relative "syntax_tree/visitor/environment"
-require_relative "syntax_tree/visitor/with_environment"
 
+require_relative "syntax_tree/formatter"
 require_relative "syntax_tree/parser"
-require_relative "syntax_tree/pattern"
-require_relative "syntax_tree/search"
-require_relative "syntax_tree/index"
-require_relative "syntax_tree/translation"
+require_relative "syntax_tree/version"
 
 # Syntax Tree is a suite of tools built on top of the internal CRuby parser. It
 # provides the ability to generate a syntax tree from source, as well as the
@@ -38,7 +21,19 @@ module SyntaxTree
   # as possible in order to keep the CLI as fast as possible.
 
   autoload :DSL, "syntax_tree/dsl"
+  autoload :FieldVisitor, "syntax_tree/field_visitor"
+  autoload :Index, "syntax_tree/index"
+  autoload :JSONVisitor, "syntax_tree/json_visitor"
+  autoload :LanguageServer, "syntax_tree/language_server"
+  autoload :MatchVisitor, "syntax_tree/match_visitor"
   autoload :Mermaid, "syntax_tree/mermaid"
+  autoload :MermaidVisitor, "syntax_tree/mermaid_visitor"
+  autoload :MutationVisitor, "syntax_tree/mutation_visitor"
+  autoload :Pattern, "syntax_tree/pattern"
+  autoload :PrettyPrintVisitor, "syntax_tree/pretty_print_visitor"
+  autoload :Search, "syntax_tree/search"
+  autoload :Translation, "syntax_tree/translation"
+  autoload :WithEnvironment, "syntax_tree/with_environment"
   autoload :YARV, "syntax_tree/yarv"
 
   # This holds references to objects that respond to both #parse and #format
@@ -89,7 +84,7 @@ module SyntaxTree
 
   # A convenience method for creating a new mutation visitor.
   def self.mutation
-    visitor = Visitor::MutationVisitor.new
+    visitor = MutationVisitor.new
     yield visitor
     visitor
   end
@@ -130,6 +125,9 @@ module SyntaxTree
   # Searches through the given source using the given pattern and yields each
   # node in the tree that matches the pattern to the given block.
   def self.search(source, query, &block)
-    Search.new(Pattern.new(query).compile).scan(parse(source), &block)
+    pattern = Pattern.new(query).compile
+    program = parse(source)
+
+    Search.new(pattern).scan(program, &block)
   end
 end

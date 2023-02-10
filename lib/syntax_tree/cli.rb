@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require "etc"
 require "optparse"
 
 module SyntaxTree
@@ -238,7 +239,7 @@ module SyntaxTree
     # representation.
     class Json < Action
       def run(item)
-        object = Visitor::JSONVisitor.new.visit(item.handler.parse(item.source))
+        object = item.handler.parse(item.source).accept(JSONVisitor.new)
         puts JSON.pretty_generate(object)
       end
     end
@@ -501,7 +502,6 @@ module SyntaxTree
           when "j", "json"
             Json.new(options)
           when "lsp"
-            require "syntax_tree/language_server"
             LanguageServer.new(print_width: options.print_width).run
             return 0
           when "m", "match"

@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "cgi"
+require "stringio"
 
 module SyntaxTree
   # This module is responsible for rendering mermaid (https://mermaid.js.org/)
