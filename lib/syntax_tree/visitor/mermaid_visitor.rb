@@ -4,18 +4,16 @@ module SyntaxTree
   class Visitor
     # This visitor transforms the AST into a mermaid flow chart.
     class MermaidVisitor < FieldVisitor
-      attr_reader :output, :target
+      attr_reader :flowchart, :target
 
       def initialize
-        @output = StringIO.new
-        @output.puts("flowchart TD")
-
+        @flowchart = Mermaid::FlowChart.new
         @target = nil
       end
 
       def visit_program(node)
         super
-        output.string
+        flowchart.render
       end
 
       private
@@ -26,19 +24,13 @@ module SyntaxTree
 
       def field(name, value)
         case value
-        when Node
-          node_id = visit(value)
-          output.puts("  #{target} -- \"#{name}\" --> #{node_id}")
-        when String
-          node_id = "#{target}_#{name}"
-          output.puts("  #{node_id}([#{CGI.escapeHTML(value.inspect)}])")
-          output.puts("  #{target} -- \"#{name}\" --> #{node_id}")
         when nil
           # skip
+        when Node
+          flowchart.edge(target, visit(value), name)
         else
-          node_id = "#{target}_#{name}"
-          output.puts("  #{node_id}([\"#{CGI.escapeHTML(value.inspect)}\"])")
-          output.puts("  #{target} -- \"#{name}\" --> #{node_id}")
+          to = flowchart.node("#{target.id}_#{name}", value.inspect, :stadium)
+          flowchart.edge(target, to, name)
         end
       end
 
@@ -52,11 +44,8 @@ module SyntaxTree
         previous_target = target
 
         begin
-          @target = "node_#{node.object_id}"
-
+          @target = flowchart.node("node_#{node.object_id}", type)
           yield
-
-          output.puts("  #{@target}[\"#{type}\"]")
           @target
         ensure
           @target = previous_target
@@ -65,11 +54,11 @@ module SyntaxTree
 
       def pairs(name, values)
         values.each_with_index do |(key, value), index|
-          node_id = "#{target}_#{name}_#{index}"
-          output.puts("  #{node_id}((\"&nbsp;\"))")
-          output.puts("  #{target} -- \"#{name}[#{index}]\" --> #{node_id}")
-          output.puts("  #{node_id} -- \"[0]\" --> #{visit(key)}")
-          output.puts("  #{node_id} -- \"[1]\" --> #{visit(value)}") if value
+          to = flowchart.node("#{target.id}_#{name}_#{index}", " ", :circle)
+
+          flowchart.edge(target, to, "#{name}[#{index}]")
+          flowchart.edge(to, visit(key), "[0]")
+          flowchart.edge(to, visit(value), "[1]") if value
         end
       end
 

@@ -1,6 +1,5 @@
 # frozen_string_literal: true
 
-require "cgi"
 require "etc"
 require "json"
 require "pp"
@@ -71,19 +70,6 @@ module SyntaxTree
   # that Syntax Tree can format arbitrary parts of a document.
   DEFAULT_INDENTATION = 0
 
-  # This is a hook provided so that plugins can register themselves as the
-  # handler for a particular file type.
-  def self.register_handler(extension, handler)
-    HANDLERS[extension] = handler
-  end
-
-  # Parses the given source and returns the syntax tree.
-  def self.parse(source)
-    parser = Parser.new(source)
-    response = parser.parse
-    response unless parser.error?
-  end
-
   # Parses the given source and returns the formatted source.
   def self.format(
     source,
@@ -98,11 +84,37 @@ module SyntaxTree
     formatter.output.join
   end
 
+  # Indexes the given source code to return a list of all class, module, and
+  # method definitions. Used to quickly provide indexing capability for IDEs or
+  # documentation generation.
+  def self.index(source)
+    Index.index(source)
+  end
+
+  # Indexes the given file to return a list of all class, module, and method
+  # definitions. Used to quickly provide indexing capability for IDEs or
+  # documentation generation.
+  def self.index_file(filepath)
+    Index.index_file(filepath)
+  end
+
   # A convenience method for creating a new mutation visitor.
   def self.mutation
     visitor = Visitor::MutationVisitor.new
     yield visitor
     visitor
+  end
+
+  # Parses the given source and returns the syntax tree.
+  def self.parse(source)
+    parser = Parser.new(source)
+    response = parser.parse
+    response unless parser.error?
+  end
+
+  # Parses the given file and returns the syntax tree.
+  def self.parse_file(filepath)
+    parse(read(filepath))
   end
 
   # Returns the source from the given filepath taking into account any potential
@@ -120,23 +132,15 @@ module SyntaxTree
     File.read(filepath, encoding: encoding)
   end
 
+  # This is a hook provided so that plugins can register themselves as the
+  # handler for a particular file type.
+  def self.register_handler(extension, handler)
+    HANDLERS[extension] = handler
+  end
+
   # Searches through the given source using the given pattern and yields each
   # node in the tree that matches the pattern to the given block.
   def self.search(source, query, &block)
     Search.new(Pattern.new(query).compile).scan(parse(source), &block)
-  end
-
-  # Indexes the given source code to return a list of all class, module, and
-  # method definitions. Used to quickly provide indexing capability for IDEs or
-  # documentation generation.
-  def self.index(source)
-    Index.index(source)
-  end
-
-  # Indexes the given file to return a list of all class, module, and method
-  # definitions. Used to quickly provide indexing capability for IDEs or
-  # documentation generation.
-  def self.index_file(filepath)
-    Index.index_file(filepath)
   end
 end
