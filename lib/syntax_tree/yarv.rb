@@ -1,5 +1,21 @@
 # frozen_string_literal: true
 
+require_relative "yarv/basic_block"
+require_relative "yarv/bf"
+require_relative "yarv/calldata"
+require_relative "yarv/compiler"
+require_relative "yarv/control_flow_graph"
+require_relative "yarv/data_flow_graph"
+require_relative "yarv/decompiler"
+require_relative "yarv/disassembler"
+require_relative "yarv/instruction_sequence"
+require_relative "yarv/instructions"
+require_relative "yarv/legacy"
+require_relative "yarv/local_table"
+require_relative "yarv/sea_of_nodes"
+require_relative "yarv/assembler"
+require_relative "yarv/vm"
+
 module SyntaxTree
   # This module provides an object representation of the YARV bytecode.
   module YARV

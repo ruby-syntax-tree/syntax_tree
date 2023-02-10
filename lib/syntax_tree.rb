@@ -9,7 +9,6 @@ require "stringio"
 
 require_relative "syntax_tree/formatter"
 require_relative "syntax_tree/node"
-require_relative "syntax_tree/dsl"
 require_relative "syntax_tree/version"
 
 require_relative "syntax_tree/basic_visitor"
@@ -23,29 +22,10 @@ require_relative "syntax_tree/visitor/pretty_print_visitor"
 require_relative "syntax_tree/visitor/environment"
 require_relative "syntax_tree/visitor/with_environment"
 
-require_relative "syntax_tree/mermaid"
 require_relative "syntax_tree/parser"
 require_relative "syntax_tree/pattern"
 require_relative "syntax_tree/search"
 require_relative "syntax_tree/index"
-
-require_relative "syntax_tree/yarv"
-require_relative "syntax_tree/yarv/basic_block"
-require_relative "syntax_tree/yarv/bf"
-require_relative "syntax_tree/yarv/calldata"
-require_relative "syntax_tree/yarv/compiler"
-require_relative "syntax_tree/yarv/control_flow_graph"
-require_relative "syntax_tree/yarv/data_flow_graph"
-require_relative "syntax_tree/yarv/decompiler"
-require_relative "syntax_tree/yarv/disassembler"
-require_relative "syntax_tree/yarv/instruction_sequence"
-require_relative "syntax_tree/yarv/instructions"
-require_relative "syntax_tree/yarv/legacy"
-require_relative "syntax_tree/yarv/local_table"
-require_relative "syntax_tree/yarv/sea_of_nodes"
-require_relative "syntax_tree/yarv/assembler"
-require_relative "syntax_tree/yarv/vm"
-
 require_relative "syntax_tree/translation"
 
 # Syntax Tree is a suite of tools built on top of the internal CRuby parser. It
@@ -53,6 +33,14 @@ require_relative "syntax_tree/translation"
 # tools necessary to inspect and manipulate that syntax tree. It can be used to
 # build formatters, linters, language servers, and more.
 module SyntaxTree
+  # Syntax Tree the library has many features that aren't always used by the
+  # CLI. Requiring those features takes time, so we autoload as many constants
+  # as possible in order to keep the CLI as fast as possible.
+
+  autoload :DSL, "syntax_tree/dsl"
+  autoload :Mermaid, "syntax_tree/mermaid"
+  autoload :YARV, "syntax_tree/yarv"
+
   # This holds references to objects that respond to both #parse and #format
   # so that we can use them in the CLI.
   HANDLERS = {}
