@@ -55,14 +55,18 @@ module SyntaxTree
         end
       end
 
-      # [Array[Local]] The local variables and arguments defined in this
+      # [Integer] a unique identifier for this environment
+      attr_reader :id
+
+      # [Hash[String, Local]] The local variables and arguments defined in this
       # environment
       attr_reader :locals
 
       # [Environment | nil] The parent environment
       attr_reader :parent
 
-      def initialize(parent = nil)
+      def initialize(id, parent = nil)
+        @id = id
         @locals = {}
         @parent = parent
       end
@@ -74,8 +78,14 @@ module SyntaxTree
       def add_local_definition(identifier, type)
         name = identifier.value.delete_suffix(":")
 
-        @locals[name] ||= Local.new(type)
-        @locals[name].add_definition(identifier.location)
+        local =
+          if type == :argument
+            locals[name] ||= Local.new(type)
+          else
+            resolve_local(name, type)
+          end
+
+        local.add_definition(identifier.location)
       end
 
       # Adding a local usage will either insert a new entry in the locals
@@ -84,28 +94,42 @@ module SyntaxTree
       # registered.
       def add_local_usage(identifier, type)
         name = identifier.value.delete_suffix(":")
-
-        @locals[name] ||= Local.new(type)
-        @locals[name].add_usage(identifier.location)
+        resolve_local(name, type).add_usage(identifier.location)
       end
 
       # Try to find the local given its name in this environment or any of its
       # parents.
       def find_local(name)
-        local = @locals[name]
-        return local unless local.nil?
+        locals[name] || parent&.find_local(name)
+      end
 
-        @parent&.find_local(name)
+      private
+
+      def resolve_local(name, type)
+        local = find_local(name)
+
+        unless local
+          local = Local.new(type)
+          locals[name] = local
+        end
+
+        local
       end
     end
 
-    def current_environment
-      @current_environment ||= Environment.new
+    def initialize(*args, **kwargs, &block)
+      super
+      @environment_id = 0
     end
 
-    def with_new_environment
+    def current_environment
+      @current_environment ||= Environment.new(next_environment_id)
+    end
+
+    def with_new_environment(parent_environment = nil)
       previous_environment = @current_environment
-      @current_environment = Environment.new(previous_environment)
+      @current_environment =
+        Environment.new(next_environment_id, parent_environment)
       yield
     ensure
       @current_environment = previous_environment
@@ -126,7 +150,7 @@ module SyntaxTree
     # invocation itself happens in the same environment.
     def visit_method_add_block(node)
       visit(node.call)
-      with_new_environment { visit(node.block) }
+      with_new_environment(current_environment) { visit(node.block) }
     end
 
     def visit_def(node)
@@ -212,6 +236,10 @@ module SyntaxTree
           current_environment.add_local_definition(param, :argument)
         end
       end
+    end
+
+    def next_environment_id
+      @environment_id += 1
     end
   end
 end
