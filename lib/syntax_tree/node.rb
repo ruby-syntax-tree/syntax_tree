@@ -135,19 +135,19 @@ module SyntaxTree
     end
 
     def pretty_print(q)
-      accept(Visitor::PrettyPrintVisitor.new(q))
+      accept(PrettyPrintVisitor.new(q))
     end
 
     def to_json(*opts)
-      accept(Visitor::JSONVisitor.new).to_json(*opts)
+      accept(JSONVisitor.new).to_json(*opts)
     end
 
     def to_mermaid
-      accept(Visitor::MermaidVisitor.new)
+      accept(MermaidVisitor.new)
     end
 
     def construct_keys
-      PrettierPrint.format(+"") { |q| accept(Visitor::MatchVisitor.new(q)) }
+      PrettierPrint.format(+"") { |q| accept(MatchVisitor.new(q)) }
     end
   end
 

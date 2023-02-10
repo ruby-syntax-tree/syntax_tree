@@ -1,39 +1,39 @@
 # frozen_string_literal: true
 
 module SyntaxTree
-  class Visitor
-    # This visitor walks through the tree and copies each node as it is being
-    # visited. This is useful for mutating the tree before it is formatted.
-    class MutationVisitor < BasicVisitor
-      attr_reader :mutations
+  # This visitor walks through the tree and copies each node as it is being
+  # visited. This is useful for mutating the tree before it is formatted.
+  class MutationVisitor < BasicVisitor
+    attr_reader :mutations
 
-      def initialize
-        @mutations = []
+    def initialize
+      @mutations = []
+    end
+
+    # Create a new mutation based on the given query that will mutate the node
+    # using the given block. The block should return a new node that will take
+    # the place of the given node in the tree. These blocks frequently make use
+    # of the `copy` method on nodes to create a new node with the same
+    # properties as the original node.
+    def mutate(query, &block)
+      mutations << [Pattern.new(query).compile, block]
+    end
+
+    # This is the base visit method for each node in the tree. It first creates
+    # a copy of the node using the visit_* methods defined below. Then it checks
+    # each mutation in sequence and calls it if it finds a match.
+    def visit(node)
+      return unless node
+      result = node.accept(self)
+
+      mutations.each do |(pattern, mutation)|
+        result = mutation.call(result) if pattern.call(result)
       end
 
-      # Create a new mutation based on the given query that will mutate the node
-      # using the given block. The block should return a new node that will take
-      # the place of the given node in the tree. These blocks frequently make
-      # use of the `copy` method on nodes to create a new node with the same
-      # properties as the original node.
-      def mutate(query, &block)
-        mutations << [Pattern.new(query).compile, block]
-      end
+      result
+    end
 
-      # This is the base visit method for each node in the tree. It first
-      # creates a copy of the node using the visit_* methods defined below. Then
-      # it checks each mutation in sequence and calls it if it finds a match.
-      def visit(node)
-        return unless node
-        result = node.accept(self)
-
-        mutations.each do |(pattern, mutation)|
-          result = mutation.call(result) if pattern.call(result)
-        end
-
-        result
-      end
-
+    visit_methods do
       # Visit a BEGINBlock node.
       def visit_BEGIN(node)
         node.copy(

@@ -208,38 +208,38 @@ module SyntaxTree
       end
 
       def to_mermaid
-        output = StringIO.new
-        output.puts("flowchart TD")
+        Mermaid.flowchart do |flowchart|
+          disasm = Disassembler::Squished.new
 
-        fmt = Disassembler::Mermaid.new
-        blocks.each do |block|
-          output.puts("  subgraph #{block.id}")
-          previous = nil
+          blocks.each do |block|
+            flowchart.subgraph(block.id) do
+              previous = nil
 
-          block.each_with_length do |insn, length|
-            node_id = "node_#{length}"
-            label = "%04d %s" % [length, insn.disasm(fmt)]
+              block.each_with_length do |insn, length|
+                node =
+                  flowchart.node(
+                    "node_#{length}",
+                    "%04d %s" % [length, insn.disasm(disasm)]
+                  )
 
-            output.puts("    #{node_id}(\"#{CGI.escapeHTML(label)}\")")
-            output.puts("    #{previous} --> #{node_id}") if previous
-
-            previous = node_id
+                flowchart.link(previous, node) if previous
+                previous = node
+              end
+            end
           end
 
-          output.puts("  end")
-        end
+          blocks.each do |block|
+            block.outgoing_blocks.each do |outgoing|
+              offset =
+                block.block_start + block.insns.sum(&:length) -
+                  block.insns.last.length
 
-        blocks.each do |block|
-          block.outgoing_blocks.each do |outgoing|
-            offset =
-              block.block_start + block.insns.sum(&:length) -
-                block.insns.last.length
-
-            output.puts("  node_#{offset} --> node_#{outgoing.block_start}")
+              from = flowchart.fetch("node_#{offset}")
+              to = flowchart.fetch("node_#{outgoing.block_start}")
+              flowchart.link(from, to)
+            end
           end
         end
-
-        output.string
       end
 
       # This method is used to verify that the control flow graph is well

@@ -1,55 +1,54 @@
 # frozen_string_literal: true
 
 module SyntaxTree
-  class Visitor
-    # This is the parent class of a lot of built-in visitors for Syntax Tree. It
-    # reflects visiting each of the fields on every node in turn. It itself does
-    # not do anything with these fields, it leaves that behavior up to the
-    # subclass to implement.
-    #
-    # In order to properly use this class, you will need to subclass it and
-    # implement #comments, #field, #list, #node, #pairs, and #text. Those are
-    # documented here.
-    #
-    # == comments(node)
-    #
-    # This accepts the node that is being visited and does something depending
-    # on the comments attached to the node.
-    #
-    # == field(name, value)
-    #
-    # This accepts the name of the field being visited as a string (like
-    # "value") and the actual value of that field. The value can be a subclass
-    # of Node or any other type that can be held within the tree.
-    #
-    # == list(name, values)
-    #
-    # This accepts the name of the field being visited as well as a list of
-    # values. This is used, for example, when visiting something like the body
-    # of a Statements node.
-    #
-    # == node(name, node)
-    #
-    # This is the parent serialization method for each node. It is called with
-    # the node itself, as well as the type of the node as a string. The type
-    # is an internally used value that usually resembles the name of the
-    # ripper event that generated the node. The method should yield to the
-    # given block which then calls through to visit each of the fields on the
-    # node.
-    #
-    # == text(name, value)
-    #
-    # This accepts the name of the field being visited as well as a string
-    # value representing the value of the field.
-    #
-    # == pairs(name, values)
-    #
-    # This accepts the name of the field being visited as well as a list of
-    # pairs that represent the value of the field. It is used only in a couple
-    # of circumstances, like when visiting the list of optional parameters
-    # defined on a method.
-    #
-    class FieldVisitor < BasicVisitor
+  # This is the parent class of a lot of built-in visitors for Syntax Tree. It
+  # reflects visiting each of the fields on every node in turn. It itself does
+  # not do anything with these fields, it leaves that behavior up to the
+  # subclass to implement.
+  #
+  # In order to properly use this class, you will need to subclass it and
+  # implement #comments, #field, #list, #node, #pairs, and #text. Those are
+  # documented here.
+  #
+  # == comments(node)
+  #
+  # This accepts the node that is being visited and does something depending on
+  # the comments attached to the node.
+  #
+  # == field(name, value)
+  #
+  # This accepts the name of the field being visited as a string (like "value")
+  # and the actual value of that field. The value can be a subclass of Node or
+  # any other type that can be held within the tree.
+  #
+  # == list(name, values)
+  #
+  # This accepts the name of the field being visited as well as a list of
+  # values. This is used, for example, when visiting something like the body of
+  # a Statements node.
+  #
+  # == node(name, node)
+  #
+  # This is the parent serialization method for each node. It is called with the
+  # node itself, as well as the type of the node as a string. The type is an
+  # internally used value that usually resembles the name of the ripper event
+  # that generated the node. The method should yield to the given block which
+  # then calls through to visit each of the fields on the node.
+  #
+  # == text(name, value)
+  #
+  # This accepts the name of the field being visited as well as a string value
+  # representing the value of the field.
+  #
+  # == pairs(name, values)
+  #
+  # This accepts the name of the field being visited as well as a list of pairs
+  # that represent the value of the field. It is used only in a couple of
+  # circumstances, like when visiting the list of optional parameters defined on
+  # a method.
+  #
+  class FieldVisitor < BasicVisitor
+    visit_methods do
       def visit_aref(node)
         node(node, "aref") do
           field("collection", node.collection)
@@ -1017,14 +1016,14 @@ module SyntaxTree
       def visit___end__(node)
         visit_token(node, "__end__")
       end
+    end
 
-      private
+    private
 
-      def visit_token(node, type)
-        node(node, type) do
-          field("value", node.value)
-          comments(node)
-        end
+    def visit_token(node, type)
+      node(node, type) do
+        field("value", node.value)
+        comments(node)
       end
     end
   end

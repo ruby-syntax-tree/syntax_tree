@@ -8,7 +8,7 @@ module SyntaxTree
     #
     # You use this as with any other visitor. First you parse code into a tree,
     # then you visit it with this compiler. Visiting the root node of the tree
-    # will return a SyntaxTree::Visitor::Compiler::InstructionSequence object.
+    # will return a SyntaxTree::YARV::Compiler::InstructionSequence object.
     # With that object you can call #to_a on it, which will return a serialized
     # form of the instruction sequence as an array. This array _should_ mirror
     # the array given by RubyVM::InstructionSequence#to_a.
@@ -124,76 +124,122 @@ module SyntaxTree
         rescue CompilationError
         end
 
-        def visit_array(node)
-          node.contents ? visit_all(node.contents.parts) : []
-        end
-
-        def visit_bare_assoc_hash(node)
-          node.assocs.to_h do |assoc|
-            # We can only convert regular key-value pairs. A double splat **
-            # operator means it has to be converted at run-time.
-            raise CompilationError unless assoc.is_a?(Assoc)
-            [visit(assoc.key), visit(assoc.value)]
+        visit_methods do
+          def visit_array(node)
+            node.contents ? visit_all(node.contents.parts) : []
           end
-        end
 
-        def visit_float(node)
-          node.value.to_f
-        end
-
-        alias visit_hash visit_bare_assoc_hash
-
-        def visit_imaginary(node)
-          node.value.to_c
-        end
-
-        def visit_int(node)
-          case (value = node.value)
-          when /^0b/
-            value[2..].to_i(2)
-          when /^0o/
-            value[2..].to_i(8)
-          when /^0d/
-            value[2..].to_i
-          when /^0x/
-            value[2..].to_i(16)
-          else
-            value.to_i
+          def visit_bare_assoc_hash(node)
+            node.assocs.to_h do |assoc|
+              # We can only convert regular key-value pairs. A double splat **
+              # operator means it has to be converted at run-time.
+              raise CompilationError unless assoc.is_a?(Assoc)
+              [visit(assoc.key), visit(assoc.value)]
+            end
           end
-        end
 
-        def visit_label(node)
-          node.value.chomp(":").to_sym
-        end
+          def visit_float(node)
+            node.value.to_f
+          end
 
-        def visit_mrhs(node)
-          visit_all(node.parts)
-        end
+          alias visit_hash visit_bare_assoc_hash
 
-        def visit_qsymbols(node)
-          node.elements.map { |element| visit(element).to_sym }
-        end
+          def visit_imaginary(node)
+            node.value.to_c
+          end
 
-        def visit_qwords(node)
-          visit_all(node.elements)
-        end
+          def visit_int(node)
+            case (value = node.value)
+            when /^0b/
+              value[2..].to_i(2)
+            when /^0o/
+              value[2..].to_i(8)
+            when /^0d/
+              value[2..].to_i
+            when /^0x/
+              value[2..].to_i(16)
+            else
+              value.to_i
+            end
+          end
 
-        def visit_range(node)
-          left, right = [visit(node.left), visit(node.right)]
-          node.operator.value === ".." ? left..right : left...right
-        end
+          def visit_label(node)
+            node.value.chomp(":").to_sym
+          end
 
-        def visit_rational(node)
-          node.value.to_r
-        end
+          def visit_mrhs(node)
+            visit_all(node.parts)
+          end
 
-        def visit_regexp_literal(node)
-          if node.parts.length == 1 && node.parts.first.is_a?(TStringContent)
-            Regexp.new(node.parts.first.value, visit_regexp_literal_flags(node))
-          else
-            # Any interpolation of expressions or variables will result in the
-            # regular expression being constructed at run-time.
-            raise CompilationError
+          def visit_qsymbols(node)
+            node.elements.map { |element| visit(element).to_sym }
+          end
+
+          def visit_qwords(node)
+            visit_all(node.elements)
+          end
+
+          def visit_range(node)
+            left, right = [visit(node.left), visit(node.right)]
+            node.operator.value === ".." ? left..right : left...right
+          end
+
+          def visit_rational(node)
+            node.value.to_r
+          end
+
+          def visit_regexp_literal(node)
+            if node.parts.length == 1 && node.parts.first.is_a?(TStringContent)
+              Regexp.new(
+                node.parts.first.value,
+                visit_regexp_literal_flags(node)
+              )
+            else
+              # Any interpolation of expressions or variables will result in the
+              # regular expression being constructed at run-time.
+              raise CompilationError
+            end
+          end
+
+          def visit_symbol_literal(node)
+            node.value.value.to_sym
+          end
+
+          def visit_symbols(node)
+            node.elements.map { |element| visit(element).to_sym }
+          end
+
+          def visit_tstring_content(node)
+            node.value
+          end
+
+          def visit_var_ref(node)
+            raise CompilationError unless node.value.is_a?(Kw)
+
+            case node.value.value
+            when "nil"
+              nil
+            when "true"
+              true
+            when "false"
+              false
+            else
+              raise CompilationError
+            end
+          end
+
+          def visit_word(node)
+            if node.parts.length == 1 && node.parts.first.is_a?(TStringContent)
+              node.parts.first.value
+            else
+              # Any interpolation of expressions or variables will result in the
+              # string being constructed at run-time.
+              raise CompilationError
+            end
+          end
+
+          def visit_words(node)
+            visit_all(node.elements)
           end
         end
 
@@ -217,47 +263,6 @@ module SyntaxTree
                   raise "Unknown regexp option: #{option}"
                 end
             end
-        end
-
-        def visit_symbol_literal(node)
-          node.value.value.to_sym
-        end
-
-        def visit_symbols(node)
-          node.elements.map { |element| visit(element).to_sym }
-        end
-
-        def visit_tstring_content(node)
-          node.value
-        end
-
-        def visit_var_ref(node)
-          raise CompilationError unless node.value.is_a?(Kw)
-
-          case node.value.value
-          when "nil"
-            nil
-          when "true"
-            true
-          when "false"
-            false
-          else
-            raise CompilationError
-          end
-        end
-
-        def visit_word(node)
-          if node.parts.length == 1 && node.parts.first.is_a?(TStringContent)
-            node.parts.first.value
-          else
-            # Any interpolation of expressions or variables will result in the
-            # string being constructed at run-time.
-            raise CompilationError
-          end
-        end
-
-        def visit_words(node)
-          visit_all(node.elements)
         end
 
         def visit_unsupported(_node)

@@ -27,7 +27,7 @@ module SyntaxTree
         end
 
         def label
-          "%04d %s" % [offset, insn.disasm(Disassembler::Mermaid.new)]
+          "%04d %s" % [offset, insn.disasm(Disassembler::Squished.new)]
         end
       end
 
@@ -466,53 +466,34 @@ module SyntaxTree
       end
 
       def to_mermaid
-        output = StringIO.new
-        output.puts("flowchart TD")
+        Mermaid.flowchart do |flowchart|
+          nodes.each do |node|
+            flowchart.node("node_#{node.id}", node.label, shape: :rounded)
+          end
 
-        nodes.each do |node|
-          escaped = "\"#{CGI.escapeHTML(node.label)}\""
-          output.puts("  node_#{node.id}(#{escaped})")
-        end
+          nodes.each do |producer|
+            producer.outputs.each do |consumer_edge|
+              label =
+                if !consumer_edge.label
+                  # No label.
+                elsif consumer_edge.to.is_a?(PhiNode)
+                  # Edges into phi nodes are labelled by the offset of the
+                  # instruction going into the merge.
+                  "%04d" % consumer_edge.label
+                else
+                  consumer_edge.label.to_s
+                end
 
-        link_counter = 0
-        nodes.each do |producer|
-          producer.outputs.each do |consumer_edge|
-            case consumer_edge.type
-            when :data
-              edge = "-->"
-              edge_style = "stroke:green;"
-            when :control
-              edge = "-->"
-              edge_style = "stroke:red;"
-            when :info
-              edge = "-.->"
-            else
-              raise
+              flowchart.link(
+                flowchart.fetch("node_#{producer.id}"),
+                flowchart.fetch("node_#{consumer_edge.to.id}"),
+                label,
+                type: consumer_edge.type == :info ? :dotted : :directed,
+                color: { data: :green, control: :red }[consumer_edge.type]
+              )
             end
-
-            label =
-              if !consumer_edge.label
-                ""
-              elsif consumer_edge.to.is_a?(PhiNode)
-                # Edges into phi nodes are labelled by the offset of the
-                # instruction going into the merge.
-                "|%04d| " % consumer_edge.label
-              else
-                "|#{consumer_edge.label}| "
-              end
-
-            to_id = "node_#{consumer_edge.to.id}"
-            output.puts("  node_#{producer.id} #{edge} #{label}#{to_id}")
-
-            if edge_style
-              output.puts("  linkStyle #{link_counter} #{edge_style}")
-            end
-
-            link_counter += 1
           end
         end
-
-        output.string
       end
 
       def verify

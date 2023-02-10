@@ -43,7 +43,7 @@ It is built with only standard library dependencies. It additionally ships with 
   - [visit_methods](#visit_methods)
   - [BasicVisitor](#basicvisitor)
   - [MutationVisitor](#mutationvisitor)
-  - [WithEnvironment](#withenvironment)
+  - [WithScope](#withscope)
 - [Language server](#language-server)
   - [textDocument/formatting](#textdocumentformatting)
   - [textDocument/inlayHint](#textdocumentinlayhint)
@@ -341,7 +341,7 @@ This function takes an input string containing Ruby code, parses it into its und
 
 ### SyntaxTree.mutation(&block)
 
-This function yields a new mutation visitor to the block, and then returns the initialized visitor. It's effectively a shortcut for creating a `SyntaxTree::Visitor::MutationVisitor` without having to remember the class name. For more information on that visitor, see the definition below.
+This function yields a new mutation visitor to the block, and then returns the initialized visitor. It's effectively a shortcut for creating a `SyntaxTree::MutationVisitor` without having to remember the class name. For more information on that visitor, see the definition below.
 
 ### SyntaxTree.search(source, query, &block)
 
@@ -558,7 +558,7 @@ The `MutationVisitor` is a visitor that can be used to mutate the tree. It works
 
 ```ruby
 # Create a new visitor
-visitor = SyntaxTree::Visitor::MutationVisitor.new
+visitor = SyntaxTree::MutationVisitor.new
 
 # Specify that it should mutate If nodes with assignments in their predicates
 visitor.mutate("IfNode[predicate: Assign | OpAssign]") do |node|
@@ -588,20 +588,18 @@ SyntaxTree::Formatter.format(source, program.accept(visitor))
 # => "if (a = 1)\nend\n"
 ```
 
-### WithEnvironment
+### WithScope
 
-The `WithEnvironment` module can be included in visitors to automatically keep track of local variables and arguments
-defined inside each environment. A `current_environment` accessor is made available to the request, allowing it to find
-all usages and definitions of a local.
+The `WithScope` module can be included in visitors to automatically keep track of local variables and arguments defined inside each scope. A `current_scope` accessor is made available to the request, allowing it to find all usages and definitions of a local.
 
 ```ruby
 class MyVisitor < Visitor
-  include WithEnvironment
+  prepend WithScope
 
   def visit_ident(node)
     # find_local will return a Local for any local variables or arguments
     # present in the current environment or nil if the identifier is not a local
-    local = current_environment.find_local(node)
+    local = current_scope.find_local(node)
 
     puts local.type # the type of the local (:variable or :argument)
     puts local.definitions # the array of locations where this local is defined
