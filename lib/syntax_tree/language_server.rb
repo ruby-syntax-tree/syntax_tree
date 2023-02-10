@@ -52,101 +52,103 @@ module SyntaxTree
         result
       end
 
-      # Adds parentheses around assignments contained within the default values
-      # of parameters. For example,
-      #
-      #     def foo(a = b = c)
-      #     end
-      #
-      # becomes
-      #
-      #     def foo(a = ₍b = c₎)
-      #     end
-      #
-      def visit_assign(node)
-        parentheses(node.location) if stack[-2].is_a?(Params)
-        super
-      end
-
-      # Adds parentheses around binary expressions to make it clear which
-      # subexpression will be evaluated first. For example,
-      #
-      #     a + b * c
-      #
-      # becomes
-      #
-      #     a + ₍b * c₎
-      #
-      def visit_binary(node)
-        case stack[-2]
-        when Assign, OpAssign
-          parentheses(node.location)
-        when Binary
-          parentheses(node.location) if stack[-2].operator != node.operator
+      visit_methods do
+        # Adds parentheses around assignments contained within the default
+        # values of parameters. For example,
+        #
+        #     def foo(a = b = c)
+        #     end
+        #
+        # becomes
+        #
+        #     def foo(a = ₍b = c₎)
+        #     end
+        #
+        def visit_assign(node)
+          parentheses(node.location) if stack[-2].is_a?(Params)
+          super
         end
 
-        super
-      end
+        # Adds parentheses around binary expressions to make it clear which
+        # subexpression will be evaluated first. For example,
+        #
+        #     a + b * c
+        #
+        # becomes
+        #
+        #     a + ₍b * c₎
+        #
+        def visit_binary(node)
+          case stack[-2]
+          when Assign, OpAssign
+            parentheses(node.location)
+          when Binary
+            parentheses(node.location) if stack[-2].operator != node.operator
+          end
 
-      # Adds parentheses around ternary operators contained within certain
-      # expressions where it could be confusing which subexpression will get
-      # evaluated first. For example,
-      #
-      #     a ? b : c ? d : e
-      #
-      # becomes
-      #
-      #     a ? b : ₍c ? d : e₎
-      #
-      def visit_if_op(node)
-        case stack[-2]
-        when Assign, Binary, IfOp, OpAssign
-          parentheses(node.location)
+          super
         end
 
-        super
-      end
+        # Adds parentheses around ternary operators contained within certain
+        # expressions where it could be confusing which subexpression will get
+        # evaluated first. For example,
+        #
+        #     a ? b : c ? d : e
+        #
+        # becomes
+        #
+        #     a ? b : ₍c ? d : e₎
+        #
+        def visit_if_op(node)
+          case stack[-2]
+          when Assign, Binary, IfOp, OpAssign
+            parentheses(node.location)
+          end
 
-      # Adds the implicitly rescued StandardError into a bare rescue clause. For
-      # example,
-      #
-      #     begin
-      #     rescue
-      #     end
-      #
-      # becomes
-      #
-      #     begin
-      #     rescue StandardError
-      #     end
-      #
-      def visit_rescue(node)
-        if node.exception.nil?
-          hints << Hint.new(
-            line: node.location.start_line - 1,
-            character: node.location.start_column + "rescue".length,
-            label: " StandardError"
-          )
+          super
         end
 
-        super
-      end
+        # Adds the implicitly rescued StandardError into a bare rescue clause.
+        # For example,
+        #
+        #     begin
+        #     rescue
+        #     end
+        #
+        # becomes
+        #
+        #     begin
+        #     rescue StandardError
+        #     end
+        #
+        def visit_rescue(node)
+          if node.exception.nil?
+            hints << Hint.new(
+              line: node.location.start_line - 1,
+              character: node.location.start_column + "rescue".length,
+              label: " StandardError"
+            )
+          end
 
-      # Adds parentheses around unary statements using the - operator that are
-      # contained within Binary nodes. For example,
-      #
-      #     -a + b
-      #
-      # becomes
-      #
-      #     ₍-a₎ + b
-      #
-      def visit_unary(node)
-        if stack[-2].is_a?(Binary) && (node.operator == "-")
-          parentheses(node.location)
+          super
         end
 
-        super
+        # Adds parentheses around unary statements using the - operator that are
+        # contained within Binary nodes. For example,
+        #
+        #     -a + b
+        #
+        # becomes
+        #
+        #     ₍-a₎ + b
+        #
+        def visit_unary(node)
+          if stack[-2].is_a?(Binary) && (node.operator == "-")
+            parentheses(node.location)
+          end
+
+          super
+        end
       end
 
       private

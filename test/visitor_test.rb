@@ -30,13 +30,15 @@ module SyntaxTree
         @visited_nodes = []
       end
 
-      visit_method def visit_class(node)
-        @visited_nodes << node.constant.constant.value
-        super
-      end
+      visit_methods do
+        def visit_class(node)
+          @visited_nodes << node.constant.constant.value
+          super
+        end
 
-      visit_method def visit_def(node)
-        @visited_nodes << node.name.value
+        def visit_def(node)
+          @visited_nodes << node.name.value
+        end
       end
     end
 

@@ -14,26 +14,28 @@ module SyntaxTree
         @arguments = {}
       end
 
-      def visit_ident(node)
-        local = current_environment.find_local(node.value)
-        return unless local
+      visit_methods do
+        def visit_ident(node)
+          local = current_environment.find_local(node.value)
+          return unless local
 
-        value = node.value.delete_suffix(":")
+          value = node.value.delete_suffix(":")
 
-        case local.type
-        when :argument
-          @arguments[value] = local
-        when :variable
-          @variables[value] = local
+          case local.type
+          when :argument
+            @arguments[value] = local
+          when :variable
+            @variables[value] = local
+          end
         end
-      end
 
-      def visit_label(node)
-        value = node.value.delete_suffix(":")
-        local = current_environment.find_local(value)
-        return unless local
+        def visit_label(node)
+          value = node.value.delete_suffix(":")
+          local = current_environment.find_local(value)
+          return unless local
 
-        @arguments[value] = node if local.type == :argument
+          @arguments[value] = node if local.type == :argument
+        end
       end
     end
 
@@ -625,13 +627,15 @@ module SyntaxTree
         @locals = []
       end
 
-      def visit_assign(node)
-        level = 0
-        environment = current_environment
-        level += 1 until (environment = environment.parent).nil?
+      visit_methods do
+        def visit_assign(node)
+          level = 0
+          environment = current_environment
+          level += 1 until (environment = environment.parent).nil?
 
-        locals << [node.target.value.value, level]
-        super
+          locals << [node.target.value.value, level]
+          super
+        end
       end
     end
 

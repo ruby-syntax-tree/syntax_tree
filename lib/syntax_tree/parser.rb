@@ -668,8 +668,10 @@ module SyntaxTree
         stack.pop
       end
 
-      def visit_var_ref(node)
-        node.pin(stack[-2], pins.shift)
+      visit_methods do
+        def visit_var_ref(node)
+          node.pin(stack[-2], pins.shift)
+        end
       end
 
       def self.visit(node, tokens)

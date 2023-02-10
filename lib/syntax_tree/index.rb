@@ -257,74 +257,76 @@ module SyntaxTree
           @statements = nil
         end
 
-        def visit_class(node)
-          name = visit(node.constant).to_sym
-          location =
-            Location.new(node.location.start_line, node.location.start_column)
+        visit_methods do
+          def visit_class(node)
+            name = visit(node.constant).to_sym
+            location =
+              Location.new(node.location.start_line, node.location.start_column)
 
-          results << ClassDefinition.new(
-            nesting.dup,
-            name,
-            location,
-            comments_for(node)
-          )
-
-          nesting << name
-          super
-          nesting.pop
-        end
-
-        def visit_const_ref(node)
-          node.constant.value
-        end
-
-        def visit_def(node)
-          name = node.name.value.to_sym
-          location =
-            Location.new(node.location.start_line, node.location.start_column)
-
-          results << if node.target.nil?
-            MethodDefinition.new(
+            results << ClassDefinition.new(
               nesting.dup,
               name,
               location,
               comments_for(node)
             )
-          else
-            SingletonMethodDefinition.new(
-              nesting.dup,
-              name,
-              location,
-              comments_for(node)
-            )
+
+            nesting << name
+            super
+            nesting.pop
           end
-        end
 
-        def visit_module(node)
-          name = visit(node.constant).to_sym
-          location =
-            Location.new(node.location.start_line, node.location.start_column)
+          def visit_const_ref(node)
+            node.constant.value
+          end
 
-          results << ModuleDefinition.new(
-            nesting.dup,
-            name,
-            location,
-            comments_for(node)
-          )
+          def visit_def(node)
+            name = node.name.value.to_sym
+            location =
+              Location.new(node.location.start_line, node.location.start_column)
 
-          nesting << name
-          super
-          nesting.pop
-        end
+            results << if node.target.nil?
+              MethodDefinition.new(
+                nesting.dup,
+                name,
+                location,
+                comments_for(node)
+              )
+            else
+              SingletonMethodDefinition.new(
+                nesting.dup,
+                name,
+                location,
+                comments_for(node)
+              )
+            end
+          end
 
-        def visit_program(node)
-          super
-          results
-        end
+          def visit_module(node)
+            name = visit(node.constant).to_sym
+            location =
+              Location.new(node.location.start_line, node.location.start_column)
 
-        def visit_statements(node)
-          @statements = node
-          super
+            results << ModuleDefinition.new(
+              nesting.dup,
+              name,
+              location,
+              comments_for(node)
+            )
+
+            nesting << name
+            super
+            nesting.pop
+          end
+
+          def visit_program(node)
+            super
+            results
+          end
+
+          def visit_statements(node)
+            @statements = node
+            super
+          end
         end
 
         private
