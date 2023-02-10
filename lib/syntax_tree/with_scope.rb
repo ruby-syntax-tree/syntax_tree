@@ -197,7 +197,13 @@ module SyntaxTree
       super
     end
 
-    alias visit_pinned_var_ref visit_var_field
+    # Visit for keeping track of local variable definitions
+    def visit_pinned_var_ref(node)
+      value = node.value
+      current_scope.add_local_usage(value, :variable) if value.is_a?(Ident)
+
+      super
+    end
 
     # Visits for keeping track of variable and argument usages
     def visit_var_ref(node)

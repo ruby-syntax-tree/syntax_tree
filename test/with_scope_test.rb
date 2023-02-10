@@ -109,7 +109,7 @@ module SyntaxTree
       RUBY
 
       assert_equal(2, collector.variables.length)
-      assert_variable(collector, "a", definitions: [2, 4], usages: [5])
+      assert_variable(collector, "a", definitions: [2], usages: [4, 5])
       assert_variable(collector, "rest", definitions: [4])
 
       # Rest is considered a vcall by the parser instead of a var_ref
