@@ -208,39 +208,38 @@ module SyntaxTree
       end
 
       def to_mermaid
-        flowchart = Mermaid::FlowChart.new
-        disasm = Disassembler::Mermaid.new
+        Mermaid.flowchart do |flowchart|
+          disasm = Disassembler::Squished.new
 
-        blocks.each do |block|
-          flowchart.subgraph(block.id) do
-            previous = nil
+          blocks.each do |block|
+            flowchart.subgraph(block.id) do
+              previous = nil
 
-            block.each_with_length do |insn, length|
-              node =
-                flowchart.node(
-                  "node_#{length}",
-                  "%04d %s" % [length, insn.disasm(disasm)]
-                )
+              block.each_with_length do |insn, length|
+                node =
+                  flowchart.node(
+                    "node_#{length}",
+                    "%04d %s" % [length, insn.disasm(disasm)]
+                  )
 
-              flowchart.link(previous, node) if previous
-              previous = node
+                flowchart.link(previous, node) if previous
+                previous = node
+              end
+            end
+          end
+
+          blocks.each do |block|
+            block.outgoing_blocks.each do |outgoing|
+              offset =
+                block.block_start + block.insns.sum(&:length) -
+                  block.insns.last.length
+
+              from = flowchart.fetch("node_#{offset}")
+              to = flowchart.fetch("node_#{outgoing.block_start}")
+              flowchart.link(from, to)
             end
           end
         end
-
-        blocks.each do |block|
-          block.outgoing_blocks.each do |outgoing|
-            offset =
-              block.block_start + block.insns.sum(&:length) -
-                block.insns.last.length
-
-            from = flowchart.fetch("node_#{offset}")
-            to = flowchart.fetch("node_#{outgoing.block_start}")
-            flowchart.link(from, to)
-          end
-        end
-
-        flowchart.render
       end
 
       # This method is used to verify that the control flow graph is well

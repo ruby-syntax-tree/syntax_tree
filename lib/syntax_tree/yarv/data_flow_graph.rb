@@ -125,55 +125,54 @@ module SyntaxTree
       end
 
       def to_mermaid
-        flowchart = Mermaid::FlowChart.new
-        disasm = Disassembler::Mermaid.new
+        Mermaid.flowchart do |flowchart|
+          disasm = Disassembler::Squished.new
 
-        blocks.each do |block|
-          block_flow = block_flows.fetch(block.id)
-          graph_name =
-            if block_flow.in.any?
-              "#{block.id} #{block_flows[block.id].in.join(", ")}"
-            else
-              block.id
-            end
-
-          flowchart.subgraph(graph_name) do
-            previous = nil
-
-            block.each_with_length do |insn, length|
-              node =
-                flowchart.node(
-                  "node_#{length}",
-                  "%04d %s" % [length, insn.disasm(disasm)],
-                  shape: :rounded
-                )
-
-              flowchart.link(previous, node, color: :red) if previous
-              insn_flows[length].in.each do |input|
-                if input.is_a?(LocalArgument)
-                  from = flowchart.fetch("node_#{input.length}")
-                  flowchart.link(from, node, color: :green)
-                end
+          blocks.each do |block|
+            block_flow = block_flows.fetch(block.id)
+            graph_name =
+              if block_flow.in.any?
+                "#{block.id} #{block_flows[block.id].in.join(", ")}"
+              else
+                block.id
               end
 
-              previous = node
+            flowchart.subgraph(graph_name) do
+              previous = nil
+
+              block.each_with_length do |insn, length|
+                node =
+                  flowchart.node(
+                    "node_#{length}",
+                    "%04d %s" % [length, insn.disasm(disasm)],
+                    shape: :rounded
+                  )
+
+                flowchart.link(previous, node, color: :red) if previous
+                insn_flows[length].in.each do |input|
+                  if input.is_a?(LocalArgument)
+                    from = flowchart.fetch("node_#{input.length}")
+                    flowchart.link(from, node, color: :green)
+                  end
+                end
+
+                previous = node
+              end
+            end
+          end
+
+          blocks.each do |block|
+            block.outgoing_blocks.each do |outgoing|
+              offset =
+                block.block_start + block.insns.sum(&:length) -
+                  block.insns.last.length
+
+              from = flowchart.fetch("node_#{offset}")
+              to = flowchart.fetch("node_#{outgoing.block_start}")
+              flowchart.link(from, to, color: :red)
             end
           end
         end
-
-        blocks.each do |block|
-          block.outgoing_blocks.each do |outgoing|
-            offset =
-              block.block_start + block.insns.sum(&:length) -
-                block.insns.last.length
-
-            from = flowchart.fetch("node_#{offset}")
-            to = flowchart.fetch("node_#{outgoing.block_start}")
-            flowchart.link(from, to, color: :red)
-          end
-        end
-
-        flowchart.render
       end
 
       # Verify that we constructed the data flow graph correctly.

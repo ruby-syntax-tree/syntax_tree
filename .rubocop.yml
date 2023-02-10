@@ -117,6 +117,9 @@ Style/FormatStringToken:
 Style/GuardClause:
   Enabled: false
 
+Style/HashLikeCase:
+  Enabled: false
+
 Style/IdenticalConditionalBranches:
   Enabled: false
 

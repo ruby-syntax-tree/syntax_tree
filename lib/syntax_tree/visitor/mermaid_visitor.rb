@@ -7,7 +7,7 @@ module SyntaxTree
       attr_reader :flowchart, :target
 
       def initialize
-        @flowchart = Mermaid::FlowChart.new
+        @flowchart = Mermaid.flowchart
         @target = nil
       end
 
@@ -29,7 +29,12 @@ module SyntaxTree
         when Node
           flowchart.link(target, visit(value), name)
         else
-          to = flowchart.node("#{target.id}_#{name}", value.inspect, shape: :stadium)
+          to =
+            flowchart.node(
+              "#{target.id}_#{name}",
+              value.inspect,
+              shape: :stadium
+            )
           flowchart.link(target, to, name)
         end
       end
@@ -54,7 +59,7 @@ module SyntaxTree
 
       def pairs(name, values)
         values.each_with_index do |(key, value), index|
-          to = flowchart.node("#{target.id}_#{name}_#{index}", " ", shape: :circle)
+          to = flowchart.node("#{target.id}_#{name}_#{index}", shape: :circle)
 
           flowchart.link(target, to, "#{name}[#{index}]")
           flowchart.link(to, visit(key), "[0]")

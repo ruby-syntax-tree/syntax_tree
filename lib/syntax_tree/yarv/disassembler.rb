@@ -4,9 +4,9 @@ module SyntaxTree
   module YARV
     class Disassembler
       # This class is another object that handles disassembling a YARV
-      # instruction sequence but it does so in order to provide a label for a
-      # mermaid diagram.
-      class Mermaid
+      # instruction sequence but it renders it without any of the extra spacing
+      # or alignment.
+      class Squished
         def calldata(value)
           value.inspect
         end
