@@ -29,7 +29,7 @@ module SyntaxTree
         when Node
           flowchart.edge(target, visit(value), name)
         else
-          to = flowchart.node("#{target.id}_#{name}", value.inspect, :stadium)
+          to = flowchart.node("#{target.id}_#{name}", value.inspect, shape: :stadium)
           flowchart.edge(target, to, name)
         end
       end
@@ -54,7 +54,7 @@ module SyntaxTree
 
       def pairs(name, values)
         values.each_with_index do |(key, value), index|
-          to = flowchart.node("#{target.id}_#{name}_#{index}", " ", :circle)
+          to = flowchart.node("#{target.id}_#{name}_#{index}", " ", shape: :circle)
 
           flowchart.edge(target, to, "#{name}[#{index}]")
           flowchart.edge(to, visit(key), "[0]")

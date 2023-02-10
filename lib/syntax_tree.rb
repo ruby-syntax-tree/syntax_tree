@@ -23,6 +23,7 @@ require_relative "syntax_tree/visitor/pretty_print_visitor"
 require_relative "syntax_tree/visitor/environment"
 require_relative "syntax_tree/visitor/with_environment"
 
+require_relative "syntax_tree/mermaid"
 require_relative "syntax_tree/parser"
 require_relative "syntax_tree/pattern"
 require_relative "syntax_tree/search"

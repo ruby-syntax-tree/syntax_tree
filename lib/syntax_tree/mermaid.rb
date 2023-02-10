@@ -6,7 +6,7 @@ module SyntaxTree
   # This module is responsible for rendering mermaid flow charts.
   module Mermaid
     class Node
-      SHAPES = %i[circle rectangle stadium].freeze
+      SHAPES = %i[circle rectangle rounded stadium].freeze
 
       attr_reader :id, :label, :shape
 
@@ -19,17 +19,23 @@ module SyntaxTree
       end
 
       def render
-        left_bound, right_bound =
-          case shape
-          when :circle
-            ["((", "))"]
-          when :rectangle
-            ["[", "]"]
-          when :stadium
-            ["([", "])"]
-          end
+        left_bound, right_bound = bounds
+        "#{id}#{left_bound}\"#{CGI.escapeHTML(label)}\"#{right_bound}"
+      end
 
-        "  #{id}#{left_bound}\"#{CGI.escapeHTML(label)}\"#{right_bound}"
+      private
+
+      def bounds
+        case shape
+        when :circle
+          ["((", "))"]
+        when :rectangle
+          ["[", "]"]
+        when :rounded
+          ["(", ")"]
+        when :stadium
+          ["([", "])"]
+        end
       end
     end
 
@@ -50,34 +56,57 @@ module SyntaxTree
       def render
         case type
         when :directed
-          "  #{from.id} -- \"#{CGI.escapeHTML(label)}\" --> #{to.id}"
+          if label
+            "#{from.id} -- \"#{CGI.escapeHTML(label)}\" --> #{to.id}"
+          else
+            "#{from.id} --> #{to.id}"
+          end
         end
       end
     end
 
     class FlowChart
-      attr_reader :nodes, :edges
+      attr_reader :output, :prefix, :nodes
 
       def initialize
+        @output = StringIO.new
+        @output.puts("flowchart TD")
+        @prefix = "  "
         @nodes = {}
-        @edges = []
       end
 
-      def edge(from, to, label, type = :directed)
-        edges << Edge.new(from, to, label, type)
+      def edge(from, to, label = nil, type: :directed)
+        edge = Edge.new(from, to, label, type)
+        output.puts("#{prefix}#{edge.render}")
       end
 
-      def node(id, label, shape = :rectangle)
-        nodes[id] = Node.new(id, label, shape)
+      def fetch(id)
+        nodes.fetch(id)
+      end
+
+      def node(id, label, shape: :rectangle)
+        node = Node.new(id, label, shape)
+        nodes[id] = node
+
+        output.puts("#{prefix}#{nodes[id].render}")
+        node
+      end
+
+      def subgraph(id)
+        output.puts("#{prefix}subgraph #{id}")
+
+        previous = prefix
+        @prefix = "#{prefix}  "
+
+        begin
+          yield
+        ensure
+          @prefix = previous
+          output.puts("#{prefix}end")
+        end
       end
 
       def render
-        output = StringIO.new
-        output.puts("flowchart TD")
-
-        nodes.each_value { |node| output.puts(node.render) }
-        edges.each { |edge| output.puts(edge.render) }
-
         output.string
       end
     end

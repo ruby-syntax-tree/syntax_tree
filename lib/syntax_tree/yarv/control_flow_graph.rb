@@ -208,25 +208,24 @@ module SyntaxTree
       end
 
       def to_mermaid
-        output = StringIO.new
-        output.puts("flowchart TD")
+        flowchart = Mermaid::FlowChart.new
+        disasm = Disassembler::Mermaid.new
 
-        fmt = Disassembler::Mermaid.new
         blocks.each do |block|
-          output.puts("  subgraph #{block.id}")
-          previous = nil
+          flowchart.subgraph(block.id) do
+            previous = nil
 
-          block.each_with_length do |insn, length|
-            node_id = "node_#{length}"
-            label = "%04d %s" % [length, insn.disasm(fmt)]
+            block.each_with_length do |insn, length|
+              node =
+                flowchart.node(
+                  "node_#{length}",
+                  "%04d %s" % [length, insn.disasm(disasm)]
+                )
 
-            output.puts("    #{node_id}(\"#{CGI.escapeHTML(label)}\")")
-            output.puts("    #{previous} --> #{node_id}") if previous
-
-            previous = node_id
+              flowchart.edge(previous, node) if previous
+              previous = node
+            end
           end
-
-          output.puts("  end")
         end
 
         blocks.each do |block|
@@ -235,11 +234,13 @@ module SyntaxTree
               block.block_start + block.insns.sum(&:length) -
                 block.insns.last.length
 
-            output.puts("  node_#{offset} --> node_#{outgoing.block_start}")
+            from = flowchart.fetch("node_#{offset}")
+            to = flowchart.fetch("node_#{outgoing.block_start}")
+            flowchart.edge(from, to)
           end
         end
 
-        output.string
+        flowchart.render
       end
 
       # This method is used to verify that the control flow graph is well
