@@ -6,6 +6,68 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 
 ## [Unreleased]
 
+## [6.0.0] - 2023-02-10
+
+### Added
+
+- `SyntaxTree::BasicVisitor::visit_methods` has been added to allow you to check multiple visit methods inside of a block. There _was_ a method called `visit_methods` previously, but it was undocumented because it was meant as a private API. That method has been renamed to `valid_visit_methods`.
+- `rake sorbet:rbi` has been added as a task within the repository to generate an RBI file corresponding to the nodes in the tree. This can be used to help aid consumers of Syntax Tree that are using Sorbet.
+- `SyntaxTree::Reflection` has been added to allow you to get information about the nodes in the tree. It is not required by default, since it takes a small amount of time to parse `node.rb` and get all of the information.
+- `SyntaxTree::Node#to_mermaid` has been added to allow you to generate a Mermaid diagram of the node and its children. This is useful for debugging and understanding the structure of the tree.
+- `SyntaxTree::Translation` has been added as an experimental API to transform the Syntax Tree syntax tree into the syntax trees represented by the whitequark/parser and rubocop/rubocop-ast gems.
+  - `SyntaxTree::Translation.to_parser(node, buffer)` will return a `Parser::AST::Node` object.
+  - `SyntaxTree::Translation.to_rubocop_ast(node, buffer)` will return a `RuboCop::AST::Node` object.
+- `SyntaxTree::index` and `SyntaxTree::index_file` have been added to allow you to get a list of all of the classes, modules, and methods defined in a given source string or file.
+- Various convenience methods have been added:
+  - `SyntaxTree::format_file` - which calls format with the result of reading the file
+  - `SyntaxTree::format_node` - which formats the node directly
+  - `SyntaxTree::parse_file` - which calls parse with the result of reading the file
+  - `SyntaxTree::search_file` - which calls search with the result of reading the file
+  - `SyntaxTree::Node#start_char` - which is the same as calling `node.location.start_char`
+  - `SyntaxTree::Node#end_char` - which is the same as calling `node.location.end_char`
+- `SyntaxTree::Assoc` nodes can now be formatted on their own without a parent hash node.
+- `SyntaxTree::BlockVar#arg0?` has been added to check if a single required block parameter is present and would potentially be expanded.
+- More experimental APIs have been added to the `SyntaxTree::YARV` module, including:
+  - `SyntaxTree::YARV::ControlFlowGraph`
+  - `SyntaxTree::YARV::DataFlowGraph`
+  - `SyntaxTree::YARV::SeaOfNodes`
+
+### Changed
+
+#### Major changes
+
+- *BREAKING* Updates to `WithEnvironment`:
+  - The `WithEnvironment` module has been renamed to `WithScope`.
+  - The `current_environment` method has been renamed to `current_scope`.
+  - The `with_current_environment` method has been removed.
+  - Previously scopes were always able to look up the tree, as in: `a = 1; def foo; a = 2; end` would see only a single `a` variable. That has been corrected.
+  - Previously accessing variables from inside of blocks that were not shadowed would mark them as being local to the block only. This has been correct.
+- *BREAKING* Lots of constants moved out of `SyntaxTree::Visitor` to just `SyntaxTree`:
+  * `SyntaxTree::Visitor::FieldVisitor` is now `SyntaxTree::FieldVisitor`
+  * `SyntaxTree::Visitor::JSONVisitor` is now `SyntaxTree::JSONVisitor`
+  * `SyntaxTree::Visitor::MatchVisitor` is now `SyntaxTree::MatchVisitor`
+  * `SyntaxTree::Visitor::MutationVisitor` is now `SyntaxTree::MutationVisitor`
+  * `SyntaxTree::Visitor::PrettyPrintVisitor` is now `SyntaxTree::PrettyPrintVisitor`
+- *BREAKING* Lots of constants are now autoloaded instead of required by default. This is only particularly relevant if you are in a forking environment and want to preload constants before forking for better memory usage with copy-on-write.
+- *BREAKING* The `SyntaxTree::Statements#initialize` method no longer accepts a parser as the first argument. It now mirrors the other nodes in that it accepts its children and location. As a result, Syntax Tree nodes are now marshalable (and therefore can be sent over DRb). Previously the `Statements` node was not able to be marshaled because it held a reference to the parser.
+
+#### Minor changes
+
+- Many places where embedded documents (`=begin` to `=end`) were being treated as real comments have been fixed for formatting.
+- Dynamic symbols in keyword pattern matching now have better formatting.
+- Endless method definitions used to have a `SyntaxTree::BodyStmt` node that had any kind of node as its `statements` field. That has been corrected to be more consistent such that now going from `def_node.bodystmt.statements` always returns a `SyntaxTree::Statements` node, which is more consistent.
+- We no longer assume that `fiddle` is able to be required, and only require it when it is actually needed.
+
+#### Tiny changes
+
+- Empty parameter nodes within blocks now have more accurate location information.
+- Pinned variables have more correct location information now. (Previously the location was just around the variable itself, but it now includes the pin.)
+- Array patterns in pattern matching now have more accurate location information when they are using parentheses with a constant present.
+- Find patterns in pattern matching now have more correct location information for their `left` and `right` fields.
+- Lots of nodes have more correct types in the comments on their attributes.
+- The expressions `break foo.bar :baz do |qux| qux end` and `next fun foo do end` now correctly parses as a control-flow statement with a method call that has a block attached, as opposed to a control-flow statement with a block attached.
+- The expression `self::a, b = 1, 2` would previously yield a `SyntaxTree::ConstPathField` node for the first element of the left-hand-side of the multiple assignment. Semantically this is incorrect, and we have fixed this to now be a `SyntaxTree::Field` node instead.
+
 ## [5.3.0] - 2023-01-26
 
 ### Added
@@ -497,7 +559,8 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 
 - 🎉 Initial release! 🎉
 
-[unreleased]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v5.3.0...HEAD
+[unreleased]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v6.0.0...HEAD
+[6.0.0]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v5.3.0...v6.0.0
 [5.3.0]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v5.2.0...v5.3.0
 [5.2.0]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v5.1.0...v5.2.0
 [5.1.0]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v5.0.1...v5.1.0
