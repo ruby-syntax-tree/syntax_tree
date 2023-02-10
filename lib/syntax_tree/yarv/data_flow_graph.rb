@@ -125,11 +125,8 @@ module SyntaxTree
       end
 
       def to_mermaid
-        output = StringIO.new
-        output.puts("flowchart TD")
-
-        fmt = Disassembler::Mermaid.new
-        links = []
+        flowchart = Mermaid::FlowChart.new
+        disasm = Disassembler::Mermaid.new
 
         blocks.each do |block|
           block_flow = block_flows.fetch(block.id)
@@ -140,31 +137,28 @@ module SyntaxTree
               block.id
             end
 
-          output.puts("  subgraph \"#{CGI.escapeHTML(graph_name)}\"")
-          previous = nil
+          flowchart.subgraph(graph_name) do
+            previous = nil
 
-          block.each_with_length do |insn, length|
-            node_id = "node_#{length}"
-            label = "%04d %s" % [length, insn.disasm(fmt)]
+            block.each_with_length do |insn, length|
+              node =
+                flowchart.node(
+                  "node_#{length}",
+                  "%04d %s" % [length, insn.disasm(disasm)],
+                  shape: :rounded
+                )
 
-            output.puts("    #{node_id}(\"#{CGI.escapeHTML(label)}\")")
-
-            if previous
-              output.puts("    #{previous} --> #{node_id}")
-              links << "red"
-            end
-
-            insn_flows[length].in.each do |input|
-              if input.is_a?(LocalArgument)
-                output.puts("    node_#{input.length} --> #{node_id}")
-                links << "green"
+              flowchart.link(previous, node, color: :red) if previous
+              insn_flows[length].in.each do |input|
+                if input.is_a?(LocalArgument)
+                  from = flowchart.fetch("node_#{input.length}")
+                  flowchart.link(from, node, color: :green)
+                end
               end
+
+              previous = node
             end
-
-            previous = node_id
           end
-
-          output.puts("  end")
         end
 
         blocks.each do |block|
@@ -173,16 +167,13 @@ module SyntaxTree
               block.block_start + block.insns.sum(&:length) -
                 block.insns.last.length
 
-            output.puts("  node_#{offset} --> node_#{outgoing.block_start}")
-            links << "red"
+            from = flowchart.fetch("node_#{offset}")
+            to = flowchart.fetch("node_#{outgoing.block_start}")
+            flowchart.link(from, to, color: :red)
           end
         end
 
-        links.each_with_index do |color, index|
-          output.puts("  linkStyle #{index} stroke:#{color}")
-        end
-
-        output.string
+        flowchart.render
       end
 
       # Verify that we constructed the data flow graph correctly.

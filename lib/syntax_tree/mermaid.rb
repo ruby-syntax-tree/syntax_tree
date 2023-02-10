@@ -5,6 +5,39 @@ require "cgi"
 module SyntaxTree
   # This module is responsible for rendering mermaid flow charts.
   module Mermaid
+    def self.escape(label)
+      "\"#{CGI.escapeHTML(label)}\""
+    end
+
+    class Link
+      TYPES = %i[directed].freeze
+      COLORS = %i[green red].freeze
+
+      attr_reader :from, :to, :label, :type, :color
+
+      def initialize(from, to, label, type, color)
+        raise if !TYPES.include?(type)
+        raise if color && !COLORS.include?(color)
+
+        @from = from
+        @to = to
+        @label = label
+        @type = type
+        @color = color
+      end
+
+      def render
+        case type
+        when :directed
+          if label
+            "#{from.id} -- #{Mermaid.escape(label)} --> #{to.id}"
+          else
+            "#{from.id} --> #{to.id}"
+          end
+        end
+      end
+    end
+
     class Node
       SHAPES = %i[circle rectangle rounded stadium].freeze
 
@@ -20,7 +53,7 @@ module SyntaxTree
 
       def render
         left_bound, right_bound = bounds
-        "#{id}#{left_bound}\"#{CGI.escapeHTML(label)}\"#{right_bound}"
+        "#{id}#{left_bound}#{Mermaid.escape(label)}#{right_bound}"
       end
 
       private
@@ -39,49 +72,28 @@ module SyntaxTree
       end
     end
 
-    class Edge
-      TYPES = %i[directed].freeze
-
-      attr_reader :from, :to, :label, :type
-
-      def initialize(from, to, label, type)
-        raise unless TYPES.include?(type)
-
-        @from = from
-        @to = to
-        @label = label
-        @type = type
-      end
-
-      def render
-        case type
-        when :directed
-          if label
-            "#{from.id} -- \"#{CGI.escapeHTML(label)}\" --> #{to.id}"
-          else
-            "#{from.id} --> #{to.id}"
-          end
-        end
-      end
-    end
-
     class FlowChart
-      attr_reader :output, :prefix, :nodes
+      attr_reader :output, :prefix, :nodes, :links
 
       def initialize
         @output = StringIO.new
         @output.puts("flowchart TD")
         @prefix = "  "
-        @nodes = {}
-      end
 
-      def edge(from, to, label = nil, type: :directed)
-        edge = Edge.new(from, to, label, type)
-        output.puts("#{prefix}#{edge.render}")
+        @nodes = {}
+        @links = []
       end
 
       def fetch(id)
         nodes.fetch(id)
+      end
+
+      def link(from, to, label = nil, type: :directed, color: nil)
+        link = Link.new(from, to, label, type, color)
+        links << link
+
+        output.puts("#{prefix}#{link.render}")
+        link
       end
 
       def node(id, label, shape: :rectangle)
@@ -92,8 +104,8 @@ module SyntaxTree
         node
       end
 
-      def subgraph(id)
-        output.puts("#{prefix}subgraph #{id}")
+      def subgraph(label)
+        output.puts("#{prefix}subgraph #{Mermaid.escape(label)}")
 
         previous = prefix
         @prefix = "#{prefix}  "
@@ -107,6 +119,12 @@ module SyntaxTree
       end
 
       def render
+        links.each_with_index do |link, index|
+          if link.color
+            output.puts("#{prefix}linkStyle #{index} stroke:#{link.color}")
+          end
+        end
+
         output.string
       end
     end

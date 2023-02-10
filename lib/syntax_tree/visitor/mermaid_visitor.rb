@@ -27,10 +27,10 @@ module SyntaxTree
         when nil
           # skip
         when Node
-          flowchart.edge(target, visit(value), name)
+          flowchart.link(target, visit(value), name)
         else
           to = flowchart.node("#{target.id}_#{name}", value.inspect, shape: :stadium)
-          flowchart.edge(target, to, name)
+          flowchart.link(target, to, name)
         end
       end
 
@@ -56,9 +56,9 @@ module SyntaxTree
         values.each_with_index do |(key, value), index|
           to = flowchart.node("#{target.id}_#{name}_#{index}", " ", shape: :circle)
 
-          flowchart.edge(target, to, "#{name}[#{index}]")
-          flowchart.edge(to, visit(key), "[0]")
-          flowchart.edge(to, visit(value), "[1]") if value
+          flowchart.link(target, to, "#{name}[#{index}]")
+          flowchart.link(to, visit(key), "[0]")
+          flowchart.link(to, visit(value), "[1]") if value
         end
       end
 

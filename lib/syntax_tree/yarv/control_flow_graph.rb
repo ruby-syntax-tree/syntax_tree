@@ -222,7 +222,7 @@ module SyntaxTree
                   "%04d %s" % [length, insn.disasm(disasm)]
                 )
 
-              flowchart.edge(previous, node) if previous
+              flowchart.link(previous, node) if previous
               previous = node
             end
           end
@@ -236,7 +236,7 @@ module SyntaxTree
 
             from = flowchart.fetch("node_#{offset}")
             to = flowchart.fetch("node_#{outgoing.block_start}")
-            flowchart.edge(from, to)
+            flowchart.link(from, to)
           end
         end
 
