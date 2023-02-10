@@ -29,11 +29,7 @@ module SyntaxTree
         flowchart.link(target, visit(value), name)
       else
         to =
-          flowchart.node(
-            "#{target.id}_#{name}",
-            value.inspect,
-            shape: :stadium
-          )
+          flowchart.node("#{target.id}_#{name}", value.inspect, shape: :stadium)
         flowchart.link(target, to, name)
       end
     end

@@ -35,10 +35,7 @@ module SyntaxTree
 
     # Visit a BEGINBlock node.
     def visit_BEGIN(node)
-      node.copy(
-        lbrace: visit(node.lbrace),
-        statements: visit(node.statements)
-      )
+      node.copy(lbrace: visit(node.lbrace), statements: visit(node.statements))
     end
 
     # Visit a CHAR node.
@@ -48,10 +45,7 @@ module SyntaxTree
 
     # Visit a ENDBlock node.
     def visit_END(node)
-      node.copy(
-        lbrace: visit(node.lbrace),
-        statements: visit(node.statements)
-      )
+      node.copy(lbrace: visit(node.lbrace), statements: visit(node.statements))
     end
 
     # Visit a EndContent node.
@@ -101,10 +95,7 @@ module SyntaxTree
 
     # Visit a ArrayLiteral node.
     def visit_array(node)
-      node.copy(
-        lbracket: visit(node.lbracket),
-        contents: visit(node.contents)
-      )
+      node.copy(lbracket: visit(node.lbracket), contents: visit(node.contents))
     end
 
     # Visit a AryPtn node.
@@ -493,10 +484,7 @@ module SyntaxTree
 
     # Visit a Lambda node.
     def visit_lambda(node)
-      node.copy(
-        params: visit(node.params),
-        statements: visit(node.statements)
-      )
+      node.copy(params: visit(node.params), statements: visit(node.statements))
     end
 
     # Visit a LambdaVar node.
@@ -541,10 +529,7 @@ module SyntaxTree
 
     # Visit a ModuleDeclaration node.
     def visit_module(node)
-      node.copy(
-        constant: visit(node.constant),
-        bodystmt: visit(node.bodystmt)
-      )
+      node.copy(constant: visit(node.constant), bodystmt: visit(node.bodystmt))
     end
 
     # Visit a MRHS node.

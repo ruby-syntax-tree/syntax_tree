@@ -61,8 +61,35 @@ module SyntaxTree
     base_indentation = DEFAULT_INDENTATION,
     options: Formatter::Options.new
   )
+    format_node(
+      source,
+      parse(source),
+      maxwidth,
+      base_indentation,
+      options: options
+    )
+  end
+
+  # Parses the given file and returns the formatted source.
+  def self.format_file(
+    filepath,
+    maxwidth = DEFAULT_PRINT_WIDTH,
+    base_indentation = DEFAULT_INDENTATION,
+    options: Formatter::Options.new
+  )
+    format(read(filepath), maxwidth, base_indentation, options: options)
+  end
+
+  # Accepts a node in the tree and returns the formatted source.
+  def self.format_node(
+    source,
+    node,
+    maxwidth = DEFAULT_PRINT_WIDTH,
+    base_indentation = DEFAULT_INDENTATION,
+    options: Formatter::Options.new
+  )
     formatter = Formatter.new(source, [], maxwidth, options: options)
-    parse(source).format(formatter)
+    node.format(formatter)
 
     formatter.flush(base_indentation)
     formatter.output.join
@@ -129,5 +156,11 @@ module SyntaxTree
     program = parse(source)
 
     Search.new(pattern).scan(program, &block)
+  end
+
+  # Searches through the given file using the given pattern and yields each
+  # node in the tree that matches the pattern to the given block.
+  def self.search_file(filepath, query, &block)
+    search(read(filepath), query, &block)
   end
 end

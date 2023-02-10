@@ -5,22 +5,25 @@ module SyntaxTree
   # from Visitor. The module overrides a few visit methods to automatically keep
   # track of local variables and arguments defined in the current environment.
   # Example usage:
-  #   class MyVisitor < Visitor
-  #     include WithEnvironment
   #
-  #     def visit_ident(node)
-  #       # Check if we're visiting an identifier for an argument, a local
-  #       variable or something else
-  #       local = current_environment.find_local(node)
+  #     class MyVisitor < Visitor
+  #       include WithEnvironment
   #
-  #       if local.type == :argument
-  #         # handle identifiers for arguments
-  #       elsif local.type == :variable
-  #         # handle identifiers for variables
-  #       else
-  #         # handle other identifiers, such as method names
+  #       def visit_ident(node)
+  #         # Check if we're visiting an identifier for an argument, a local
+  #         # variable or something else
+  #         local = current_environment.find_local(node)
+  #
+  #         if local.type == :argument
+  #           # handle identifiers for arguments
+  #         elsif local.type == :variable
+  #           # handle identifiers for variables
+  #         else
+  #           # handle other identifiers, such as method names
+  #         end
   #       end
-  #   end
+  #     end
+  #
   module WithEnvironment
     # The environment class is used to keep track of local variables and
     # arguments inside a particular scope
@@ -37,19 +40,16 @@ module SyntaxTree
         # [Array[Location]] The locations of all usages of this local
         attr_reader :usages
 
-        #   initialize: (Symbol type) -> void
         def initialize(type)
           @type = type
           @definitions = []
           @usages = []
         end
 
-        #   add_definition: (Location location) -> void
         def add_definition(location)
           @definitions << location
         end
 
-        #   add_usage: (Location location) -> void
         def add_usage(location)
           @usages << location
         end
@@ -62,17 +62,15 @@ module SyntaxTree
       # [Environment | nil] The parent environment
       attr_reader :parent
 
-      #   initialize: (Environment | nil parent) -> void
       def initialize(parent = nil)
         @locals = {}
         @parent = parent
       end
 
       # Adding a local definition will either insert a new entry in the locals
-      # hash or append a new definition location to an existing local. Notice that
-      # it's not possible to change the type of a local after it has been
-      # registered
-      #   add_local_definition: (Ident | Label identifier, Symbol type) -> void
+      # hash or append a new definition location to an existing local. Notice
+      # that it's not possible to change the type of a local after it has been
+      # registered.
       def add_local_definition(identifier, type)
         name = identifier.value.delete_suffix(":")
 
@@ -83,8 +81,7 @@ module SyntaxTree
       # Adding a local usage will either insert a new entry in the locals
       # hash or append a new usage location to an existing local. Notice that
       # it's not possible to change the type of a local after it has been
-      # registered
-      #   add_local_usage: (Ident | Label identifier, Symbol type) -> void
+      # registered.
       def add_local_usage(identifier, type)
         name = identifier.value.delete_suffix(":")
 
@@ -93,8 +90,7 @@ module SyntaxTree
       end
 
       # Try to find the local given its name in this environment or any of its
-      # parents
-      #   find_local: (String name) -> Local | nil
+      # parents.
       def find_local(name)
         local = @locals[name]
         return local unless local.nil?
@@ -116,7 +112,7 @@ module SyntaxTree
     end
 
     # Visits for nodes that create new environments, such as classes, modules
-    # and method definitions
+    # and method definitions.
     def visit_class(node)
       with_new_environment { super }
     end
@@ -127,7 +123,7 @@ module SyntaxTree
 
     # When we find a method invocation with a block, only the code that happens
     # inside of the block needs a fresh environment. The method invocation
-    # itself happens in the same environment
+    # itself happens in the same environment.
     def visit_method_add_block(node)
       visit(node.call)
       with_new_environment { visit(node.block) }
@@ -138,7 +134,7 @@ module SyntaxTree
     end
 
     # Visit for keeping track of local arguments, such as method and block
-    # arguments
+    # arguments.
     def visit_params(node)
       add_argument_definitions(node.requireds)
 
