@@ -155,8 +155,8 @@ module SyntaxTree
             end
 
             insn_flows[length].in.each do |input|
-              if input.is_a?(Integer)
-                output.puts("    node_#{input} --> #{node_id}")
+              if input.is_a?(LocalArgument)
+                output.puts("    node_#{input.length} --> #{node_id}")
                 links << "green"
               end
             end
