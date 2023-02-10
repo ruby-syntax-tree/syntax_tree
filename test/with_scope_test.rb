@@ -3,9 +3,9 @@
 require_relative "test_helper"
 
 module SyntaxTree
-  class WithEnvironmentTest < Minitest::Test
+  class WithScopeTest < Minitest::Test
     class Collector < Visitor
-      prepend WithEnvironment
+      prepend WithScope
 
       attr_reader :arguments, :variables
 
@@ -21,22 +21,22 @@ module SyntaxTree
       visit_methods do
         def visit_ident(node)
           value = node.value.delete_suffix(":")
-          local = current_environment.find_local(node.value)
+          local = current_scope.find_local(node.value)
 
           case local&.type
           when :argument
-            arguments[[current_environment.id, value]] = local
+            arguments[[current_scope.id, value]] = local
           when :variable
-            variables[[current_environment.id, value]] = local
+            variables[[current_scope.id, value]] = local
           end
         end
 
         def visit_label(node)
           value = node.value.delete_suffix(":")
-          local = current_environment.find_local(value)
+          local = current_scope.find_local(value)
 
           if local&.type == :argument
-            arguments[[current_environment.id, value]] = node
+            arguments[[current_scope.id, value]] = node
           end
         end
       end
@@ -350,7 +350,7 @@ module SyntaxTree
     end
 
     class Resolver < Visitor
-      prepend WithEnvironment
+      prepend WithScope
 
       attr_reader :locals
 
@@ -364,10 +364,10 @@ module SyntaxTree
             level = 0
             name = node.target.value.value
 
-            environment = current_environment
-            while !environment.locals.key?(name) && !environment.parent.nil?
+            scope = current_scope
+            while !scope.locals.key?(name) && !scope.parent.nil?
               level += 1
-              environment = environment.parent
+              scope = scope.parent
             end
 
             locals << [name, level]

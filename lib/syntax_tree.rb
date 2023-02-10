@@ -33,7 +33,7 @@ module SyntaxTree
   autoload :PrettyPrintVisitor, "syntax_tree/pretty_print_visitor"
   autoload :Search, "syntax_tree/search"
   autoload :Translation, "syntax_tree/translation"
-  autoload :WithEnvironment, "syntax_tree/with_environment"
+  autoload :WithScope, "syntax_tree/with_scope"
   autoload :YARV, "syntax_tree/yarv"
 
   # This holds references to objects that respond to both #parse and #format
