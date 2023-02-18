@@ -2387,6 +2387,22 @@ module SyntaxTree
                 srange_node(node)
               )
             )
+          elsif node.operator == "!" && node.statement.is_a?(RegexpLiteral)
+            s(
+              :send,
+              [
+                s(
+                  :match_current_line,
+                  [visit(node.statement)],
+                  smap(srange_node(node.statement))
+                ),
+                :!
+              ],
+              smap_send_bare(
+                srange_length(node.start_char, 1),
+                srange_node(node)
+              )
+            )
           else
             visit(canonical_unary(node))
           end

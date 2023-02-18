@@ -55,7 +55,6 @@ module SyntaxTree
         "test_dedenting_heredoc:399",
         "test_slash_newline_in_heredocs:7194",
         "test_parser_slash_slash_n_escaping_in_literals:*",
-        "test_cond_match_current_line:4801",
         "test_forwarded_restarg:*",
         "test_forwarded_kwrestarg:*",
         "test_forwarded_argument_with_restarg:*",
