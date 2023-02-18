@@ -1287,35 +1287,13 @@ module SyntaxTree
 
         # Visit an IfNode node.
         def visit_if(node)
-          predicate =
-            case node.predicate
-            when RangeNode
-              type =
-                node.predicate.operator.value == ".." ? :iflipflop : :eflipflop
-              s(type, visit(node.predicate).children, nil)
-            when RegexpLiteral
-              s(:match_current_line, [visit(node.predicate)], nil)
-            when Unary
-              if node.predicate.operator.value == "!" &&
-                   node.predicate.statement.is_a?(RegexpLiteral)
-                s(
-                  :send,
-                  [
-                    s(:match_current_line, [visit(node.predicate.statement)]),
-                    :!
-                  ],
-                  nil
-                )
-              else
-                visit(node.predicate)
-              end
-            else
-              visit(node.predicate)
-            end
-
           s(
             :if,
-            [predicate, visit(node.statements), visit(node.consequent)],
+            [
+              visit_predicate(node.predicate),
+              visit(node.statements),
+              visit(node.consequent)
+            ],
             if node.modifier?
               smap_keyword_bare(
                 srange_find_between(node.statements, node.predicate, "if"),
@@ -2376,22 +2354,42 @@ module SyntaxTree
         # Visit a Unary node.
         def visit_unary(node)
           # Special handling here for flipflops
-          if node.statement.is_a?(Paren) &&
-               node.statement.contents.is_a?(Statements) &&
-               node.statement.contents.body.length == 1 &&
-               (range = node.statement.contents.body.first).is_a?(RangeNode) &&
+          if (paren = node.statement).is_a?(Paren) &&
+               paren.contents.is_a?(Statements) &&
+               paren.contents.body.length == 1 &&
+               (range = paren.contents.body.first).is_a?(RangeNode) &&
                node.operator == "!"
-            type = range.operator.value == ".." ? :iflipflop : :eflipflop
-            return(
-              s(
-                :send,
-                [s(:begin, [s(type, visit(range).children, nil)], nil), :!],
-                nil
+            s(
+              :send,
+              [
+                s(
+                  :begin,
+                  [
+                    s(
+                      range.operator.value == ".." ? :iflipflop : :eflipflop,
+                      visit(range).children,
+                      smap_operator(
+                        srange_node(range.operator),
+                        srange_node(range)
+                      )
+                    )
+                  ],
+                  smap_collection(
+                    srange_length(paren.start_char, 1),
+                    srange_length(paren.end_char, -1),
+                    srange_node(paren)
+                  )
+                ),
+                :!
+              ],
+              smap_send_bare(
+                srange_length(node.start_char, 1),
+                srange_node(node)
               )
             )
+          else
+            visit(canonical_unary(node))
           end
-
-          visit(canonical_unary(node))
         end
 
         # Visit an Undef node.
@@ -2408,31 +2406,13 @@ module SyntaxTree
 
         # Visit an UnlessNode node.
         def visit_unless(node)
-          predicate =
-            case node.predicate
-            when RegexpLiteral
-              s(:match_current_line, [visit(node.predicate)], nil)
-            when Unary
-              if node.predicate.operator.value == "!" &&
-                   node.predicate.statement.is_a?(RegexpLiteral)
-                s(
-                  :send,
-                  [
-                    s(:match_current_line, [visit(node.predicate.statement)]),
-                    :!
-                  ],
-                  nil
-                )
-              else
-                visit(node.predicate)
-              end
-            else
-              visit(node.predicate)
-            end
-
           s(
             :if,
-            [predicate, visit(node.consequent), visit(node.statements)],
+            [
+              visit_predicate(node.predicate),
+              visit(node.consequent),
+              visit(node.statements)
+            ],
             if node.modifier?
               smap_keyword_bare(
                 srange_find_between(node.statements, node.predicate, "unless"),
@@ -3013,6 +2993,31 @@ module SyntaxTree
       def srange_node(node)
         location = node.location
         srange(location.start_char, location.end_char)
+      end
+
+      def visit_predicate(node)
+        case node
+        when RangeNode
+          s(
+            node.operator.value == ".." ? :iflipflop : :eflipflop,
+            visit(node).children,
+            smap_operator(srange_node(node.operator), srange_node(node))
+          )
+        when RegexpLiteral
+          s(:match_current_line, [visit(node)], smap(srange_node(node)))
+        when Unary
+          if node.operator.value == "!" && node.statement.is_a?(RegexpLiteral)
+            s(
+              :send,
+              [s(:match_current_line, [visit(node.statement)]), :!],
+              smap_send_bare(srange_node(node.operator), srange_node(node))
+            )
+          else
+            visit(node)
+          end
+        else
+          visit(node)
+        end
       end
     end
   end
