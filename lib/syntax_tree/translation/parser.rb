@@ -1576,7 +1576,11 @@ module SyntaxTree
             s(
               type,
               [visit(node.call), arguments, visit(node.block.bodystmt)],
-              nil
+              smap_collection(
+                srange_node(node.block.opening),
+                srange_length(node.block.end_char, node.block.opening.is_a?(Kw) ? -3 : -1),
+                srange_node(node)
+              )
             )
           else
             visit_command_call(
