@@ -336,8 +336,8 @@ module SyntaxTree
         # Visit an Assoc node.
         def visit_assoc(node)
           if node.value.nil?
+            # { foo: }
             expression = srange(node.start_char, node.end_char - 1)
-
             type, location =
               if node.key.value.start_with?(/[A-Z]/)
                 [:const, smap_constant(nil, expression, expression)]
@@ -356,13 +356,38 @@ module SyntaxTree
                 srange_node(node)
               )
             )
-          else
+          elsif node.key.is_a?(Label)
+            # { foo: 1 }
             s(
               :pair,
               [visit(node.key), visit(node.value)],
               smap_operator(
-                srange_search_between(node.key, node.value, "=>") ||
-                  srange_length(node.key.end_char, -1),
+                srange_length(node.key.end_char, -1),
+                srange_node(node)
+              )
+            )
+          elsif (operator = srange_search_between(node.key, node.value, "=>"))
+            # { :foo => 1 }
+            s(
+              :pair,
+              [visit(node.key), visit(node.value)],
+              smap_operator(operator, srange_node(node))
+            )
+          else
+            # { "foo": 1 }
+            key = visit(node.key)
+            key_location =
+              smap_collection(
+                key.location.begin,
+                srange_length(node.key.end_char - 2, 1),
+                srange(node.key.start_char, node.key.end_char - 1)
+              )
+
+            s(
+              :pair,
+              [s(key.type, key.children, key_location), visit(node.value)],
+              smap_operator(
+                srange_length(node.key.end_char, -1),
                 srange_node(node)
               )
             )
@@ -769,7 +794,11 @@ module SyntaxTree
 
               srange(node.start_char, end_char)
             elsif node.block
-              srange_node(node.message)
+              if node.receiver
+                srange(node.receiver.start_char, node.message.end_char)
+              else
+                srange_node(node.message)
+              end
             else
               srange_node(node)
             end
@@ -1010,6 +1039,21 @@ module SyntaxTree
 
         # Visit an Elsif node.
         def visit_elsif(node)
+          begin_start = node.predicate.end_char
+          begin_end =
+            if node.statements.empty?
+              node.statements.end_char
+            else
+              node.statements.body.first.start_char
+            end
+
+          begin_token =
+            if buffer.source[begin_start...begin_end].include?("then")
+              srange_find(begin_start, begin_end, "then")
+            elsif buffer.source[begin_start...begin_end].include?(";")
+              srange_find(begin_start, begin_end, ";")
+            end
+
           else_token =
             case node.consequent
             when Elsif
@@ -1029,7 +1073,7 @@ module SyntaxTree
             ],
             smap_condition(
               srange_length(node.start_char, 5),
-              nil,
+              begin_token,
               else_token,
               nil,
               expression
@@ -1529,12 +1573,14 @@ module SyntaxTree
           location =
             if node.start_char == node.end_char
               smap_collection_bare(nil)
-            else
+            elsif buffer.source[node.start_char - 1] == "("
               smap_collection(
                 srange_length(node.start_char, 1),
                 srange_length(node.end_char, -1),
                 srange_node(node)
               )
+            else
+              smap_collection_bare(srange_node(node))
             end
 
           s(:args, visit(node.params).children + shadowargs, location)
@@ -1565,7 +1611,7 @@ module SyntaxTree
                 srange_node(node.block.opening),
                 srange_length(
                   node.block.end_char,
-                  node.block.opening.is_a?(Kw) ? -3 : -1
+                  node.block.keywords? ? -3 : -1
                 ),
                 srange_node(node)
               )
@@ -2244,7 +2290,16 @@ module SyntaxTree
                 )
               )
             when ArgsForward
-              s(:super, [visit(node.arguments.arguments)], nil)
+              s(
+                :super,
+                [visit(node.arguments.arguments)],
+                smap_keyword(
+                  srange_length(node.start_char, 5),
+                  srange_find(node.start_char + 5, node.end_char, "("),
+                  srange_length(node.end_char, -1),
+                  srange_node(node)
+                )
+              )
             else
               s(
                 :super,
@@ -2442,10 +2497,15 @@ module SyntaxTree
                   srange_find(begin_start, begin_end, ";")
                 end
 
+              else_token =
+                if node.consequent
+                  srange_length(node.consequent.start_char, 4)
+                end
+
               smap_condition(
                 srange_length(node.start_char, 6),
                 begin_token,
-                nil,
+                else_token,
                 srange_length(node.end_char, -3),
                 srange_node(node)
               )

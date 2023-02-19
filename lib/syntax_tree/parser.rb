@@ -1559,7 +1559,14 @@ module SyntaxTree
       beginning = consume_keyword(:elsif)
       ending = consequent || consume_keyword(:end)
 
-      start_char = find_next_statement_start(predicate.location.end_char)
+      delimiter =
+        find_keyword_between(:then, predicate, statements) ||
+          find_token_between(Semicolon, predicate, statements)
+
+      tokens.delete(delimiter) if delimiter
+      start_char =
+        find_next_statement_start((delimiter || predicate).location.end_char)
+
       statements.bind(
         self,
         start_char,
@@ -2045,6 +2052,7 @@ module SyntaxTree
 
       start_char =
         find_next_statement_start((keyword || predicate).location.end_char)
+
       statements.bind(
         self,
         start_char,
@@ -3805,6 +3813,7 @@ module SyntaxTree
 
       start_char =
         find_next_statement_start((keyword || predicate).location.end_char)
+
       statements.bind(
         self,
         start_char,
