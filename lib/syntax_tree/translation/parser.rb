@@ -1555,21 +1555,6 @@ module SyntaxTree
         # Visit a MethodAddBlock node.
         def visit_method_add_block(node)
           case node.call
-          when Break, Next, ReturnNode
-            type, arguments = block_children(node.block)
-            call = visit(node.call)
-
-            s(
-              call.type,
-              [
-                s(
-                  type,
-                  [*call.children, arguments, visit(node.block.bodystmt)],
-                  nil
-                )
-              ],
-              nil
-            )
           when ARef, Super, ZSuper
             type, arguments = block_children(node.block)
 
@@ -1578,7 +1563,10 @@ module SyntaxTree
               [visit(node.call), arguments, visit(node.block.bodystmt)],
               smap_collection(
                 srange_node(node.block.opening),
-                srange_length(node.block.end_char, node.block.opening.is_a?(Kw) ? -3 : -1),
+                srange_length(
+                  node.block.end_char,
+                  node.block.opening.is_a?(Kw) ? -3 : -1
+                ),
                 srange_node(node)
               )
             )
@@ -2439,9 +2427,24 @@ module SyntaxTree
                 srange_node(node)
               )
             else
+              begin_start = node.predicate.end_char
+              begin_end =
+                if node.statements.empty?
+                  node.statements.end_char
+                else
+                  node.statements.body.first.start_char
+                end
+
+              begin_token =
+                if buffer.source[begin_start...begin_end].include?("then")
+                  srange_find(begin_start, begin_end, "then")
+                elsif buffer.source[begin_start...begin_end].include?(";")
+                  srange_find(begin_start, begin_end, ";")
+                end
+
               smap_condition(
                 srange_length(node.start_char, 6),
-                srange_search_between(node.predicate, node.statements, "then"),
+                begin_token,
                 nil,
                 srange_length(node.end_char, -3),
                 srange_node(node)
