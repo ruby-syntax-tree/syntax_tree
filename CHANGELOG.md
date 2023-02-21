@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 
 ## [Unreleased]
 
+### Added
+
+- The class declarations returned as the result of the indexing operation now have their superclass as a field. It is returned as an array of constants. If the superclass is anything other than a constant lookup, then it raises an error.
+
+### Changed
+
+- The `nesting` field on the results of the indexing operation is no longer a single flat array. Instead it is an array of arrays, where each array is a single nesting level. This more accurately reflects the nesting of the nodes in the tree. For example, `class Foo::Bar::Baz; end` would result in `[Foo, Bar, Baz]`, but that incorrectly implies that you can see constants at each of those levels. Now this would result in `[[Foo, Bar, Baz]]` to indicate that it can see either the top level or constants within the scope of `Foo::Bar::Baz` only.
+
 ## [6.0.0] - 2023-02-10
 
 ### Added
