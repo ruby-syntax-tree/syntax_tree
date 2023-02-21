@@ -178,6 +178,7 @@ module SyntaxTree
       end
 
       def find_constant_path(insns, index)
+        index -= 1 while insns[index].is_a?(Integer)
         insn = insns[index]
 
         if insn.is_a?(Array) && insn[0] == :opt_getconstant_path
@@ -191,8 +192,12 @@ module SyntaxTree
           names = []
 
           index -= 1
-          until insns[index][0] == :opt_getinlinecache
-            names.unshift(insns[index][1]) if insns[index][0] == :getconstant
+          until insns[index].is_a?(Array) &&
+                  insns[index][0] == :opt_getinlinecache
+            if insns[index].is_a?(Array) && insns[index][0] == :getconstant
+              names.unshift(insns[index][1])
+            end
+
             index -= 1
           end
 
@@ -207,9 +212,20 @@ module SyntaxTree
         queue = [[iseq, []]]
 
         while (current_iseq, current_nesting = queue.shift)
+          line = current_iseq[8]
           insns = current_iseq[13]
+
           insns.each_with_index do |insn, index|
-            next unless insn.is_a?(Array)
+            case insn
+            when Integer
+              line = insn
+              next
+            when Array
+              # continue on
+            else
+              # skip everything else
+              next
+            end
 
             case insn[0]
             when :defineclass
@@ -226,10 +242,12 @@ module SyntaxTree
               # If there is a superclass, then we're going to find it here and
               # then update the constant_index as necessary.
               if flags & VM_DEFINECLASS_FLAG_HAS_SUPERCLASS > 0
-                constant_index, superclass = find_constant_path(insns, index - 1)
+                constant_index, superclass =
+                  find_constant_path(insns, index - 1)
 
                 if superclass.empty?
-                  raise NotImplementedError, "superclass with non constant path"
+                  raise NotImplementedError,
+                        "superclass with non constant path on line #{line}"
                 end
               end
 

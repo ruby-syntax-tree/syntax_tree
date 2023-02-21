@@ -35,14 +35,14 @@ module SyntaxTree
     def test_class_paths_2
       index_each("class Foo::Bar; end") do |entry|
         assert_equal :Bar, entry.name
-        assert_equal [[:Foo, :Bar]], entry.nesting
+        assert_equal [%i[Foo Bar]], entry.nesting
       end
     end
 
     def test_class_paths_3
       index_each("class Foo::Bar::Baz; end") do |entry|
         assert_equal :Baz, entry.name
-        assert_equal [[:Foo, :Bar, :Baz]], entry.nesting
+        assert_equal [%i[Foo Bar Baz]], entry.nesting
       end
     end
 
@@ -56,7 +56,7 @@ module SyntaxTree
     def test_class_paths_nested
       index_each("class Foo; class Bar::Baz::Qux; end; end") do |entry|
         assert_equal :Qux, entry.name
-        assert_equal [[:Foo], [:Bar, :Baz, :Qux]], entry.nesting
+        assert_equal [[:Foo], %i[Bar Baz Qux]], entry.nesting
       end
     end
 
@@ -71,8 +71,8 @@ module SyntaxTree
     def test_class_path_superclass
       index_each("class Foo::Bar < Baz::Qux; end") do |entry|
         assert_equal :Bar, entry.name
-        assert_equal [[:Foo, :Bar]], entry.nesting
-        assert_equal [:Baz, :Qux], entry.superclass
+        assert_equal [%i[Foo Bar]], entry.nesting
+        assert_equal %i[Baz Qux], entry.superclass
       end
     end
 
