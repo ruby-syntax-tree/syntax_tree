@@ -29,6 +29,7 @@ It is built with only standard library dependencies. It additionally ships with 
   - [SyntaxTree.format(source)](#syntaxtreeformatsource)
   - [SyntaxTree.mutation(&block)](#syntaxtreemutationblock)
   - [SyntaxTree.search(source, query, &block)](#syntaxtreesearchsource-query-block)
+  - [SyntaxTree.index(source)](#syntaxtreeindexsource)
 - [Nodes](#nodes)
   - [child_nodes](#child_nodes)
   - [copy(**attrs)](#copyattrs)
@@ -346,6 +347,10 @@ This function yields a new mutation visitor to the block, and then returns the i
 ### SyntaxTree.search(source, query, &block)
 
 This function takes an input string containing Ruby code, an input string containing a valid Ruby `in` clause expression that can be used to match against nodes in the tree (can be generated using `stree expr`, `stree match`, or `Node#construct_keys`), and a block. Each node that matches the given query will be yielded to the block. The block will receive the node as its only argument.
+
+### SyntaxTree.index(source)
+
+This function takes an input string containing Ruby code and returns a list of all of the class declarations, module declarations, and method definitions within a file. Each of the entries also has access to its associated comments. This is useful for generating documentation or index information for a file to support something like go-to-definition.
 
 ## Nodes
 
