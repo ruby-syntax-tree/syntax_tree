@@ -20,11 +20,12 @@ module SyntaxTree
 
     # This entry represents a class definition using the class keyword.
     class ClassDefinition
-      attr_reader :nesting, :name, :location, :comments
+      attr_reader :nesting, :name, :superclass, :location, :comments
 
-      def initialize(nesting, name, location, comments)
+      def initialize(nesting, name, superclass, location, comments)
         @nesting = nesting
         @name = name
+        @superclass = superclass
         @location = location
         @comments = comments
       end
@@ -176,30 +177,101 @@ module SyntaxTree
         Location.new(code_location[0], code_location[1])
       end
 
+      def find_constant_path(insns, index)
+        index -= 1 while insns[index].is_a?(Integer)
+        insn = insns[index]
+
+        if insn.is_a?(Array) && insn[0] == :opt_getconstant_path
+          # In this case we're on Ruby 3.2+ and we have an opt_getconstant_path
+          # instruction, so we already know all of the symbols in the nesting.
+          [index - 1, insn[1]]
+        elsif insn.is_a?(Symbol) && insn.match?(/\Alabel_\d+/)
+          # Otherwise, if we have a label then this is very likely the
+          # destination of an opt_getinlinecache instruction, in which case
+          # we'll walk backwards to grab up all of the constants.
+          names = []
+
+          index -= 1
+          until insns[index].is_a?(Array) &&
+                  insns[index][0] == :opt_getinlinecache
+            if insns[index].is_a?(Array) && insns[index][0] == :getconstant
+              names.unshift(insns[index][1])
+            end
+
+            index -= 1
+          end
+
+          [index - 1, names]
+        else
+          [index, []]
+        end
+      end
+
       def index_iseq(iseq, file_comments)
         results = []
         queue = [[iseq, []]]
 
         while (current_iseq, current_nesting = queue.shift)
-          current_iseq[13].each_with_index do |insn, index|
-            next unless insn.is_a?(Array)
+          line = current_iseq[8]
+          insns = current_iseq[13]
+
+          insns.each_with_index do |insn, index|
+            case insn
+            when Integer
+              line = insn
+              next
+            when Array
+              # continue on
+            else
+              # skip everything else
+              next
+            end
 
             case insn[0]
             when :defineclass
               _, name, class_iseq, flags = insn
+              next_nesting = current_nesting.dup
+
+              # This is the index we're going to search for the nested constant
+              # path within the declaration name.
+              constant_index = index - 2
+
+              # This is the superclass of the class being defined.
+              superclass = []
+
+              # If there is a superclass, then we're going to find it here and
+              # then update the constant_index as necessary.
+              if flags & VM_DEFINECLASS_FLAG_HAS_SUPERCLASS > 0
+                constant_index, superclass =
+                  find_constant_path(insns, index - 1)
+
+                if superclass.empty?
+                  raise NotImplementedError,
+                        "superclass with non constant path on line #{line}"
+                end
+              end
+
+              if (_, nesting = find_constant_path(insns, constant_index))
+                # If there is a constant path in the class name, then we need to
+                # handle that by updating the nesting.
+                next_nesting << (nesting << name)
+              else
+                # Otherwise we'll add the class name to the nesting.
+                next_nesting << [name]
+              end
 
               if flags == VM_DEFINECLASS_TYPE_SINGLETON_CLASS
                 # At the moment, we don't support singletons that aren't
                 # defined on self. We could, but it would require more
                 # emulation.
-                if current_iseq[13][index - 2] != [:putself]
+                if insns[index - 2] != [:putself]
                   raise NotImplementedError,
                         "singleton class with non-self receiver"
                 end
               elsif flags & VM_DEFINECLASS_TYPE_MODULE > 0
                 location = location_for(class_iseq)
                 results << ModuleDefinition.new(
-                  current_nesting,
+                  next_nesting,
                   name,
                   location,
                   EntryComments.new(file_comments, location)
@@ -207,14 +279,15 @@ module SyntaxTree
               else
                 location = location_for(class_iseq)
                 results << ClassDefinition.new(
-                  current_nesting,
+                  next_nesting,
                   name,
+                  superclass,
                   location,
                   EntryComments.new(file_comments, location)
                 )
               end
 
-              queue << [class_iseq, current_nesting + [name]]
+              queue << [class_iseq, next_nesting]
             when :definemethod
               location = location_for(insn[2])
               results << MethodDefinition.new(
@@ -259,24 +332,43 @@ module SyntaxTree
 
         visit_methods do
           def visit_class(node)
-            name = visit(node.constant).to_sym
+            names = visit(node.constant)
+            nesting << names
+
             location =
               Location.new(node.location.start_line, node.location.start_column)
 
+            superclass =
+              if node.superclass
+                visited = visit(node.superclass)
+
+                if visited == [[]]
+                  raise NotImplementedError, "superclass with non constant path"
+                end
+
+                visited
+              else
+                []
+              end
+
             results << ClassDefinition.new(
               nesting.dup,
-              name,
+              names.last,
+              superclass,
               location,
               comments_for(node)
             )
 
-            nesting << name
             super
             nesting.pop
           end
 
           def visit_const_ref(node)
-            node.constant.value
+            [node.constant.value.to_sym]
+          end
+
+          def visit_const_path_ref(node)
+            visit(node.parent) << node.constant.value.to_sym
           end
 
           def visit_def(node)
@@ -302,18 +394,19 @@ module SyntaxTree
           end
 
           def visit_module(node)
-            name = visit(node.constant).to_sym
+            names = visit(node.constant)
+            nesting << names
+
             location =
               Location.new(node.location.start_line, node.location.start_column)
 
             results << ModuleDefinition.new(
               nesting.dup,
-              name,
+              names.last,
               location,
               comments_for(node)
             )
 
-            nesting << name
             super
             nesting.pop
           end
@@ -326,6 +419,10 @@ module SyntaxTree
           def visit_statements(node)
             @statements = node
             super
+          end
+
+          def visit_var_ref(node)
+            [node.value.value.to_sym]
           end
         end
 
