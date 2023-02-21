@@ -60,6 +60,36 @@ module SyntaxTree
       end
     end
 
+    def test_class_superclass
+      index_each("class Foo < Bar; end") do |entry|
+        assert_equal :Foo, entry.name
+        assert_equal [[:Foo]], entry.nesting
+        assert_equal [:Bar], entry.superclass
+      end
+    end
+
+    def test_class_path_superclass
+      index_each("class Foo::Bar < Baz::Qux; end") do |entry|
+        assert_equal :Bar, entry.name
+        assert_equal [[:Foo, :Bar]], entry.nesting
+        assert_equal [:Baz, :Qux], entry.superclass
+      end
+    end
+
+    def test_class_path_superclass_unknown
+      source = "class Foo < bar; end"
+
+      assert_raises NotImplementedError do
+        Index.index(source, backend: Index::ParserBackend.new)
+      end
+
+      if defined?(RubyVM::InstructionSequence)
+        assert_raises NotImplementedError do
+          Index.index(source, backend: Index::ISeqBackend.new)
+        end
+      end
+    end
+
     def test_class_comments
       index_each("# comment1\n# comment2\nclass Foo; end") do |entry|
         assert_equal :Foo, entry.name

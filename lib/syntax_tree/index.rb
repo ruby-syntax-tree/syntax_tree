@@ -20,11 +20,12 @@ module SyntaxTree
 
     # This entry represents a class definition using the class keyword.
     class ClassDefinition
-      attr_reader :nesting, :name, :location, :comments
+      attr_reader :nesting, :name, :superclass, :location, :comments
 
-      def initialize(nesting, name, location, comments)
+      def initialize(nesting, name, superclass, location, comments)
         @nesting = nesting
         @name = name
+        @superclass = superclass
         @location = location
         @comments = comments
       end
@@ -182,7 +183,7 @@ module SyntaxTree
         if insn.is_a?(Array) && insn[0] == :opt_getconstant_path
           # In this case we're on Ruby 3.2+ and we have an opt_getconstant_path
           # instruction, so we already know all of the symbols in the nesting.
-          insn[1]
+          [index - 1, insn[1]]
         elsif insn.is_a?(Symbol) && insn.match?(/\Alabel_\d+/)
           # Otherwise, if we have a label then this is very likely the
           # destination of an opt_getinlinecache instruction, in which case
@@ -195,7 +196,9 @@ module SyntaxTree
             index -= 1
           end
 
-          names
+          [index - 1, names]
+        else
+          [index, []]
         end
       end
 
@@ -213,7 +216,24 @@ module SyntaxTree
               _, name, class_iseq, flags = insn
               next_nesting = current_nesting.dup
 
-              if (nesting = find_constant_path(insns, index - 2))
+              # This is the index we're going to search for the nested constant
+              # path within the declaration name.
+              constant_index = index - 2
+
+              # This is the superclass of the class being defined.
+              superclass = []
+
+              # If there is a superclass, then we're going to find it here and
+              # then update the constant_index as necessary.
+              if flags & VM_DEFINECLASS_FLAG_HAS_SUPERCLASS > 0
+                constant_index, superclass = find_constant_path(insns, index - 1)
+
+                if superclass.empty?
+                  raise NotImplementedError, "superclass with non constant path"
+                end
+              end
+
+              if (_, nesting = find_constant_path(insns, constant_index))
                 # If there is a constant path in the class name, then we need to
                 # handle that by updating the nesting.
                 next_nesting << (nesting << name)
@@ -243,6 +263,7 @@ module SyntaxTree
                 results << ClassDefinition.new(
                   next_nesting,
                   name,
+                  superclass,
                   location,
                   EntryComments.new(file_comments, location)
                 )
@@ -299,9 +320,23 @@ module SyntaxTree
             location =
               Location.new(node.location.start_line, node.location.start_column)
 
+            superclass =
+              if node.superclass
+                visited = visit(node.superclass)
+
+                if visited == [[]]
+                  raise NotImplementedError, "superclass with non constant path"
+                end
+
+                visited
+              else
+                []
+              end
+
             results << ClassDefinition.new(
               nesting.dup,
               names.last,
+              superclass,
               location,
               comments_for(node)
             )
@@ -315,14 +350,7 @@ module SyntaxTree
           end
 
           def visit_const_path_ref(node)
-            names =
-              if node.parent.is_a?(ConstPathRef)
-                visit(node.parent)
-              else
-                [visit(node.parent)]
-              end
-
-            names << node.constant.value.to_sym
+            visit(node.parent) << node.constant.value.to_sym
           end
 
           def visit_def(node)
@@ -376,7 +404,7 @@ module SyntaxTree
           end
 
           def visit_var_ref(node)
-            node.value.value.to_sym
+            [node.value.value.to_sym]
           end
         end
 
