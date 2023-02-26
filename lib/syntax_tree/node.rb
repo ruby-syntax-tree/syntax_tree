@@ -2097,10 +2097,7 @@ module SyntaxTree
         q.group { q.format(left) }
         q.text(" ") unless power
 
-        if operator == :<<
-          q.text("<< ")
-          q.format(right)
-        else
+        if operator != :<<
           q.group do
             q.text(operator.name)
             q.indent do
@@ -2108,6 +2105,17 @@ module SyntaxTree
               q.format(right)
             end
           end
+        elsif left.is_a?(Binary) && left.operator == :<<
+          q.group do
+            q.text(operator.name)
+            q.indent do
+              power ? q.breakable_empty : q.breakable_space
+              q.format(right)
+            end
+          end
+        else
+          q.text("<< ")
+          q.format(right)
         end
       end
     end
