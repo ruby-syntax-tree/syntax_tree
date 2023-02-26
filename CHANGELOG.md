@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 
 ## [Unreleased]
 
+## [6.0.1] - 2023-02-26
+
 ### Added
 
 - The class declarations returned as the result of the indexing operation now have their superclass as a field. It is returned as an array of constants. If the superclass is anything other than a constant lookup, then it raises an error.
@@ -570,7 +572,8 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 
 - 🎉 Initial release! 🎉
 
-[unreleased]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v6.0.0...HEAD
+[unreleased]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v6.0.1...HEAD
+[6.0.1]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v6.0.0...v6.0.1
 [6.0.0]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v5.3.0...v6.0.0
 [5.3.0]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v5.2.0...v5.3.0
 [5.2.0]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v5.1.0...v5.2.0
