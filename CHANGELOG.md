@@ -15,6 +15,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 - The `nesting` field on the results of the indexing operation is no longer a single flat array. Instead it is an array of arrays, where each array is a single nesting level. This more accurately reflects the nesting of the nodes in the tree. For example, `class Foo::Bar::Baz; end` would result in `[Foo, Bar, Baz]`, but that incorrectly implies that you can see constants at each of those levels. Now this would result in `[[Foo, Bar, Baz]]` to indicate that it can see either the top level or constants within the scope of `Foo::Bar::Baz` only.
 - When formatting hashes that have omitted values and mixed hash rockets with labels, the formatting now maintains whichever delimiter was used in the source. This is because forcing the use of hash rockets with omitted values results in a syntax error.
 - Handle the case where a bare hash is used after the `break`, `next`, or `return` keywords. Previously this would result in hash labels which is not valid syntax. Now it maintains the delimiters used in the source.
+- The `<<` operator will now break on chained `<<` expressions. Previously it would always stay flat.
 
 ## [6.0.0] - 2023-02-10
 
