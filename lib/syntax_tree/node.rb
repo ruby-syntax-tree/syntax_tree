@@ -1874,7 +1874,15 @@ module SyntaxTree
     end
 
     def format_key(q, key)
-      (@key_formatter ||= HashKeyFormatter.for(self)).format_key(q, key)
+      @key_formatter ||=
+        case q.parents.take(3).last
+        when Break, Next, ReturnNode
+          HashKeyFormatter::Identity.new
+        else
+          HashKeyFormatter.for(self)
+        end
+
+      @key_formatter.format_key(q, key)
     end
   end
 
