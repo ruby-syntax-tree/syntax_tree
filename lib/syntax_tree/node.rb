@@ -1780,13 +1780,25 @@ module SyntaxTree
     end
 
     def self.for(container)
-      labels =
-        container.assocs.all? do |assoc|
-          next true if assoc.is_a?(AssocSplat)
-
+      container.assocs.each do |assoc|
+        if assoc.is_a?(AssocSplat)
+          # Splat nodes do not impact the formatting choice.
+        elsif assoc.value.nil?
+          # If the value is nil, then it has been omitted. In this case we have
+          # to match the existing formatting because standardizing would
+          # potentially break the code. For example:
+          #
+          #     { first:, "second" => "value" }
+          #
+          return Identity.new
+        else
+          # Otherwise, we need to check the type of the key. If it's a label or
+          # dynamic symbol, we can use labels. If it's a symbol literal then it
+          # needs to match a certain pattern to be used as a label. If it's
+          # anything else, then we need to use hash rockets.
           case assoc.key
-          when Label
-            true
+          when Label, DynaSymbol
+            # Here labels can be used.
           when SymbolLiteral
             # When attempting to convert a hash rocket into a hash label,
             # you need to take care because only certain patterns are
@@ -1794,15 +1806,18 @@ module SyntaxTree
             # arguments to methods, but don't specify what that is. After
             # some experimentation, it looks like it's:
             value = assoc.key.value.value
-            value.match?(/^[_A-Za-z]/) && !value.end_with?("=")
-          when DynaSymbol
-            true
+
+            if !value.match?(/^[_A-Za-z]/) || value.end_with?("=")
+              return Rockets.new
+            end
           else
-            false
+            # If the value is anything else, we have to use hash rockets.
+            return Rockets.new
           end
         end
+      end
 
-      (labels ? Labels : Rockets).new
+      Labels.new
     end
   end
 
