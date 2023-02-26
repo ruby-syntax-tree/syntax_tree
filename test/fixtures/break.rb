@@ -33,3 +33,5 @@ break(
     qux
   end
 )
+%
+break :foo => "bar"

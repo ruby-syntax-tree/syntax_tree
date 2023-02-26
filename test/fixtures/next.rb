@@ -72,3 +72,5 @@ next(
   fun foo do
   end
 )
+%
+next :foo => "bar"
