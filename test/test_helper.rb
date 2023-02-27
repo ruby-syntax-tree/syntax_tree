@@ -1,46 +1,50 @@
 # frozen_string_literal: true
 
-require "simplecov"
-SimpleCov.start do
-  add_filter("idempotency_test.rb") unless ENV["CI"]
-  add_group("lib", "lib")
-  add_group("test", "test")
+unless RUBY_ENGINE == "truffleruby"
+  require "simplecov"
+  SimpleCov.start do
+    add_filter("idempotency_test.rb") unless ENV["CI"]
+    add_group("lib", "lib")
+    add_group("test", "test")
+  end
 end
 
 $LOAD_PATH.unshift(File.expand_path("../lib", __dir__))
 require "syntax_tree"
 require "syntax_tree/cli"
 
-# Here we are going to establish type verification whenever a new node is
-# created. We do this through the reflection module, which in turn parses the
-# source code of the node classes.
-require "syntax_tree/reflection"
-SyntaxTree::Reflection.nodes.each do |name, node|
-  next if name == :Statements
+unless RUBY_ENGINE == "truffleruby"
+  # Here we are going to establish type verification whenever a new node is
+  # created. We do this through the reflection module, which in turn parses the
+  # source code of the node classes.
+  require "syntax_tree/reflection"
+  SyntaxTree::Reflection.nodes.each do |name, node|
+    next if name == :Statements
 
-  clazz = SyntaxTree.const_get(name)
-  parameters = clazz.instance_method(:initialize).parameters
+    clazz = SyntaxTree.const_get(name)
+    parameters = clazz.instance_method(:initialize).parameters
 
-  # First, verify that all of the parameters listed in the list of attributes.
-  # If there are any parameters that aren't listed in the attributes, then
-  # something went wrong with the parsing in the reflection module.
-  raise unless (parameters.map(&:last) - node.attributes.keys).empty?
+    # First, verify that all of the parameters listed in the list of attributes.
+    # If there are any parameters that aren't listed in the attributes, then
+    # something went wrong with the parsing in the reflection module.
+    raise unless (parameters.map(&:last) - node.attributes.keys).empty?
 
-  # Now we're going to use an alias chain to redefine the initialize method to
-  # include type checking.
-  clazz.alias_method(:initialize_without_verify, :initialize)
-  clazz.define_method(:initialize) do |**kwargs|
-    kwargs.each do |kwarg, value|
-      attribute = node.attributes.fetch(kwarg)
+    # Now we're going to use an alias chain to redefine the initialize method to
+    # include type checking.
+    clazz.alias_method(:initialize_without_verify, :initialize)
+    clazz.define_method(:initialize) do |**kwargs|
+      kwargs.each do |kwarg, value|
+        attribute = node.attributes.fetch(kwarg)
 
-      unless attribute.type === value
-        raise TypeError,
-              "invalid type for #{name}##{kwarg}, expected " \
-                "#{attribute.type.inspect}, got #{value.inspect}"
+        unless attribute.type === value
+          raise TypeError,
+                "invalid type for #{name}##{kwarg}, expected " \
+                  "#{attribute.type.inspect}, got #{value.inspect}"
+        end
       end
-    end
 
-    initialize_without_verify(**kwargs)
+      initialize_without_verify(**kwargs)
+    end
   end
 end
 
