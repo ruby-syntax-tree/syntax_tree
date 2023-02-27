@@ -176,7 +176,8 @@ module SyntaxTree
     program =
       SyntaxTree.parse(SyntaxTree.read(File.expand_path("node.rb", __dir__)))
 
-    main_statements = program.statements.body.last.bodystmt.statements.body
+    program_statements = program.statements
+    main_statements = program_statements.body.last.bodystmt.statements.body
     main_statements.each_with_index do |main_statement, main_statement_index|
       # Ensure we are only looking at class declarations.
       next unless main_statement.is_a?(SyntaxTree::ClassDeclaration)
