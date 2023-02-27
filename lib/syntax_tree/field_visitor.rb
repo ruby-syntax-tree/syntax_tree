@@ -263,6 +263,7 @@ module SyntaxTree
         node(node, "command") do
           field("message", node.message)
           field("arguments", node.arguments)
+          field("block", node.block) if node.block
           comments(node)
         end
       end
@@ -273,6 +274,7 @@ module SyntaxTree
           field("operator", node.operator)
           field("message", node.message)
           field("arguments", node.arguments) if node.arguments
+          field("block", node.block) if node.block
           comments(node)
         end
       end
