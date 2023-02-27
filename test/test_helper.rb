@@ -1,10 +1,12 @@
 # frozen_string_literal: true
 
-require "simplecov"
-SimpleCov.start do
-  add_filter("idempotency_test.rb") unless ENV["CI"]
-  add_group("lib", "lib")
-  add_group("test", "test")
+unless RUBY_ENGINE == "truffleruby"
+  require "simplecov"
+  SimpleCov.start do
+    add_filter("idempotency_test.rb") unless ENV["CI"]
+    add_group("lib", "lib")
+    add_group("test", "test")
+  end
 end
 
 $LOAD_PATH.unshift(File.expand_path("../lib", __dir__))
