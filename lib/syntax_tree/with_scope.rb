@@ -221,7 +221,11 @@ module SyntaxTree
 
     def add_argument_definitions(list)
       list.each do |param|
-        if param.is_a?(SyntaxTree::MLHSParen)
+        case param
+        when ArgStar
+          value = param.value
+          current_scope.add_local_definition(value, :argument) if value
+        when MLHSParen
           add_argument_definitions(param.contents.parts)
         else
           current_scope.add_local_definition(param, :argument)
