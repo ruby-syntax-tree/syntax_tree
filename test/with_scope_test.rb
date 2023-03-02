@@ -201,6 +201,25 @@ module SyntaxTree
       assert_argument(collector, "i", definitions: [2], usages: [3])
     end
 
+    def test_collecting_destructured_block_arguments
+      collector = Collector.collect(<<~RUBY)
+        [].each do |(a, *b)|
+        end
+      RUBY
+
+      assert_equal(2, collector.arguments.length)
+      assert_argument(collector, "b", definitions: [1])
+    end
+
+    def test_collecting_anonymous_destructured_block_arguments
+      collector = Collector.collect(<<~RUBY)
+        [].each do |(a, *)|
+        end
+      RUBY
+
+      assert_equal(1, collector.arguments.length)
+    end
+
     def test_collecting_one_line_block_arguments
       collector = Collector.collect(<<~RUBY)
         def foo
