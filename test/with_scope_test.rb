@@ -39,6 +39,13 @@ module SyntaxTree
             arguments[[current_scope.id, value]] = node
           end
         end
+
+        def visit_vcall(node)
+          local = current_scope.find_local(node.value)
+          variables[[current_scope.id, value]] = local if local
+
+          super
+        end
       end
     end
 
@@ -347,6 +354,37 @@ module SyntaxTree
       assert_argument(collector, "two", definitions: [1], usages: [3])
       assert_argument(collector, "three", definitions: [1], usages: [4])
       assert_argument(collector, "four", definitions: [1], usages: [5])
+    end
+
+    def test_regex_named_capture_groups
+      collector = Collector.collect(<<~RUBY)
+        if /(?<one>\\w+)-(?<two>\\w+)/ =~ "something-else"
+          one
+          two
+        end
+      RUBY
+
+      assert_equal(2, collector.variables.length)
+
+      assert_variable(collector, "one", definitions: [1], usages: [2])
+      assert_variable(collector, "two", definitions: [1], usages: [3])
+    end
+
+    def test_multiline_regex_named_capture_groups
+      collector = Collector.collect(<<~RUBY)
+        if %r{
+          (?<one>\\w+)-
+          (?<two>\\w+)
+        } =~ "something-else"
+          one
+          two
+        end
+      RUBY
+
+      assert_equal(2, collector.variables.length)
+
+      assert_variable(collector, "one", definitions: [2], usages: [5])
+      assert_variable(collector, "two", definitions: [3], usages: [6])
     end
 
     class Resolver < Visitor
