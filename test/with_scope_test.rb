@@ -117,11 +117,7 @@ module SyntaxTree
 
       assert_equal(2, collector.variables.length)
       assert_variable(collector, "a", definitions: [2], usages: [4, 5])
-      assert_variable(collector, "rest", definitions: [4])
-
-      # Rest is considered a vcall by the parser instead of a var_ref
-      # assert_equal(1, variable_rest.usages.length)
-      # assert_equal(6, variable_rest.usages[0].start_line)
+      assert_variable(collector, "rest", definitions: [4], usages: [6])
     end
 
     if RUBY_VERSION >= "3.1"
