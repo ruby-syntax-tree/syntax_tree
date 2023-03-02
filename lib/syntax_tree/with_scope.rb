@@ -189,6 +189,15 @@ module SyntaxTree
       super
     end
 
+    def visit_block_var(node)
+      node.locals.each do |local|
+        current_scope.add_local_definition(local, :variable)
+      end
+
+      super
+    end
+    alias visit_lambda_var visit_block_var
+
     # Visit for keeping track of local variable definitions
     def visit_var_field(node)
       value = node.value
@@ -212,6 +221,63 @@ module SyntaxTree
       if value.is_a?(Ident)
         definition = current_scope.find_local(value.value)
         current_scope.add_local_usage(value, definition.type) if definition
+      end
+
+      super
+    end
+
+    # When using regex named capture groups, vcalls might actually be a variable
+    def visit_vcall(node)
+      value = node.value
+      definition = current_scope.find_local(value.value)
+      current_scope.add_local_usage(value, definition.type) if definition
+
+      super
+    end
+
+    # Visit for capturing local variables defined in regex named capture groups
+    def visit_binary(node)
+      if node.operator == :=~
+        left = node.left
+
+        if left.is_a?(RegexpLiteral) && left.parts.length == 1 &&
+             left.parts.first.is_a?(TStringContent)
+          content = left.parts.first
+
+          value = content.value
+          location = content.location
+          start_line = location.start_line
+
+          Regexp
+            .new(value, Regexp::FIXEDENCODING)
+            .names
+            .each do |name|
+              offset = value.index(/\(\?<#{Regexp.escape(name)}>/)
+              line = start_line + value[0...offset].count("\n")
+
+              # We need to add 3 to account for these three characters
+              # prefixing a named capture (?<
+              column = location.start_column + offset + 3
+              if value[0...offset].include?("\n")
+                column =
+                  value[0...offset].length - value[0...offset].rindex("\n") +
+                    3 - 1
+              end
+
+              ident_location =
+                Location.new(
+                  start_line: line,
+                  start_char: location.start_char + offset,
+                  start_column: column,
+                  end_line: line,
+                  end_char: location.start_char + offset + name.length,
+                  end_column: column + name.length
+                )
+
+              identifier = Ident.new(value: name, location: ident_location)
+              current_scope.add_local_definition(identifier, :variable)
+            end
+        end
       end
 
       super

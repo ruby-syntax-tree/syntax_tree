@@ -39,6 +39,13 @@ module SyntaxTree
             arguments[[current_scope.id, value]] = node
           end
         end
+
+        def visit_vcall(node)
+          local = current_scope.find_local(node.value)
+          variables[[current_scope.id, value]] = local if local
+
+          super
+        end
       end
     end
 
@@ -110,11 +117,7 @@ module SyntaxTree
 
       assert_equal(2, collector.variables.length)
       assert_variable(collector, "a", definitions: [2], usages: [4, 5])
-      assert_variable(collector, "rest", definitions: [4])
-
-      # Rest is considered a vcall by the parser instead of a var_ref
-      # assert_equal(1, variable_rest.usages.length)
-      # assert_equal(6, variable_rest.usages[0].start_line)
+      assert_variable(collector, "rest", definitions: [4], usages: [6])
     end
 
     if RUBY_VERSION >= "3.1"
@@ -347,6 +350,58 @@ module SyntaxTree
       assert_argument(collector, "two", definitions: [1], usages: [3])
       assert_argument(collector, "three", definitions: [1], usages: [4])
       assert_argument(collector, "four", definitions: [1], usages: [5])
+    end
+
+    def test_block_locals
+      collector = Collector.collect(<<~RUBY)
+        [].each do |; a|
+        end
+      RUBY
+
+      assert_equal(1, collector.variables.length)
+
+      assert_variable(collector, "a", definitions: [1])
+    end
+
+    def test_lambda_locals
+      collector = Collector.collect(<<~RUBY)
+        ->(;a) { }
+      RUBY
+
+      assert_equal(1, collector.variables.length)
+
+      assert_variable(collector, "a", definitions: [1])
+    end
+
+    def test_regex_named_capture_groups
+      collector = Collector.collect(<<~RUBY)
+        if /(?<one>\\w+)-(?<two>\\w+)/ =~ "something-else"
+          one
+          two
+        end
+      RUBY
+
+      assert_equal(2, collector.variables.length)
+
+      assert_variable(collector, "one", definitions: [1], usages: [2])
+      assert_variable(collector, "two", definitions: [1], usages: [3])
+    end
+
+    def test_multiline_regex_named_capture_groups
+      collector = Collector.collect(<<~RUBY)
+        if %r{
+          (?<one>\\w+)-
+          (?<two>\\w+)
+        } =~ "something-else"
+          one
+          two
+        end
+      RUBY
+
+      assert_equal(2, collector.variables.length)
+
+      assert_variable(collector, "one", definitions: [2], usages: [5])
+      assert_variable(collector, "two", definitions: [3], usages: [6])
     end
 
     class Resolver < Visitor
