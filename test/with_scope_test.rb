@@ -356,6 +356,27 @@ module SyntaxTree
       assert_argument(collector, "four", definitions: [1], usages: [5])
     end
 
+    def test_block_locals
+      collector = Collector.collect(<<~RUBY)
+        [].each do |; a|
+        end
+      RUBY
+
+      assert_equal(1, collector.variables.length)
+
+      assert_variable(collector, "a", definitions: [1])
+    end
+
+    def test_lambda_locals
+      collector = Collector.collect(<<~RUBY)
+        ->(;a) { }
+      RUBY
+
+      assert_equal(1, collector.variables.length)
+
+      assert_variable(collector, "a", definitions: [1])
+    end
+
     def test_regex_named_capture_groups
       collector = Collector.collect(<<~RUBY)
         if /(?<one>\\w+)-(?<two>\\w+)/ =~ "something-else"

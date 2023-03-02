@@ -189,6 +189,15 @@ module SyntaxTree
       super
     end
 
+    def visit_block_var(node)
+      node.locals.each do |local|
+        current_scope.add_local_definition(local, :variable)
+      end
+
+      super
+    end
+    alias visit_lambda_var visit_block_var
+
     # Visit for keeping track of local variable definitions
     def visit_var_field(node)
       value = node.value
