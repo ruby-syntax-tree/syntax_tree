@@ -2391,8 +2391,14 @@ module SyntaxTree
         }
       }
 
+      parent_line = lineno - 1
+      parent_column =
+        consume_token(Semicolon).location.start_column - tokens[index][0][1]
+
       tokens[(index + 1)..].each_with_object([]) do |token, locals|
         (lineno, column), type, value, = token
+        column += parent_column if lineno == 1
+        lineno += parent_line
 
         # Make the state transition for the parser. If there isn't a transition
         # from the current state to a new state for this type, then we're in a

@@ -74,5 +74,53 @@ module SyntaxTree
         \xC5
       RUBY
     end
+
+    def test_lambda_vars_with_parameters_location
+      tree = SyntaxTree.parse(<<~RUBY)
+        # comment
+        # comment
+        ->(_i; a) { a }
+      RUBY
+
+      local_location =
+        tree.statements.body.last.params.contents.locals.first.location
+
+      assert_equal(3, local_location.start_line)
+      assert_equal(3, local_location.end_line)
+      assert_equal(7, local_location.start_column)
+      assert_equal(8, local_location.end_column)
+    end
+
+    def test_lambda_vars_location
+      tree = SyntaxTree.parse(<<~RUBY)
+        # comment
+        # comment
+        ->(; a) { a }
+      RUBY
+
+      local_location =
+        tree.statements.body.last.params.contents.locals.first.location
+
+      assert_equal(3, local_location.start_line)
+      assert_equal(3, local_location.end_line)
+      assert_equal(5, local_location.start_column)
+      assert_equal(6, local_location.end_column)
+    end
+
+    def test_multiple_lambda_vars_location
+      tree = SyntaxTree.parse(<<~RUBY)
+        # comment
+        # comment
+        ->(; a, b, c) { a }
+      RUBY
+
+      local_location =
+        tree.statements.body.last.params.contents.locals.last.location
+
+      assert_equal(3, local_location.start_line)
+      assert_equal(3, local_location.end_line)
+      assert_equal(11, local_location.start_column)
+      assert_equal(12, local_location.end_column)
+    end
   end
 end
