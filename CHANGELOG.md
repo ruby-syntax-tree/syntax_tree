@@ -6,9 +6,17 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 
 ## [Unreleased]
 
+## [6.0.2] - 2023-03-03
+
+### Added
+
+- The `WithScope` visitor mixin will now additionally report local variables defined through regular expression named captures.
+- The `WithScope` visitor mixin now properly handles destructured splat arguments in required positions.
+
 ### Changed
 
 - Fixed the AST output by adding blocks to `Command` and `CommandCall` nodes in the `FieldVisitor`.
+- Fixed the location of lambda local variables (e.g., `->(; a) {}`).
 
 ## [6.0.1] - 2023-02-26
 
@@ -576,7 +584,8 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 
 - 🎉 Initial release! 🎉
 
-[unreleased]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v6.0.1...HEAD
+[unreleased]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v6.0.2...HEAD
+[6.0.2]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v6.0.1...v6.0.2
 [6.0.1]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v6.0.0...v6.0.1
 [6.0.0]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v5.3.0...v6.0.0
 [5.3.0]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v5.2.0...v5.3.0
