@@ -22,6 +22,26 @@ module SyntaxTree
       assert_equal(%w[Foo foo Bar bar baz], visitor.visited_nodes)
     end
 
+    def test_visit_for_symbols
+      parsed_tree = SyntaxTree.parse(<<~RUBY)
+        def foo(**nil)
+        end
+
+        foo do |**nil|
+        end
+
+        ->(**nil) {}
+
+        case foo
+        in **nil
+        end
+      RUBY
+
+      visitor = DummyVisitor.new
+      visitor.visit(parsed_tree)
+      assert_equal(%w[foo], visitor.visited_nodes)
+    end
+
     class DummyVisitor < Visitor
       attr_reader :visited_nodes
 

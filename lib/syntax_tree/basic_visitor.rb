@@ -103,7 +103,9 @@ module SyntaxTree
     end
 
     def visit(node)
-      node&.accept(self)
+      return if node.nil? || node.is_a?(Symbol)
+
+      node.accept(self)
     end
 
     def visit_all(nodes)
