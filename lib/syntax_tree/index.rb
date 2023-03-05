@@ -68,6 +68,19 @@ module SyntaxTree
       end
     end
 
+    # This entry represents a method definition that was created using the alias
+    # keyword.
+    class AliasMethodDefinition
+      attr_reader :nesting, :name, :location, :comments
+
+      def initialize(nesting, name, location, comments)
+        @nesting = nesting
+        @name = name
+        @location = location
+        @comments = comments
+      end
+    end
+
     # When you're using the instruction sequence backend, this class is used to
     # lazily parse comments out of the source code.
     class FileComments
@@ -297,7 +310,7 @@ module SyntaxTree
                 EntryComments.new(file_comments, location)
               )
             when :definesmethod
-              if current_iseq[13][index - 1] != [:putself]
+              if insns[index - 1] != [:putself]
                 raise NotImplementedError,
                       "singleton method with non-self receiver"
               end
@@ -309,6 +322,24 @@ module SyntaxTree
                 location,
                 EntryComments.new(file_comments, location)
               )
+            when :opt_send_without_block, :send
+              if insn[1][:mid] == :"core#set_method_alias"
+                # Now we have to validate that the alias is happening with a
+                # non-interpolated value. To do this we'll match the specific
+                # pattern we're expecting.
+                values = insns[(index - 4)...index].map { |insn| insn.is_a?(Array) ? insn[0] : insn }
+                next if values != %i[putspecialobject putspecialobject putobject putobject]
+
+                # Now that we know it's in the structure we want it, we can use
+                # the values of the putobject to determine the alias.
+                location = Location.new(line, 0)
+                results << AliasMethodDefinition.new(
+                  current_nesting,
+                  insns[index - 2][1],
+                  location,
+                  EntryComments.new(file_comments, location)
+                )
+              end
             end
           end
         end
@@ -331,6 +362,20 @@ module SyntaxTree
         end
 
         visit_methods do
+          def visit_alias(node)
+            if node.left.is_a?(SymbolLiteral) && node.right.is_a?(SymbolLiteral)
+              location =
+                Location.new(node.location.start_line, node.location.start_column)
+
+              results << AliasMethodDefinition.new(
+                nesting.dup,
+                node.left.value.value.to_sym,
+                location,
+                comments_for(node)
+              )
+            end
+          end
+
           def visit_class(node)
             names = visit(node.constant)
             nesting << names

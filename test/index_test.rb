@@ -139,6 +139,13 @@ module SyntaxTree
       end
     end
 
+    def test_alias_method
+      index_each("alias foo bar") do |entry|
+        assert_equal :foo, entry.name
+        assert_empty entry.nesting
+      end
+    end
+
     def test_this_file
       entries = Index.index_file(__FILE__, backend: Index::ParserBackend.new)
 
