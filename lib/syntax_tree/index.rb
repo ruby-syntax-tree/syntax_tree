@@ -220,6 +220,22 @@ module SyntaxTree
         end
       end
 
+      def find_attr_arguments(insns, index)
+        orig_argc = insns[index][1][:orig_argc]
+        names = []
+
+        current = index - 1
+        while current >= 0 && names.length < orig_argc
+          if insns[current].is_a?(Array) && insns[current][0] == :putobject
+            names.unshift(insns[current][1])
+          end
+
+          current -= 1
+        end
+
+        names if insns[current] == [:putself] && names.length == orig_argc
+      end
+
       def index_iseq(iseq, file_comments)
         results = []
         queue = [[iseq, []]]
@@ -324,31 +340,29 @@ module SyntaxTree
               )
             when :opt_send_without_block, :send
               case insn[1][:mid]
-              when :attr_reader
-                # We're going to scan backward finding symbols until we hit a
-                # different instruction. We'll then use that to determine the
-                # receiver. It needs to be self if we're going to understand it.
-                names = []
-                current = index - 1
-
-                while current >= 0 && names.length < insn[1][:orig_argc]
-                  if insns[current].is_a?(Array) && insns[current][0] == :putobject
-                    names.unshift(insns[current][1])
-                  end
-
-                  current -= 1
-                end
-
-                next if insns[current] != [:putself]
+              when :attr_reader, :attr_writer, :attr_accessor
+                names = find_attr_arguments(insns, index)
+                next unless names
 
                 location = Location.new(line, 0)
                 names.each do |name|
-                  results << MethodDefinition.new(
-                    current_nesting,
-                    name,
-                    location,
-                    EntryComments.new(file_comments, location)
-                  )
+                  if insn[1][:mid] != :attr_writer
+                    results << MethodDefinition.new(
+                      current_nesting,
+                      name,
+                      location,
+                      EntryComments.new(file_comments, location)
+                    )
+                  end
+
+                  if insn[1][:mid] != :attr_reader
+                    results << MethodDefinition.new(
+                      current_nesting,
+                      :"#{name}=",
+                      location,
+                      EntryComments.new(file_comments, location)
+                    )
+                  end
                 end
               when :"core#set_method_alias"
                 # Now we have to validate that the alias is happening with a
@@ -452,19 +466,23 @@ module SyntaxTree
           end
 
           def visit_command(node)
-            if node.message.value == "attr_reader"
+            case node.message.value
+            when "attr_reader", "attr_writer", "attr_accessor"
+              comments = comments_for(node)
               location =
                 Location.new(node.location.start_line, node.location.start_column)
 
               node.arguments.parts.each do |argument|
                 next unless argument.is_a?(SymbolLiteral)
+                name = argument.value.value.to_sym
 
-                results << MethodDefinition.new(
-                  nesting.dup,
-                  argument.value.value.to_sym,
-                  location,
-                  comments_for(node)
-                )
+                if node.message.value != "attr_writer"
+                  results << MethodDefinition.new(nesting.dup, name, location, comments)
+                end
+
+                if node.message.value != "attr_reader"
+                  results << MethodDefinition.new(nesting.dup, :"#{name}=", location, comments)
+                end
               end
             end
 
