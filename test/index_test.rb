@@ -146,6 +146,13 @@ module SyntaxTree
       end
     end
 
+    def test_attr_reader
+      index_each("attr_reader :foo") do |entry|
+        assert_equal :foo, entry.name
+        assert_empty entry.nesting
+      end
+    end
+
     def test_this_file
       entries = Index.index_file(__FILE__, backend: Index::ParserBackend.new)
 

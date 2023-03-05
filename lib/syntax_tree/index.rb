@@ -323,7 +323,34 @@ module SyntaxTree
                 EntryComments.new(file_comments, location)
               )
             when :opt_send_without_block, :send
-              if insn[1][:mid] == :"core#set_method_alias"
+              case insn[1][:mid]
+              when :attr_reader
+                # We're going to scan backward finding symbols until we hit a
+                # different instruction. We'll then use that to determine the
+                # receiver. It needs to be self if we're going to understand it.
+                names = []
+                current = index - 1
+
+                while current >= 0 && names.length < insn[1][:orig_argc]
+                  if insns[current].is_a?(Array) && insns[current][0] == :putobject
+                    names.unshift(insns[current][1])
+                  end
+
+                  current -= 1
+                end
+
+                next if insns[current] != [:putself]
+
+                location = Location.new(line, 0)
+                names.each do |name|
+                  results << MethodDefinition.new(
+                    current_nesting,
+                    name,
+                    location,
+                    EntryComments.new(file_comments, location)
+                  )
+                end
+              when :"core#set_method_alias"
                 # Now we have to validate that the alias is happening with a
                 # non-interpolated value. To do this we'll match the specific
                 # pattern we're expecting.
@@ -352,6 +379,20 @@ module SyntaxTree
     # It is not as fast as using the instruction sequences directly, but is
     # supported on all runtimes.
     class ParserBackend
+      class ConstantNameVisitor < Visitor
+        def visit_const_ref(node)
+          [node.constant.value.to_sym]
+        end
+
+        def visit_const_path_ref(node)
+          visit(node.parent) << node.constant.value.to_sym
+        end
+
+        def visit_var_ref(node)
+          [node.value.value.to_sym]
+        end
+      end
+
       class IndexVisitor < Visitor
         attr_reader :results, :nesting, :statements
 
@@ -374,10 +415,12 @@ module SyntaxTree
                 comments_for(node)
               )
             end
+
+            super
           end
 
           def visit_class(node)
-            names = visit(node.constant)
+            names = node.constant.accept(ConstantNameVisitor.new)
             nesting << names
 
             location =
@@ -385,7 +428,7 @@ module SyntaxTree
 
             superclass =
               if node.superclass
-                visited = visit(node.superclass)
+                visited = node.superclass.accept(ConstantNameVisitor.new)
 
                 if visited == [[]]
                   raise NotImplementedError, "superclass with non constant path"
@@ -408,12 +451,24 @@ module SyntaxTree
             nesting.pop
           end
 
-          def visit_const_ref(node)
-            [node.constant.value.to_sym]
-          end
+          def visit_command(node)
+            if node.message.value == "attr_reader"
+              location =
+                Location.new(node.location.start_line, node.location.start_column)
 
-          def visit_const_path_ref(node)
-            visit(node.parent) << node.constant.value.to_sym
+              node.arguments.parts.each do |argument|
+                next unless argument.is_a?(SymbolLiteral)
+
+                results << MethodDefinition.new(
+                  nesting.dup,
+                  argument.value.value.to_sym,
+                  location,
+                  comments_for(node)
+                )
+              end
+            end
+
+            super
           end
 
           def visit_def(node)
@@ -436,10 +491,12 @@ module SyntaxTree
                 comments_for(node)
               )
             end
+
+            super
           end
 
           def visit_module(node)
-            names = visit(node.constant)
+            names = node.constant.accept(ConstantNameVisitor.new)
             nesting << names
 
             location =
@@ -465,10 +522,6 @@ module SyntaxTree
             @statements = node
             super
           end
-
-          def visit_var_ref(node)
-            [node.value.value.to_sym]
-          end
         end
 
         private
@@ -478,8 +531,10 @@ module SyntaxTree
 
           body = statements.body
           line = node.location.start_line - 1
-          index = body.index(node) - 1
+          index = body.index(node)
+          return comments if index.nil?
 
+          index -= 1
           while index >= 0 && body[index].is_a?(Comment) &&
                   (line - body[index].location.start_line < 2)
             comments.unshift(body[index].value)
