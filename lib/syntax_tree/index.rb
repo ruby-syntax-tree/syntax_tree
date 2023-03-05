@@ -31,6 +31,18 @@ module SyntaxTree
       end
     end
 
+    # This entry represents a constant assignment.
+    class ConstantDefinition
+      attr_reader :nesting, :name, :location, :comments
+
+      def initialize(nesting, name, location, comments)
+        @nesting = nesting
+        @name = name
+        @location = location
+        @comments = comments
+      end
+    end
+
     # This entry represents a module definition using the module keyword.
     class ModuleDefinition
       attr_reader :nesting, :name, :location, :comments
@@ -191,7 +203,7 @@ module SyntaxTree
       end
 
       def find_constant_path(insns, index)
-        index -= 1 while insns[index].is_a?(Integer)
+        index -= 1 while index >= 0 && (insns[index].is_a?(Integer) || (insns[index].is_a?(Array) && %i[swap topn].include?(insns[index][0])))
         insn = insns[index]
 
         if insn.is_a?(Array) && insn[0] == :opt_getconstant_path
@@ -338,6 +350,20 @@ module SyntaxTree
                 location,
                 EntryComments.new(file_comments, location)
               )
+            when :setconstant
+              next_nesting = current_nesting.dup
+              name = insn[1]
+
+              _, nesting = find_constant_path(insns, index - 1)
+              next_nesting << nesting if nesting.any?
+
+              location = Location.new(line, 0)
+              results << ConstantDefinition.new(
+                next_nesting,
+                name,
+                location,
+                EntryComments.new(file_comments, location)
+              )
             when :opt_send_without_block, :send
               case insn[1][:mid]
               when :attr_reader, :attr_writer, :attr_accessor
@@ -425,6 +451,22 @@ module SyntaxTree
               results << AliasMethodDefinition.new(
                 nesting.dup,
                 node.left.value.value.to_sym,
+                location,
+                comments_for(node)
+              )
+            end
+
+            super
+          end
+
+          def visit_assign(node)
+            if node.target.is_a?(VarField) && node.target.value.is_a?(Const)
+              location =
+                Location.new(node.location.start_line, node.location.start_column)
+
+              results << ConstantDefinition.new(
+                nesting.dup,
+                node.target.value.value.to_sym,
                 location,
                 comments_for(node)
               )

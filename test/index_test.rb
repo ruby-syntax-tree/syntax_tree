@@ -167,6 +167,13 @@ module SyntaxTree
       end
     end
 
+    def test_constant
+      index_each("FOO = 1") do |entry|
+        assert_equal :FOO, entry.name
+        assert_empty entry.nesting
+      end
+    end
+
     def test_this_file
       entries = Index.index_file(__FILE__, backend: Index::ParserBackend.new)
 
