@@ -788,6 +788,7 @@ inherit_gem:
 * [Neovim](https://neovim.io/) - [neovim/nvim-lspconfig](https://github.com/neovim/nvim-lspconfig).
 * [Vim](https://www.vim.org/) - [dense-analysis/ale](https://github.com/dense-analysis/ale).
 * [VSCode](https://code.visualstudio.com/) - [ruby-syntax-tree/vscode-syntax-tree](https://github.com/ruby-syntax-tree/vscode-syntax-tree).
+* [Emacs](https://www.gnu.org/software/emacs/) - [emacs-format-all-the-code](https://github.com/lassik/emacs-format-all-the-code).
 
 ## Contributing
 
