@@ -203,7 +203,14 @@ module SyntaxTree
       end
 
       def find_constant_path(insns, index)
-        index -= 1 while index >= 0 && (insns[index].is_a?(Integer) || (insns[index].is_a?(Array) && %i[swap topn].include?(insns[index][0])))
+        index -= 1 while index >= 0 &&
+          (
+            insns[index].is_a?(Integer) ||
+              (
+                insns[index].is_a?(Array) &&
+                  %i[swap topn].include?(insns[index][0])
+              )
+          )
         insn = insns[index]
 
         if insn.is_a?(Array) && insn[0] == :opt_getconstant_path
@@ -252,7 +259,12 @@ module SyntaxTree
         comments = EntryComments.new(file_comments, location)
 
         if nesting.last == [:singletonclass]
-          SingletonMethodDefinition.new(nesting[0...-1], name, location, comments)
+          SingletonMethodDefinition.new(
+            nesting[0...-1],
+            name,
+            location,
+            comments
+          )
         else
           MethodDefinition.new(nesting, name, location, comments)
         end
@@ -341,7 +353,12 @@ module SyntaxTree
               queue << [class_iseq, next_nesting]
             when :definemethod
               location = location_for(insn[2])
-              results << method_definition(current_nesting, insn[1], location, file_comments)
+              results << method_definition(
+                current_nesting,
+                insn[1],
+                location,
+                file_comments
+              )
             when :definesmethod
               if insns[index - 1] != [:putself]
                 warn("singleton method with non-self receiver")
@@ -378,19 +395,35 @@ module SyntaxTree
                 location = Location.new(line, :unknown)
                 names.each do |name|
                   if insn[1][:mid] != :attr_writer
-                    results << method_definition(current_nesting, name, location, file_comments)
+                    results << method_definition(
+                      current_nesting,
+                      name,
+                      location,
+                      file_comments
+                    )
                   end
 
                   if insn[1][:mid] != :attr_reader
-                    results << method_definition(current_nesting, :"#{name}=", location, file_comments)
+                    results << method_definition(
+                      current_nesting,
+                      :"#{name}=",
+                      location,
+                      file_comments
+                    )
                   end
                 end
               when :"core#set_method_alias"
                 # Now we have to validate that the alias is happening with a
                 # non-interpolated value. To do this we'll match the specific
                 # pattern we're expecting.
-                values = insns[(index - 4)...index].map { |insn| insn.is_a?(Array) ? insn[0] : insn }
-                next if values != %i[putspecialobject putspecialobject putobject putobject]
+                values =
+                  insns[(index - 4)...index].map do |insn|
+                    insn.is_a?(Array) ? insn[0] : insn
+                  end
+                if values !=
+                     %i[putspecialobject putspecialobject putobject putobject]
+                  next
+                end
 
                 # Now that we know it's in the structure we want it, we can use
                 # the values of the putobject to determine the alias.
@@ -441,7 +474,10 @@ module SyntaxTree
           def visit_alias(node)
             if node.left.is_a?(SymbolLiteral) && node.right.is_a?(SymbolLiteral)
               location =
-                Location.new(node.location.start_line, node.location.start_column)
+                Location.new(
+                  node.location.start_line,
+                  node.location.start_column
+                )
 
               results << AliasMethodDefinition.new(
                 nesting.dup,
@@ -457,7 +493,10 @@ module SyntaxTree
           def visit_assign(node)
             if node.target.is_a?(VarField) && node.target.value.is_a?(Const)
               location =
-                Location.new(node.location.start_line, node.location.start_column)
+                Location.new(
+                  node.location.start_line,
+                  node.location.start_column
+                )
 
               results << ConstantDefinition.new(
                 nesting.dup,
@@ -507,18 +546,31 @@ module SyntaxTree
             when "attr_reader", "attr_writer", "attr_accessor"
               comments = comments_for(node)
               location =
-                Location.new(node.location.start_line, node.location.start_column)
+                Location.new(
+                  node.location.start_line,
+                  node.location.start_column
+                )
 
               node.arguments.parts.each do |argument|
                 next unless argument.is_a?(SymbolLiteral)
                 name = argument.value.value.to_sym
 
                 if node.message.value != "attr_writer"
-                  results << MethodDefinition.new(nesting.dup, name, location, comments)
+                  results << MethodDefinition.new(
+                    nesting.dup,
+                    name,
+                    location,
+                    comments
+                  )
                 end
 
                 if node.message.value != "attr_reader"
-                  results << MethodDefinition.new(nesting.dup, :"#{name}=", location, comments)
+                  results << MethodDefinition.new(
+                    nesting.dup,
+                    :"#{name}=",
+                    location,
+                    comments
+                  )
                 end
               end
             end

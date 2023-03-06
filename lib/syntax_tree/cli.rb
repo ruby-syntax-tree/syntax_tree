@@ -166,12 +166,13 @@ module SyntaxTree
       def run(item)
         lines = item.source.lines(chomp: true)
 
-        SyntaxTree.index(item.source).each do |entry|
-          line = lines[entry.location.line - 1]
-          pattern = "/^#{line.gsub("\\", "\\\\\\\\").gsub("/", "\\/")}$/;\""
+        SyntaxTree
+          .index(item.source)
+          .each do |entry|
+            line = lines[entry.location.line - 1]
+            pattern = "/^#{line.gsub("\\", "\\\\\\\\").gsub("/", "\\/")}$/;\""
 
-          entries <<
-            case entry
+            entries << case entry
             when SyntaxTree::Index::ModuleDefinition
               parts = [entry.name, item.filepath, pattern, "m"]
 
@@ -230,7 +231,9 @@ module SyntaxTree
       end
 
       def success
-        puts("!_TAG_FILE_FORMAT	2	/extended format; --format=1 will not append ;\" to lines/")
+        puts(
+          "!_TAG_FILE_FORMAT	2	/extended format; --format=1 will not append ;\" to lines/"
+        )
         puts("!_TAG_FILE_SORTED	1	/0=unsorted, 1=sorted, 2=foldcase/")
         entries.sort.each { |entry| puts(entry) }
       end
