@@ -297,8 +297,8 @@ module SyntaxTree
                   find_constant_path(insns, index - 1)
 
                 if superclass.empty?
-                  raise NotImplementedError,
-                        "superclass with non constant path on line #{line}"
+                  warn("superclass with non constant path on line #{line}")
+                  next
                 end
               end
 
@@ -316,8 +316,8 @@ module SyntaxTree
                 # defined on self. We could, but it would require more
                 # emulation.
                 if insns[index - 2] != [:putself]
-                  raise NotImplementedError,
-                        "singleton class with non-self receiver"
+                  warn("singleton class with non-self receiver")
+                  next
                 end
               elsif flags & VM_DEFINECLASS_TYPE_MODULE > 0
                 location = location_for(class_iseq)
@@ -344,8 +344,8 @@ module SyntaxTree
               results << method_definition(current_nesting, insn[1], location, file_comments)
             when :definesmethod
               if insns[index - 1] != [:putself]
-                raise NotImplementedError,
-                      "singleton method with non-self receiver"
+                warn("singleton method with non-self receiver")
+                next
               end
 
               location = location_for(insn[2])
@@ -362,7 +362,7 @@ module SyntaxTree
               _, nesting = find_constant_path(insns, index - 1)
               next_nesting << nesting if nesting.any?
 
-              location = Location.new(line, 0)
+              location = Location.new(line, :unknown)
               results << ConstantDefinition.new(
                 next_nesting,
                 name,
@@ -375,7 +375,7 @@ module SyntaxTree
                 names = find_attr_arguments(insns, index)
                 next unless names
 
-                location = Location.new(line, 0)
+                location = Location.new(line, :unknown)
                 names.each do |name|
                   if insn[1][:mid] != :attr_writer
                     results << method_definition(current_nesting, name, location, file_comments)
@@ -394,7 +394,7 @@ module SyntaxTree
 
                 # Now that we know it's in the structure we want it, we can use
                 # the values of the putobject to determine the alias.
-                location = Location.new(line, 0)
+                location = Location.new(line, :unknown)
                 results << AliasMethodDefinition.new(
                   current_nesting,
                   insns[index - 2][1],
