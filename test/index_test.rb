@@ -76,20 +76,6 @@ module SyntaxTree
       end
     end
 
-    def test_class_path_superclass_unknown
-      source = "class Foo < bar; end"
-
-      assert_raises NotImplementedError do
-        Index.index(source, backend: Index::ParserBackend.new)
-      end
-
-      if defined?(RubyVM::InstructionSequence)
-        assert_raises NotImplementedError do
-          Index.index(source, backend: Index::ISeqBackend.new)
-        end
-      end
-    end
-
     def test_class_comments
       index_each("# comment1\n# comment2\nclass Foo; end") do |entry|
         assert_equal :Foo, entry.name
@@ -136,6 +122,41 @@ module SyntaxTree
       index_each("# comment1\n# comment2\ndef self.foo; end") do |entry|
         assert_equal :foo, entry.name
         assert_equal ["# comment1", "# comment2"], entry.comments.to_a
+      end
+    end
+
+    def test_alias_method
+      index_each("alias foo bar") do |entry|
+        assert_equal :foo, entry.name
+        assert_empty entry.nesting
+      end
+    end
+
+    def test_attr_reader
+      index_each("attr_reader :foo") do |entry|
+        assert_equal :foo, entry.name
+        assert_empty entry.nesting
+      end
+    end
+
+    def test_attr_writer
+      index_each("attr_writer :foo") do |entry|
+        assert_equal :foo=, entry.name
+        assert_empty entry.nesting
+      end
+    end
+
+    def test_attr_accessor
+      index_each("attr_accessor :foo") do |entry|
+        assert_equal :foo=, entry.name
+        assert_empty entry.nesting
+      end
+    end
+
+    def test_constant
+      index_each("FOO = 1") do |entry|
+        assert_equal :FOO, entry.name
+        assert_empty entry.nesting
       end
     end
 

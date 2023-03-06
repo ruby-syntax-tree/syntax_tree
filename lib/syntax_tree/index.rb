@@ -31,6 +31,18 @@ module SyntaxTree
       end
     end
 
+    # This entry represents a constant assignment.
+    class ConstantDefinition
+      attr_reader :nesting, :name, :location, :comments
+
+      def initialize(nesting, name, location, comments)
+        @nesting = nesting
+        @name = name
+        @location = location
+        @comments = comments
+      end
+    end
+
     # This entry represents a module definition using the module keyword.
     class ModuleDefinition
       attr_reader :nesting, :name, :location, :comments
@@ -58,6 +70,19 @@ module SyntaxTree
     # This entry represents a singleton method definition using the def keyword
     # with a specified target.
     class SingletonMethodDefinition
+      attr_reader :nesting, :name, :location, :comments
+
+      def initialize(nesting, name, location, comments)
+        @nesting = nesting
+        @name = name
+        @location = location
+        @comments = comments
+      end
+    end
+
+    # This entry represents a method definition that was created using the alias
+    # keyword.
+    class AliasMethodDefinition
       attr_reader :nesting, :name, :location, :comments
 
       def initialize(nesting, name, location, comments)
@@ -178,7 +203,14 @@ module SyntaxTree
       end
 
       def find_constant_path(insns, index)
-        index -= 1 while insns[index].is_a?(Integer)
+        index -= 1 while index >= 0 &&
+          (
+            insns[index].is_a?(Integer) ||
+              (
+                insns[index].is_a?(Array) &&
+                  %i[swap topn].include?(insns[index][0])
+              )
+          )
         insn = insns[index]
 
         if insn.is_a?(Array) && insn[0] == :opt_getconstant_path
@@ -207,11 +239,43 @@ module SyntaxTree
         end
       end
 
+      def find_attr_arguments(insns, index)
+        orig_argc = insns[index][1][:orig_argc]
+        names = []
+
+        current = index - 1
+        while current >= 0 && names.length < orig_argc
+          if insns[current].is_a?(Array) && insns[current][0] == :putobject
+            names.unshift(insns[current][1])
+          end
+
+          current -= 1
+        end
+
+        names if insns[current] == [:putself] && names.length == orig_argc
+      end
+
+      def method_definition(nesting, name, location, file_comments)
+        comments = EntryComments.new(file_comments, location)
+
+        if nesting.last == [:singletonclass]
+          SingletonMethodDefinition.new(
+            nesting[0...-1],
+            name,
+            location,
+            comments
+          )
+        else
+          MethodDefinition.new(nesting, name, location, comments)
+        end
+      end
+
       def index_iseq(iseq, file_comments)
         results = []
         queue = [[iseq, []]]
 
         while (current_iseq, current_nesting = queue.shift)
+          file = current_iseq[5]
           line = current_iseq[8]
           insns = current_iseq[13]
 
@@ -246,8 +310,8 @@ module SyntaxTree
                   find_constant_path(insns, index - 1)
 
                 if superclass.empty?
-                  raise NotImplementedError,
-                        "superclass with non constant path on line #{line}"
+                  warn("#{file}:#{line}: superclass with non constant path")
+                  next
                 end
               end
 
@@ -265,8 +329,10 @@ module SyntaxTree
                 # defined on self. We could, but it would require more
                 # emulation.
                 if insns[index - 2] != [:putself]
-                  raise NotImplementedError,
-                        "singleton class with non-self receiver"
+                  warn(
+                    "#{file}:#{line}: singleton class with non-self receiver"
+                  )
+                  next
                 end
               elsif flags & VM_DEFINECLASS_TYPE_MODULE > 0
                 location = location_for(class_iseq)
@@ -290,16 +356,16 @@ module SyntaxTree
               queue << [class_iseq, next_nesting]
             when :definemethod
               location = location_for(insn[2])
-              results << MethodDefinition.new(
+              results << method_definition(
                 current_nesting,
                 insn[1],
                 location,
-                EntryComments.new(file_comments, location)
+                file_comments
               )
             when :definesmethod
-              if current_iseq[13][index - 1] != [:putself]
-                raise NotImplementedError,
-                      "singleton method with non-self receiver"
+              if insns[index - 1] != [:putself]
+                warn("#{file}:#{line}: singleton method with non-self receiver")
+                next
               end
 
               location = location_for(insn[2])
@@ -309,6 +375,69 @@ module SyntaxTree
                 location,
                 EntryComments.new(file_comments, location)
               )
+            when :setconstant
+              next_nesting = current_nesting.dup
+              name = insn[1]
+
+              _, nesting = find_constant_path(insns, index - 1)
+              next_nesting << nesting if nesting.any?
+
+              location = Location.new(line, :unknown)
+              results << ConstantDefinition.new(
+                next_nesting,
+                name,
+                location,
+                EntryComments.new(file_comments, location)
+              )
+            when :opt_send_without_block, :send
+              case insn[1][:mid]
+              when :attr_reader, :attr_writer, :attr_accessor
+                attr_names = find_attr_arguments(insns, index)
+                next unless attr_names
+
+                location = Location.new(line, :unknown)
+                attr_names.each do |attr_name|
+                  if insn[1][:mid] != :attr_writer
+                    results << method_definition(
+                      current_nesting,
+                      attr_name,
+                      location,
+                      file_comments
+                    )
+                  end
+
+                  if insn[1][:mid] != :attr_reader
+                    results << method_definition(
+                      current_nesting,
+                      :"#{attr_name}=",
+                      location,
+                      file_comments
+                    )
+                  end
+                end
+              when :"core#set_method_alias"
+                # Now we have to validate that the alias is happening with a
+                # non-interpolated value. To do this we'll match the specific
+                # pattern we're expecting.
+                values =
+                  insns[(index - 4)...index].map do |previous|
+                    previous.is_a?(Array) ? previous[0] : previous
+                  end
+                if values !=
+                     %i[putspecialobject putspecialobject putobject putobject]
+                  next
+                end
+
+                # Now that we know it's in the structure we want it, we can use
+                # the values of the putobject to determine the alias.
+                location = Location.new(line, :unknown)
+                results << AliasMethodDefinition.new(
+                  current_nesting,
+                  insns[index - 2][1],
+                  location,
+                  EntryComments.new(file_comments, location)
+                )
+              end
             end
           end
         end
@@ -321,6 +450,20 @@ module SyntaxTree
     # It is not as fast as using the instruction sequences directly, but is
     # supported on all runtimes.
     class ParserBackend
+      class ConstantNameVisitor < Visitor
+        def visit_const_ref(node)
+          [node.constant.value.to_sym]
+        end
+
+        def visit_const_path_ref(node)
+          visit(node.parent) << node.constant.value.to_sym
+        end
+
+        def visit_var_ref(node)
+          [node.value.value.to_sym]
+        end
+      end
+
       class IndexVisitor < Visitor
         attr_reader :results, :nesting, :statements
 
@@ -331,8 +474,46 @@ module SyntaxTree
         end
 
         visit_methods do
+          def visit_alias(node)
+            if node.left.is_a?(SymbolLiteral) && node.right.is_a?(SymbolLiteral)
+              location =
+                Location.new(
+                  node.location.start_line,
+                  node.location.start_column
+                )
+
+              results << AliasMethodDefinition.new(
+                nesting.dup,
+                node.left.value.value.to_sym,
+                location,
+                comments_for(node)
+              )
+            end
+
+            super
+          end
+
+          def visit_assign(node)
+            if node.target.is_a?(VarField) && node.target.value.is_a?(Const)
+              location =
+                Location.new(
+                  node.location.start_line,
+                  node.location.start_column
+                )
+
+              results << ConstantDefinition.new(
+                nesting.dup,
+                node.target.value.value.to_sym,
+                location,
+                comments_for(node)
+              )
+            end
+
+            super
+          end
+
           def visit_class(node)
-            names = visit(node.constant)
+            names = node.constant.accept(ConstantNameVisitor.new)
             nesting << names
 
             location =
@@ -340,7 +521,7 @@ module SyntaxTree
 
             superclass =
               if node.superclass
-                visited = visit(node.superclass)
+                visited = node.superclass.accept(ConstantNameVisitor.new)
 
                 if visited == [[]]
                   raise NotImplementedError, "superclass with non constant path"
@@ -363,12 +544,41 @@ module SyntaxTree
             nesting.pop
           end
 
-          def visit_const_ref(node)
-            [node.constant.value.to_sym]
-          end
+          def visit_command(node)
+            case node.message.value
+            when "attr_reader", "attr_writer", "attr_accessor"
+              comments = comments_for(node)
+              location =
+                Location.new(
+                  node.location.start_line,
+                  node.location.start_column
+                )
 
-          def visit_const_path_ref(node)
-            visit(node.parent) << node.constant.value.to_sym
+              node.arguments.parts.each do |argument|
+                next unless argument.is_a?(SymbolLiteral)
+                name = argument.value.value.to_sym
+
+                if node.message.value != "attr_writer"
+                  results << MethodDefinition.new(
+                    nesting.dup,
+                    name,
+                    location,
+                    comments
+                  )
+                end
+
+                if node.message.value != "attr_reader"
+                  results << MethodDefinition.new(
+                    nesting.dup,
+                    :"#{name}=",
+                    location,
+                    comments
+                  )
+                end
+              end
+            end
+
+            super
           end
 
           def visit_def(node)
@@ -391,10 +601,12 @@ module SyntaxTree
                 comments_for(node)
               )
             end
+
+            super
           end
 
           def visit_module(node)
-            names = visit(node.constant)
+            names = node.constant.accept(ConstantNameVisitor.new)
             nesting << names
 
             location =
@@ -420,10 +632,6 @@ module SyntaxTree
             @statements = node
             super
           end
-
-          def visit_var_ref(node)
-            [node.value.value.to_sym]
-          end
         end
 
         private
@@ -433,8 +641,10 @@ module SyntaxTree
 
           body = statements.body
           line = node.location.start_line - 1
-          index = body.index(node) - 1
+          index = body.index(node)
+          return comments if index.nil?
 
+          index -= 1
           while index >= 0 && body[index].is_a?(Comment) &&
                   (line - body[index].location.start_line < 2)
             comments.unshift(body[index].value)
