@@ -248,6 +248,16 @@ module SyntaxTree
         names if insns[current] == [:putself] && names.length == orig_argc
       end
 
+      def method_definition(nesting, name, location, file_comments)
+        comments = EntryComments.new(file_comments, location)
+
+        if nesting.last == [:singletonclass]
+          SingletonMethodDefinition.new(nesting[0...-1], name, location, comments)
+        else
+          MethodDefinition.new(nesting, name, location, comments)
+        end
+      end
+
       def index_iseq(iseq, file_comments)
         results = []
         queue = [[iseq, []]]
@@ -331,12 +341,7 @@ module SyntaxTree
               queue << [class_iseq, next_nesting]
             when :definemethod
               location = location_for(insn[2])
-              results << MethodDefinition.new(
-                current_nesting,
-                insn[1],
-                location,
-                EntryComments.new(file_comments, location)
-              )
+              results << method_definition(current_nesting, insn[1], location, file_comments)
             when :definesmethod
               if insns[index - 1] != [:putself]
                 raise NotImplementedError,
@@ -373,21 +378,11 @@ module SyntaxTree
                 location = Location.new(line, 0)
                 names.each do |name|
                   if insn[1][:mid] != :attr_writer
-                    results << MethodDefinition.new(
-                      current_nesting,
-                      name,
-                      location,
-                      EntryComments.new(file_comments, location)
-                    )
+                    results << method_definition(current_nesting, name, location, file_comments)
                   end
 
                   if insn[1][:mid] != :attr_reader
-                    results << MethodDefinition.new(
-                      current_nesting,
-                      :"#{name}=",
-                      location,
-                      EntryComments.new(file_comments, location)
-                    )
+                    results << method_definition(current_nesting, :"#{name}=", location, file_comments)
                   end
                 end
               when :"core#set_method_alias"
