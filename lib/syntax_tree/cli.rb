@@ -231,10 +231,11 @@ module SyntaxTree
       end
 
       def success
-        puts(
-          "!_TAG_FILE_FORMAT	2	/extended format; --format=1 will not append ;\" to lines/"
-        )
-        puts("!_TAG_FILE_SORTED	1	/0=unsorted, 1=sorted, 2=foldcase/")
+        puts(<<~HEADER)
+          !_TAG_FILE_FORMAT	2	/extended format; --format=1 will not append ;" to lines/
+          !_TAG_FILE_SORTED	1	/0=unsorted, 1=sorted, 2=foldcase/
+        HEADER
+
         entries.sort.each { |entry| puts(entry) }
       end
     end

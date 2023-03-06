@@ -275,6 +275,7 @@ module SyntaxTree
         queue = [[iseq, []]]
 
         while (current_iseq, current_nesting = queue.shift)
+          file = current_iseq[5]
           line = current_iseq[8]
           insns = current_iseq[13]
 
@@ -309,7 +310,7 @@ module SyntaxTree
                   find_constant_path(insns, index - 1)
 
                 if superclass.empty?
-                  warn("superclass with non constant path on line #{line}")
+                  warn("#{file}:#{line}: superclass with non constant path")
                   next
                 end
               end
@@ -328,7 +329,9 @@ module SyntaxTree
                 # defined on self. We could, but it would require more
                 # emulation.
                 if insns[index - 2] != [:putself]
-                  warn("singleton class with non-self receiver")
+                  warn(
+                    "#{file}:#{line}: singleton class with non-self receiver"
+                  )
                   next
                 end
               elsif flags & VM_DEFINECLASS_TYPE_MODULE > 0
@@ -361,7 +364,7 @@ module SyntaxTree
               )
             when :definesmethod
               if insns[index - 1] != [:putself]
-                warn("singleton method with non-self receiver")
+                warn("#{file}:#{line}: singleton method with non-self receiver")
                 next
               end
 
@@ -389,15 +392,15 @@ module SyntaxTree
             when :opt_send_without_block, :send
               case insn[1][:mid]
               when :attr_reader, :attr_writer, :attr_accessor
-                names = find_attr_arguments(insns, index)
-                next unless names
+                attr_names = find_attr_arguments(insns, index)
+                next unless attr_names
 
                 location = Location.new(line, :unknown)
-                names.each do |name|
+                attr_names.each do |attr_name|
                   if insn[1][:mid] != :attr_writer
                     results << method_definition(
                       current_nesting,
-                      name,
+                      attr_name,
                       location,
                       file_comments
                     )
@@ -406,7 +409,7 @@ module SyntaxTree
                   if insn[1][:mid] != :attr_reader
                     results << method_definition(
                       current_nesting,
-                      :"#{name}=",
+                      :"#{attr_name}=",
                       location,
                       file_comments
                     )
@@ -417,8 +420,8 @@ module SyntaxTree
                 # non-interpolated value. To do this we'll match the specific
                 # pattern we're expecting.
                 values =
-                  insns[(index - 4)...index].map do |insn|
-                    insn.is_a?(Array) ? insn[0] : insn
+                  insns[(index - 4)...index].map do |previous|
+                    previous.is_a?(Array) ? previous[0] : previous
                   end
                 if values !=
                      %i[putspecialobject putspecialobject putobject putobject]
