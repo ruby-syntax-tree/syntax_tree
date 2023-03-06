@@ -15,6 +15,7 @@ It is built with only standard library dependencies. It additionally ships with 
 - [CLI](#cli)
   - [ast](#ast)
   - [check](#check)
+  - [ctags](#ctags)
   - [expr](#expr)
   - [format](#format)
   - [json](#json)
@@ -137,6 +138,33 @@ To change the print width that you are checking against, specify the `--print-wi
 
 ```sh
 stree check --print-width=100 path/to/file.rb
+```
+
+### ctags
+
+This command will output to stdout a set of tags suitable for usage with [ctags](https://github.com/universal-ctags/ctags).
+
+```sh
+stree ctags path/to/file.rb
+```
+
+For a file containing the following Ruby code:
+
+```ruby
+class Foo
+end
+
+class Bar < Foo
+end
+```
+
+you will receive:
+
+```
+!_TAG_FILE_FORMAT	2	/extended format; --format=1 will not append ;" to lines/
+!_TAG_FILE_SORTED	1	/0=unsorted, 1=sorted, 2=foldcase/
+Bar	test.rb	/^class Bar < Foo$/;"	c	inherits:Foo
+Foo	test.rb	/^class Foo$/;"	c
 ```
 
 ### expr

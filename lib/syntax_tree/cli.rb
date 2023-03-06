@@ -413,6 +413,9 @@ module SyntaxTree
       #{Color.bold("stree check [--plugins=...] [--print-width=NUMBER] [-e SCRIPT] FILE")}
         Check that the given files are formatted as syntax tree would format them
 
+      #{Color.bold("stree ctags [-e SCRIPT] FILE")}
+        Print out a ctags-compatible index of the given files
+
       #{Color.bold("stree debug [--plugins=...] [--print-width=NUMBER] [-e SCRIPT] FILE")}
         Check that the given files can be formatted idempotently
 
