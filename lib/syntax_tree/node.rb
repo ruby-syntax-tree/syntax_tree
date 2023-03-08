@@ -6767,6 +6767,7 @@ module SyntaxTree
       q.group do
         q.text(keyword)
         q.nest(keyword.length) { q.format(pattern) }
+        q.text(" then") if pattern.is_a?(RangeNode) && pattern.right.nil?
 
         unless statements.empty?
           q.indent do
