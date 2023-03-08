@@ -183,10 +183,11 @@ module SyntaxTree
       next unless main_statement.is_a?(SyntaxTree::ClassDeclaration)
 
       # Ensure we're looking at class declarations with superclasses.
-      next unless main_statement.superclass.is_a?(SyntaxTree::VarRef)
+      superclass = main_statement.superclass
+      next unless superclass.is_a?(SyntaxTree::VarRef)
 
       # Ensure we're looking at class declarations that inherit from Node.
-      next unless main_statement.superclass.value.value == "Node"
+      next unless superclass.value.value == "Node"
 
       # All child nodes inherit the location attr_reader from Node, so we'll add
       # that to the list of attributes first.
