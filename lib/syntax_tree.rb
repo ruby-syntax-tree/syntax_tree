@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "prettier_print"
+require "pp"
 require "ripper"
 
 require_relative "syntax_tree/node"
