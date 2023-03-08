@@ -17,6 +17,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 
 - Fixed the AST output by adding blocks to `Command` and `CommandCall` nodes in the `FieldVisitor`.
 - Fixed the location of lambda local variables (e.g., `->(; a) {}`).
+- The `Elsif` node has been folded into `IfNode`. A `keyword` field has been added to `IfNode` specifying if the node represents an `if` or `elsif`.
 
 ## [6.0.1] - 2023-02-26
 

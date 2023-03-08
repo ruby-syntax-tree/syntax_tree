@@ -452,7 +452,7 @@ module SyntaxTree
       SOURCE
 
       at = location(lines: 2..4, chars: 9..30)
-      assert_node(Elsif, source, at: at, &:consequent)
+      assert_node(IfNode, source, at: at, &:consequent)
     end
 
     def test_embdoc

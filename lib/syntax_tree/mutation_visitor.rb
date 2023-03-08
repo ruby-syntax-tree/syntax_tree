@@ -322,14 +322,6 @@ module SyntaxTree
         )
       end
 
-      # Visit a Elsif node.
-      def visit_elsif(node)
-        node.copy(
-          statements: visit(node.statements),
-          consequent: visit(node.consequent)
-        )
-      end
-
       # Visit a EmbDoc node.
       def visit_embdoc(node)
         node.copy

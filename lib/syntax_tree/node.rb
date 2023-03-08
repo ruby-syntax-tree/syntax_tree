@@ -4853,95 +4853,6 @@ module SyntaxTree
     end
   end
 
-  # Elsif represents another clause in an +if+ or +unless+ chain.
-  #
-  #     if variable
-  #     elsif other_variable
-  #     end
-  #
-  class Elsif < Node
-    # [Node] the expression to be checked
-    attr_reader :predicate
-
-    # [Statements] the expressions to be executed
-    attr_reader :statements
-
-    # [nil | Elsif | Else] the next clause in the chain
-    attr_reader :consequent
-
-    # [Array[ Comment | EmbDoc ]] the comments attached to this node
-    attr_reader :comments
-
-    def initialize(predicate:, statements:, consequent:, location:)
-      @predicate = predicate
-      @statements = statements
-      @consequent = consequent
-      @location = location
-      @comments = []
-    end
-
-    def accept(visitor)
-      visitor.visit_elsif(self)
-    end
-
-    def child_nodes
-      [predicate, statements, consequent]
-    end
-
-    def copy(predicate: nil, statements: nil, consequent: nil, location: nil)
-      node =
-        Elsif.new(
-          predicate: predicate || self.predicate,
-          statements: statements || self.statements,
-          consequent: consequent || self.consequent,
-          location: location || self.location
-        )
-
-      node.comments.concat(comments.map(&:copy))
-      node
-    end
-
-    alias deconstruct child_nodes
-
-    def deconstruct_keys(_keys)
-      {
-        predicate: predicate,
-        statements: statements,
-        consequent: consequent,
-        location: location,
-        comments: comments
-      }
-    end
-
-    def format(q)
-      q.group do
-        q.group do
-          q.text("elsif ")
-          q.nest("elsif".length - 1) { q.format(predicate) }
-        end
-
-        unless statements.empty?
-          q.indent do
-            q.breakable_force
-            q.format(statements)
-          end
-        end
-
-        if consequent
-          q.group do
-            q.breakable_force
-            q.format(consequent)
-          end
-        end
-      end
-    end
-
-    def ===(other)
-      other.is_a?(Elsif) && predicate === other.predicate &&
-        statements === other.statements && consequent === other.consequent
-    end
-  end
-
   # EmbDoc represents a multi-line comment.
   #
   #     =begin
@@ -6460,25 +6371,29 @@ module SyntaxTree
     end
   end
 
-  # If represents the first clause in an +if+ chain.
+  # If an +if+ or +elsif+ clause in an +if+ chain.
   #
   #     if predicate
   #     end
   #
   class IfNode < Node
+    # [Kw] the opening keyword of the conditional statement
+    attr_reader :keyword
+
     # [Node] the expression to be checked
     attr_reader :predicate
 
     # [Statements] the expressions to be executed
     attr_reader :statements
 
-    # [nil | Elsif | Else] the next clause in the chain
+    # [nil | IfNode | Else] the next clause in the chain
     attr_reader :consequent
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(predicate:, statements:, consequent:, location:)
+    def initialize(keyword:, predicate:, statements:, consequent:, location:)
+      @keyword = keyword
       @predicate = predicate
       @statements = statements
       @consequent = consequent
@@ -6494,9 +6409,16 @@ module SyntaxTree
       [predicate, statements, consequent]
     end
 
-    def copy(predicate: nil, statements: nil, consequent: nil, location: nil)
+    def copy(
+      keyword: nil,
+      predicate: nil,
+      statements: nil,
+      consequent: nil,
+      location: nil
+    )
       node =
         IfNode.new(
+          keyword: keyword || self.keyword,
           predicate: predicate || self.predicate,
           statements: statements || self.statements,
           consequent: consequent || self.consequent,
@@ -6515,17 +6437,42 @@ module SyntaxTree
         statements: statements,
         consequent: consequent,
         location: location,
+        keyword: keyword,
         comments: comments
       }
     end
 
     def format(q)
-      ConditionalFormatter.new("if", self).format(q)
+      if keyword.value == "elsif"
+        q.group do
+          q.group do
+            q.text("elsif ")
+            q.nest("elsif".length - 1) { q.format(predicate) }
+          end
+
+          unless statements.empty?
+            q.indent do
+              q.breakable_force
+              q.format(statements)
+            end
+          end
+
+          if consequent
+            q.group do
+              q.breakable_force
+              q.format(consequent)
+            end
+          end
+        end
+      else
+        ConditionalFormatter.new(keyword.value, self).format(q)
+      end
     end
 
     def ===(other)
       other.is_a?(IfNode) && predicate === other.predicate &&
-        statements === other.statements && consequent === other.consequent
+        statements === other.statements && consequent === other.consequent &&
+        keyword === other.keyword
     end
 
     # Checks if the node was originally found in the modifier form.
@@ -11328,7 +11275,7 @@ module SyntaxTree
     # [Statements] the expressions to be executed
     attr_reader :statements
 
-    # [nil | Elsif | Else] the next clause in the chain
+    # [nil | IfNode | Else] the next clause in the chain
     attr_reader :consequent
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node

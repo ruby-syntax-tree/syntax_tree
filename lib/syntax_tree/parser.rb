@@ -1575,7 +1575,8 @@ module SyntaxTree
         ending.location.start_column
       )
 
-      Elsif.new(
+      IfNode.new(
+        keyword: beginning,
         predicate: predicate,
         statements: statements,
         consequent: consequent,
@@ -2062,6 +2063,7 @@ module SyntaxTree
       )
 
       IfNode.new(
+        keyword: beginning,
         predicate: predicate,
         statements: statements,
         consequent: consequent,
@@ -2083,9 +2085,10 @@ module SyntaxTree
     # :call-seq:
     #   on_if_mod: (untyped predicate, untyped statement) -> IfNode
     def on_if_mod(predicate, statement)
-      consume_keyword(:if)
+      beginning = consume_keyword(:if)
 
       IfNode.new(
+        keyword: beginning,
         predicate: predicate,
         statements:
           Statements.new(body: [statement], location: statement.location),

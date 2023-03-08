@@ -916,17 +916,6 @@ module SyntaxTree
         iseq.pop unless last_statement?
       end
 
-      def visit_elsif(node)
-        visit_if(
-          IfNode.new(
-            predicate: node.predicate,
-            statements: node.statements,
-            consequent: node.consequent,
-            location: node.location
-          )
-        )
-      end
-
       def visit_ensure(node)
       end
 
@@ -1054,6 +1043,7 @@ module SyntaxTree
       def visit_if_op(node)
         visit_if(
           IfNode.new(
+            keyword: Kw.new(value: "if", location: Location.default),
             predicate: node.predicate,
             statements:
               Statements.new(body: [node.truthy], location: Location.default),

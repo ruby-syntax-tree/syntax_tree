@@ -353,15 +353,6 @@ module SyntaxTree
         end
       end
 
-      def visit_elsif(node)
-        node(node, "elsif") do
-          field("predicate", node.predicate)
-          field("statements", node.statements)
-          field("consequent", node.consequent) if node.consequent
-          comments(node)
-        end
-      end
-
       def visit_embdoc(node)
         node(node, "embdoc") { field("value", node.value) }
       end

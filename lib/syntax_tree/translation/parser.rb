@@ -1037,50 +1037,6 @@ module SyntaxTree
           end
         end
 
-        # Visit an Elsif node.
-        def visit_elsif(node)
-          begin_start = node.predicate.end_char
-          begin_end =
-            if node.statements.empty?
-              node.statements.end_char
-            else
-              node.statements.body.first.start_char
-            end
-
-          begin_token =
-            if buffer.source[begin_start...begin_end].include?("then")
-              srange_find(begin_start, begin_end, "then")
-            elsif buffer.source[begin_start...begin_end].include?(";")
-              srange_find(begin_start, begin_end, ";")
-            end
-
-          else_token =
-            case node.consequent
-            when Elsif
-              srange_length(node.consequent.start_char, 5)
-            when Else
-              srange_length(node.consequent.start_char, 4)
-            end
-
-          expression = srange(node.start_char, node.statements.end_char - 1)
-
-          s(
-            :if,
-            [
-              visit(node.predicate),
-              visit(node.statements),
-              visit(node.consequent)
-            ],
-            smap_condition(
-              srange_length(node.start_char, 5),
-              begin_token,
-              else_token,
-              nil,
-              expression
-            )
-          )
-        end
-
         # Visit an ENDBlock node.
         def visit_END(node)
           s(
@@ -1361,7 +1317,7 @@ module SyntaxTree
 
               else_token =
                 case node.consequent
-                when Elsif
+                when IfNode
                   srange_length(node.consequent.start_char, 5)
                 when Else
                   srange_length(node.consequent.start_char, 4)
