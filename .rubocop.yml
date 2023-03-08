@@ -7,7 +7,7 @@ AllCops:
   SuggestExtensions: false
   TargetRubyVersion: 2.7
   Exclude:
-  - '{.git,.github,bin,coverage,pkg,spec,test/fixtures,vendor,tmp}/**/*'
+  - '{.git,.github,bin,coverage,pkg,sorbet,spec,test/fixtures,vendor,tmp}/**/*'
   - test.rb
 
 Gemspec/DevelopmentDependencies:

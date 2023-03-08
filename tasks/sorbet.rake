@@ -122,7 +122,40 @@ module SyntaxTree
       @line += 1
 
       node_body << generate_def_node("child_nodes", nil)
+      @line += 2
+
+      node_body << sig_block do
+        CallNode(
+          sig_params do
+            BareAssocHash(
+              [
+                Assoc(
+                  Label("other:"),
+                  CallNode(
+                    VarRef(Const("T")),
+                    Period("."),
+                    Ident("untyped"),
+                    nil
+                  )
+                )
+              ]
+            )
+          end,
+          Period("."),
+          sig_returns { ConstPathRef(VarRef(Const("T")), Const("Boolean")) },
+          nil
+        )
+      end
       @line += 1
+
+      node_body << generate_def_node(
+        "==",
+        Paren(
+          LParen("("),
+          Params.new(location: location, requireds: [Ident("other")])
+        )
+      )
+      @line += 2
 
       node_body
     end

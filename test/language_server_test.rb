@@ -6,19 +6,38 @@ require "syntax_tree/language_server"
 module SyntaxTree
   # stree-ignore
   class LanguageServerTest < Minitest::Test
-    class Initialize < Struct.new(:id)
+    class Initialize
+      attr_reader :id
+
+      def initialize(id)
+        @id = id
+      end
+
       def to_hash
         { method: "initialize", id: id }
       end
     end
 
-    class Shutdown < Struct.new(:id)
+    class Shutdown
+      attr_reader :id
+
+      def initialize(id)
+        @id = id
+      end
+
       def to_hash
         { method: "shutdown", id: id }
       end
     end
 
-    class TextDocumentDidOpen < Struct.new(:uri, :text)
+    class TextDocumentDidOpen
+      attr_reader :uri, :text
+
+      def initialize(uri, text)
+        @uri = uri
+        @text = text
+      end
+
       def to_hash
         {
           method: "textDocument/didOpen",
@@ -27,7 +46,14 @@ module SyntaxTree
       end
     end
 
-    class TextDocumentDidChange < Struct.new(:uri, :text)
+    class TextDocumentDidChange
+      attr_reader :uri, :text
+
+      def initialize(uri, text)
+        @uri = uri
+        @text = text
+      end
+
       def to_hash
         {
           method: "textDocument/didChange",
@@ -39,7 +65,13 @@ module SyntaxTree
       end
     end
 
-    class TextDocumentDidClose < Struct.new(:uri)
+    class TextDocumentDidClose
+      attr_reader :uri
+
+      def initialize(uri)
+        @uri = uri
+      end
+
       def to_hash
         {
           method: "textDocument/didClose",
@@ -48,7 +80,14 @@ module SyntaxTree
       end
     end
 
-    class TextDocumentFormatting < Struct.new(:id, :uri)
+    class TextDocumentFormatting
+      attr_reader :id, :uri
+
+      def initialize(id, uri)
+        @id = id
+        @uri = uri
+      end
+
       def to_hash
         {
           method: "textDocument/formatting",
@@ -58,7 +97,14 @@ module SyntaxTree
       end
     end
 
-    class TextDocumentInlayHint < Struct.new(:id, :uri)
+    class TextDocumentInlayHint
+      attr_reader :id, :uri
+
+      def initialize(id, uri)
+        @id = id
+        @uri = uri
+      end
+
       def to_hash
         {
           method: "textDocument/inlayHint",
@@ -68,7 +114,14 @@ module SyntaxTree
       end
     end
 
-    class SyntaxTreeVisualizing < Struct.new(:id, :uri)
+    class SyntaxTreeVisualizing
+      attr_reader :id, :uri
+
+      def initialize(id, uri)
+        @id = id
+        @uri = uri
+      end
+
       def to_hash
         {
           method: "syntaxTree/visualizing",

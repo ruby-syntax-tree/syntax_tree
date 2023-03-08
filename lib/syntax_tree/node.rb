@@ -792,9 +792,10 @@ module SyntaxTree
     private
 
     def trailing_comma?
+      arguments = self.arguments
       return false unless arguments.is_a?(Args)
-      parts = arguments.parts
 
+      parts = arguments.parts
       if parts.last.is_a?(ArgBlock)
         # If the last argument is a block, then we can't put a trailing comma
         # after it without resulting in a syntax error.
@@ -1188,8 +1189,11 @@ module SyntaxTree
     end
 
     def format(q)
-      if lbracket.comments.empty? && contents && contents.comments.empty? &&
-           contents.parts.length > 1
+      lbracket = self.lbracket
+      contents = self.contents
+
+      if lbracket.is_a?(LBracket) && lbracket.comments.empty? && contents &&
+           contents.comments.empty? && contents.parts.length > 1
         if qwords?
           QWordsFormatter.new(contents).format(q)
           return
@@ -2091,6 +2095,7 @@ module SyntaxTree
     end
 
     def format(q)
+      left = self.left
       power = operator == :**
 
       q.group do
@@ -2307,6 +2312,8 @@ module SyntaxTree
     end
 
     def bind(parser, start_char, start_column, end_char, end_column)
+      rescue_clause = self.rescue_clause
+
       @location =
         Location.new(
           start_line: location.start_line,
@@ -2330,6 +2337,7 @@ module SyntaxTree
       # Next we're going to determine the rescue clause if there is one
       if rescue_clause
         consequent = else_clause || ensure_clause
+
         rescue_clause.bind_end(
           consequent ? consequent.location.start_char : end_char,
           consequent ? consequent.location.start_column : end_column
@@ -2735,7 +2743,7 @@ module SyntaxTree
               children << receiver
             end
           when MethodAddBlock
-            if receiver.call.is_a?(CallNode) && !receiver.call.receiver.nil?
+            if (call = receiver.call).is_a?(CallNode) && !call.receiver.nil?
               children << receiver
             else
               break
@@ -2744,8 +2752,8 @@ module SyntaxTree
             break
           end
         when MethodAddBlock
-          if child.call.is_a?(CallNode) && !child.call.receiver.nil?
-            children << child.call
+          if (call = child.call).is_a?(CallNode) && !call.receiver.nil?
+            children << call
           else
             break
           end
@@ -2767,8 +2775,8 @@ module SyntaxTree
         # of just Statements nodes.
         parent = parents[3] if parent.is_a?(BlockNode) && parent.keywords?
 
-        if parent.is_a?(MethodAddBlock) && parent.call.is_a?(CallNode) &&
-             parent.call.message.value == "sig"
+        if parent.is_a?(MethodAddBlock) &&
+             (call = parent.call).is_a?(CallNode) && call.message.value == "sig"
           threshold = 2
         end
       end
@@ -2813,10 +2821,10 @@ module SyntaxTree
 
           while (child = children.pop)
             if child.is_a?(CallNode)
-              if child.receiver.is_a?(CallNode) &&
-                   (child.receiver.message != :call) &&
-                   (child.receiver.message.value == "where") &&
-                   (child.message.value == "not")
+              if (receiver = child.receiver).is_a?(CallNode) &&
+                   (receiver.message != :call) &&
+                   (receiver.message.value == "where") &&
+                   (message.value == "not")
                 # This is very specialized behavior wherein we group
                 # .where.not calls together because it looks better. For more
                 # information, see
@@ -2872,7 +2880,8 @@ module SyntaxTree
       when CallNode
         !node.receiver.nil?
       when MethodAddBlock
-        node.call.is_a?(CallNode) && !node.call.receiver.nil?
+        call = node.call
+        call.is_a?(CallNode) && !call.receiver.nil?
       else
         false
       end
@@ -3629,6 +3638,10 @@ module SyntaxTree
     end
 
     def format(q)
+      message = self.message
+      arguments = self.arguments
+      block = self.block
+
       q.group do
         doc =
           q.nest(0) do
@@ -3637,7 +3650,7 @@ module SyntaxTree
             # If there are leading comments on the message then we know we have
             # a newline in the source that is forcing these things apart. In
             # this case we will have to use a trailing operator.
-            if message.comments.any?(&:leading?)
+            if message != :call && message.comments.any?(&:leading?)
               q.format(CallOperatorFormatter.new(operator), stackable: false)
               q.indent do
                 q.breakable_empty
@@ -4153,6 +4166,9 @@ module SyntaxTree
     end
 
     def format(q)
+      params = self.params
+      bodystmt = self.bodystmt
+
       q.group do
         q.group do
           q.text("def")
@@ -4209,6 +4225,8 @@ module SyntaxTree
     end
 
     def arity
+      params = self.params
+
       case params
       when Params
         params.arity
@@ -5293,6 +5311,7 @@ module SyntaxTree
     end
 
     def child_nodes
+      operator = self.operator
       [parent, (operator if operator != :"::"), name]
     end
 
@@ -5674,7 +5693,7 @@ module SyntaxTree
     end
 
     def child_nodes
-      [lbrace] + assocs
+      [lbrace].concat(assocs)
     end
 
     def copy(lbrace: nil, assocs: nil, location: nil)
@@ -5766,7 +5785,7 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(beginning:, ending: nil, dedent: 0, parts: [], location:)
+    def initialize(beginning:, location:, ending: nil, dedent: 0, parts: [])
       @beginning = beginning
       @ending = ending
       @dedent = dedent
@@ -6134,6 +6153,8 @@ module SyntaxTree
     private
 
     def format_contents(q, parts, nested)
+      keyword_rest = self.keyword_rest
+
       q.group { q.seplist(parts) { |part| q.format(part, stackable: false) } }
 
       # If there isn't a constant, and there's a blank keyword_rest, then we
@@ -6763,6 +6784,8 @@ module SyntaxTree
 
     def format(q)
       keyword = "in "
+      pattern = self.pattern
+      consequent = self.consequent
 
       q.group do
         q.text(keyword)
@@ -7165,6 +7188,8 @@ module SyntaxTree
     end
 
     def format(q)
+      params = self.params
+
       q.text("->")
       q.group do
         if params.is_a?(Paren)
@@ -7643,7 +7668,7 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(parts:, comma: false, location:)
+    def initialize(parts:, location:, comma: false)
       @parts = parts
       @comma = comma
       @location = location
@@ -7704,7 +7729,7 @@ module SyntaxTree
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(contents:, comma: false, location:)
+    def initialize(contents:, location:, comma: false)
       @contents = contents
       @comma = comma
       @location = location
@@ -8287,14 +8312,14 @@ module SyntaxTree
     attr_reader :comments
 
     def initialize(
+      location:,
       requireds: [],
       optionals: [],
       rest: nil,
       posts: [],
       keywords: [],
       keyword_rest: nil,
-      block: nil,
-      location:
+      block: nil
     )
       @requireds = requireds
       @optionals = optionals
@@ -8321,6 +8346,8 @@ module SyntaxTree
     end
 
     def child_nodes
+      keyword_rest = self.keyword_rest
+
       [
         *requireds,
         *optionals.flatten(1),
@@ -8375,16 +8402,19 @@ module SyntaxTree
     end
 
     def format(q)
+      rest = self.rest
+      keyword_rest = self.keyword_rest
+
       parts = [
         *requireds,
         *optionals.map { |(name, value)| OptionalFormatter.new(name, value) }
       ]
 
       parts << rest if rest && !rest.is_a?(ExcessedComma)
-      parts += [
-        *posts,
-        *keywords.map { |(name, value)| KeywordFormatter.new(name, value) }
-      ]
+      parts.concat(posts)
+      parts.concat(
+        keywords.map { |(name, value)| KeywordFormatter.new(name, value) }
+      )
 
       parts << KeywordRestFormatter.new(keyword_rest) if keyword_rest
       parts << block if block
@@ -8511,6 +8541,8 @@ module SyntaxTree
     end
 
     def format(q)
+      contents = self.contents
+
       q.group do
         q.format(lparen)
 
@@ -9425,11 +9457,11 @@ module SyntaxTree
           end_column: end_column
         )
 
-      if consequent
-        consequent.bind_end(end_char, end_column)
+      if (next_node = consequent)
+        next_node.bind_end(end_char, end_column)
         statements.bind_end(
-          consequent.location.start_char,
-          consequent.location.start_column
+          next_node.location.start_char,
+          next_node.location.start_column
         )
       else
         statements.bind_end(end_char, end_column)
@@ -9872,8 +9904,8 @@ module SyntaxTree
           end_column: end_column
         )
 
-      if body[0].is_a?(VoidStmt)
-        location = body[0].location
+      if (void_stmt = body[0]).is_a?(VoidStmt)
+        location = void_stmt.location
         location =
           Location.new(
             start_line: location.start_line,
@@ -10352,7 +10384,7 @@ module SyntaxTree
       opening_quote, closing_quote =
         if !Quotes.locked?(self, q.quote)
           [q.quote, q.quote]
-        elsif quote.start_with?("%")
+        elsif quote&.start_with?("%")
           [quote, Quotes.matching(quote[/%[qQ]?(.)/, 1])]
         else
           [quote, quote]
@@ -11521,7 +11553,7 @@ module SyntaxTree
     end
 
     def child_nodes
-      [value]
+      value == :nil ? [] : [value]
     end
 
     def copy(value: nil, location: nil)

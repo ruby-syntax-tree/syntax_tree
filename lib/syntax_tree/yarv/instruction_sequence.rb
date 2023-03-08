@@ -50,7 +50,7 @@ module SyntaxTree
           @tail_node = nil
         end
 
-        def each
+        def each(&_blk)
           return to_enum(__method__) unless block_given?
           each_node { |node| yield node.value }
         end
