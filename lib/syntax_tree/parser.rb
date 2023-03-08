@@ -2132,13 +2132,20 @@ module SyntaxTree
       ending = consequent || consume_keyword(:end)
 
       statements_start = pattern
-      if (token = find_keyword(:then))
+      if (token = find_keyword_between(:then, pattern, statements))
         tokens.delete(token)
         statements_start = token
       end
 
       start_char =
         find_next_statement_start((token || statements_start).location.end_char)
+
+      # Ripper ignores parentheses on patterns, so we need to do the same in
+      # order to attach comments correctly to the pattern.
+      if source[start_char] == ")"
+        start_char = find_next_statement_start(start_char + 1)
+      end
+
       statements.bind(
         self,
         start_char,
