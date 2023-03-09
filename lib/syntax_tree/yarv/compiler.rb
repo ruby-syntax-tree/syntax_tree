@@ -875,7 +875,7 @@ module SyntaxTree
           when Ident
             iseq.putobject("local-variable")
           when IVar
-            iseq.defined_ivar(name, iseq.inline_storage, "instance-variable")
+            iseq.definedivar(name, iseq.inline_storage, "instance-variable")
           when Kw
             case name
             when :false

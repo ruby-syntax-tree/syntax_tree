@@ -681,7 +681,7 @@ module SyntaxTree
         push(Defined.new(type, name, message))
       end
 
-      def defined_ivar(name, cache, message)
+      def definedivar(name, cache, message)
         if RUBY_VERSION < "3.3"
           push(PutNil.new)
           push(Defined.new(Defined::TYPE_IVAR, name, message))
@@ -1067,8 +1067,8 @@ module SyntaxTree
             iseq.defineclass(opnds[0], from(opnds[1], options, iseq), opnds[2])
           when :defined
             iseq.defined(opnds[0], opnds[1], opnds[2])
-          when :defined_ivar
-            iseq.defined_ivar(opnds[0], opnds[1], opnds[2])
+          when :definedivar
+            iseq.definedivar(opnds[0], opnds[1], opnds[2])
           when :definemethod
             iseq.definemethod(opnds[0], from(opnds[1], options, iseq))
           when :definesmethod

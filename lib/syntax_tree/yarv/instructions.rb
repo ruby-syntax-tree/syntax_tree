@@ -996,7 +996,7 @@ module SyntaxTree
 
     # ### Summary
     #
-    # `defined_ivar` checks if an instance variable is defined. It is a
+    # `definedivar` checks if an instance variable is defined. It is a
     # specialization of the `defined` instruction. It accepts three arguments:
     # the name of the instance variable, an inline cache, and the string that
     # should be pushed onto the stack in the event that the instance variable
@@ -1019,13 +1019,13 @@ module SyntaxTree
 
       def disasm(fmt)
         fmt.instruction(
-          "defined_ivar",
+          "definedivar",
           [fmt.object(name), fmt.inline_storage(cache), fmt.object(message)]
         )
       end
 
       def to_a(_iseq)
-        [:defined_ivar, name, cache, message]
+        [:definedivar, name, cache, message]
       end
 
       def deconstruct_keys(_keys)
