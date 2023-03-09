@@ -673,12 +673,21 @@ module SyntaxTree
         push(ConcatStrings.new(number))
       end
 
+      def defineclass(name, class_iseq, flags)
+        push(DefineClass.new(name, class_iseq, flags))
+      end
+
       def defined(type, name, message)
         push(Defined.new(type, name, message))
       end
 
-      def defineclass(name, class_iseq, flags)
-        push(DefineClass.new(name, class_iseq, flags))
+      def defined_ivar(name, cache, message)
+        if RUBY_VERSION < "3.3"
+          push(PutNil.new)
+          push(Defined.new(Defined::TYPE_IVAR, name, message))
+        else
+          push(DefinedIVar.new(name, cache, message))
+        end
       end
 
       def definemethod(name, method_iseq)
@@ -1058,6 +1067,8 @@ module SyntaxTree
             iseq.defineclass(opnds[0], from(opnds[1], options, iseq), opnds[2])
           when :defined
             iseq.defined(opnds[0], opnds[1], opnds[2])
+          when :defined_ivar
+            iseq.defined_ivar(opnds[0], opnds[1], opnds[2])
           when :definemethod
             iseq.definemethod(opnds[0], from(opnds[1], options, iseq))
           when :definesmethod

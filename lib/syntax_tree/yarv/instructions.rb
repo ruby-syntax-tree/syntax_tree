@@ -996,6 +996,64 @@ module SyntaxTree
 
     # ### Summary
     #
+    # `defined_ivar` checks if an instance variable is defined. It is a
+    # specialization of the `defined` instruction. It accepts three arguments:
+    # the name of the instance variable, an inline cache, and the string that
+    # should be pushed onto the stack in the event that the instance variable
+    # is defined.
+    #
+    # ### Usage
+    #
+    # ~~~ruby
+    # defined?(@value)
+    # ~~~
+    #
+    class DefinedIVar < Instruction
+      attr_reader :name, :cache, :message
+
+      def initialize(name, cache, message)
+        @name = name
+        @cache = cache
+        @message = message
+      end
+
+      def disasm(fmt)
+        fmt.instruction(
+          "defined_ivar",
+          [fmt.object(name), fmt.inline_storage(cache), fmt.object(message)]
+        )
+      end
+
+      def to_a(_iseq)
+        [:defined_ivar, name, cache, message]
+      end
+
+      def deconstruct_keys(_keys)
+        { name: name, cache: cache, message: message }
+      end
+
+      def ==(other)
+        other.is_a?(DefinedIVar) && other.name == name &&
+          other.cache == cache && other.message == message
+      end
+
+      def length
+        4
+      end
+
+      def pushes
+        1
+      end
+
+      def call(vm)
+        result = (message if vm.frame._self.instance_variable_defined?(name))
+
+        vm.push(result)
+      end
+    end
+
+    # ### Summary
+    #
     # `definemethod` defines a method on the class of the current value of
     # `self`. It accepts two arguments. The first is the name of the method
     # being defined. The second is the instruction sequence representing the
