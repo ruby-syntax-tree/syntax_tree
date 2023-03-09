@@ -24,7 +24,11 @@ module SyntaxTree
         ConstPathRef(VarRef(Const("SyntaxTree")), Const("BasicVisitor")),
         nil,
         BodyStmt(
-          Statements(generate_visitor("overridable")), nil, nil, nil, nil
+          Statements(generate_visitor("overridable")),
+          nil,
+          nil,
+          nil,
+          nil
         ),
         location
       )
@@ -254,10 +258,14 @@ module SyntaxTree
               Ident(override),
               Period("."),
               sig_params do
-                BareAssocHash([
-                  Assoc(Label("node:"), 
-                  sig_type_for(SyntaxTree.const_get(name)))
-                ])
+                BareAssocHash(
+                  [
+                    Assoc(
+                      Label("node:"),
+                      sig_type_for(SyntaxTree.const_get(name))
+                    )
+                  ]
+                )
               end,
               nil
             ),
@@ -269,10 +277,13 @@ module SyntaxTree
           )
         end
 
-        body << generate_def_node(node.visitor_method, Paren(
-          LParen("("),
-          Params.new(requireds: [Ident("node")], location: location)
-        ))
+        body << generate_def_node(
+          node.visitor_method,
+          Paren(
+            LParen("("),
+            Params.new(requireds: [Ident("node")], location: location)
+          )
+        )
 
         @line += 2
       end
