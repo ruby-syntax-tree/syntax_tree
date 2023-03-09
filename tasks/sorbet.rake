@@ -20,6 +20,22 @@ module SyntaxTree
       generate_parent
       Reflection.nodes.sort.each { |(_, node)| generate_node(node) }
 
+      body << ClassDeclaration(
+        ConstPathRef(VarRef(Const("SyntaxTree")), Const("BasicVisitor")),
+        nil,
+        BodyStmt(
+          Statements(generate_visitor("overridable")), nil, nil, nil, nil
+        ),
+        location
+      )
+
+      body << ClassDeclaration(
+        ConstPathRef(VarRef(Const("SyntaxTree")), Const("Visitor")),
+        ConstPathRef(VarRef(Const("SyntaxTree")), Const("BasicVisitor")),
+        BodyStmt(Statements(generate_visitor("override")), nil, nil, nil, nil),
+        location
+      )
+
       Formatter.format(nil, Program(Statements(body)))
     end
 
@@ -226,6 +242,42 @@ module SyntaxTree
         BodyStmt(Statements([VoidStmt()]), nil, nil, nil, nil),
         location
       )
+    end
+
+    def generate_visitor(override)
+      body = []
+
+      Reflection.nodes.each do |name, node|
+        body << sig_block do
+          CallNode(
+            CallNode(
+              Ident(override),
+              Period("."),
+              sig_params do
+                BareAssocHash([
+                  Assoc(Label("node:"), 
+                  sig_type_for(SyntaxTree.const_get(name)))
+                ])
+              end,
+              nil
+            ),
+            Period("."),
+            sig_returns do
+              CallNode(VarRef(Const("T")), Period("."), Ident("untyped"), nil)
+            end,
+            nil
+          )
+        end
+
+        body << generate_def_node(node.visitor_method, Paren(
+          LParen("("),
+          Params.new(requireds: [Ident("node")], location: location)
+        ))
+
+        @line += 2
+      end
+
+      body
     end
 
     def sig_block

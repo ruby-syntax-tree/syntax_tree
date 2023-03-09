@@ -138,12 +138,13 @@ module SyntaxTree
     # as a placeholder for collecting all of the various places that nodes are
     # used.
     class Node
-      attr_reader :name, :comment, :attributes
+      attr_reader :name, :comment, :attributes, :visitor_method
 
-      def initialize(name, comment, attributes)
+      def initialize(name, comment, attributes, visitor_method)
         @name = name
         @comment = comment
         @attributes = attributes
+        @visitor_method = visitor_method
       end
     end
 
@@ -196,6 +197,10 @@ module SyntaxTree
           Attribute.new(:location, "[Location] the location of this node")
       }
 
+      # This is the name of the method tha gets called on the given visitor when
+      # the accept method is called on this node.
+      visitor_method = nil
+
       statements = main_statement.bodystmt.statements.body
       statements.each_with_index do |statement, statement_index|
         case statement
@@ -225,8 +230,16 @@ module SyntaxTree
           end
 
           attributes[attribute.name] = attribute
+        when SyntaxTree::DefNode
+          if statement.name.value == "accept"
+            call_node = statement.bodystmt.statements.body.first
+            visitor_method = call_node.message.value.to_sym
+          end
         end
       end
+
+      # If we never found a visitor method, then we have an error.
+      raise if visitor_method.nil?
 
       # Finally, set it up in the hash of nodes so that we can use it later.
       comments = parse_comments(main_statements, main_statement_index)
@@ -234,7 +247,8 @@ module SyntaxTree
         Node.new(
           main_statement.constant.constant.value.to_sym,
           "#{comments.join("\n")}\n",
-          attributes
+          attributes,
+          visitor_method
         )
 
       @nodes[node.name] = node
