@@ -6,6 +6,19 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 
 ## [Unreleased]
 
+## [6.1.0] - 2023-03-20
+
+### Added
+
+- The `stree ctags` command for generating ctags like `universal-ctags` or `ripper-tags` would.
+- The `definedivar` YARV instruction has been added to match CRuby's implementation.
+- We now generate better Sorbet RBI files for the nodes in the tree and the visitors.
+- `SyntaxTree::Reflection.nodes` now includes the visitor method.
+
+### Changed
+
+- We now explicitly require `pp` in environments that need it.
+
 ## [6.0.2] - 2023-03-03
 
 ### Added
