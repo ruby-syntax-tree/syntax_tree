@@ -654,13 +654,6 @@ module SyntaxTree
         end
       end
 
-      def visit_qsymbols(node)
-        node(node, "qsymbols") do
-          list("elements", node.elements)
-          comments(node)
-        end
-      end
-
       def visit_qsymbols_beg(node)
         node(node, "qsymbols_beg") { field("value", node.value) }
       end

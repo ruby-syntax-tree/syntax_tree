@@ -254,7 +254,15 @@ module SyntaxTree
         def visit_array(node)
           s(
             :array,
-            node.contents ? visit_all(node.contents.parts) : [],
+            if node.contents.nil?
+              []
+            elsif node.lbracket.is_a?(QSymbolsBeg)
+              visit_all(node.contents.parts.map do |part|
+                SymbolLiteral.new(value: part, location: part.location)
+              end)
+            else
+              visit_all(node.contents.parts)
+            end,
             if node.lbracket.nil?
               smap_collection_bare(srange_node(node))
             else
@@ -1896,22 +1904,6 @@ module SyntaxTree
         # Visit a Program node.
         def visit_program(node)
           visit(node.statements)
-        end
-
-        # Visit a QSymbols node.
-        def visit_qsymbols(node)
-          parts =
-            node.elements.map do |element|
-              SymbolLiteral.new(value: element, location: element.location)
-            end
-
-          visit_array(
-            ArrayLiteral.new(
-              lbracket: node.beginning,
-              contents: Args.new(parts: parts, location: node.location),
-              location: node.location
-            )
-          )
         end
 
         # Visit a QWords node.

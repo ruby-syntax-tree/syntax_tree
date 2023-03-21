@@ -126,7 +126,14 @@ module SyntaxTree
 
         visit_methods do
           def visit_array(node)
-            node.contents ? visit_all(node.contents.parts) : []
+            return [] unless node.contents
+
+            case node.lbracket
+            when QSymbolsBeg
+              visit_all(node.contents.parts).map(&:to_sym)
+            else
+              visit_all(node.contents.parts)
+            end
           end
 
           def visit_bare_assoc_hash(node)
@@ -169,10 +176,6 @@ module SyntaxTree
 
           def visit_mrhs(node)
             visit_all(node.parts)
-          end
-
-          def visit_qsymbols(node)
-            node.elements.map { |element| visit(element).to_sym }
           end
 
           def visit_qwords(node)
@@ -1407,10 +1410,6 @@ module SyntaxTree
 
         top_iseq.compile!
         top_iseq
-      end
-
-      def visit_qsymbols(node)
-        iseq.duparray(node.accept(RubyVisitor.new))
       end
 
       def visit_qwords(node)

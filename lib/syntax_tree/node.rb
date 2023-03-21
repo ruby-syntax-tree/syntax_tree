@@ -1128,10 +1128,12 @@ module SyntaxTree
       def format(q)
         q.group do
           q.text("[")
-          q.indent do
-            lbracket.comments.each do |comment|
-              q.breakable_force
-              comment.format(q)
+          if lbracket.is_a?(LBracket)
+            q.indent do
+              lbracket.comments.each do |comment|
+                q.breakable_force
+                comment.format(q)
+              end
             end
           end
           q.breakable_force
@@ -1211,18 +1213,36 @@ module SyntaxTree
       end
 
       q.group do
-        q.format(lbracket)
+        case lbracket
+        when QSymbolsBeg
+          q.text(lbracket.value)
+        else
+          q.format(lbracket)
+        end
 
         if contents
           q.indent do
             q.breakable_empty
-            q.format(contents)
-            q.if_break { q.text(",") } if q.trailing_comma?
+            case lbracket
+            when QSymbolsBeg
+              q.seplist(contents.parts, BREAKABLE_SPACE_SEPARATOR) do |part|
+                q.text(part.value)
+              end
+            else
+              q.format(contents)
+              q.if_break { q.text(",") } if q.trailing_comma?
+            end
           end
         end
 
         q.breakable_empty
-        q.text("]")
+
+        case lbracket
+        when QSymbolsBeg
+          q.text(lbracket.value[-1] == "{" ? "}" : "]")
+        else
+          q.text("]")
+        end
       end
     end
 
@@ -1396,8 +1416,7 @@ module SyntaxTree
   module AssignFormatting
     def self.skip_indent?(value)
       case value
-      when ArrayLiteral, HashLiteral, Heredoc, Lambda, QSymbols, QWords,
-           Symbols, Words
+      when ArrayLiteral, HashLiteral, Heredoc, Lambda, QWords, Symbols, Words
         true
       when CallNode
         skip_indent?(value.receiver)
@@ -8610,86 +8629,6 @@ module SyntaxTree
 
     def ===(other)
       other.is_a?(Program) && statements === other.statements
-    end
-  end
-
-  # QSymbols represents a symbol literal array without interpolation.
-  #
-  #     %i[one two three]
-  #
-  class QSymbols < Node
-    # [QSymbolsBeg] the token that opens this array literal
-    attr_reader :beginning
-
-    # [Array[ TStringContent ]] the elements of the array
-    attr_reader :elements
-
-    # [Array[ Comment | EmbDoc ]] the comments attached to this node
-    attr_reader :comments
-
-    def initialize(beginning:, elements:, location:)
-      @beginning = beginning
-      @elements = elements
-      @location = location
-      @comments = []
-    end
-
-    def accept(visitor)
-      visitor.visit_qsymbols(self)
-    end
-
-    def child_nodes
-      []
-    end
-
-    def copy(beginning: nil, elements: nil, location: nil)
-      node =
-        QSymbols.new(
-          beginning: beginning || self.beginning,
-          elements: elements || self.elements,
-          location: location || self.location
-        )
-
-      node.comments.concat(comments.map(&:copy))
-      node
-    end
-
-    alias deconstruct child_nodes
-
-    def deconstruct_keys(_keys)
-      {
-        beginning: beginning,
-        elements: elements,
-        location: location,
-        comments: comments
-      }
-    end
-
-    def format(q)
-      opening, closing = "%i[", "]"
-
-      if elements.any? { |element| element.match?(/[\[\]]/) }
-        opening = beginning.value
-        closing = Quotes.matching(opening[2])
-      end
-
-      q.text(opening)
-      q.group do
-        q.indent do
-          q.breakable_empty
-          q.seplist(
-            elements,
-            ArrayLiteral::BREAKABLE_SPACE_SEPARATOR
-          ) { |element| q.format(element) }
-        end
-        q.breakable_empty
-      end
-      q.text(closing)
-    end
-
-    def ===(other)
-      other.is_a?(QSymbols) && beginning === other.beginning &&
-        ArrayMatch.call(elements, other.elements)
     end
   end
 

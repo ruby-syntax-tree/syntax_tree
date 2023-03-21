@@ -649,15 +649,6 @@ module SyntaxTree
       Program.new(statements: statements, location: Location.default)
     end
 
-    # Create a new QSymbols node.
-    def QSymbols(beginning, elements)
-      QSymbols.new(
-        beginning: beginning,
-        elements: elements,
-        location: Location.default
-      )
-    end
-
     # Create a new QSymbolsBeg node.
     def QSymbolsBeg(value)
       QSymbolsBeg.new(value: value, location: Location.default)

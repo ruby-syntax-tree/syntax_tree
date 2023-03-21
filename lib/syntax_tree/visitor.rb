@@ -275,9 +275,6 @@ module SyntaxTree
     # Visit a Program node.
     alias visit_program visit_child_nodes
 
-    # Visit a QSymbols node.
-    alias visit_qsymbols visit_child_nodes
-
     # Visit a QSymbolsBeg node.
     alias visit_qsymbols_beg visit_child_nodes
 

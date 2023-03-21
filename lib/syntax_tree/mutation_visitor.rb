@@ -591,14 +591,6 @@ module SyntaxTree
         node.copy(statements: visit(node.statements))
       end
 
-      # Visit a QSymbols node.
-      def visit_qsymbols(node)
-        node.copy(
-          beginning: visit(node.beginning),
-          elements: visit_all(node.elements)
-        )
-      end
-
       # Visit a QSymbolsBeg node.
       def visit_qsymbols_beg(node)
         node.copy

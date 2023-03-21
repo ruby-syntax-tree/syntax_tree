@@ -617,8 +617,8 @@ module SyntaxTree
     end
 
     # :call-seq:
-    #   on_array: ((nil | Args) contents) ->
-    #     ArrayLiteral | QSymbols | QWords | Symbols | Words
+    #   on_array: ((nil | Args | Array [ TStringContent ]) contents) ->
+    #     ArrayLiteral | QWords | Symbols | Words
     def on_array(contents)
       if !contents || contents.is_a?(Args)
         lbracket = consume_token(LBracket)
@@ -628,6 +628,14 @@ module SyntaxTree
           lbracket: lbracket,
           contents: contents,
           location: lbracket.location.to(rbracket.location)
+        )
+      elsif contents.is_a?(ArrayLiteral)
+        tstring_end = consume_tstring_end(contents.lbracket.location)
+
+        ArrayLiteral.new(
+          lbracket: contents.lbracket,
+          contents: contents.contents,
+          location: contents.location.to(tstring_end.location)
         )
       else
         tstring_end = consume_tstring_end(contents.beginning.location)
@@ -2999,11 +3007,14 @@ module SyntaxTree
     end
 
     # :call-seq:
-    #   on_qsymbols_add: (QSymbols qsymbols, TStringContent element) -> QSymbols
+    #   on_qsymbols_add: (ArrayLiteral qsymbols, TStringContent element) ->
+    #     ArrayLiteral
     def on_qsymbols_add(qsymbols, element)
-      QSymbols.new(
-        beginning: qsymbols.beginning,
-        elements: qsymbols.elements << element,
+      qsymbols.contents.parts << element
+
+      ArrayLiteral.new(
+        lbracket: qsymbols.lbracket,
+        contents: qsymbols.contents,
         location: qsymbols.location.to(element.location)
       )
     end
@@ -3028,13 +3039,16 @@ module SyntaxTree
     end
 
     # :call-seq:
-    #   on_qsymbols_new: () -> QSymbols
+    #   on_qsymbols_new: () -> ArrayLiteral
     def on_qsymbols_new
       beginning = consume_token(QSymbolsBeg)
 
-      QSymbols.new(
-        beginning: beginning,
-        elements: [],
+      ArrayLiteral.new(
+        lbracket: beginning,
+        contents: Args.new(
+          parts: [],
+          location: beginning.location
+        ),
         location: beginning.location
       )
     end

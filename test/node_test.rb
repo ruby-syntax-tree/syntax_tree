@@ -774,7 +774,7 @@ module SyntaxTree
     end
 
     def test_qsymbols
-      assert_node(QSymbols, "%i[one two three]")
+      assert_node(ArrayLiteral, "%i[one two three]")
     end
 
     def test_qwords
