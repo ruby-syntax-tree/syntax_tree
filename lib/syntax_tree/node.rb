@@ -2824,7 +2824,7 @@ module SyntaxTree
               if (receiver = child.receiver).is_a?(CallNode) &&
                    (receiver.message != :call) &&
                    (receiver.message.value == "where") &&
-                   (message.value == "not")
+                   (child.message != :call && child.message.value == "not")
                 # This is very specialized behavior wherein we group
                 # .where.not calls together because it looks better. For more
                 # information, see
@@ -2848,8 +2848,8 @@ module SyntaxTree
             # If the parent call node has a comment on the message then we need
             # to print the operator trailing in order to keep it working.
             last_child = children.last
-            if last_child.is_a?(CallNode) && last_child.message.comments.any? &&
-                 last_child.operator
+            if last_child.is_a?(CallNode) && last_child.message != :call &&
+                 last_child.message.comments.any? && last_child.operator
               q.format(CallOperatorFormatter.new(last_child.operator))
               skip_operator = true
             else

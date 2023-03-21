@@ -65,3 +65,10 @@ self.
 =begin
 =end
   to_s
+%
+fooooooooooooooooooooooooooooooooooo.barrrrrrrrrrrrrrrrrrrrrrrrrrrrrr.where.not(:id).order(:id)
+-
+fooooooooooooooooooooooooooooooooooo
+  .barrrrrrrrrrrrrrrrrrrrrrrrrrrrrr
+  .where.not(:id)
+  .order(:id)

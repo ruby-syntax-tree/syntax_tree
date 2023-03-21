@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 
 ## [Unreleased]
 
+## [6.1.1] - 2023-03-21
+
+### Changed
+
+- Fixed a bug where the call chain formatter was incorrectly looking at call messages.
+
 ## [6.1.0] - 2023-03-20
 
 ### Added
