@@ -833,13 +833,6 @@ module SyntaxTree
         end
       end
 
-      def visit_symbols(node)
-        node(node, "symbols") do
-          list("elements", node.elements)
-          comments(node)
-        end
-      end
-
       def visit_symbols_beg(node)
         node(node, "symbols_beg") { field("value", node.value) }
       end

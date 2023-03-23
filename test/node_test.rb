@@ -889,7 +889,7 @@ module SyntaxTree
     end
 
     def test_symbols
-      assert_node(Symbols, "%I[one two three]")
+      assert_node(ArrayLiteral, "%I[one two three]")
     end
 
     def test_top_const_field

@@ -736,14 +736,6 @@ module SyntaxTree
         node.copy(value: visit(node.value))
       end
 
-      # Visit a Symbols node.
-      def visit_symbols(node)
-        node.copy(
-          beginning: visit(node.beginning),
-          elements: visit_all(node.elements)
-        )
-      end
-
       # Visit a SymbolsBeg node.
       def visit_symbols_beg(node)
         node.copy

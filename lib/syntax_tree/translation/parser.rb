@@ -260,6 +260,20 @@ module SyntaxTree
               visit_all(node.contents.parts.map do |part|
                 SymbolLiteral.new(value: part, location: part.location)
               end)
+            elsif node.lbracket.is_a?(SymbolsBeg)
+              visit_all(node.contents.parts.map do |element|
+                part = element.parts.first
+
+                if element.parts.length == 1 && part.is_a?(TStringContent)
+                  SymbolLiteral.new(value: part, location: part.location)
+                else
+                  DynaSymbol.new(
+                    parts: element.parts,
+                    quote: nil,
+                    location: element.location
+                  )
+                end
+              end)
             else
               visit_all(node.contents.parts)
             end,
@@ -2263,32 +2277,6 @@ module SyntaxTree
             :sym,
             [node.value.value.to_sym],
             smap_collection(begin_token, nil, srange_node(node))
-          )
-        end
-
-        # Visit a Symbols node.
-        def visit_symbols(node)
-          parts =
-            node.elements.map do |element|
-              part = element.parts.first
-
-              if element.parts.length == 1 && part.is_a?(TStringContent)
-                SymbolLiteral.new(value: part, location: part.location)
-              else
-                DynaSymbol.new(
-                  parts: element.parts,
-                  quote: nil,
-                  location: element.location
-                )
-              end
-            end
-
-          visit_array(
-            ArrayLiteral.new(
-              lbracket: node.beginning,
-              contents: Args.new(parts: parts, location: node.location),
-              location: node.location
-            )
           )
         end
 

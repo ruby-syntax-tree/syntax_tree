@@ -365,9 +365,6 @@ module SyntaxTree
     # Visit a SymbolLiteral node.
     alias visit_symbol_literal visit_child_nodes
 
-    # Visit a Symbols node.
-    alias visit_symbols visit_child_nodes
-
     # Visit a SymbolsBeg node.
     alias visit_symbols_beg visit_child_nodes
 

@@ -3625,11 +3625,13 @@ module SyntaxTree
     end
 
     # :call-seq:
-    #   on_symbols_add: (Symbols symbols, Word word) -> Symbols
+    #   on_symbols_add: (ArrayLiteral symbols, Word word) -> ArrayLiteral
     def on_symbols_add(symbols, word)
-      Symbols.new(
-        beginning: symbols.beginning,
-        elements: symbols.elements << word,
+      symbols.contents.parts << word
+
+      ArrayLiteral.new(
+        lbracket: symbols.lbracket,
+        contents: symbols.contents,
         location: symbols.location.to(word.location)
       )
     end
@@ -3654,13 +3656,16 @@ module SyntaxTree
     end
 
     # :call-seq:
-    #   on_symbols_new: () -> Symbols
+    #   on_symbols_new: () -> ArrayLiteral
     def on_symbols_new
       beginning = consume_token(SymbolsBeg)
 
-      Symbols.new(
-        beginning: beginning,
-        elements: [],
+      ArrayLiteral.new(
+        lbracket: beginning,
+        contents: Args.new(
+          parts: [],
+          location: beginning.location
+        ),
         location: beginning.location
       )
     end

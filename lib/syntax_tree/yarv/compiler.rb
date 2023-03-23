@@ -129,7 +129,7 @@ module SyntaxTree
             return [] unless node.contents
 
             case node.lbracket
-            when QSymbolsBeg
+            when QSymbolsBeg, SymbolsBeg
               visit_all(node.contents.parts).map(&:to_sym)
             else
               visit_all(node.contents.parts)
@@ -202,10 +202,6 @@ module SyntaxTree
 
           def visit_symbol_literal(node)
             node.value.value.to_sym
-          end
-
-          def visit_symbols(node)
-            node.elements.map { |element| visit(element).to_sym }
           end
 
           def visit_tstring_content(node)
@@ -394,6 +390,24 @@ module SyntaxTree
             iseq.duparray(compiled)
           else
             visit_all(node.contents.parts)
+            iseq.newarray(node.contents.parts.length)
+          end
+          return
+        when SymbolsBeg
+          if (compiled = RubyVisitor.compile(node))
+            iseq.duparray(compiled)
+          else
+            node.contents.parts.each do |element|
+              if element.parts.length == 1 &&
+                   element.parts.first.is_a?(TStringContent)
+                iseq.putobject(element.parts.first.value.to_sym)
+              else
+                length = visit_string_parts(element)
+                iseq.concatstrings(length)
+                iseq.intern
+              end
+            end
+
             iseq.newarray(node.contents.parts.length)
           end
           return
@@ -1625,25 +1639,6 @@ module SyntaxTree
 
       def visit_symbol_literal(node)
         iseq.putobject(node.accept(RubyVisitor.new))
-      end
-
-      def visit_symbols(node)
-        if (compiled = RubyVisitor.compile(node))
-          iseq.duparray(compiled)
-        else
-          node.elements.each do |element|
-            if element.parts.length == 1 &&
-                 element.parts.first.is_a?(TStringContent)
-              iseq.putobject(element.parts.first.value.to_sym)
-            else
-              length = visit_string_parts(element)
-              iseq.concatstrings(length)
-              iseq.intern
-            end
-          end
-
-          iseq.newarray(node.elements.length)
-        end
       end
 
       def visit_top_const_ref(node)

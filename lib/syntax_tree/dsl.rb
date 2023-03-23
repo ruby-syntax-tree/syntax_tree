@@ -812,15 +812,6 @@ module SyntaxTree
       SymbolLiteral.new(value: value, location: Location.default)
     end
 
-    # Create a new Symbols node.
-    def Symbols(beginning, elements)
-      Symbols.new(
-        beginning: beginning,
-        elements: elements,
-        location: Location.default
-      )
-    end
-
     # Create a new SymbolsBeg node.
     def SymbolsBeg(value)
       SymbolsBeg.new(value: value, location: Location.default)
