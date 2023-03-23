@@ -617,8 +617,7 @@ module SyntaxTree
     end
 
     # :call-seq:
-    #   on_array: ((nil | Args | Array [ TStringContent ]) contents) ->
-    #     ArrayLiteral | Symbols
+    #   on_array: ((nil | Args | ArrayLilteral) contents) -> ArrayLiteral
     def on_array(contents)
       if !contents || contents.is_a?(Args)
         lbracket = consume_token(LBracket)
@@ -629,20 +628,12 @@ module SyntaxTree
           contents: contents,
           location: lbracket.location.to(rbracket.location)
         )
-      elsif contents.is_a?(ArrayLiteral)
+      else
         tstring_end = consume_tstring_end(contents.lbracket.location)
 
         ArrayLiteral.new(
           lbracket: contents.lbracket,
           contents: contents.contents,
-          location: contents.location.to(tstring_end.location)
-        )
-      else
-        tstring_end = consume_tstring_end(contents.beginning.location)
-
-        contents.class.new(
-          beginning: contents.beginning,
-          elements: contents.elements,
           location: contents.location.to(tstring_end.location)
         )
       end
