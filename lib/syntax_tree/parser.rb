@@ -629,12 +629,10 @@ module SyntaxTree
           location: lbracket.location.to(rbracket.location)
         )
       else
-        tstring_end = consume_tstring_end(contents.lbracket.location)
-
         ArrayLiteral.new(
           lbracket: contents.lbracket,
           contents: contents.contents,
-          location: contents.location.to(tstring_end.location)
+          location: contents.location
         )
       end
     end
