@@ -778,7 +778,7 @@ module SyntaxTree
     end
 
     def test_qwords
-      assert_node(QWords, "%w[one two three]")
+      assert_node(ArrayLiteral, "%w[one two three]")
     end
 
     def test_rational

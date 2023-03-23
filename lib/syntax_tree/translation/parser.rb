@@ -1906,17 +1906,6 @@ module SyntaxTree
           visit(node.statements)
         end
 
-        # Visit a QWords node.
-        def visit_qwords(node)
-          visit_array(
-            ArrayLiteral.new(
-              lbracket: node.beginning,
-              contents: Args.new(parts: node.elements, location: node.location),
-              location: node.location
-            )
-          )
-        end
-
         # Visit a RangeNode node.
         def visit_range(node)
           s(

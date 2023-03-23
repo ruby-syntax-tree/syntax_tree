@@ -278,9 +278,6 @@ module SyntaxTree
     # Visit a QSymbolsBeg node.
     alias visit_qsymbols_beg visit_child_nodes
 
-    # Visit a QWords node.
-    alias visit_qwords visit_child_nodes
-
     # Visit a QWordsBeg node.
     alias visit_qwords_beg visit_child_nodes
 

@@ -596,14 +596,6 @@ module SyntaxTree
         node.copy
       end
 
-      # Visit a QWords node.
-      def visit_qwords(node)
-        node.copy(
-          beginning: visit(node.beginning),
-          elements: visit_all(node.elements)
-        )
-      end
-
       # Visit a QWordsBeg node.
       def visit_qwords_beg(node)
         node.copy

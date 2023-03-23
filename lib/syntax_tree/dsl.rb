@@ -654,15 +654,6 @@ module SyntaxTree
       QSymbolsBeg.new(value: value, location: Location.default)
     end
 
-    # Create a new QWords node.
-    def QWords(beginning, elements)
-      QWords.new(
-        beginning: beginning,
-        elements: elements,
-        location: Location.default
-      )
-    end
-
     # Create a new QWordsBeg node.
     def QWordsBeg(value)
       QWordsBeg.new(value: value, location: Location.default)

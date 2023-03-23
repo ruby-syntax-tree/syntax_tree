@@ -178,10 +178,6 @@ module SyntaxTree
             visit_all(node.parts)
           end
 
-          def visit_qwords(node)
-            visit_all(node.elements)
-          end
-
           def visit_range(node)
             left, right = [visit(node.left), visit(node.right)]
             node.operator.value === ".." ? left..right : left...right
@@ -387,6 +383,16 @@ module SyntaxTree
       end
 
       def visit_array(node)
+        if node.lbracket.is_a?(QWordsBeg)
+          if options.frozen_string_literal?
+            iseq.duparray(node.accept(RubyVisitor.new))
+          else
+            visit(node.contents)
+            iseq.newarray(node.contents.parts.length)
+          end
+          return
+        end
+
         if (compiled = RubyVisitor.compile(node))
           iseq.duparray(compiled)
         elsif node.contents && node.contents.parts.length == 1 &&
@@ -1410,15 +1416,6 @@ module SyntaxTree
 
         top_iseq.compile!
         top_iseq
-      end
-
-      def visit_qwords(node)
-        if options.frozen_string_literal?
-          iseq.duparray(node.accept(RubyVisitor.new))
-        else
-          visit_all(node.elements)
-          iseq.newarray(node.elements.length)
-        end
       end
 
       def visit_range(node)

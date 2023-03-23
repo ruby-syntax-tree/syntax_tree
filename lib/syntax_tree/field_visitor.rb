@@ -658,13 +658,6 @@ module SyntaxTree
         node(node, "qsymbols_beg") { field("value", node.value) }
       end
 
-      def visit_qwords(node)
-        node(node, "qwords") do
-          list("elements", node.elements)
-          comments(node)
-        end
-      end
-
       def visit_qwords_beg(node)
         node(node, "qwords_beg") { field("value", node.value) }
       end

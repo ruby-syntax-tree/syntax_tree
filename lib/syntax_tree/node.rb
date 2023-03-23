@@ -1214,7 +1214,7 @@ module SyntaxTree
 
       q.group do
         case lbracket
-        when QSymbolsBeg
+        when QSymbolsBeg, QWordsBeg
           q.text(lbracket.value)
         else
           q.format(lbracket)
@@ -1224,7 +1224,7 @@ module SyntaxTree
           q.indent do
             q.breakable_empty
             case lbracket
-            when QSymbolsBeg
+            when QSymbolsBeg, QWordsBeg
               q.seplist(contents.parts, BREAKABLE_SPACE_SEPARATOR) do |part|
                 q.text(part.value)
               end
@@ -1238,7 +1238,7 @@ module SyntaxTree
         q.breakable_empty
 
         case lbracket
-        when QSymbolsBeg
+        when QSymbolsBeg, QWordsBeg
           q.text(lbracket.value[-1] == "{" ? "}" : "]")
         else
           q.text("]")
@@ -1416,7 +1416,7 @@ module SyntaxTree
   module AssignFormatting
     def self.skip_indent?(value)
       case value
-      when ArrayLiteral, HashLiteral, Heredoc, Lambda, QWords, Symbols, Words
+      when ArrayLiteral, HashLiteral, Heredoc, Lambda, Symbols, Words
         true
       when CallNode
         skip_indent?(value.receiver)
@@ -8671,82 +8671,6 @@ module SyntaxTree
 
     def ===(other)
       other.is_a?(QSymbolsBeg) && value === other.value
-    end
-  end
-
-  # QWords represents a string literal array without interpolation.
-  #
-  #     %w[one two three]
-  #
-  class QWords < Node
-    # [QWordsBeg] the token that opens this array literal
-    attr_reader :beginning
-
-    # [Array[ TStringContent ]] the elements of the array
-    attr_reader :elements
-
-    # [Array[ Comment | EmbDoc ]] the comments attached to this node
-    attr_reader :comments
-
-    def initialize(beginning:, elements:, location:)
-      @beginning = beginning
-      @elements = elements
-      @location = location
-      @comments = []
-    end
-
-    def accept(visitor)
-      visitor.visit_qwords(self)
-    end
-
-    def child_nodes
-      []
-    end
-
-    def copy(beginning: nil, elements: nil, location: nil)
-      QWords.new(
-        beginning: beginning || self.beginning,
-        elements: elements || self.elements,
-        location: location || self.location
-      )
-    end
-
-    alias deconstruct child_nodes
-
-    def deconstruct_keys(_keys)
-      {
-        beginning: beginning,
-        elements: elements,
-        location: location,
-        comments: comments
-      }
-    end
-
-    def format(q)
-      opening, closing = "%w[", "]"
-
-      if elements.any? { |element| element.match?(/[\[\]]/) }
-        opening = beginning.value
-        closing = Quotes.matching(opening[2])
-      end
-
-      q.text(opening)
-      q.group do
-        q.indent do
-          q.breakable_empty
-          q.seplist(
-            elements,
-            ArrayLiteral::BREAKABLE_SPACE_SEPARATOR
-          ) { |element| q.format(element) }
-        end
-        q.breakable_empty
-      end
-      q.text(closing)
-    end
-
-    def ===(other)
-      other.is_a?(QWords) && beginning === other.beginning &&
-        ArrayMatch.call(elements, other.elements)
     end
   end
 

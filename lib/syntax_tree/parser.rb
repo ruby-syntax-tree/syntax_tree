@@ -618,7 +618,7 @@ module SyntaxTree
 
     # :call-seq:
     #   on_array: ((nil | Args | Array [ TStringContent ]) contents) ->
-    #     ArrayLiteral | QWords | Symbols | Words
+    #     ArrayLiteral | Symbols | Words
     def on_array(contents)
       if !contents || contents.is_a?(Args)
         lbracket = consume_token(LBracket)
@@ -3054,11 +3054,14 @@ module SyntaxTree
     end
 
     # :call-seq:
-    #   on_qwords_add: (QWords qwords, TStringContent element) -> QWords
+    #   on_qwords_add: (ArrayLiteral qwords, TStringContent element) ->
+    #     ArrayLiteral
     def on_qwords_add(qwords, element)
-      QWords.new(
-        beginning: qwords.beginning,
-        elements: qwords.elements << element,
+      qwords.contents.parts << element
+
+      ArrayLiteral.new(
+        lbracket: qwords.lbracket,
+        contents: qwords.contents,
         location: qwords.location.to(element.location)
       )
     end
@@ -3083,13 +3086,16 @@ module SyntaxTree
     end
 
     # :call-seq:
-    #   on_qwords_new: () -> QWords
+    #   on_qwords_new: () -> ArrayLiteral
     def on_qwords_new
       beginning = consume_token(QWordsBeg)
 
-      QWords.new(
-        beginning: beginning,
-        elements: [],
+      ArrayLiteral.new(
+        lbracket: beginning,
+        contents: Args.new(
+          parts: [],
+          location: beginning.location
+        ),
         location: beginning.location
       )
     end
