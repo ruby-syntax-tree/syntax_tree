@@ -2598,17 +2598,6 @@ module SyntaxTree
           )
         end
 
-        # Visit a Words node.
-        def visit_words(node)
-          visit_array(
-            ArrayLiteral.new(
-              lbracket: node.beginning,
-              contents: Args.new(parts: node.elements, location: node.location),
-              location: node.location
-            )
-          )
-        end
-
         # Visit an XStringLiteral node.
         def visit_xstring_literal(node)
           s(

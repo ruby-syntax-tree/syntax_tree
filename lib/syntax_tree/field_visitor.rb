@@ -959,13 +959,6 @@ module SyntaxTree
         end
       end
 
-      def visit_words(node)
-        node(node, "words") do
-          list("elements", node.elements)
-          comments(node)
-        end
-      end
-
       def visit_words_beg(node)
         node(node, "words_beg") { field("value", node.value) }
       end

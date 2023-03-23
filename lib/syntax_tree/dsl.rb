@@ -952,15 +952,6 @@ module SyntaxTree
       Word.new(parts: parts, location: Location.default)
     end
 
-    # Create a new Words node.
-    def Words(beginning, elements)
-      Words.new(
-        beginning: beginning,
-        elements: elements,
-        location: Location.default
-      )
-    end
-
     # Create a new WordsBeg node.
     def WordsBeg(value)
       WordsBeg.new(value: value, location: Location.default)

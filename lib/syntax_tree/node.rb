@@ -1214,7 +1214,7 @@ module SyntaxTree
 
       q.group do
         case lbracket
-        when QSymbolsBeg, QWordsBeg
+        when QSymbolsBeg, QWordsBeg, WordsBeg
           q.text(lbracket.value)
         else
           q.format(lbracket)
@@ -1228,6 +1228,10 @@ module SyntaxTree
               q.seplist(contents.parts, BREAKABLE_SPACE_SEPARATOR) do |part|
                 q.text(part.value)
               end
+            when WordsBeg
+              q.seplist(contents.parts, BREAKABLE_SPACE_SEPARATOR) do |part|
+                q.format(part)
+              end
             else
               q.format(contents)
               q.if_break { q.text(",") } if q.trailing_comma?
@@ -1238,7 +1242,7 @@ module SyntaxTree
         q.breakable_empty
 
         case lbracket
-        when QSymbolsBeg, QWordsBeg
+        when QSymbolsBeg, QWordsBeg, WordsBeg
           q.text(lbracket.value[-1] == "{" ? "}" : "]")
         else
           q.text("]")
@@ -1416,7 +1420,7 @@ module SyntaxTree
   module AssignFormatting
     def self.skip_indent?(value)
       case value
-      when ArrayLiteral, HashLiteral, Heredoc, Lambda, Symbols, Words
+      when ArrayLiteral, HashLiteral, Heredoc, Lambda, Symbols
         true
       when CallNode
         skip_indent?(value.receiver)
@@ -11825,7 +11829,8 @@ module SyntaxTree
   #
   #     %W[a#{b}c xyz]
   #
-  # In the example above, there would be two Word nodes within a parent Words
+  # In the example above, there would be two Word nodes within a parent
+  # ArrayLiteral
   # node.
   class Word < Node
     # [Array[ StringEmbExpr | StringDVar | TStringContent ]] the parts of the
@@ -11876,82 +11881,6 @@ module SyntaxTree
 
     def ===(other)
       other.is_a?(Word) && ArrayMatch.call(parts, other.parts)
-    end
-  end
-
-  # Words represents a string literal array with interpolation.
-  #
-  #     %W[one two three]
-  #
-  class Words < Node
-    # [WordsBeg] the token that opens this array literal
-    attr_reader :beginning
-
-    # [Array[ Word ]] the elements of this array
-    attr_reader :elements
-
-    # [Array[ Comment | EmbDoc ]] the comments attached to this node
-    attr_reader :comments
-
-    def initialize(beginning:, elements:, location:)
-      @beginning = beginning
-      @elements = elements
-      @location = location
-      @comments = []
-    end
-
-    def accept(visitor)
-      visitor.visit_words(self)
-    end
-
-    def child_nodes
-      []
-    end
-
-    def copy(beginning: nil, elements: nil, location: nil)
-      Words.new(
-        beginning: beginning || self.beginning,
-        elements: elements || self.elements,
-        location: location || self.location
-      )
-    end
-
-    alias deconstruct child_nodes
-
-    def deconstruct_keys(_keys)
-      {
-        beginning: beginning,
-        elements: elements,
-        location: location,
-        comments: comments
-      }
-    end
-
-    def format(q)
-      opening, closing = "%W[", "]"
-
-      if elements.any? { |element| element.match?(/[\[\]]/) }
-        opening = beginning.value
-        closing = Quotes.matching(opening[2])
-      end
-
-      q.text(opening)
-      q.group do
-        q.indent do
-          q.breakable_empty
-          q.seplist(
-            elements,
-            ArrayLiteral::BREAKABLE_SPACE_SEPARATOR
-          ) { |element| q.format(element) }
-        end
-        q.breakable_empty
-      end
-      q.text(closing)
-    end
-
-    def ===(other)
-      other.is_a?(Words) && beginning === other.beginning &&
-        ArrayMatch.call(elements, other.elements)
     end
   end
 

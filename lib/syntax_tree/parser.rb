@@ -618,7 +618,7 @@ module SyntaxTree
 
     # :call-seq:
     #   on_array: ((nil | Args | Array [ TStringContent ]) contents) ->
-    #     ArrayLiteral | Symbols | Words
+    #     ArrayLiteral | Symbols
     def on_array(contents)
       if !contents || contents.is_a?(Args)
         lbracket = consume_token(LBracket)
@@ -4077,11 +4077,13 @@ module SyntaxTree
     end
 
     # :call-seq:
-    #   on_words_add: (Words words, Word word) -> Words
+    #   on_words_add: (ArrayLiteral words, Word word) -> ArrayLiteral
     def on_words_add(words, word)
-      Words.new(
-        beginning: words.beginning,
-        elements: words.elements << word,
+      words.contents.parts << word
+
+      ArrayLiteral.new(
+        lbracket: words.lbracket,
+        contents: words.contents,
         location: words.location.to(word.location)
       )
     end
@@ -4106,13 +4108,16 @@ module SyntaxTree
     end
 
     # :call-seq:
-    #   on_words_new: () -> Words
+    #   on_words_new: () -> ArrayLiteral
     def on_words_new
       beginning = consume_token(WordsBeg)
 
-      Words.new(
-        beginning: beginning,
-        elements: [],
+      ArrayLiteral.new(
+        lbracket: beginning,
+        contents: Args.new(
+          parts: [],
+          location: beginning.location
+        ),
         location: beginning.location
       )
     end

@@ -863,14 +863,6 @@ module SyntaxTree
         node.copy(parts: visit_all(node.parts))
       end
 
-      # Visit a Words node.
-      def visit_words(node)
-        node.copy(
-          beginning: visit(node.beginning),
-          elements: visit_all(node.elements)
-        )
-      end
-
       # Visit a WordsBeg node.
       def visit_words_beg(node)
         node.copy

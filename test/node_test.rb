@@ -990,11 +990,11 @@ module SyntaxTree
 
     def test_word
       at = location(chars: 3..7)
-      assert_node(Word, "%W[word]", at: at) { |node| node.elements.first }
+      assert_node(Word, "%W[word]", at: at) { |node| node.contents.parts.first }
     end
 
     def test_words
-      assert_node(Words, "%W[one two three]")
+      assert_node(ArrayLiteral, "%W[one two three]")
     end
 
     def test_xstring_literal

@@ -236,10 +236,6 @@ module SyntaxTree
               raise CompilationError
             end
           end
-
-          def visit_words(node)
-            visit_all(node.elements)
-          end
         end
 
         # This isn't actually a visit method, though maybe it should be. It is
@@ -383,11 +379,21 @@ module SyntaxTree
       end
 
       def visit_array(node)
-        if node.lbracket.is_a?(QWordsBeg)
+        case node.lbracket
+        when QWordsBeg
           if options.frozen_string_literal?
             iseq.duparray(node.accept(RubyVisitor.new))
           else
             visit(node.contents)
+            iseq.newarray(node.contents.parts.length)
+          end
+          return
+        when WordsBeg
+          if options.frozen_string_literal? &&
+               (compiled = RubyVisitor.compile(node))
+            iseq.duparray(compiled)
+          else
+            visit_all(node.contents.parts)
             iseq.newarray(node.contents.parts.length)
           end
           return
@@ -1821,16 +1827,6 @@ module SyntaxTree
         else
           length = visit_string_parts(node)
           iseq.concatstrings(length)
-        end
-      end
-
-      def visit_words(node)
-        if options.frozen_string_literal? &&
-             (compiled = RubyVisitor.compile(node))
-          iseq.duparray(compiled)
-        else
-          visit_all(node.elements)
-          iseq.newarray(node.elements.length)
         end
       end
 

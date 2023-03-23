@@ -425,9 +425,6 @@ module SyntaxTree
     # Visit a Word node.
     alias visit_word visit_child_nodes
 
-    # Visit a Words node.
-    alias visit_words visit_child_nodes
-
     # Visit a WordsBeg node.
     alias visit_words_beg visit_child_nodes
 
