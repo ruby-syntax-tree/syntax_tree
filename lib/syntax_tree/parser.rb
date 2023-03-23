@@ -3036,10 +3036,7 @@ module SyntaxTree
 
       ArrayLiteral.new(
         lbracket: beginning,
-        contents: Args.new(
-          parts: [],
-          location: beginning.location
-        ),
+        contents: Args.new(parts: [], location: beginning.location),
         location: beginning.location
       )
     end
@@ -3083,10 +3080,7 @@ module SyntaxTree
 
       ArrayLiteral.new(
         lbracket: beginning,
-        contents: Args.new(
-          parts: [],
-          location: beginning.location
-        ),
+        contents: Args.new(parts: [], location: beginning.location),
         location: beginning.location
       )
     end
@@ -3653,10 +3647,7 @@ module SyntaxTree
 
       ArrayLiteral.new(
         lbracket: beginning,
-        contents: Args.new(
-          parts: [],
-          location: beginning.location
-        ),
+        contents: Args.new(parts: [], location: beginning.location),
         location: beginning.location
       )
     end
@@ -4110,10 +4101,7 @@ module SyntaxTree
 
       ArrayLiteral.new(
         lbracket: beginning,
-        contents: Args.new(
-          parts: [],
-          location: beginning.location
-        ),
+        contents: Args.new(parts: [], location: beginning.location),
         location: beginning.location
       )
     end

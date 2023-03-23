@@ -257,23 +257,27 @@ module SyntaxTree
             if node.contents.nil?
               []
             elsif node.lbracket.is_a?(QSymbolsBeg)
-              visit_all(node.contents.parts.map do |part|
-                SymbolLiteral.new(value: part, location: part.location)
-              end)
-            elsif node.lbracket.is_a?(SymbolsBeg)
-              visit_all(node.contents.parts.map do |element|
-                part = element.parts.first
-
-                if element.parts.length == 1 && part.is_a?(TStringContent)
+              visit_all(
+                node.contents.parts.map do |part|
                   SymbolLiteral.new(value: part, location: part.location)
-                else
-                  DynaSymbol.new(
-                    parts: element.parts,
-                    quote: nil,
-                    location: element.location
-                  )
                 end
-              end)
+              )
+            elsif node.lbracket.is_a?(SymbolsBeg)
+              visit_all(
+                node.contents.parts.map do |element|
+                  part = element.parts.first
+
+                  if element.parts.length == 1 && part.is_a?(TStringContent)
+                    SymbolLiteral.new(value: part, location: part.location)
+                  else
+                    DynaSymbol.new(
+                      parts: element.parts,
+                      quote: nil,
+                      location: element.location
+                    )
+                  end
+                end
+              )
             else
               visit_all(node.contents.parts)
             end,
