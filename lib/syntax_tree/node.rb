@@ -6350,7 +6350,7 @@ module SyntaxTree
         # want to force it to not be a ternary, like if the predicate is an
         # assignment because it's hard to read.
         case node.predicate
-        when Assign, Binary, Command, CommandCall, MAssign, OpAssign
+        when Assign, AndNode, Binary, Command, CommandCall, MAssign, OpAssign
           return false
         when Not
           return false unless node.predicate.parentheses?
