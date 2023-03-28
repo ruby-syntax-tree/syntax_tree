@@ -65,6 +65,11 @@ module SyntaxTree
         node.copy(left: visit(node.left), right: visit(node.right))
       end
 
+      # Visit a AndNode node.
+      def visit_and(node)
+        node.copy(left: visit(node.left), right: visit(node.right))
+      end
+
       # Visit a ARef node.
       def visit_aref(node)
         node.copy(index: visit(node.index))

@@ -11,6 +11,17 @@ module SyntaxTree
 
     # This is here because we need to make sure the operator is cast to a string
     # before we print it out.
+    def visit_and(node)
+      node(node, "and") do
+        field("left", node.left)
+        text("operator", node.operator.to_s)
+        field("right", node.right)
+        comments(node)
+      end
+    end
+
+    # This is here because we need to make sure the operator is cast to a string
+    # before we print it out.
     def visit_binary(node)
       node(node, "binary") do
         field("left", node.left)
