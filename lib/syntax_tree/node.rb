@@ -595,7 +595,13 @@ module SyntaxTree
     end
 
     def copy(left: nil, operator: nil, right: nil, location: nil)
-      node = AndNode.new(left: left || self.left, operator: operator || self.operator, right: right || self.right, location: location || self.location)
+      node =
+        AndNode.new(
+          left: left || self.left,
+          operator: operator || self.operator,
+          right: right || self.right,
+          location: location || self.location
+        )
       node.comments.concat(comments.map(&:copy))
       node
     end
@@ -630,7 +636,8 @@ module SyntaxTree
     end
 
     def ===(other)
-      other.is_a?(AndNode) && left === other.left && operator === other.operator && right === other.right
+      other.is_a?(AndNode) && left === other.left &&
+        operator === other.operator && right === other.right
     end
   end
 
