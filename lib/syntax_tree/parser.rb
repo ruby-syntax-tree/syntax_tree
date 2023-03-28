@@ -893,12 +893,22 @@ module SyntaxTree
         operator = tokens.delete(operator).value
       end
 
-      Binary.new(
-        left: left,
-        operator: operator,
-        right: right,
-        location: left.location.to(right.location)
-      )
+      case operator
+      when :"&&", :and
+        AndNode.new(
+          left: left,
+          operator: operator,
+          right: right,
+          location: left.location.to(right.location)
+        )
+      else
+        Binary.new(
+          left: left,
+          operator: operator,
+          right: right,
+          location: left.location.to(right.location)
+        )
+      end
     end
 
     # :call-seq:
