@@ -36,6 +36,11 @@ module SyntaxTree
       AliasNode.new(left: left, right: right, location: Location.default)
     end
 
+    # Create a new AndNode node.
+    def AndNode(left, operator, right)
+      AndNode.new(left: left, operator: operator, right: right, location: Location.default)
+    end
+
     # Create a new ARef node.
     def ARef(collection, index)
       ARef.new(collection: collection, index: index, location: Location.default)
