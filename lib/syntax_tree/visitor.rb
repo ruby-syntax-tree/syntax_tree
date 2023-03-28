@@ -14,6 +14,9 @@ module SyntaxTree
     # Visit an AliasNode node.
     alias visit_alias visit_child_nodes
 
+    # Visit an AndNode node.
+    alias visit_and visit_child_nodes
+
     # Visit an ArgBlock node.
     alias visit_arg_block visit_child_nodes
 

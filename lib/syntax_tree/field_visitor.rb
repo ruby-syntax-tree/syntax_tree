@@ -73,6 +73,15 @@ module SyntaxTree
         end
       end
 
+      def visit_and(node)
+        node(node, "and") do
+          field("left", node.left)
+          text("operator", node.operator)
+          field("right", node.right)
+          comments(node)
+        end
+      end
+
       def visit_arg_block(node)
         node(node, "arg_block") do
           field("value", node.value) if node.value

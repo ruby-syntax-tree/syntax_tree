@@ -468,6 +468,18 @@ module SyntaxTree
           end
         end
 
+        # Visit a AndNode node.
+        def visit_and(node)
+          s(
+            :and,
+            [visit(node.left), visit(node.right)],
+            smap_operator(
+              srange_find_between(node.left, node.right, node.operator.to_s),
+              srange_node(node)
+            )
+          )
+        end
+
         # Visit a Binary node.
         def visit_binary(node)
           case node.operator
@@ -482,9 +494,9 @@ module SyntaxTree
             else
               visit(canonical_binary(node))
             end
-          when :"=>", :"&&", :and, :"||", :or
+          when :"=>", :"||", :or
             s(
-              { "=>": :match_as, "&&": :and, "||": :or }.fetch(
+              { "=>": :match_as, "||": :or }.fetch(
                 node.operator,
                 node.operator
               ),

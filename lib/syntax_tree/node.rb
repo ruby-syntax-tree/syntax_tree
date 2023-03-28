@@ -551,6 +551,96 @@ module SyntaxTree
     end
   end
 
+  class AndNode < Node
+    # Since AndNode's operator is a symbol, it's better to use the `name` method
+    # than to allocate a new string every time. This is a tiny performance
+    # optimization, but enough that it shows up in the profiler. Adding this in
+    # for older Ruby versions.
+    unless :+.respond_to?(:name)
+      using Module.new {
+              refine Symbol do
+                def name
+                  to_s.freeze
+                end
+              end
+            }
+    end
+
+    # [Node] the left side of the && operator
+    attr_reader :left
+
+    # [Symbol] the operator
+    attr_reader :operator
+
+    # [Node] the right side of the && operator
+    attr_reader :right
+
+    # [Array[ Comment | EmbDoc ]] the comments attached to this node
+    attr_reader :comments
+
+    def initialize(left:, operator:, right:, location:)
+      @left = left
+      @operator = operator
+      @right = right
+      @location = location
+      @comments = []
+    end
+
+    def accept(visitor)
+      visitor.visit_and(self)
+    end
+
+    def child_nodes
+      [left, right]
+    end
+
+    def copy(left: nil, operator: nil, right: nil, location: nil)
+      node =
+        AndNode.new(
+          left: left || self.left,
+          operator: operator || self.operator,
+          right: right || self.right,
+          location: location || self.location
+        )
+      node.comments.concat(comments.map(&:copy))
+      node
+    end
+
+    alias deconstruct child_nodes
+
+    def deconstruct_keys(_keys)
+      {
+        left: left,
+        operator: operator,
+        right: right,
+        location: location,
+        comments: comments
+      }
+    end
+
+    def format(q)
+      left = self.left
+
+      q.group do
+        q.group { q.format(left) }
+        q.text(" ")
+
+        q.group do
+          q.text(operator.name)
+          q.indent do
+            q.breakable_space
+            q.format(right)
+          end
+        end
+      end
+    end
+
+    def ===(other)
+      other.is_a?(AndNode) && left === other.left &&
+        operator === other.operator && right === other.right
+    end
+  end
+
   # ARef represents when you're pulling a value out of a collection at a
   # specific index. Put another way, it's any time you're calling the method
   # #[].
@@ -6267,7 +6357,7 @@ module SyntaxTree
         # want to force it to not be a ternary, like if the predicate is an
         # assignment because it's hard to read.
         case node.predicate
-        when Assign, Binary, Command, CommandCall, MAssign, OpAssign
+        when Assign, AndNode, Binary, Command, CommandCall, MAssign, OpAssign
           return false
         when Not
           return false unless node.predicate.parentheses?

@@ -543,18 +543,20 @@ module SyntaxTree
       def visit_begin(node)
       end
 
+      def visit_and(node)
+        done_label = iseq.label
+
+        visit(node.left)
+        iseq.dup
+        iseq.branchunless(done_label)
+
+        iseq.pop
+        visit(node.right)
+        iseq.push(done_label)
+      end
+
       def visit_binary(node)
         case node.operator
-        when :"&&"
-          done_label = iseq.label
-
-          visit(node.left)
-          iseq.dup
-          iseq.branchunless(done_label)
-
-          iseq.pop
-          visit(node.right)
-          iseq.push(done_label)
         when :"||"
           visit(node.left)
           iseq.dup
