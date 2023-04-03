@@ -31,7 +31,6 @@ module SyntaxTree
         "FCALL" => CallData::CALL_FCALL,
         "VCALL" => CallData::CALL_VCALL,
         "ARGS_SIMPLE" => CallData::CALL_ARGS_SIMPLE,
-        "BLOCKISEQ" => CallData::CALL_BLOCKISEQ,
         "KWARG" => CallData::CALL_KWARG,
         "KW_SPLAT" => CallData::CALL_KW_SPLAT,
         "TAILCALL" => CallData::CALL_TAILCALL,
