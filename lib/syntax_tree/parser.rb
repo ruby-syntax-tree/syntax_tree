@@ -461,7 +461,7 @@ module SyntaxTree
     end
 
     # :call-seq:
-    #   on_aref: (untyped collection, (nil | Args) index) -> ARef
+    #   on_aref: (untyped collection, (nil | ArgumentsNode) index) -> ARef
     def on_aref(collection, index)
       consume_token(LBracket)
       rbracket = consume_token(RBracket)
@@ -476,7 +476,7 @@ module SyntaxTree
     # :call-seq:
     #   on_aref_field: (
     #     untyped collection,
-    #     (nil | Args) index
+    #     (nil | ArgumentsNode) index
     #   ) -> ARefField
     def on_aref_field(collection, index)
       consume_token(LBracket)
@@ -495,7 +495,7 @@ module SyntaxTree
 
     # :call-seq:
     #   on_arg_paren: (
-    #     (nil | Args | ArgsForward) arguments
+    #     (nil | ArgumentsNode | ArgsForward) arguments
     #   ) -> ArgParen
     def on_arg_paren(arguments)
       lparen = consume_token(LParen)
@@ -518,18 +518,18 @@ module SyntaxTree
     end
 
     # :call-seq:
-    #   on_args_add: (Args arguments, untyped argument) -> Args
+    #   on_args_add: (ArgumentsNode arguments, untyped argument) -> ArgumentsNode
     def on_args_add(arguments, argument)
-      if arguments.parts.empty?
+      if arguments.arguments.empty?
         # If this is the first argument being passed into the list of arguments,
         # then we're going to use the bounds of the argument to override the
         # parent node's location since this will be more accurate.
-        Args.new(parts: [argument], location: argument.location)
+        ArgumentsNode.new(arguments: [argument], location: argument.location)
       else
         # Otherwise we're going to update the existing list with the argument
         # being added as well as the new end bounds.
-        Args.new(
-          parts: arguments.parts << argument,
+        ArgumentsNode.new(
+          arguments: arguments.arguments << argument,
           location: arguments.location.to(argument.location)
         )
       end
@@ -537,11 +537,11 @@ module SyntaxTree
 
     # :call-seq:
     #   on_args_add_block: (
-    #     Args arguments,
+    #     ArgumentsNode arguments,
     #     (false | untyped) block
-    #   ) -> Args
+    #   ) -> ArgumentsNode
     def on_args_add_block(arguments, block)
-      end_char = arguments.parts.any? && arguments.location.end_char
+      end_char = arguments.arguments.any? && arguments.location.end_char
 
       # First, see if there is an & operator that could potentially be
       # associated with the block part of this args_add_block. If there is not,
@@ -570,20 +570,20 @@ module SyntaxTree
       # block, which could be missing because it could be a bare & since 3.1.0).
       arg_block = ArgBlock.new(value: block, location: location)
 
-      Args.new(
-        parts: arguments.parts << arg_block,
+      ArgumentsNode.new(
+        arguments: arguments.arguments << arg_block,
         location: arguments.location.to(location)
       )
     end
 
     # :call-seq:
-    #   on_args_add_star: (Args arguments, untyped star) -> Args
+    #   on_args_add_star: (ArgumentsNode arguments, untyped star) -> ArgumentsNode
     def on_args_add_star(arguments, argument)
       beginning = consume_operator(:*)
       ending = argument || beginning
 
       location =
-        if arguments.parts.empty?
+        if arguments.arguments.empty?
           ending.location
         else
           arguments.location.to(ending.location)
@@ -595,7 +595,10 @@ module SyntaxTree
           location: beginning.location.to(ending.location)
         )
 
-      Args.new(parts: arguments.parts << arg_star, location: location)
+      ArgumentsNode.new(
+        arguments: arguments.arguments << arg_star,
+        location: location
+      )
     end
 
     # :call-seq:
@@ -607,20 +610,20 @@ module SyntaxTree
     end
 
     # :call-seq:
-    #   on_args_new: () -> Args
+    #   on_args_new: () -> ArgumentsNode
     def on_args_new
-      Args.new(
-        parts: [],
+      ArgumentsNode.new(
+        arguments: [],
         location:
           Location.fixed(line: lineno, column: current_column, char: char_pos)
       )
     end
 
     # :call-seq:
-    #   on_array: ((nil | Args) contents) ->
+    #   on_array: ((nil | ArgumentsNode) contents) ->
     #     ArrayLiteral | QSymbols | QWords | Symbols | Words
     def on_array(contents)
-      if !contents || contents.is_a?(Args)
+      if !contents || contents.is_a?(ArgumentsNode)
         lbracket = consume_token(LBracket)
         rbracket = consume_token(RBracket)
 
@@ -1021,12 +1024,12 @@ module SyntaxTree
     end
 
     # :call-seq:
-    #   on_break: (Args arguments) -> Break
+    #   on_break: (ArgumentsNode arguments) -> Break
     def on_break(arguments)
       keyword = consume_keyword(:break)
 
       location = keyword.location
-      location = location.to(arguments.location) if arguments.parts.any?
+      location = location.to(arguments.location) if arguments.arguments.any?
 
       Break.new(arguments: arguments, location: location)
     end
@@ -1135,7 +1138,7 @@ module SyntaxTree
     end
 
     # :call-seq:
-    #   on_command: ((Const | Ident) message, Args arguments) -> Command
+    #   on_command: ((Const | Ident) message, ArgumentsNode arguments) -> Command
     def on_command(message, arguments)
       Command.new(
         message: message,
@@ -1150,7 +1153,7 @@ module SyntaxTree
     #     untyped receiver,
     #     (:"::" | Op | Period) operator,
     #     (Const | Ident | Op) message,
-    #     (nil | Args) arguments
+    #     (nil | ArgumentsNode) arguments
     #   ) -> CommandCall
     def on_command_call(receiver, operator, message, arguments)
       ending = arguments || message
@@ -2504,7 +2507,7 @@ module SyntaxTree
     # :call-seq:
     #   on_method_add_arg: (
     #     CallNode call,
-    #     (ArgParen | Args) arguments
+    #     (ArgParen | ArgumentsNode) arguments
     #   ) -> CallNode
     def on_method_add_arg(call, arguments)
       location = call.location
@@ -2529,7 +2532,7 @@ module SyntaxTree
 
       case call
       when Break, Next, ReturnNode
-        parts = call.arguments.parts
+        parts = call.arguments.arguments
 
         node = parts.pop
         copied =
@@ -2677,18 +2680,18 @@ module SyntaxTree
     end
 
     # :call-seq:
-    #   on_mrhs_new_from_args: (Args arguments) -> MRHS
+    #   on_mrhs_new_from_args: (ArgumentsNode arguments) -> MRHS
     def on_mrhs_new_from_args(arguments)
-      MRHS.new(parts: arguments.parts, location: arguments.location)
+      MRHS.new(parts: arguments.arguments, location: arguments.location)
     end
 
     # :call-seq:
-    #   on_next: (Args arguments) -> Next
+    #   on_next: (ArgumentsNode arguments) -> Next
     def on_next(arguments)
       keyword = consume_keyword(:next)
 
       location = keyword.location
-      location = location.to(arguments.location) if arguments.parts.any?
+      location = location.to(arguments.location) if arguments.arguments.any?
 
       Next.new(arguments: arguments, location: location)
     end
@@ -3306,7 +3309,7 @@ module SyntaxTree
     end
 
     # :call-seq:
-    #   on_return: (Args arguments) -> ReturnNode
+    #   on_return: (ArgumentsNode arguments) -> ReturnNode
     def on_return(arguments)
       keyword = consume_keyword(:return)
 
@@ -3540,7 +3543,7 @@ module SyntaxTree
     end
 
     # :call-seq:
-    #   on_super: ((ArgParen | Args) arguments) -> Super
+    #   on_super: ((ArgParen | ArgumentsNode) arguments) -> Super
     def on_super(arguments)
       keyword = consume_keyword(:super)
 
@@ -3953,7 +3956,7 @@ module SyntaxTree
 
     # :call-seq:
     #   on_when: (
-    #     Args arguments,
+    #     ArgumentsNode arguments,
     #     Statements statements,
     #     (nil | Else | When) consequent
     #   ) -> When
@@ -4149,7 +4152,7 @@ module SyntaxTree
     end
 
     # :call-seq:
-    #   on_yield: ((Args | Paren) arguments) -> YieldNode
+    #   on_yield: ((ArgumentsNode | Paren) arguments) -> YieldNode
     def on_yield(arguments)
       keyword = consume_keyword(:yield)
 

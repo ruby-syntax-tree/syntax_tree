@@ -568,7 +568,7 @@ module SyntaxTree
     # [Node] the value being indexed
     attr_reader :collection
 
-    # [nil | Args] the value being passed within the brackets
+    # [nil | ArgumentsNode] the value being passed within the brackets
     attr_reader :index
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
@@ -646,7 +646,7 @@ module SyntaxTree
     # [Node] the value being indexed
     attr_reader :collection
 
-    # [nil | Args] the value being passed within the brackets
+    # [nil | ArgumentsNode] the value being passed within the brackets
     attr_reader :index
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
@@ -718,14 +718,14 @@ module SyntaxTree
   #
   #     method(argument)
   #
-  # In the example above, there would be an ArgParen node around the Args node
+  # In the example above, there would be an ArgParen node around the ArgumentsNode node
   # that represents the set of arguments being sent to the method method. The
   # argument child node can be +nil+ if no arguments were passed, as in:
   #
   #     method()
   #
   class ArgParen < Node
-    # [nil | Args | ArgsForward] the arguments inside the
+    # [nil | ArgumentsNode | ArgsForward] the arguments inside the
     # parentheses
     attr_reader :arguments
 
@@ -793,9 +793,9 @@ module SyntaxTree
 
     def trailing_comma?
       arguments = self.arguments
-      return false unless arguments.is_a?(Args)
+      return false unless arguments.is_a?(ArgumentsNode)
 
-      parts = arguments.parts
+      parts = arguments.arguments
       if parts.last.is_a?(ArgBlock)
         # If the last argument is a block, then we can't put a trailing comma
         # after it without resulting in a syntax error.
@@ -813,36 +813,36 @@ module SyntaxTree
     end
   end
 
-  # Args represents a list of arguments being passed to a method call or array
+  # ArgumentsNode represents a list of arguments being passed to a method call or array
   # literal.
   #
   #     method(first, second, third)
   #
-  class Args < Node
+  class ArgumentsNode < Node
     # [Array[ Node ]] the arguments that this node wraps
-    attr_reader :parts
+    attr_reader :arguments
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(parts:, location:)
-      @parts = parts
+    def initialize(arguments:, location:)
+      @arguments = arguments
       @location = location
       @comments = []
     end
 
     def accept(visitor)
-      visitor.visit_args(self)
+      visitor.visit_arguments_node(self)
     end
 
     def child_nodes
-      parts
+      arguments
     end
 
-    def copy(parts: nil, location: nil)
+    def copy(arguments: nil, location: nil)
       node =
-        Args.new(
-          parts: parts || self.parts,
+        ArgumentsNode.new(
+          arguments: arguments || self.arguments,
           location: location || self.location
         )
 
@@ -853,24 +853,24 @@ module SyntaxTree
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
-      { parts: parts, location: location, comments: comments }
+      { arguments: arguments, location: location, comments: comments }
     end
 
     def format(q)
-      q.seplist(parts) { |part| q.format(part) }
+      q.seplist(arguments) { |argument| q.format(argument) }
     end
 
     def ===(other)
-      other.is_a?(Args) && ArrayMatch.call(parts, other.parts)
+      other.is_a?(ArgumentsNode) && ArrayMatch.call(arguments, other.arguments)
     end
 
     def arity
-      parts.sum do |part|
-        case part
+      arguments.sum do |argument|
+        case argument
         when ArgStar, ArgsForward
           Float::INFINITY
         when BareAssocHash
-          part.assocs.sum do |assoc|
+          argument.assocs.sum do |assoc|
             assoc.is_a?(AssocSplat) ? Float::INFINITY : 1
           end
         else
@@ -1064,7 +1064,7 @@ module SyntaxTree
 
     # Formats an array of multiple simple string literals into the %w syntax.
     class QWordsFormatter
-      # [Args] the contents of the array
+      # [ArgumentsNode] the contents of the array
       attr_reader :contents
 
       def initialize(contents)
@@ -1076,7 +1076,7 @@ module SyntaxTree
         q.group do
           q.indent do
             q.breakable_empty
-            q.seplist(contents.parts, BREAKABLE_SPACE_SEPARATOR) do |part|
+            q.seplist(contents.arguments, BREAKABLE_SPACE_SEPARATOR) do |part|
               if part.is_a?(StringLiteral)
                 q.format(part.parts.first)
               else
@@ -1092,7 +1092,7 @@ module SyntaxTree
 
     # Formats an array of multiple simple symbol literals into the %i syntax.
     class QSymbolsFormatter
-      # [Args] the contents of the array
+      # [ArgumentsNode] the contents of the array
       attr_reader :contents
 
       def initialize(contents)
@@ -1104,7 +1104,7 @@ module SyntaxTree
         q.group do
           q.indent do
             q.breakable_empty
-            q.seplist(contents.parts, BREAKABLE_SPACE_SEPARATOR) do |part|
+            q.seplist(contents.arguments, BREAKABLE_SPACE_SEPARATOR) do |part|
               q.format(part.value)
             end
           end
@@ -1144,7 +1144,7 @@ module SyntaxTree
     # bracket that opens this array
     attr_reader :lbracket
 
-    # [nil | Args] the contents of the array
+    # [nil | ArgumentsNode] the contents of the array
     attr_reader :contents
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
@@ -1193,7 +1193,7 @@ module SyntaxTree
       contents = self.contents
 
       if lbracket.is_a?(LBracket) && lbracket.comments.empty? && contents &&
-           contents.comments.empty? && contents.parts.length > 1
+           contents.comments.empty? && contents.arguments.length > 1
         if qwords?
           QWordsFormatter.new(contents).format(q)
           return
@@ -1234,7 +1234,7 @@ module SyntaxTree
     private
 
     def qwords?
-      contents.parts.all? do |part|
+      contents.arguments.all? do |part|
         case part
         when StringLiteral
           part.comments.empty? && part.parts.length == 1 &&
@@ -1249,7 +1249,7 @@ module SyntaxTree
     end
 
     def qsymbols?
-      contents.parts.all? do |part|
+      contents.arguments.all? do |part|
         part.is_a?(SymbolLiteral) && part.comments.empty?
       end
     end
@@ -2458,7 +2458,7 @@ module SyntaxTree
       q.group do
         q.text(keyword)
 
-        parts = node.arguments.parts
+        parts = node.arguments.arguments
         length = parts.length
 
         if length == 0
@@ -2487,7 +2487,7 @@ module SyntaxTree
               if statement.is_a?(ArrayLiteral)
                 contents = statement.contents
 
-                if contents && contents.parts.length >= 2
+                if contents && contents.arguments.length >= 2
                   # Here we have a single argument that is a set of parentheses
                   # wrapping an array literal that has at least 2 elements.
                   # We're going to print the contents of the array directly.
@@ -2545,7 +2545,7 @@ module SyntaxTree
           when ArrayLiteral
             contents = part.contents
 
-            if contents && contents.parts.length >= 2
+            if contents && contents.arguments.length >= 2
               # Here there is a single argument that is an array literal with at
               # least two elements. We skip directly into the array literal's
               # elements in order to print the contents. This would be like if
@@ -2632,7 +2632,7 @@ module SyntaxTree
   #     break 1
   #
   class Break < Node
-    # [Args] the arguments being sent to the keyword
+    # [ArgumentsNode] the arguments being sent to the keyword
     attr_reader :arguments
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
@@ -2950,7 +2950,7 @@ module SyntaxTree
     # [:call | Backtick | Const | Ident | Op] the message being sent
     attr_reader :message
 
-    # [nil | ArgParen | Args] the arguments to the method call
+    # [nil | ArgParen | ArgumentsNode] the arguments to the method call
     attr_reader :arguments
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
@@ -3063,7 +3063,7 @@ module SyntaxTree
       case arguments
       when ArgParen
         q.format(arguments)
-      when Args
+      when ArgumentsNode
         q.text(" ")
         q.format(arguments)
       end
@@ -3449,7 +3449,7 @@ module SyntaxTree
     # [Const | Ident] the message being sent to the implicit receiver
     attr_reader :message
 
-    # [Args] the arguments being sent with the message
+    # [ArgumentsNode] the arguments being sent with the message
     attr_reader :arguments
 
     # [nil | BlockNode] the optional block being passed to the method
@@ -3520,15 +3520,15 @@ module SyntaxTree
     private
 
     def align(q, node, &block)
-      arguments = node.arguments
+      argument_node = node.arguments
 
-      if arguments.is_a?(Args)
-        parts = arguments.parts
+      if argument_node.is_a?(ArgumentsNode)
+        arguments = argument_node.arguments
 
-        if parts.size == 1
-          part = parts.first
+        if arguments.size == 1
+          argument = arguments.first
 
-          case part
+          case argument
           when DefNode
             q.text(" ")
             yield
@@ -3536,7 +3536,7 @@ module SyntaxTree
             q.if_flat { q.text(" ") }
             yield
           when Command
-            align(q, part, &block)
+            align(q, argument, &block)
           else
             q.text(" ")
             q.nest(message.value.length + 1) { yield }
@@ -3567,7 +3567,7 @@ module SyntaxTree
     # [:call | Const | Ident | Op] the message being send
     attr_reader :message
 
-    # [nil | Args | ArgParen] the arguments going along with the message
+    # [nil | ArgumentsNode | ArgParen] the arguments going along with the message
     attr_reader :arguments
 
     # [nil | BlockNode] the block associated with this method call
@@ -3665,7 +3665,7 @@ module SyntaxTree
         # Format the arguments for this command call here. If there are no
         # arguments, then print nothing.
         if arguments
-          parts = arguments.parts
+          parts = arguments.arguments
 
           if parts.length == 1 && parts.first.is_a?(IfOp)
             q.if_flat { q.text(" ") }
@@ -7947,7 +7947,7 @@ module SyntaxTree
   #     next(value)
   #
   class Next < Node
-    # [Args] the arguments passed to the next keyword
+    # [ArgumentsNode] the arguments passed to the next keyword
     attr_reader :arguments
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
@@ -8170,7 +8170,7 @@ module SyntaxTree
   # keeping the correct semantic meaning.
   module Parentheses
     NODES = [
-      Args,
+      ArgumentsNode,
       Assign,
       Assoc,
       Binary,
@@ -9717,7 +9717,7 @@ module SyntaxTree
   #     return value
   #
   class ReturnNode < Node
-    # [nil | Args] the arguments being passed to the keyword
+    # [nil | ArgumentsNode] the arguments being passed to the keyword
     attr_reader :arguments
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
@@ -10428,7 +10428,7 @@ module SyntaxTree
   #     super(value)
   #
   class Super < Node
-    # [ArgParen | Args] the arguments to the keyword
+    # [ArgParen | ArgumentsNode] the arguments to the keyword
     attr_reader :arguments
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
@@ -11833,7 +11833,7 @@ module SyntaxTree
   #     end
   #
   class When < Node
-    # [Args] the arguments to the when clause
+    # [ArgumentsNode] the arguments to the when clause
     attr_reader :arguments
 
     # [Statements] the expressions to be executed
@@ -11912,13 +11912,15 @@ module SyntaxTree
             if arguments.comments.any?
               q.format(arguments)
             else
-              q.seplist(arguments.parts, SEPARATOR) { |part| q.format(part) }
+              q.seplist(arguments.arguments, SEPARATOR) do |part|
+                q.format(part)
+              end
             end
 
             # Very special case here. If you're inside of a when clause and the
             # last argument to the predicate is and endless range, then you are
             # forced to use the "then" keyword to make it parse properly.
-            last = arguments.parts.last
+            last = arguments.arguments.last
             q.text(" then") if last.is_a?(RangeNode) && !last.right
           end
         end
@@ -12287,7 +12289,7 @@ module SyntaxTree
   #     yield value
   #
   class YieldNode < Node
-    # [nil | Args | Paren] the arguments passed to the yield
+    # [nil | ArgumentsNode | Paren] the arguments passed to the yield
     attr_reader :arguments
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node

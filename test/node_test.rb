@@ -68,7 +68,9 @@ module SyntaxTree
       source = "method(first, second, third)"
 
       at = location(chars: 7..27)
-      assert_node(Args, source, at: at) { |node| node.arguments.arguments }
+      assert_node(ArgumentsNode, source, at: at) do |node|
+        node.arguments.arguments
+      end
     end
 
     def test_arg_block
@@ -76,7 +78,7 @@ module SyntaxTree
 
       at = location(chars: 17..23)
       assert_node(ArgBlock, source, at: at) do |node|
-        node.arguments.arguments.parts[1]
+        node.arguments.arguments.arguments[1]
       end
     end
 
@@ -90,7 +92,7 @@ module SyntaxTree
 
         at = location(lines: 2..2, chars: 29..30)
         assert_node(ArgBlock, source, at: at) do |node|
-          node.bodystmt.statements.body.first.arguments.arguments.parts[0]
+          node.bodystmt.statements.body.first.arguments.arguments.arguments[0]
         end
       end
     end
@@ -100,7 +102,7 @@ module SyntaxTree
 
       at = location(chars: 15..25)
       assert_node(ArgStar, source, at: at) do |node|
-        node.arguments.arguments.parts[1]
+        node.arguments.arguments.arguments[1]
       end
     end
 
@@ -114,7 +116,7 @@ module SyntaxTree
 
         at = location(lines: 2..2, chars: 29..32)
         assert_node(ArgsForward, source, at: at) do |node|
-          node.bodystmt.statements.body.first.arguments.arguments.parts.last
+          node.bodystmt.statements.body.first.arguments.arguments.arguments.last
         end
       end
     end
@@ -176,7 +178,7 @@ module SyntaxTree
 
       at = location(chars: 7..33)
       assert_node(BareAssocHash, source, at: at) do |node|
-        node.arguments.arguments.parts.first
+        node.arguments.arguments.arguments.first
       end
     end
 

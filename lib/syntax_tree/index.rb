@@ -554,7 +554,7 @@ module SyntaxTree
                   node.location.start_column
                 )
 
-              node.arguments.parts.each do |argument|
+              node.arguments.arguments.each do |argument|
                 next unless argument.is_a?(SymbolLiteral)
                 name = argument.value.value.to_sym
 

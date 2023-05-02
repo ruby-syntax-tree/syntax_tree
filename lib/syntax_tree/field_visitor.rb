@@ -94,9 +94,9 @@ module SyntaxTree
         end
       end
 
-      def visit_args(node)
-        node(node, "args") do
-          list("parts", node.parts)
+      def visit_arguments_node(node)
+        node(node, "arguments_node") do
+          list("arguments", node.arguments)
           comments(node)
         end
       end
