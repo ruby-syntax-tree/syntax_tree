@@ -62,7 +62,10 @@ module SyntaxTree
 
       # Visit a AliasNode node.
       def visit_alias(node)
-        node.copy(left: visit(node.left), right: visit(node.right))
+        node.copy(
+          new_name: visit(node.new_name),
+          old_name: visit(node.old_name)
+        )
       end
 
       # Visit a AndNode node.

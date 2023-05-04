@@ -485,17 +485,17 @@ module SyntaxTree
     end
 
     # [DynaSymbol | GVar | SymbolLiteral] the new name of the method
-    attr_reader :left
+    attr_reader :new_name
 
     # [Backref | DynaSymbol | GVar | SymbolLiteral] the old name of the method
-    attr_reader :right
+    attr_reader :old_name
 
     # [Array[ Comment | EmbDoc ]] the comments attached to this node
     attr_reader :comments
 
-    def initialize(left:, right:, location:)
-      @left = left
-      @right = right
+    def initialize(new_name:, old_name:, location:)
+      @new_name = new_name
+      @old_name = old_name
       @location = location
       @comments = []
     end
@@ -505,14 +505,14 @@ module SyntaxTree
     end
 
     def child_nodes
-      [left, right]
+      [new_name, old_name]
     end
 
-    def copy(left: nil, right: nil, location: nil)
+    def copy(new_name: nil, old_name: nil, location: nil)
       node =
         AliasNode.new(
-          left: left || self.left,
-          right: right || self.right,
+          new_name: new_name || self.new_name,
+          old_name: old_name || self.old_name,
           location: location || self.location
         )
 
@@ -523,31 +523,41 @@ module SyntaxTree
     alias deconstruct child_nodes
 
     def deconstruct_keys(_keys)
-      { left: left, right: right, location: location, comments: comments }
+      {
+        new_name: new_name,
+        old_name: old_name,
+        location: location,
+        comments: comments
+      }
     end
 
     def format(q)
       keyword = "alias "
-      left_argument = AliasArgumentFormatter.new(left)
+      new_name_argument = AliasArgumentFormatter.new(new_name)
 
       q.group do
         q.text(keyword)
-        q.format(left_argument, stackable: false)
+        q.format(new_name_argument, stackable: false)
         q.group do
           q.nest(keyword.length) do
-            left_argument.comments.any? ? q.breakable_force : q.breakable_space
-            q.format(AliasArgumentFormatter.new(right), stackable: false)
+            if new_name_argument.comments.any?
+              q.breakable_force
+            else
+              q.breakable_space
+            end
+            q.format(AliasArgumentFormatter.new(old_name), stackable: false)
           end
         end
       end
     end
 
     def ===(other)
-      other.is_a?(AliasNode) && left === other.left && right === other.right
+      other.is_a?(AliasNode) && new_name === other.new_name &&
+        old_name === other.old_name
     end
 
     def var_alias?
-      left.is_a?(GVar)
+      new_name.is_a?(GVar)
     end
   end
 

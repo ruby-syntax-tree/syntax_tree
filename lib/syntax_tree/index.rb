@@ -475,7 +475,8 @@ module SyntaxTree
 
         visit_methods do
           def visit_alias(node)
-            if node.left.is_a?(SymbolLiteral) && node.right.is_a?(SymbolLiteral)
+            if node.new_name.is_a?(SymbolLiteral) &&
+                 node.old_name.is_a?(SymbolLiteral)
               location =
                 Location.new(
                   node.location.start_line,
@@ -484,7 +485,7 @@ module SyntaxTree
 
               results << AliasMethodDefinition.new(
                 nesting.dup,
-                node.left.value.value.to_sym,
+                node.new_name.value.value.to_sym,
                 location,
                 comments_for(node)
               )

@@ -339,8 +339,8 @@ module SyntaxTree
       def visit_alias(node)
         iseq.putspecialobject(PutSpecialObject::OBJECT_VMCORE)
         iseq.putspecialobject(PutSpecialObject::OBJECT_CBASE)
-        visit(node.left)
-        visit(node.right)
+        visit(node.new_name)
+        visit(node.old_name)
         iseq.send(YARV.calldata(:"core#set_method_alias", 3))
       end
 

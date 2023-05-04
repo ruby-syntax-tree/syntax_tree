@@ -94,7 +94,7 @@ module SyntaxTree
         def visit_alias(node)
           s(
             :alias,
-            [visit(node.left), visit(node.right)],
+            [visit(node.new_name), visit(node.old_name)],
             smap_keyword_bare(
               srange_length(node.start_char, 5),
               srange_node(node)

@@ -447,16 +447,16 @@ module SyntaxTree
 
     # :call-seq:
     #   on_alias: (
-    #     (DynaSymbol | SymbolLiteral) left,
-    #     (DynaSymbol | SymbolLiteral) right
+    #     (DynaSymbol | SymbolLiteral) new_name,
+    #     (DynaSymbol | SymbolLiteral) old_name
     #   ) -> AliasNode
-    def on_alias(left, right)
+    def on_alias(new_name, old_name)
       keyword = consume_keyword(:alias)
 
       AliasNode.new(
-        left: left,
-        right: right,
-        location: keyword.location.to(right.location)
+        new_name: new_name,
+        old_name: old_name,
+        location: keyword.location.to(old_name.location)
       )
     end
 
@@ -3912,14 +3912,14 @@ module SyntaxTree
     end
 
     # :call-seq:
-    #   on_var_alias: (GVar left, (Backref | GVar) right) -> AliasNode
-    def on_var_alias(left, right)
+    #   on_var_alias: (GVar new_name, (Backref | GVar) old_name) -> AliasNode
+    def on_var_alias(new_name, old_name)
       keyword = consume_keyword(:alias)
 
       AliasNode.new(
-        left: left,
-        right: right,
-        location: keyword.location.to(right.location)
+        new_name: new_name,
+        old_name: old_name,
+        location: keyword.location.to(old_name.location)
       )
     end
 

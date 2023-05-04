@@ -32,8 +32,12 @@ module SyntaxTree
     end
 
     # Create a new AliasNode node.
-    def AliasNode(left, right)
-      AliasNode.new(left: left, right: right, location: Location.default)
+    def AliasNode(new_name, old_name)
+      AliasNode.new(
+        new_name: new_name,
+        old_name: old_name,
+        location: Location.default
+      )
     end
 
     # Create a new AndNode node.

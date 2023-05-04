@@ -67,8 +67,8 @@ module SyntaxTree
 
       def visit_alias(node)
         node(node, "alias") do
-          field("left", node.left)
-          field("right", node.right)
+          field("new_name", node.new_name)
+          field("old_name", node.old_name)
           comments(node)
         end
       end
