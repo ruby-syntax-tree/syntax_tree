@@ -60,7 +60,7 @@ module SyntaxTree
             # constant. That constant is responsible for determining the default
             # disable ternary value. If it's defined, then we default to true.
             # Otherwise we default to false.
-            defined?(DISABLE_TERNARY)
+            defined?(DISABLE_AUTO_TERNARY)
           else
             disable_auto_ternary
           end

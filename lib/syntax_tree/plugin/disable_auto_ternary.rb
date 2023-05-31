@@ -2,6 +2,6 @@
 
 module SyntaxTree
   class Formatter
-    DISABLE_TERNARY = true
+    DISABLE_AUTO_TERNARY = true
   end
 end
