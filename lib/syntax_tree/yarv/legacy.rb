@@ -126,6 +126,110 @@ module SyntaxTree
 
       # ### Summary
       #
+      # `opt_newarray_max` is a specialization that occurs when the `max` method
+      # is called on an array literal. It pops the values of the array off the
+      # stack and pushes on the result.
+      #
+      # ### Usage
+      #
+      # ~~~ruby
+      # [a, b, c].max
+      # ~~~
+      #
+      class OptNewArrayMax < Instruction
+        attr_reader :number
+
+        def initialize(number)
+          @number = number
+        end
+
+        def disasm(fmt)
+          fmt.instruction("opt_newarray_max", [fmt.object(number)])
+        end
+
+        def to_a(_iseq)
+          [:opt_newarray_max, number]
+        end
+
+        def deconstruct_keys(_keys)
+          { number: number }
+        end
+
+        def ==(other)
+          other.is_a?(OptNewArrayMax) && other.number == number
+        end
+
+        def length
+          2
+        end
+
+        def pops
+          number
+        end
+
+        def pushes
+          1
+        end
+
+        def call(vm)
+          vm.push(vm.pop(number).max)
+        end
+      end
+
+      # ### Summary
+      #
+      # `opt_newarray_min` is a specialization that occurs when the `min` method
+      # is called on an array literal. It pops the values of the array off the
+      # stack and pushes on the result.
+      #
+      # ### Usage
+      #
+      # ~~~ruby
+      # [a, b, c].min
+      # ~~~
+      #
+      class OptNewArrayMin < Instruction
+        attr_reader :number
+
+        def initialize(number)
+          @number = number
+        end
+
+        def disasm(fmt)
+          fmt.instruction("opt_newarray_min", [fmt.object(number)])
+        end
+
+        def to_a(_iseq)
+          [:opt_newarray_min, number]
+        end
+
+        def deconstruct_keys(_keys)
+          { number: number }
+        end
+
+        def ==(other)
+          other.is_a?(OptNewArrayMin) && other.number == number
+        end
+
+        def length
+          2
+        end
+
+        def pops
+          number
+        end
+
+        def pushes
+          1
+        end
+
+        def call(vm)
+          vm.push(vm.pop(number).min)
+        end
+      end
+
+      # ### Summary
+      #
       # `opt_setinlinecache` sets an inline cache for a constant lookup. It pops
       # the value it should set off the top of the stack. It uses this value to
       # set the cache. It then pushes that value back onto the top of the stack.
