@@ -353,11 +353,27 @@ module SyntaxTree
             next unless calldata.argc == 0
 
             case calldata.method
-            when :max
-              node.value = OptNewArrayMax.new(value.number)
-              node.next_node = next_node.next_node
             when :min
-              node.value = OptNewArrayMin.new(value.number)
+              node.value =
+                if RUBY_VERSION < "3.3"
+                  Legacy::OptNewArrayMin.new(value.number)
+                else
+                  OptNewArraySend.new(value.number, :min)
+                end
+
+              node.next_node = next_node.next_node
+            when :max
+              node.value =
+                if RUBY_VERSION < "3.3"
+                  Legacy::OptNewArrayMax.new(value.number)
+                else
+                  OptNewArraySend.new(value.number, :max)
+                end
+
+              node.next_node = next_node.next_node
+            when :hash
+              next if RUBY_VERSION < "3.3"
+              node.value = OptNewArraySend.new(value.number, :hash)
               node.next_node = next_node.next_node
             end
           when PutObject, PutString
@@ -1174,6 +1190,9 @@ module SyntaxTree
           when :opt_newarray_min
             iseq.newarray(opnds[0])
             iseq.send(YARV.calldata(:min))
+          when :opt_newarray_send
+            iseq.newarray(opnds[0])
+            iseq.send(CallData.new(opnds[1]))
           when :opt_neq
             iseq.push(
               OptNEq.new(CallData.from(opnds[0]), CallData.from(opnds[1]))

@@ -311,6 +311,12 @@ module SyntaxTree
       "[1, 2, 3].min",
       "[foo, bar, baz].min",
       "[foo, bar, baz].min(1)",
+      "[1, 2, 3].hash",
+      "[foo, bar, baz].hash",
+      "[foo, bar, baz].hash(1)",
+      "[1, 2, 3].foo",
+      "[foo, bar, baz].foo",
+      "[foo, bar, baz].foo(1)",
       "[**{ x: true }][0][:x]",
       # Core method calls
       "alias foo bar",

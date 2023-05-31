@@ -3818,9 +3818,10 @@ module SyntaxTree
 
     # ### Summary
     #
-    # `opt_newarray_max` is a specialization that occurs when the `max` method
-    # is called on an array literal. It pops the values of the array off the
-    # stack and pushes on the result.
+    # `opt_newarray_send` is a specialization that occurs when a dynamic array
+    # literal is created and immediately sent the `min`, `max`, or `hash`
+    # methods. It pops the values of the array off the stack and pushes on the
+    # result of the method call.
     #
     # ### Usage
     #
@@ -3828,31 +3829,36 @@ module SyntaxTree
     # [a, b, c].max
     # ~~~
     #
-    class OptNewArrayMax < Instruction
-      attr_reader :number
+    class OptNewArraySend < Instruction
+      attr_reader :number, :method
 
-      def initialize(number)
+      def initialize(number, method)
         @number = number
+        @method = method
       end
 
       def disasm(fmt)
-        fmt.instruction("opt_newarray_max", [fmt.object(number)])
+        fmt.instruction(
+          "opt_newarray_send",
+          [fmt.object(number), fmt.object(method)]
+        )
       end
 
       def to_a(_iseq)
-        [:opt_newarray_max, number]
+        [:opt_newarray_send, number, method]
       end
 
       def deconstruct_keys(_keys)
-        { number: number }
+        { number: number, method: method }
       end
 
       def ==(other)
-        other.is_a?(OptNewArrayMax) && other.number == number
+        other.is_a?(OptNewArraySend) && other.number == number &&
+          other.method == method
       end
 
       def length
-        2
+        3
       end
 
       def pops
@@ -3864,59 +3870,7 @@ module SyntaxTree
       end
 
       def call(vm)
-        vm.push(vm.pop(number).max)
-      end
-    end
-
-    # ### Summary
-    #
-    # `opt_newarray_min` is a specialization that occurs when the `min` method
-    # is called on an array literal. It pops the values of the array off the
-    # stack and pushes on the result.
-    #
-    # ### Usage
-    #
-    # ~~~ruby
-    # [a, b, c].min
-    # ~~~
-    #
-    class OptNewArrayMin < Instruction
-      attr_reader :number
-
-      def initialize(number)
-        @number = number
-      end
-
-      def disasm(fmt)
-        fmt.instruction("opt_newarray_min", [fmt.object(number)])
-      end
-
-      def to_a(_iseq)
-        [:opt_newarray_min, number]
-      end
-
-      def deconstruct_keys(_keys)
-        { number: number }
-      end
-
-      def ==(other)
-        other.is_a?(OptNewArrayMin) && other.number == number
-      end
-
-      def length
-        2
-      end
-
-      def pops
-        number
-      end
-
-      def pushes
-        1
-      end
-
-      def call(vm)
-        vm.push(vm.pop(number).min)
+        vm.push(vm.pop(number).__send__(method))
       end
     end
 

@@ -1299,7 +1299,7 @@ module SyntaxTree
       end
     end
 
-    # [nil | VarRef] the optional constant wrapper
+    # [nil | VarRef | ConstPathRef] the optional constant wrapper
     attr_reader :constant
 
     # [Array[ Node ]] the regular positional arguments that this array
@@ -2849,7 +2849,10 @@ module SyntaxTree
             # to print the operator trailing in order to keep it working.
             last_child = children.last
             if last_child.is_a?(CallNode) && last_child.message != :call &&
-                 last_child.message.comments.any? && last_child.operator
+                 (
+                   (last_child.message.comments.any? && last_child.operator) ||
+                     (last_child.operator && last_child.operator.comments.any?)
+                 )
               q.format(CallOperatorFormatter.new(last_child.operator))
               skip_operator = true
             else
@@ -5413,7 +5416,7 @@ module SyntaxTree
   #     end
   #
   class FndPtn < Node
-    # [nil | Node] the optional constant wrapper
+    # [nil | VarRef | ConstPathRef] the optional constant wrapper
     attr_reader :constant
 
     # [VarField] the splat on the left-hand side
@@ -6035,7 +6038,7 @@ module SyntaxTree
       end
     end
 
-    # [nil | Node] the optional constant wrapper
+    # [nil | VarRef | ConstPathRef] the optional constant wrapper
     attr_reader :constant
 
     # [Array[ [DynaSymbol | Label, nil | Node] ]] the set of tuples
