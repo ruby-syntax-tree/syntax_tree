@@ -297,7 +297,7 @@ Note that the output of the `match` CLI command creates a valid pattern that can
 
 ### write
 
-This command will format the listed files and write that formatted version back to the source files. Note that this overwrites the original content, to be sure to be using a version control system.
+This command will format the listed files and write that formatted version back to the source files. Note that this overwrites the original content, so be sure to be using a version control system.
 
 ```sh
 stree write path/to/file.rb
