@@ -7210,36 +7210,17 @@ module SyntaxTree
         q.text(" ")
         q
           .if_break do
-            force_parens =
-              q.parents.any? do |node|
-                node.is_a?(Command) || node.is_a?(CommandCall)
-              end
+            q.text("do")
 
-            if force_parens
-              q.text("{")
-
-              unless statements.empty?
-                q.indent do
-                  q.breakable_space
-                  q.format(statements)
-                end
+            unless statements.empty?
+              q.indent do
                 q.breakable_space
+                q.format(statements)
               end
-
-              q.text("}")
-            else
-              q.text("do")
-
-              unless statements.empty?
-                q.indent do
-                  q.breakable_space
-                  q.format(statements)
-                end
-              end
-
-              q.breakable_space
-              q.text("end")
             end
+
+            q.breakable_space
+            q.text("end")
           end
           .if_flat do
             q.text("{")
