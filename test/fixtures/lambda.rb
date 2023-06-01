@@ -80,3 +80,31 @@ end
 -> do # comment1
   # comment2
 end
+% # multiline lambda in a command
+command "arg" do
+  -> {
+    multi
+    line
+  }
+end
+-
+command "arg" do
+  -> do
+    multi
+    line
+  end
+end
+% # multiline lambda in a command call
+command.call "arg" do
+  -> {
+    multi
+    line
+  }
+end
+-
+command.call "arg" do
+  -> do
+    multi
+    line
+  end
+end
