@@ -8,6 +8,14 @@ module SyntaxTree
       assert_format("''\n", "\"\"")
     end
 
+    def test_character_literal_with_double_quote
+      assert_format("'\"'\n", "?\"")
+    end
+
+    def test_character_literal_with_singlee_quote
+      assert_format("'\\''\n", "?'")
+    end
+
     def test_string_literal
       assert_format("'string'\n", "\"string\"")
     end
