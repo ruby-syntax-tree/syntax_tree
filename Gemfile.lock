@@ -10,7 +10,7 @@ GEM
     ast (2.4.2)
     docile (1.4.0)
     json (2.6.3)
-    minitest (5.18.0)
+    minitest (5.18.1)
     parallel (1.23.0)
     parser (3.2.2.1)
       ast (~> 2.4.1)
