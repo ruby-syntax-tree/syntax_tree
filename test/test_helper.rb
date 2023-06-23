@@ -13,6 +13,7 @@ $LOAD_PATH.unshift(File.expand_path("../lib", __dir__))
 require "syntax_tree"
 require "syntax_tree/cli"
 
+=begin
 unless RUBY_ENGINE == "truffleruby"
   # Here we are going to establish type verification whenever a new node is
   # created. We do this through the reflection module, which in turn parses the
@@ -47,6 +48,7 @@ unless RUBY_ENGINE == "truffleruby"
     end
   end
 end
+=end
 
 require "json"
 require "tempfile"

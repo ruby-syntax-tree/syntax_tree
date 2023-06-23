@@ -2,14 +2,16 @@
 
 require "prettier_print"
 require "pp"
-require "ripper"
+# require "ripper"
+require "yarp"
 
-require_relative "syntax_tree/node"
+# require_relative "syntax_tree/node"
 require_relative "syntax_tree/basic_visitor"
 require_relative "syntax_tree/visitor"
 
+require_relative "syntax_tree/formatting"
 require_relative "syntax_tree/formatter"
-require_relative "syntax_tree/parser"
+# require_relative "syntax_tree/parser"
 require_relative "syntax_tree/version"
 
 # Syntax Tree is a suite of tools built on top of the internal CRuby parser. It
@@ -120,9 +122,11 @@ module SyntaxTree
 
   # Parses the given source and returns the syntax tree.
   def self.parse(source)
-    parser = Parser.new(source)
-    response = parser.parse
-    response unless parser.error?
+    # parser = Parser.new(source)
+    # response = parser.parse
+    # response unless parser.error?
+    result = YARP.parse(source)
+    result.value if result.errors.empty?
   end
 
   # Parses the given file and returns the syntax tree.

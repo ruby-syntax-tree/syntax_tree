@@ -224,5 +224,10 @@ module SyntaxTree
     def text(string)
       target << string
     end
+
+    # Slice out a portion of the source code and add it to the target.
+    def slice(location)
+      target << source.byteslice(location.start_offset...location.end_offset)
+    end
   end
 end
