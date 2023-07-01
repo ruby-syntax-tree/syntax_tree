@@ -174,8 +174,6 @@ module YARP
       def format_key(q, key)
         case key
         when SymbolNode
-          q.slice(key.value_loc)
-          q.text(":")
         when InterpolatedSymbolNode
           
         else
@@ -237,7 +235,8 @@ module YARP
       def format_key(q, key)
         case key
         when SymbolNode
-
+          q.slice(key.value_loc)
+          q.text(":")
         when InterpolatedSymbolNode
 
         else
@@ -247,47 +246,80 @@ module YARP
       end
     end
 
-    def self.for(q, node)
-      node.elements.each do |element|
-        if element.is_a?(AssocSplatNode)
-          # Splat nodes do not impact the formatting choice.
-        elsif element.value.nil?
-          # If the value is nil, then it has been omitted. In this case we have
-          # to match the existing formatting because standardizing would
-          # potentially break the code. For example:
-          #
-          #     { first:, "second" => "value" }
-          #
-          return Identity.new
-        else
-          # Otherwise, we need to check the type of the key. If it's a label or
-          # dynamic symbol, we can use labels. If it's a symbol literal then it
-          # needs to match a certain pattern to be used as a label. If it's
-          # anything else, then we need to use hash rockets.
-          case (key = element.key)
-          when SymbolNode
-            if key.opening_loc.nil? && !key.closing_loc.nil?
-              # Here it's a label.
-            else
-              # Otherwise we need to check the actual value of the symbol to see
-              # if it would work as a label.
-              value_loc = key.value_loc
-              value = q.source.byteslice(value_loc.start_offset...value_loc.end_offset)
-              return Rockets.new if !value.match?(/^[_A-Za-z]/) || value.end_with?("=")
-            end
-          when InterpolatedSymbolNode
-            # Labels can be used if this is an interpolated symbol that begins
-            # with a :. If not, then it's a %s symbol so we'll use hash rockets.
-            return Rockets.new if q.source.byteslice(key.opening_loc, 1) != ":"
+    def self.for(q, element)
+      if element.is_a?(AssocSplatNode)
+        # Splat nodes do not impact the formatting choice.
+      elsif element.value.nil?
+        # If the value is nil, then it has been omitted. In this case we have
+        # to match the existing formatting because standardizing would
+        # potentially break the code. For example:
+        #
+        #     { first:, "second" => "value" }
+        #
+        return Identity.new
+      else
+        # Otherwise, we need to check the type of the key. If it's a label or
+        # dynamic symbol, we can use labels. If it's a symbol literal then it
+        # needs to match a certain pattern to be used as a label. If it's
+        # anything else, then we need to use hash rockets.
+        case (key = element.key)
+        when SymbolNode
+          if key.opening_loc.nil? && !key.closing_loc.nil?
+            # Here it's a label.
           else
-            # Otherwise, we need to use hash rockets.
-            return Rockets.new
+            # Otherwise we need to check the actual value of the symbol to see
+            # if it would work as a label.
+            value_loc = key.value_loc
+            value = q.source.byteslice(value_loc.start_offset...value_loc.end_offset)
+            return Rockets.new if !value.match?(/^[_A-Za-z]/) || value.end_with?("=")
           end
+        when InterpolatedSymbolNode
+          # Labels can be used if this is an interpolated symbol that begins
+          # with a :. If not, then it's a %s symbol so we'll use hash rockets.
+          return Rockets.new if q.source.byteslice(key.opening_loc, 1) != ":"
+        else
+          # Otherwise, we need to use hash rockets.
+          return Rockets.new
         end
       end
 
       Labels.new
     end
+  end
+
+  module HashFormatter
+
+    def format(q)
+      delims = delimiters()
+      q.group do
+        q.text(delims[0]) if delims
+        q.indent do
+          q.breakable_space
+
+          q.seplist(elements) do |element|
+            if element.is_a?(AssocSplatNode)
+              q.format(element)
+            else
+              HashKeyFormatter.for(q, element).format_key(q, element.key)
+              q.indent do
+                q.breakable_space
+                q.format(element.value) if element.value
+              end
+            end
+          end
+        end
+        q.breakable_space
+        q.text(delims[1]) if delims
+      end
+    end
+
+    private
+
+    # return delimiter pair or nil
+    def delimiters
+      raise NotImplementedError
+    end
+
   end
 
   module LiteralNode
@@ -349,6 +381,89 @@ module YARP
     end
   end
 
+  module BinaryOperationBaseFormatter
+    def format(q)
+      q.group do
+        lhs(q)
+        q.text(" ")
+        q.slice(operator_loc)
+
+        q.indent do
+          q.breakable_space
+          rhs(q)
+        end
+      end
+    end
+
+    private
+
+    def lhs(q)
+      raise NotImplementedError
+    end
+
+    def rhs(q)
+      raise NotImplementedError
+    end
+
+  end
+
+  module AndOrFormatter
+    include BinaryOperationBaseFormatter
+
+    private
+
+    def lhs(q)
+      q.format(left)
+    end
+
+    def rhs(q)
+      q.format(right)
+    end
+  end
+
+  module BinaryOperationFormatter
+    include BinaryOperationBaseFormatter
+
+    private
+
+    def rhs(q)
+      q.format(value)
+    end
+  end
+
+  module CallOperationFormatter
+    include BinaryOperationFormatter
+
+    private
+
+    def lhs(q)
+      q.format(target)
+    end
+  end
+
+  module VariableOperationFormatter
+    include BinaryOperationFormatter
+
+    private
+
+    def lhs(q)
+      q.slice(name_loc)
+    end
+  end
+
+  module MetaConstantFormatter
+     def format(q)
+       q.text("__#{metaname()}__")
+     end
+
+     private
+
+     def metaname
+       raise NotImplementedError
+     end
+  end
+
+
   class Node
     def comments
       []
@@ -380,19 +495,18 @@ module YARP
     end
   end
 
-  class AndNode
+  class AlternationPatternNode
     def format(q)
       q.group do
         q.format(left)
-        q.text(" ")
-        q.slice(operator_loc)
-
-        q.indent do
-          q.breakable_space
-          q.format(right)
-        end
+        q.text(" | ")
+        q.format(right)
       end
     end
+  end
+
+  class AndNode
+    include AndOrFormatter
   end
 
   class ArgumentsNode
@@ -461,7 +575,7 @@ module YARP
         q.format(key)
 
         if value
-          q.text(" =>")
+          q.text(" =>") unless key.is_a? SymbolNode
           q.indent do
             q.breakable_space
             q.format(value)
@@ -612,11 +726,16 @@ module YARP
 
           q.indent do
             q.breakable_empty
-            q.format(arguments)
+            q.format(arguments) if arguments
           end
 
           q.breakable_empty
           q.text("]")
+        end
+      when "-@"
+        q.group do
+          q.text("-")
+          q.format(receiver)
         end
       else
         if opening_loc
@@ -628,7 +747,7 @@ module YARP
             q.slice(opening_loc)
             q.indent do
               q.breakable_empty
-              q.format(arguments)
+              q.format(arguments) if arguments
             end
             q.breakable_empty
             q.slice(closing_loc)
@@ -662,19 +781,16 @@ module YARP
     end
   end
 
-  class CallOperatorWriteNode
-    def format(q)
-      q.group do
-        q.format(target)
-        q.text(" ")
-        q.slice(operator_loc)
+  class CallOperatorAndWriteNode
+    include CallOperationFormatter
+  end
 
-        q.indent do
-          q.breakable_space
-          q.format(value)
-        end
-      end
-    end
+  class CallOperatorOrWriteNode
+    include CallOperationFormatter
+  end
+
+  class CallOperatorWriteNode
+    include CallOperationFormatter
   end
 
   class CapturePatternNode
@@ -739,6 +855,18 @@ module YARP
     end
   end
 
+  class ClassVariableOperatorAndWriteNode
+    include VariableOperationFormatter
+  end
+
+  class ClassVariableOperatorOrWriteNode
+    include VariableOperationFormatter
+  end
+
+  class ClassVariableOperatorWriteNode
+    include VariableOperationFormatter
+  end
+
   class ClassVariableReadNode
     include LiteralNode
   end
@@ -759,12 +887,36 @@ module YARP
     end
   end
 
+  class ConstantOperatorAndWriteNode
+    include VariableOperationFormatter
+  end
+
+  class ConstantOperatorOrWriteNode
+    include VariableOperationFormatter
+  end
+
+  class ConstantOperatorWriteNode
+    include VariableOperationFormatter
+  end
+
   class ConstantPathNode
     def format(q)
       q.format(parent) if parent
       q.text("::")
       q.format(child)
     end
+  end
+
+  class ConstantPathOperatorWriteNode
+    include CallOperationFormatter
+  end
+
+  class ConstantPathOperatorAndWriteNode
+    include CallOperationFormatter
+  end
+
+  class ConstantPathOperatorOrWriteNode
+    include CallOperationFormatter
   end
 
   class ConstantPathWriteNode
@@ -855,12 +1007,22 @@ module YARP
   class ElseNode
     def format(q)
       q.group do
-        q.text("else")
+        keyword = q.source.byteslice(else_keyword_loc.start_offset...else_keyword_loc.end_offset)
 
         if statements
-          q.indent do
-            q.breakable_force
-            q.format(statements)
+          if keyword == "else"
+            q.text(keyword)
+            q.indent do
+              q.breakable_force
+              q.format(statements)
+            end
+          else # keyword == ":"
+            q.group do
+              q.breakable_space
+              q.text(keyword)
+              q.breakable_space
+              q.format(statements)
+            end
           end
         end
       end
@@ -982,73 +1144,27 @@ module YARP
     end
   end
 
-  class HashNode
-    def format(q)
-      q.group do
-        q.text("{")
-        q.indent do
-          q.breakable_space
+  class GlobalVariableOperatorAndWriteNode
+    include VariableOperationFormatter
+  end
 
-          formatter = HashKeyFormatter.for(q, self)
-          q.seplist(elements) do |element|
-            if element.is_a?(AssocSplat)
-              q.format(element)
-            else
-              formatter.format_key(q, element.key)
-              q.indent do
-                q.breakable_space
-                q.format(element.value)
-              end
-            end
-          end
-        end
-        q.breakable_space
-        q.text("}")
-      end
-    end
+  class GlobalVariableOperatorOrWriteNode
+    include VariableOperationFormatter
+  end
+
+  class GlobalVariableOperatorWriteNode
+    include VariableOperationFormatter
+  end
+
+  class HashNode
+    include HashFormatter
 
     private
 
-    def key_formatter
-      elements.each do |element|
-        if element.is_a?(AssocSplat)
-          # Splat nodes do not impact the formatting choice.
-        elsif element.value.nil?
-          # If the value is nil, then it has been omitted. In this case we have
-          # to match the existing formatting because standardizing would
-          # potentially break the code. For example:
-          #
-          #     { first:, "second" => "value" }
-          #
-          return Identity.new
-        else
-          # Otherwise, we need to check the type of the key. If it's a label or
-          # dynamic symbol, we can use labels. If it's a symbol literal then it
-          # needs to match a certain pattern to be used as a label. If it's
-          # anything else, then we need to use hash rockets.
-          case assoc.key
-          when InterpolatedSymbolNode
-            # Here labels can be used.
-          when SymbolLiteral
-            # When attempting to convert a hash rocket into a hash label,
-            # you need to take care because only certain patterns are
-            # allowed. Ruby source says that they have to match keyword
-            # arguments to methods, but don't specify what that is. After
-            # some experimentation, it looks like it's:
-            value = assoc.key.value.value
-
-            if !value.match?(/^[_A-Za-z]/) || value.end_with?("=")
-              return Rockets.new
-            end
-          else
-            # If the value is anything else, we have to use hash rockets.
-            return Rockets.new
-          end
-        end
-      end
-
-      Labels.new
+    def delimiters
+      ["{", "}"]
     end
+
   end
 
   class HashPatternNode
@@ -1084,36 +1200,45 @@ module YARP
 
   class IfNode
     def format(q)
-      keyword = q.source.byteslice(if_keyword_loc.start_offset...if_keyword_loc.end_offset)
+      if if_keyword_loc
+        keyword = q.source.byteslice(if_keyword_loc.start_offset...if_keyword_loc.end_offset)
 
-      if keyword == "if" && q.parent.is_a?(InNode) && q.parent.pattern == self
-        q.group do
-          q.format(statements)
-          q.text(" if ")
-          q.format(predicate)
-        end
-      else
-        q.group do
-          q.text(keyword)
-          q.text(" ")
-          q.nest(3) { q.format(predicate) }
+        if keyword == "if" && q.parent.is_a?(InNode) && q.parent.pattern == self
+          q.group do
+            q.format(statements)
+            q.text(" if ")
+            q.format(predicate)
+          end
+        else
+          q.group do
+            q.text(keyword)
+            q.text(" ")
+            q.nest(3) { q.format(predicate) }
 
-          if statements
-            q.indent do
+            if statements
+              q.indent do
+                q.breakable_force
+                q.format(statements)
+              end
+            end
+
+            if consequent
               q.breakable_force
-              q.format(statements)
+              q.format(consequent)
+            end
+
+            if keyword == "if"
+              q.breakable_force
+              q.text("end")
             end
           end
-
-          if consequent
-            q.breakable_force
-            q.format(consequent)
-          end
-
-          if keyword == "if"
-            q.breakable_force
-            q.text("end")
-          end
+        end
+      else # a ? b : c
+        q.group do
+          q.format(predicate)
+          q.text(" ? ")
+          q.format(statements)
+          q.format(consequent)
         end
       end
     end
@@ -1141,6 +1266,18 @@ module YARP
 
   class InstanceVariableReadNode
     include LiteralNode
+  end
+
+  class InstanceVariableOperatorAndWriteNode
+    include VariableOperationFormatter
+  end
+
+  class InstanceVariableOperatorOrWriteNode
+    include VariableOperationFormatter
+  end
+
+  class InstanceVariableOperatorWriteNode
+    include VariableOperationFormatter
   end
 
   class InstanceVariableWriteNode
@@ -1241,6 +1378,15 @@ module YARP
     end
   end
 
+  class KeywordHashNode
+    include HashFormatter
+
+    private
+
+    def delimiters
+    end
+  end
+
   class KeywordParameterNode
     def format(q)
       q.group do
@@ -1298,19 +1444,16 @@ module YARP
     end
   end
 
-  class LocalVariableOperatorWriteNode
-    def format(q)
-      q.group do
-        q.slice(name_loc)
-        q.text(" ")
-        q.slice(operator_loc)
+  class LocalVariableOperatorAndWriteNode
+    include VariableOperationFormatter
+  end
 
-        q.indent do
-          q.breakable_space
-          q.format(value)
-        end
-      end
-    end
+  class LocalVariableOperatorOrWriteNode
+    include VariableOperationFormatter
+  end
+
+  class LocalVariableOperatorWriteNode
+    include VariableOperationFormatter
   end
 
   class LocalVariableReadNode
@@ -1405,6 +1548,10 @@ module YARP
         end
       end
     end
+  end
+
+  class OrNode
+    include AndOrFormatter
   end
 
   class ParametersNode
@@ -1538,6 +1685,17 @@ module YARP
     include LiteralNode
   end
 
+  class RequiredDestructuredParameterNode
+    def format(q)
+      q.group do
+        q.slice(opening_loc)
+        q.seplist(parameters) { |parameter| q.format(parameter) }
+        q.slice(closing_loc)
+      end
+    end
+  end
+
+
   class RescueNode
     def format(q)
       q.group do
@@ -1665,6 +1823,36 @@ module YARP
     end
   end
 
+  class SourceFileNode
+    include MetaConstantFormatter
+
+    private
+
+    def metaname
+      "FILE"
+    end
+  end
+
+  class SourceLineNode
+    include MetaConstantFormatter
+
+    private
+
+    def metaname
+      "LINE"
+    end
+  end
+
+  class SourceEncodingNode
+    include MetaConstantFormatter
+
+    private
+
+    def metaname
+      "ENCODING"
+    end
+  end
+
   class SplatNode
     def format(q)
       q.text("*")
@@ -1700,7 +1888,7 @@ module YARP
           q.text("super(")
           q.indent do
             q.breakable_empty
-            q.format(arguments)
+            q.format(arguments) if arguments
           end
 
           q.breakable_empty
@@ -1779,9 +1967,20 @@ module YARP
               q.text("end")
             end
             .if_flat do
-              q.format(statements)
-              q.text(" unless ")
-              q.format(predicate)
+              if statements.body.size == 1
+                q.format(statements)
+                q.text(" unless ")
+                q.format(predicate)
+              else
+                q.text("unless ")
+                q.format(predicate)
+                q.text(";")
+                q.breakable_space
+                q.format(statements)
+                q.text(";")
+                q.breakable_space
+                q.text("end")
+              end
             end
         end
       end
