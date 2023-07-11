@@ -39,7 +39,7 @@ jobs:
           rdoc --main README.md --op _site --exclude={Gemfile,Rakefile,"coverage/*","vendor/*","bin/*","test/*","tmp/*"}
           cp -r doc _site/doc
       - name: Upload artifact
-        uses: actions/upload-pages-artifact@v1
+        uses: actions/upload-pages-artifact@v2
 
   # Deployment job
   deploy:
