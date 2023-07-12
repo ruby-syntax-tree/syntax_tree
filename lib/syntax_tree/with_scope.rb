@@ -152,10 +152,7 @@ module SyntaxTree
     # arguments.
     def visit_params(node)
       add_argument_definitions(node.requireds)
-
-      node.posts.each do |param|
-        current_scope.add_local_definition(param, :argument)
-      end
+      add_argument_definitions(node.posts)
 
       node.keywords.each do |param|
         current_scope.add_local_definition(param.first, :argument)

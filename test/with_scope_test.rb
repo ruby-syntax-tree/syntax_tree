@@ -154,6 +154,42 @@ module SyntaxTree
       assert_argument(collector, "a", definitions: [1], usages: [2])
     end
 
+    def test_collecting_methods_with_destructured_post_arguments
+      collector = Collector.collect(<<~RUBY)
+        def foo(optional = 1, (bin, bag))
+        end
+      RUBY
+
+      assert_equal(3, collector.arguments.length)
+      assert_argument(collector, "optional", definitions: [1], usages: [])
+      assert_argument(collector, "bin", definitions: [1], usages: [])
+      assert_argument(collector, "bag", definitions: [1], usages: [])
+    end
+
+    def test_collecting_methods_with_desctructured_post_using_splat
+      collector = Collector.collect(<<~RUBY)
+        def foo(optional = 1, (bin, bag, *))
+        end
+      RUBY
+
+      assert_equal(3, collector.arguments.length)
+      assert_argument(collector, "optional", definitions: [1], usages: [])
+      assert_argument(collector, "bin", definitions: [1], usages: [])
+      assert_argument(collector, "bag", definitions: [1], usages: [])
+    end
+
+    def test_collecting_methods_with_nested_desctructured
+      collector = Collector.collect(<<~RUBY)
+        def foo(optional = 1, (bin, (bag)))
+        end
+      RUBY
+
+      assert_equal(3, collector.arguments.length)
+      assert_argument(collector, "optional", definitions: [1], usages: [])
+      assert_argument(collector, "bin", definitions: [1], usages: [])
+      assert_argument(collector, "bag", definitions: [1], usages: [])
+    end
+
     def test_collecting_singleton_method_arguments
       collector = Collector.collect(<<~RUBY)
         def self.foo(a)
