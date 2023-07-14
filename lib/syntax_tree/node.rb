@@ -8277,8 +8277,8 @@ module SyntaxTree
     # parameter
     attr_reader :rest
 
-    # [Array[ Ident ]] any positional parameters that exist after a rest
-    # parameter
+    # [Array[ Ident | MLHSParen ]] any positional parameters that exist after a
+    #  rest parameter
     attr_reader :posts
 
     # [Array[ [ Label, nil | Node ] ]] any keyword parameters and their
