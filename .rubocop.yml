@@ -7,7 +7,7 @@ AllCops:
   SuggestExtensions: false
   TargetRubyVersion: 2.7
   Exclude:
-  - '{.git,.github,bin,coverage,pkg,sorbet,spec,test/fixtures,vendor,tmp}/**/*'
+  - '{.git,.github,.ruby-lsp,bin,coverage,doc,pkg,sorbet,spec,test/fixtures,vendor,tmp}/**/*'
   - test.rb
 
 Gemspec/DevelopmentDependencies:
@@ -152,6 +152,9 @@ Style/ParallelAssignment:
   Enabled: false
 
 Style/PerlBackrefs:
+  Enabled: false
+
+Style/RedundantArrayConstructor:
   Enabled: false
 
 Style/SafeNavigation:

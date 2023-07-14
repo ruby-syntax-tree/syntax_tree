@@ -64,7 +64,7 @@ module SyntaxTree
 
       class << self
         def parse(comment)
-          comment = comment.gsub(/\n/, " ")
+          comment = comment.gsub("\n", " ")
 
           unless comment.start_with?("[")
             raise "Comment does not start with a bracket: #{comment.inspect}"
