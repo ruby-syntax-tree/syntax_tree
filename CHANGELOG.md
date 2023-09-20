@@ -6,6 +6,16 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 
 ## [Unreleased]
 
+## [6.2.0] - 2023-09-20
+
+### Added
+
+- Fix `WithScope` for destructured post arguments.
+
+### Changed
+
+- Always use `do`/`end` for multi-line lambdas.
+
 ## [6.1.1] - 2023-03-21
 
 ### Changed
@@ -603,7 +613,10 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 
 - 🎉 Initial release! 🎉
 
-[unreleased]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v6.0.2...HEAD
+[unreleased]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v6.2.0...HEAD
+[6.2.0]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v6.1.1...v6.2.0
+[6.1.1]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v6.1.0...v6.1.1
+[6.1.0]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v6.0.2...v6.1.0
 [6.0.2]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v6.0.1...v6.0.2
 [6.0.1]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v6.0.0...v6.0.1
 [6.0.0]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v5.3.0...v6.0.0
