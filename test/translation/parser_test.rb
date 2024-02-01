@@ -95,7 +95,7 @@ module SyntaxTree
         )
       end
 
-      if current_version < "3.2" || RUBY_ENGINE == "truffleruby"
+      if current_version < "3.2"
         known_failures.push(
           "test_if_while_after_class__since_32:11004",
           "test_if_while_after_class__since_32:11014",
