@@ -611,14 +611,17 @@ visitor.mutate("IfNode[predicate: Assign | OpAssign]") do |node|
   node.copy(predicate: predicate)
 end
 
-source = "if a = 1; end"
+# remove `do_more_work` method call node
+visitor.remove("SyntaxTree::VCall[value: SyntaxTree::Ident[value: 'do_more_work']]")
+
+source = "if a = 1; perform_work; do_more_work; end"
 program = SyntaxTree.parse(source)
 
 SyntaxTree::Formatter.format(source, program)
-# => "if a = 1\nend\n"
+# => "if a = 1\n  perform_work\n  do_more_work\nend\n"
 
 SyntaxTree::Formatter.format(source, program.accept(visitor))
-# => "if (a = 1)\nend\n"
+# => "if (a = 1)\n  perform_work\nend\n"
 ```
 
 ### WithScope
