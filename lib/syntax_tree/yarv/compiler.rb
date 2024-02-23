@@ -1103,10 +1103,6 @@ module SyntaxTree
         iseq.send(YARV.calldata(:lambda, 0, CallData::CALL_FCALL), lambda_iseq)
       end
 
-      def visit_lambda_var(node)
-        visit_block_var(node)
-      end
-
       def visit_massign(node)
         visit(node.value)
         iseq.dup
