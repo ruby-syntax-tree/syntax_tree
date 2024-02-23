@@ -126,7 +126,7 @@ module SyntaxTree
 
         visit_methods do
           def visit_array(node)
-            node.contents ? visit_all(node.contents.parts) : []
+            node.contents ? visit_all(node.contents.arguments) : []
           end
 
           def visit_bare_assoc_hash(node)
@@ -349,8 +349,9 @@ module SyntaxTree
         visit(node.collection)
 
         if !options.frozen_string_literal? &&
-             options.specialized_instruction? && (node.index.parts.length == 1)
-          arg = node.index.parts.first
+             options.specialized_instruction? &&
+             (node.index.arguments.length == 1)
+          arg = node.index.arguments.first
 
           if arg.is_a?(StringLiteral) && (arg.parts.length == 1)
             string_part = arg.parts.first
@@ -379,26 +380,26 @@ module SyntaxTree
         iseq.splatarray(false)
       end
 
-      def visit_args(node)
-        visit_all(node.parts)
+      def visit_arguments_node(node)
+        visit_all(node.arguments)
       end
 
       def visit_array(node)
         if (compiled = RubyVisitor.compile(node))
           iseq.duparray(compiled)
-        elsif node.contents && node.contents.parts.length == 1 &&
-              node.contents.parts.first.is_a?(BareAssocHash) &&
-              node.contents.parts.first.assocs.length == 1 &&
-              node.contents.parts.first.assocs.first.is_a?(AssocSplat)
+        elsif node.contents && node.contents.arguments.length == 1 &&
+              node.contents.arguments.first.is_a?(BareAssocHash) &&
+              node.contents.arguments.first.assocs.length == 1 &&
+              node.contents.arguments.first.assocs.first.is_a?(AssocSplat)
           iseq.putspecialobject(PutSpecialObject::OBJECT_VMCORE)
           iseq.newhash(0)
-          visit(node.contents.parts.first)
+          visit(node.contents.arguments.first)
           iseq.send(YARV.calldata(:"core#hash_merge_kwd", 2))
           iseq.newarraykwsplat(1)
         else
           length = 0
 
-          node.contents.parts.each do |part|
+          node.contents.arguments.each do |part|
             if part.is_a?(ArgStar)
               if length > 0
                 iseq.newarray(length)
@@ -414,7 +415,9 @@ module SyntaxTree
           end
 
           iseq.newarray(length) if length > 0
-          iseq.concatarray if length > 0 && length != node.contents.parts.length
+          if length > 0 && length != node.contents.arguments.length
+            iseq.concatarray
+          end
         end
       end
 
@@ -428,8 +431,8 @@ module SyntaxTree
 
           if !options.frozen_string_literal? &&
                options.specialized_instruction? &&
-               (node.target.index.parts.length == 1)
-            arg = node.target.index.parts.first
+               (node.target.index.arguments.length == 1)
+            arg = node.target.index.arguments.first
 
             if arg.is_a?(StringLiteral) && (arg.parts.length == 1)
               string_part = arg.parts.first
@@ -1888,16 +1891,16 @@ module SyntaxTree
         case node
         when nil
           []
-        when Args
-          node.parts
+        when ArgumentsNode
+          node.arguments
         when ArgParen
           if node.arguments.is_a?(ArgsForward)
             [node.arguments]
           else
-            node.arguments.parts
+            node.arguments.arguments
           end
         when Paren
-          node.contents.parts
+          node.contents.arguments
         end
       end
 
