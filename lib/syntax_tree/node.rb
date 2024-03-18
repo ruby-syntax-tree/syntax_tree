@@ -5754,11 +5754,11 @@ module SyntaxTree
         q.breakable_empty
       else
         q.indent do
-          q.breakable_space
+          q.strip_hash? ? q.breakable_empty : q.breakable_space
           q.seplist(assocs) { |assoc| q.format(assoc) }
           q.if_break { q.text(",") } if q.trailing_comma?
         end
-        q.breakable_space
+        q.strip_hash? ? q.breakable_empty : q.breakable_space
       end
 
       q.text("}")
