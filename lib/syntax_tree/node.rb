@@ -9981,6 +9981,11 @@ module SyntaxTree
           q.breakable_force
           q.breakable_force
           q.format(statement)
+        elsif statement.is_a?(DefNode) && previous.is_a?(DefNode) &&
+              (statement.location.start_line - line) == 1
+          q.breakable_force
+          q.breakable_force
+          q.format(statement)
         elsif statement.location.start_line != line
           q.breakable_force
           q.format(statement)

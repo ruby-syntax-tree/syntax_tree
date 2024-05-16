@@ -29,3 +29,14 @@ end
 -
 def foo.foo
 end
+%
+def foo.foo
+end
+def foo.bar
+end
+-
+def foo.foo
+end
+
+def foo.bar
+end
