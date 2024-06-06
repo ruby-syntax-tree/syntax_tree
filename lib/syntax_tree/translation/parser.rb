@@ -118,7 +118,9 @@ module SyntaxTree
             else
               s(
                 :index,
-                [visit(node.collection)].concat(visit_all(node.index.parts)),
+                [visit(node.collection)].concat(
+                  visit_all(node.index.arguments)
+                ),
                 smap_index(
                   srange_find_between(node.collection, node.index, "["),
                   srange_length(node.end_char, -1),
@@ -172,7 +174,9 @@ module SyntaxTree
             else
               s(
                 :indexasgn,
-                [visit(node.collection)].concat(visit_all(node.index.parts)),
+                [visit(node.collection)].concat(
+                  visit_all(node.index.arguments)
+                ),
                 smap_index(
                   srange_find_between(node.collection, node.index, "["),
                   srange_length(node.end_char, -1),
@@ -254,7 +258,7 @@ module SyntaxTree
         def visit_array(node)
           s(
             :array,
-            node.contents ? visit_all(node.contents.parts) : [],
+            node.contents ? visit_all(node.contents.arguments) : [],
             if node.lbracket.nil?
               smap_collection_bare(srange_node(node))
             else
@@ -647,7 +651,7 @@ module SyntaxTree
         def visit_break(node)
           s(
             :break,
-            visit_all(node.arguments.parts),
+            visit_all(node.arguments.arguments),
             smap_keyword_bare(
               srange_length(node.start_char, 5),
               srange_node(node)
@@ -755,8 +759,8 @@ module SyntaxTree
           end_token = nil
 
           case node.arguments
-          when Args
-            children += visit_all(node.arguments.parts)
+          when ArgumentsNode
+            children += visit_all(node.arguments.arguments)
           when ArgParen
             case node.arguments.arguments
             when nil
@@ -764,7 +768,7 @@ module SyntaxTree
             when ArgsForward
               children << visit(node.arguments.arguments)
             else
-              children += visit_all(node.arguments.arguments.parts)
+              children += visit_all(node.arguments.arguments.arguments)
             end
 
             begin_token = srange_length(node.arguments.start_char, 1)
@@ -783,8 +787,9 @@ module SyntaxTree
           expression =
             if node.arguments.is_a?(ArgParen)
               srange(node.start_char, node.arguments.end_char)
-            elsif node.arguments.is_a?(Args) && node.arguments.parts.any?
-              last_part = node.arguments.parts.last
+            elsif node.arguments.is_a?(ArgumentsNode) &&
+                  node.arguments.arguments.any?
+              last_part = node.arguments.arguments.last
               end_char =
                 if last_part.is_a?(Heredoc)
                   last_part.beginning.end_char
@@ -1683,7 +1688,11 @@ module SyntaxTree
           visit_array(
             ArrayLiteral.new(
               lbracket: nil,
-              contents: Args.new(parts: node.parts, location: node.location),
+              contents:
+                ArgumentsNode.new(
+                  arguments: node.parts,
+                  location: node.location
+                ),
               location: node.location
             )
           )
@@ -1693,7 +1702,7 @@ module SyntaxTree
         def visit_next(node)
           s(
             :next,
-            visit_all(node.arguments.parts),
+            visit_all(node.arguments.arguments),
             smap_keyword_bare(
               srange_length(node.start_char, 4),
               srange_node(node)
@@ -1952,7 +1961,8 @@ module SyntaxTree
           visit_array(
             ArrayLiteral.new(
               lbracket: node.beginning,
-              contents: Args.new(parts: parts, location: node.location),
+              contents:
+                ArgumentsNode.new(arguments: parts, location: node.location),
               location: node.location
             )
           )
@@ -1963,7 +1973,11 @@ module SyntaxTree
           visit_array(
             ArrayLiteral.new(
               lbracket: node.beginning,
-              contents: Args.new(parts: node.elements, location: node.location),
+              contents:
+                ArgumentsNode.new(
+                  arguments: node.elements,
+                  location: node.location
+                ),
               location: node.location
             )
           )
@@ -2058,8 +2072,8 @@ module SyntaxTree
                 ArrayLiteral.new(
                   lbracket: nil,
                   contents:
-                    Args.new(
-                      parts: node.exception.exceptions.parts,
+                    ArgumentsNode.new(
+                      arguments: node.exception.exceptions.parts,
                       location: node.exception.exceptions.location
                     ),
                   location: node.exception.exceptions.location
@@ -2070,8 +2084,8 @@ module SyntaxTree
                 ArrayLiteral.new(
                   lbracket: nil,
                   contents:
-                    Args.new(
-                      parts: [node.exception.exceptions],
+                    ArgumentsNode.new(
+                      arguments: [node.exception.exceptions],
                       location: node.exception.exceptions.location
                     ),
                   location: node.exception.exceptions.location
@@ -2169,7 +2183,7 @@ module SyntaxTree
         def visit_return(node)
           s(
             :return,
-            node.arguments ? visit_all(node.arguments.parts) : [],
+            node.arguments ? visit_all(node.arguments.arguments) : [],
             smap_keyword_bare(
               srange_length(node.start_char, 6),
               srange_node(node)
@@ -2267,10 +2281,10 @@ module SyntaxTree
 
         # Visit a Super node.
         def visit_super(node)
-          if node.arguments.is_a?(Args)
+          if node.arguments.is_a?(ArgumentsNode)
             s(
               :super,
-              visit_all(node.arguments.parts),
+              visit_all(node.arguments.arguments),
               smap_keyword_bare(
                 srange_length(node.start_char, 5),
                 srange_node(node)
@@ -2303,7 +2317,7 @@ module SyntaxTree
             else
               s(
                 :super,
-                visit_all(node.arguments.arguments.parts),
+                visit_all(node.arguments.arguments.arguments),
                 smap_keyword(
                   srange_length(node.start_char, 5),
                   srange_find(node.start_char + 5, node.end_char, "("),
@@ -2349,7 +2363,8 @@ module SyntaxTree
           visit_array(
             ArrayLiteral.new(
               lbracket: node.beginning,
-              contents: Args.new(parts: parts, location: node.location),
+              contents:
+                ArgumentsNode.new(arguments: parts, location: node.location),
               location: node.location
             )
           )
@@ -2618,7 +2633,7 @@ module SyntaxTree
 
           s(
             :when,
-            visit_all(node.arguments.parts) + [visit(node.statements)],
+            visit_all(node.arguments.arguments) + [visit(node.statements)],
             smap_keyword(
               keyword,
               begin_token,
@@ -2666,7 +2681,11 @@ module SyntaxTree
           visit_array(
             ArrayLiteral.new(
               lbracket: node.beginning,
-              contents: Args.new(parts: node.elements, location: node.location),
+              contents:
+                ArgumentsNode.new(
+                  arguments: node.elements,
+                  location: node.location
+                ),
               location: node.location
             )
           )
@@ -2699,10 +2718,10 @@ module SyntaxTree
                 srange_node(node)
               )
             )
-          when Args
+          when ArgumentsNode
             s(
               :yield,
-              visit_all(node.arguments.parts),
+              visit_all(node.arguments.arguments),
               smap_keyword_bare(
                 srange_length(node.start_char, 5),
                 srange_node(node)
@@ -2711,7 +2730,7 @@ module SyntaxTree
           else
             s(
               :yield,
-              visit_all(node.arguments.contents.parts),
+              visit_all(node.arguments.contents.arguments),
               smap_keyword(
                 srange_length(node.start_char, 5),
                 srange_length(node.arguments.start_char, 1),
@@ -2822,7 +2841,10 @@ module SyntaxTree
           operator: nil,
           message: Op.new(value: operator, location: op_location),
           arguments:
-            Args.new(parts: [node.right], location: node.right.location),
+            ArgumentsNode.new(
+              arguments: [node.right],
+              location: node.right.location
+            ),
           block: nil,
           location: node.location
         )
