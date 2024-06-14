@@ -546,13 +546,13 @@ module SyntaxTree
               )
             end
 
-          params = node.params
           children =
-            if ::Parser::Builders::Default.emit_procarg0 && node.arg0?
+            if ::Parser::Builders::Default.emit_procarg0 && node.arg0? &&
+                 node.pipe?
               # There is a special node type in the parser gem for when a single
               # required parameter to a block would potentially be expanded
               # automatically. We handle that case here.
-              required = params.requireds.first
+              required = node.params.requireds.first
               procarg0 =
                 if ::Parser::Builders::Default.emit_arg_inside_procarg0 &&
                      required.is_a?(Ident)
@@ -577,18 +577,23 @@ module SyntaxTree
 
               [procarg0]
             else
-              visit(params).children
+              visit(node.params).children
             end
 
-          s(
-            :args,
-            children + shadowargs,
-            smap_collection(
-              srange_length(node.start_char, 1),
-              srange_length(node.end_char, -1),
-              srange_node(node)
-            )
-          )
+          location =
+            if node.start_char == node.end_char
+              smap_collection_bare(nil)
+            elsif buffer.source[node.start_char - 1] == "("
+              smap_collection(
+                srange_length(node.start_char, 1),
+                srange_length(node.end_char, -1),
+                srange_node(node)
+              )
+            else
+              smap_collection_bare(srange_node(node))
+            end
+
+          s(:args, children + shadowargs, location)
         end
 
         # Visit a BodyStmt node.
@@ -1520,7 +1525,7 @@ module SyntaxTree
         # Visit a Lambda node.
         def visit_lambda(node)
           args =
-            node.params.is_a?(LambdaVar) ? node.params : node.params.contents
+            node.params.is_a?(BlockVar) ? node.params : node.params.contents
           args_node = visit(args)
 
           type = :block
@@ -1557,33 +1562,6 @@ module SyntaxTree
             ],
             smap_collection(begin_token, end_token, srange_node(node))
           )
-        end
-
-        # Visit a LambdaVar node.
-        def visit_lambda_var(node)
-          shadowargs =
-            node.locals.map do |local|
-              s(
-                :shadowarg,
-                [local.value.to_sym],
-                smap_variable(srange_node(local), srange_node(local))
-              )
-            end
-
-          location =
-            if node.start_char == node.end_char
-              smap_collection_bare(nil)
-            elsif buffer.source[node.start_char - 1] == "("
-              smap_collection(
-                srange_length(node.start_char, 1),
-                srange_length(node.end_char, -1),
-                srange_node(node)
-              )
-            else
-              smap_collection_bare(srange_node(node))
-            end
-
-          s(:args, visit(node.params).children + shadowargs, location)
         end
 
         # Visit an MAssign node.
