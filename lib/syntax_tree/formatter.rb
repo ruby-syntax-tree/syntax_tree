@@ -24,13 +24,15 @@ module SyntaxTree
       attr_reader :quote,
                   :trailing_comma,
                   :disable_auto_ternary,
-                  :target_ruby_version
+                  :target_ruby_version,
+                  :strip_hash
 
       def initialize(
         quote: :default,
         trailing_comma: :default,
         disable_auto_ternary: :default,
-        target_ruby_version: :default
+        target_ruby_version: :default,
+        strip_hash: :default
       )
         @quote =
           if quote == :default
@@ -74,6 +76,14 @@ module SyntaxTree
           else
             target_ruby_version
           end
+
+        @strip_hash =
+          if strip_hash == :default
+            # This plugin removes the spaces at the beginning and end of hashes.
+            defined?(STRIP_HASH)
+          else
+            strip_hash
+          end
       end
     end
 
@@ -87,10 +97,12 @@ module SyntaxTree
     attr_reader :quote,
                 :trailing_comma,
                 :disable_auto_ternary,
-                :target_ruby_version
+                :target_ruby_version,
+                :strip_hash
 
     alias trailing_comma? trailing_comma
     alias disable_auto_ternary? disable_auto_ternary
+    alias strip_hash? strip_hash
 
     def initialize(source, *args, options: Options.new)
       super(*args)
@@ -103,6 +115,7 @@ module SyntaxTree
       @trailing_comma = options.trailing_comma
       @disable_auto_ternary = options.disable_auto_ternary
       @target_ruby_version = options.target_ruby_version
+      @strip_hash = options.strip_hash
     end
 
     def self.format(source, node, base_indentation = 0)
