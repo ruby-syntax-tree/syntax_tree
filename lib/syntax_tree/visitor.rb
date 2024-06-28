@@ -320,6 +320,9 @@ module SyntaxTree
     # Visit a RegexpLiteral node.
     alias visit_regexp_literal visit_child_nodes
 
+    # Visit a RemovedNode node.
+    alias visit_removed_node visit_child_nodes
+
     # Visit a Rescue node.
     alias visit_rescue visit_child_nodes
 
