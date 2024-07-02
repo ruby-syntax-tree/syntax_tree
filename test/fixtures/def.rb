@@ -29,3 +29,14 @@ def
 =end
 a
 end
+%
+def foo
+end
+def bar
+end
+-
+def foo
+end
+
+def bar
+end
