@@ -106,17 +106,15 @@ module SyntaxTree
       refute_includes(json, "#<")
       assert_equal(type, JSON.parse(json)["type"])
 
-      if RUBY_ENGINE != "truffleruby"
-        # Get a match expression from the node, then assert that it can in fact
-        # match the node.
-        # rubocop:disable all
-        assert(eval(<<~RUBY))
-          case node
-          in #{node.construct_keys}
-            true
-          end
-        RUBY
-      end
+      # Get a match expression from the node, then assert that it can in fact
+      # match the node.
+      # rubocop:disable all
+      assert(eval(<<~RUBY))
+        case node
+        in #{node.construct_keys}
+          true
+        end
+      RUBY
     end
 
     Minitest::Test.include(self)
