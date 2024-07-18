@@ -63,12 +63,13 @@ module SyntaxTree
     class ScriptItem
       attr_reader :source
 
-      def initialize(source)
+      def initialize(source, extension)
         @source = source
+        @extension = extension
       end
 
       def handler
-        HANDLERS[".rb"]
+        HANDLERS[@extension]
       end
 
       def filepath
@@ -82,8 +83,12 @@ module SyntaxTree
 
     # An item of work that correspond to the content passed in via stdin.
     class STDINItem
+      def initialize(extension)
+        @extension = extension
+      end
+
       def handler
-        HANDLERS[".rb"]
+        HANDLERS[@extension]
       end
 
       def filepath
@@ -457,7 +462,10 @@ module SyntaxTree
         The maximum line width to use when formatting.
 
       -e SCRIPT
-        Parse an inline Ruby string.
+        Parse an inline string.
+
+      --extension=EXTENSION
+        A file extension matching the content passed in via STDIN or -e. Defaults to 'rb'
     HELP
 
     # This represents all of the options that can be passed to the CLI. It is
@@ -468,6 +476,7 @@ module SyntaxTree
                   :plugins,
                   :print_width,
                   :scripts,
+                  :extension,
                   :target_ruby_version
 
       def initialize
@@ -475,6 +484,7 @@ module SyntaxTree
         @plugins = []
         @print_width = DEFAULT_PRINT_WIDTH
         @scripts = []
+        @extension = ".rb"
         @target_ruby_version = DEFAULT_RUBY_VERSION
       end
 
@@ -522,6 +532,13 @@ module SyntaxTree
           # If there is a script specified on the command line, then parse
           # it and add it to the list of scripts to run.
           opts.on("-e SCRIPT") { |script| @scripts << script }
+
+          # If there is a extension specified, then parse it and use it for
+          # STDIN and scripts.
+          opts.on("--extension=EXTENSION") do |extension|
+            # Both ".rb" and "rb" are going to work
+            @extension = ".#{extension.delete_prefix(".")}"
+          end
 
           # If there is a target ruby version specified on the command line,
           # parse that out and use it when formatting.
@@ -633,9 +650,11 @@ module SyntaxTree
               end
           end
 
-          options.scripts.each { |script| queue << ScriptItem.new(script) }
+          options.scripts.each do |script|
+            queue << ScriptItem.new(script, options.extension)
+          end
         else
-          queue << STDINItem.new
+          queue << STDINItem.new(options.extension)
         end
 
         # At the end, we're going to return whether or not this worker ever
