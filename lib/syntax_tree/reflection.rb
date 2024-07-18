@@ -213,13 +213,13 @@ module SyntaxTree
 
           # The arguments to the command are the attributes that we're defining.
           # We want to ensure that we're only defining one at a time.
-          if statement.arguments.parts.length != 1
+          if statement.arguments.arguments.length != 1
             raise "Declaring more than one attribute at a time is not permitted"
           end
 
           attribute =
             Attribute.new(
-              statement.arguments.parts.first.value.value.to_sym,
+              statement.arguments.arguments.first.value.value.to_sym,
               "#{parse_comments(statements, statement_index).join("\n")}\n"
             )
 
