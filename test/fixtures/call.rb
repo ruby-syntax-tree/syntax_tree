@@ -40,6 +40,15 @@ foo
   qux
   .quux
 %
+result =
+  fooooooooooooooooo
+    .barrrrrrrrrrrrrrrrrrr
+    .bazzzzzzzzzzzzzzzzzzz
+    # long comment long comment long comment long comment long comment
+    # long comment long comment long comment long comment long comment
+    # long comment long comment long comment long comment long comment
+    .quxxxxxxxxxxxxxxxxxxx
+%
 { a: 1, b: 2 }.fooooooooooooooooo.barrrrrrrrrrrrrrrrrrr.bazzzzzzzzzzzz.quxxxxxxxxxxxx
 -
 { a: 1, b: 2 }.fooooooooooooooooo
