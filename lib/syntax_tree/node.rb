@@ -2849,9 +2849,10 @@ module SyntaxTree
             # to print the operator trailing in order to keep it working.
             last_child = children.last
             if last_child.is_a?(CallNode) && last_child.message != :call &&
+                 last_child.operator &&
                  (
-                   (last_child.message.comments.any? && last_child.operator) ||
-                     (last_child.operator && last_child.operator.comments.any?)
+                   last_child.message.comments.any? ||
+                     last_child.operator.comments.any?
                  )
               q.format(CallOperatorFormatter.new(last_child.operator))
               skip_operator = true
