@@ -21,6 +21,26 @@ module SyntaxTree
       assert_equal(expected, SyntaxTree::Formatter.format(source, program))
     end
 
+    def test_deep_mutation
+      source = <<~RUBY
+        hash = { "key" => a ? foo : nil }
+      RUBY
+
+      expected = <<~RUBY
+        hash = { "key" => a ? bar : nil }
+      RUBY
+
+      rename_foo_into_bar =
+        SyntaxTree.mutation do |mutation|
+          mutation.mutate("Ident[value: 'foo']") do |node|
+            node.copy(value: "bar")
+          end
+        end
+
+      program = SyntaxTree.parse(source).accept(rename_foo_into_bar)
+      assert_equal(expected, SyntaxTree::Formatter.format(source, program))
+    end
+
     private
 
     def build_mutation
