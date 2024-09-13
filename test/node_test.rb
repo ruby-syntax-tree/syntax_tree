@@ -635,6 +635,25 @@ module SyntaxTree
       source = "->(value) { value * 2 }"
 
       assert_node(Lambda, source)
+
+      at = location(chars: 3..8)
+      assert_node(BlockVar, source, at: at) { |node| node.params.contents }
+    end
+
+    def test_lambda_no_parens
+      source = "-> value { value * 2 }"
+
+      assert_node(Lambda, source)
+
+      at = location(chars: 3..8)
+      assert_node(BlockVar, source, at: at, &:params)
+    end
+
+    def test_lambda_braces
+      source = "lambda { |value| value * 2 }"
+
+      at = location(chars: 9..16)
+      assert_node(BlockVar, source, at: at) { |node| node.block.block_var }
     end
 
     def test_lambda_do
