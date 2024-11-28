@@ -20,6 +20,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       CI: true
+      RUBYOPT: "--enable=frozen-string-literal --yjit"
       # TESTOPTS: --verbose
     steps:
     - uses: actions/checkout@master
