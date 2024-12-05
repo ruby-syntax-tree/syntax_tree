@@ -187,7 +187,7 @@ SyntaxTree::Binary[
 
 ### format
 
-This command will output the formatted version of each of the listed files. Importantly, it will not write that content back to the source files. It is meant to display the formatted version only.
+This command will output the formatted version of each of the listed files to stdout. Importantly, it will not write that content back to the source files – for that, you want [`write`](#write).
 
 ```sh
 stree format path/to/file.rb
