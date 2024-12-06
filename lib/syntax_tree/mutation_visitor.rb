@@ -80,9 +80,9 @@ module SyntaxTree
         node.copy(arguments: visit(node.arguments))
       end
 
-      # Visit a Args node.
-      def visit_args(node)
-        node.copy(parts: visit_all(node.parts))
+      # Visit a ArgumentsNode node.
+      def visit_arguments_node(node)
+        node.copy(arguments: visit_all(node.arguments))
       end
 
       # Visit a ArgBlock node.

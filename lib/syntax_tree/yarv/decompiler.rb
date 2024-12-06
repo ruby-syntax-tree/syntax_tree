@@ -67,14 +67,14 @@ module SyntaxTree
           when BranchIf
             body = [
               Assign(block_label.field, node_for(insn.label.name)),
-              Next(Args([]))
+              Next(ArgumentsNode([]))
             ]
 
             clause << UnlessNode(clause.pop, Statements(body), nil)
           when BranchUnless
             body = [
               Assign(block_label.field, node_for(insn.label.name)),
-              Next(Args([]))
+              Next(ArgumentsNode([]))
             ]
 
             clause << IfNode(clause.pop, Statements(body), nil)
@@ -94,9 +94,9 @@ module SyntaxTree
             clause << VarRef(Ident(local.name.to_s))
           when Jump
             clause << Assign(block_label.field, node_for(insn.label.name))
-            clause << Next(Args([]))
+            clause << Next(ArgumentsNode([]))
           when Leave
-            value = Args([clause.pop])
+            value = ArgumentsNode([clause.pop])
             clause << (iseq.type != :top ? Break(value) : ReturnNode(value))
           when OptAnd, OptDiv, OptEq, OptGE, OptGT, OptLE, OptLT, OptLTLT,
                OptMinus, OptMod, OptMult, OptOr, OptPlus
@@ -104,20 +104,20 @@ module SyntaxTree
             clause << Binary(left, insn.calldata.method, right)
           when OptAref
             collection, arg = clause.pop(2)
-            clause << ARef(collection, Args([arg]))
+            clause << ARef(collection, ArgumentsNode([arg]))
           when OptAset
             collection, arg, value = clause.pop(3)
 
             clause << if value.is_a?(Binary) && value.left.is_a?(ARef) &&
                  collection === value.left.collection &&
-                 arg === value.left.index.parts[0]
+                 arg === value.left.index.arguments[0]
               OpAssign(
-                ARefField(collection, Args([arg])),
+                ARefField(collection, ArgumentsNode([arg])),
                 Op("#{value.operator}="),
                 value.right
               )
             else
-              Assign(ARefField(collection, Args([arg])), value)
+              Assign(ARefField(collection, ArgumentsNode([arg])), value)
             end
           when OptNEq
             left, right = clause.pop(2)
@@ -129,7 +129,7 @@ module SyntaxTree
             if insn.calldata.flag?(CallData::CALL_FCALL)
               if argc == 0
                 clause.pop
-                clause << CallNode(nil, nil, Ident(method), Args([]))
+                clause << CallNode(nil, nil, Ident(method), ArgumentsNode([]))
               elsif argc == 1 && method.end_with?("=")
                 _receiver, argument = clause.pop(2)
                 clause << Assign(
@@ -142,7 +142,7 @@ module SyntaxTree
                   nil,
                   nil,
                   Ident(method),
-                  ArgParen(Args(arguments))
+                  ArgParen(ArgumentsNode(arguments))
                 )
               end
             else
@@ -160,7 +160,7 @@ module SyntaxTree
                   receiver,
                   Period("."),
                   Ident(method),
-                  ArgParen(Args(arguments))
+                  ArgParen(ArgumentsNode(arguments))
                 )
               end
             end
@@ -215,7 +215,7 @@ module SyntaxTree
         clauses.reverse_each do |current_label, current_clause|
           current =
             When(
-              Args([node_for(current_label)]),
+              ArgumentsNode([node_for(current_label)]),
               Statements(current_clause),
               current
             )
@@ -243,7 +243,7 @@ module SyntaxTree
         # statement.
         stack << Assign(block_label.field, node_for(:label_0))
         stack << MethodAddBlock(
-          CallNode(nil, nil, Ident("loop"), Args([])),
+          CallNode(nil, nil, Ident("loop"), ArgumentsNode([])),
           BlockNode(
             Kw("do"),
             nil,
