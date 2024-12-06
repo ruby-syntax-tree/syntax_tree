@@ -48,3 +48,7 @@
 { "foo #{bar}": "baz" }
 %
 { "foo=": "baz" }
+%
+{ bar => 1, baz: }
+%
+{ baz:, bar => 1 }

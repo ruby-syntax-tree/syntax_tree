@@ -1784,17 +1784,21 @@ module SyntaxTree
     end
 
     def self.for(container)
+      # First check for assocs where the value is nil; that means it has been
+      # omitted. In this case we have to match the existing formatting because
+      # standardizing would potentially break the code. For example:
+      #
+      #     { first:, "second" => "value" }
+      #
+      container.assocs.each do |assoc|
+        if assoc.value.nil?
+          return Identity.new
+        end
+      end
+
       container.assocs.each do |assoc|
         if assoc.is_a?(AssocSplat)
           # Splat nodes do not impact the formatting choice.
-        elsif assoc.value.nil?
-          # If the value is nil, then it has been omitted. In this case we have
-          # to match the existing formatting because standardizing would
-          # potentially break the code. For example:
-          #
-          #     { first:, "second" => "value" }
-          #
-          return Identity.new
         else
           # Otherwise, we need to check the type of the key. If it's a label or
           # dynamic symbol, we can use labels. If it's a symbol literal then it
