@@ -1,5 +1,4 @@
 # frozen_string_literal: true
-
 require "cgi"
 require "json"
 require "pp"
@@ -215,10 +214,12 @@ module SyntaxTree
     attr_reader :input, :output, :print_width
 
     def initialize(
+      ignore_files: [],
       input: $stdin,
       output: $stdout,
       print_width: DEFAULT_PRINT_WIDTH
     )
+      @ignore_files = ignore_files
       @input = input.binmode
       @output = output.binmode
       @print_width = print_width
@@ -255,8 +256,12 @@ module SyntaxTree
           store.delete(request.dig(:params, :textDocument, :uri))
         when Request[method: "textDocument/formatting", id: :any, params: { textDocument: { uri: :any } }]
           uri = request.dig(:params, :textDocument, :uri)
+          filepath = uri.split("///").last
+          ignore = @ignore_files.any? do |glob|
+            File.fnmatch(glob, filepath)
+          end
           contents = store[uri]
-          write(id: request[:id], result: contents ? format(contents, uri.split(".").last) : nil)
+          write(id: request[:id], result: contents && !ignore ? format(contents, uri.split(".").last) : nil)
         when Request[method: "textDocument/inlayHint", id: :any, params: { textDocument: { uri: :any } }]
           uri = request.dig(:params, :textDocument, :uri)
           contents = store[uri]
