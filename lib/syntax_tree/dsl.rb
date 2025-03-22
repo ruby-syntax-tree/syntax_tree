@@ -55,9 +55,9 @@ module SyntaxTree
       ArgParen.new(arguments: arguments, location: Location.default)
     end
 
-    # Create a new Args node.
-    def Args(parts)
-      Args.new(parts: parts, location: Location.default)
+    # Create a new ArgumentsNode node.
+    def ArgumentsNode(arguments)
+      ArgumentsNode.new(arguments: arguments, location: Location.default)
     end
 
     # Create a new ArgBlock node.

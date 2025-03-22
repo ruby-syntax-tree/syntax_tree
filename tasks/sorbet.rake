@@ -61,7 +61,7 @@ module SyntaxTree
 
       node_body << Command(
         Ident("attr_reader"),
-        Args([SymbolLiteral(Ident("location"))]),
+        ArgumentsNode([SymbolLiteral(Ident("location"))]),
         nil,
         location
       )
@@ -102,7 +102,7 @@ module SyntaxTree
 
         node_body << Command(
           Ident("attr_reader"),
-          Args([SymbolLiteral(Ident(attribute.name.to_s))]),
+          ArgumentsNode([SymbolLiteral(Ident(attribute.name.to_s))]),
           nil,
           location
         )
@@ -121,7 +121,7 @@ module SyntaxTree
           Period("."),
           Ident("returns"),
           ArgParen(
-            Args(
+            ArgumentsNode(
               [CallNode(VarRef(Const("T")), Period("."), Ident("untyped"), nil)]
             )
           )
@@ -214,7 +214,7 @@ module SyntaxTree
               VarRef(Const("T")),
               Period("."),
               Ident("unsafe"),
-              ArgParen(Args([VarRef(Kw("nil"))]))
+              ArgParen(ArgumentsNode([VarRef(Kw("nil"))]))
             )
           ]
         else
@@ -304,11 +304,11 @@ module SyntaxTree
     end
 
     def sig_params
-      CallNode(nil, nil, Ident("params"), ArgParen(Args([yield])))
+      CallNode(nil, nil, Ident("params"), ArgParen(ArgumentsNode([yield])))
     end
 
     def sig_returns
-      CallNode(nil, nil, Ident("returns"), ArgParen(Args([yield])))
+      CallNode(nil, nil, Ident("returns"), ArgParen(ArgumentsNode([yield])))
     end
 
     def sig_type_for(type)
@@ -319,7 +319,7 @@ module SyntaxTree
           sig_type_for(type.type)
         )
       when Reflection::Type::TupleType
-        ArrayLiteral(LBracket("["), Args(type.types.map { sig_type_for(_1) }))
+        ArrayLiteral(LBracket("["), ArgumentsNode(type.types.map { sig_type_for(_1) }))
       when Reflection::Type::UnionType
         if type.types.include?(NilClass)
           selected = type.types.reject { _1 == NilClass }
@@ -334,14 +334,14 @@ module SyntaxTree
             VarRef(Const("T")),
             Period("."),
             Ident("nilable"),
-            ArgParen(Args([sig_type_for(subtype)]))
+            ArgParen(ArgumentsNode([sig_type_for(subtype)]))
           )
         else
           CallNode(
             VarRef(Const("T")),
             Period("."),
             Ident("any"),
-            ArgParen(Args(type.types.map { sig_type_for(_1) }))
+            ArgParen(ArgumentsNode(type.types.map { sig_type_for(_1) }))
           )
         end
       when Symbol
