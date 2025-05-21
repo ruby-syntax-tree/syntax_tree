@@ -288,7 +288,7 @@ module SyntaxTree
         q.text(value)
       else
         q.text(q.quote)
-        q.text(value[1] == "\"" ? "\\\"" : value[1])
+        q.text(value[1] == q.quote ? "\\#{q.quote}" : value[1])
         q.text(q.quote)
       end
     end
