@@ -593,7 +593,8 @@ module SyntaxTree
           when "j", "json"
             Json.new(options)
           when "lsp"
-            LanguageServer.new(print_width: options.print_width).run
+            LanguageServer.new(ignore_files: options.ignore_files,
+print_width: options.print_width).run
             return 0
           when "m", "match"
             Match.new(options)
