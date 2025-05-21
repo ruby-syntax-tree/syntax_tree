@@ -23,8 +23,8 @@ module SyntaxTree
     # Visit an ArgStar node.
     alias visit_arg_star visit_child_nodes
 
-    # Visit an Args node.
-    alias visit_args visit_child_nodes
+    # Visit an ArgumentsNode node.
+    alias visit_arguments_node visit_child_nodes
 
     # Visit an ArgsForward node.
     alias visit_args_forward visit_child_nodes
