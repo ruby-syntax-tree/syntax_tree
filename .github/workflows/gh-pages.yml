@@ -5,8 +5,8 @@ on:
     branches:
       - main
 
-    # Allows you to run this workflow manually from the Actions tab
-    workflow_dispatch:
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
 
 # Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
 permissions:
@@ -39,7 +39,7 @@ jobs:
           rdoc --main README.md --op _site --exclude={Gemfile,Rakefile,"coverage/*","vendor/*","bin/*","test/*","tmp/*"}
           cp -r doc _site/doc
       - name: Upload artifact
-        uses: actions/upload-pages-artifact@v2
+        uses: actions/upload-pages-artifact@v3
 
   # Deployment job
   deploy:
