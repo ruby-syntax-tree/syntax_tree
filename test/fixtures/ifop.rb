@@ -11,8 +11,10 @@ end
 %
 foo bar ? 1 : 2
 %
-foooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo ? break : baz
+tap { foooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo ? break : baz }
 -
-foooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo ?
-  break :
-  baz
+tap do
+  foooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo ?
+    break :
+    baz
+end

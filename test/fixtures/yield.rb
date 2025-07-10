@@ -1,16 +1,30 @@
 %
-yield foo
+def foo
+  yield foo
+end
 %
-yield(foo)
+def foo
+  yield(foo)
+end
 %
-yield foo, bar
+def foo
+  yield foo, bar
+end
 %
-yield(foo, bar)
+def foo
+  yield(foo, bar)
+end
 %
-yield foo # comment
+def foo
+  yield foo # comment
+end
 %
-yield(foo) # comment
+def foo
+  yield(foo) # comment
+end
 %
-yield( # comment
-  foo
-)
+def foo
+  yield( # comment
+    foo
+  )
+end

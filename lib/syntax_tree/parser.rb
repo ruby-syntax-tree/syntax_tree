@@ -670,7 +670,11 @@ module SyntaxTree
 
       visit_methods do
         def visit_var_ref(node)
-          node.pin(stack[-2], pins.shift)
+          if node.start_char > pins.first.start_char
+            node.pin(stack[-2], pins.shift)
+          else
+            super
+          end
         end
       end
 
@@ -1732,13 +1736,13 @@ module SyntaxTree
     # :call-seq:
     #   on_field: (
     #     untyped parent,
-    #     (:"::" | Op | Period) operator
+    #     (:"::" | Op | Period | 73) operator
     #     (Const | Ident) name
     #   ) -> Field
     def on_field(parent, operator, name)
       Field.new(
         parent: parent,
-        operator: operator,
+        operator: operator == 73 ? :"::" : operator,
         name: name,
         location: parent.location.to(name.location)
       )

@@ -1,76 +1,82 @@
 %
-next
+tap { next }
 %
-next foo
+tap { next foo }
 %
-next foo, bar
+tap { next foo, bar }
 %
-next(foo)
+tap { next(foo) }
 %
-next fooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo
+tap { next fooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo }
 -
-next(
-  fooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo
-)
+tap do
+  next(
+    fooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo
+  )
+end
 %
-next(fooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo)
+tap { next(fooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo) }
 -
-next(
-  fooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo
-)
+tap do
+  next(
+    fooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo
+  )
+end
 %
-next (foo), bar
+tap { next (foo), bar }
 %
-next(
-  foo
-  bar
-)
+tap do
+  next(
+    foo
+    bar
+  )
+end
 %
-next(1)
+tap { next(1) }
 -
-next 1
+tap { next 1 }
 %
-next(1.0)
+tap { next(1.0) }
 -
-next 1.0
+tap { next 1.0 }
 %
-next($a)
+tap { next($a) }
 -
-next $a
+tap { next $a }
 %
-next(@@a)
+tap { next(@@a) }
 -
-next @@a
+tap { next @@a }
 %
-next(self)
+tap { next(self) }
 -
-next self
+tap { next self }
 %
-next(@a)
+tap { next(@a) }
 -
-next @a
+tap { next @a }
 %
-next(A)
+tap { next(A) }
 -
-next A
+tap { next A }
 %
-next([])
+tap { next([]) }
 -
-next []
+tap { next [] }
 %
-next([1])
+tap { next([1]) }
 -
-next [1]
+tap { next [1] }
 %
-next([1, 2])
+tap { next([1, 2]) }
 -
-next 1, 2
+tap { next 1, 2 }
 %
-next fun foo do end
+tap { next fun foo do end }
 -
-next(
-  fun foo do
-  end
-)
-%
-next :foo => "bar"
+tap do
+  next(
+    fun foo do
+    end
+  )
+end

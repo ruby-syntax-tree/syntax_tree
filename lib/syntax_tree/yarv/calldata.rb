@@ -41,7 +41,7 @@ module SyntaxTree
       end
 
       def flag?(mask)
-        (flags & mask) > 0
+        flags.anybits?(mask)
       end
 
       def to_h

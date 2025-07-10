@@ -43,8 +43,13 @@ module ParseHelper
     # that we do not support.
     return if (versions & %w[3.1 3.2]).empty?
 
-    entry = caller.find { _1.include?("test_parser.rb") }
-    _, lineno, name = *entry.match(/(\d+):in `(.+)'/)
+    entry =
+      caller.find do |call|
+        call.include?("test_parser.rb") && call.match?(%r{(?<!/)test_})
+      end
+
+    _, lineno, name =
+      *entry.match(/(\d+):in [`'](?:block in )?(?:TestParser#)?(.+)'/)
 
     COLLECTED["#{name}:#{lineno}"] << code
   end
