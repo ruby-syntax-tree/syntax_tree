@@ -151,6 +151,24 @@ module SyntaxTree
       assert_equal("class Bar\nend\n", responses.dig(1, :result, 0, :newText))
     end
 
+    def test_formatting_ignore
+      responses = run_server([
+        Initialize.new(1),
+        TextDocumentDidOpen.new("file:///path/to/file.rb", "class Foo; end"),
+        TextDocumentFormatting.new(2, "file:///path/to/file.rb"),
+        Shutdown.new(3)
+      ], ignore_files: ["path/**/*.rb"])
+
+      shape = LanguageServer::Request[[
+        { id: 1, result: { capabilities: Hash } },
+        { id: 2, result: :any },
+        { id: 3, result: {} }
+      ]]
+
+      assert_operator(shape, :===, responses)
+      assert_nil(responses.dig(1, :result))
+    end
+
     def test_formatting_failure
       responses = run_server([
         Initialize.new(1),
@@ -322,14 +340,15 @@ module SyntaxTree
       end
     end
 
-    def run_server(messages, print_width: DEFAULT_PRINT_WIDTH)
+    def run_server(messages, print_width: DEFAULT_PRINT_WIDTH, ignore_files: [])
       input = StringIO.new(messages.map { |message| write(message) }.join)
       output = StringIO.new
 
       LanguageServer.new(
         input: input,
         output: output,
-        print_width: print_width
+        print_width: print_width,
+        ignore_files: ignore_files
       ).run
 
       read(output.tap(&:rewind))
