@@ -136,6 +136,9 @@ Style/KeywordParametersOrder:
 Style/MissingRespondToMissing:
   Enabled: false
 
+Style/MultipleComparison:
+  Enabled: false
+
 Style/MutableConstant:
   Enabled: false
 
@@ -155,6 +158,9 @@ Style/PerlBackrefs:
   Enabled: false
 
 Style/RedundantArrayConstructor:
+  Enabled: false
+
+Style/RedundantParentheses:
   Enabled: false
 
 Style/SafeNavigation:

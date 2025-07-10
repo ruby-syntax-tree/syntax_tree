@@ -8,109 +8,83 @@ Parser::Builders::Default.modernize
 module SyntaxTree
   module Translation
     class ParserTest < Minitest::Test
-      known_failures = [
-        # I think this may be a bug in the parser gem's precedence calculation.
-        # Unary plus appears to be parsed as part of the number literal in
-        # CRuby, but parser is parsing it as a separate operator.
-        "test_unary_num_pow_precedence:3505",
-
-        # Not much to be done about this. Basically, regular expressions with
-        # named capture groups that use the =~ operator inject local variables
-        # into the current scope. In the parser gem, it detects this and changes
-        # future references to that name to be a local variable instead of a
-        # potential method call. CRuby does not do this.
-        "test_lvar_injecting_match:3778",
-
-        # This is failing because CRuby is not marking values captured in hash
-        # patterns as local variables, while the parser gem is.
-        "test_pattern_matching_hash:8971",
-
-        # This is not actually allowed in the CRuby parser but the parser gem
-        # thinks it is allowed.
-        "test_pattern_matching_hash_with_string_keys:9016",
-        "test_pattern_matching_hash_with_string_keys:9027",
-        "test_pattern_matching_hash_with_string_keys:9038",
-        "test_pattern_matching_hash_with_string_keys:9060",
-        "test_pattern_matching_hash_with_string_keys:9071",
-        "test_pattern_matching_hash_with_string_keys:9082",
-
-        # This happens with pattern matching where you're matching a literal
-        # value inside parentheses, which doesn't really do anything. Ripper
-        # doesn't capture that this value is inside a parentheses, so it's hard
-        # to translate properly.
-        "test_pattern_matching_expr_in_paren:9206",
-
-        # These are also failing because of CRuby not marking values captured in
-        # hash patterns as local variables.
-        "test_pattern_matching_single_line_allowed_omission_of_parentheses:*",
-
-        # I'm not even sure what this is testing, because the code is invalid in
-        # CRuby.
-        "test_control_meta_escape_chars_in_regexp__since_31:*",
+      skips = %w[
+        test_args_assocs_legacy:4041
+        test_args_assocs:4091
+        test_args_assocs:4091
+        test_break_block:5204
+        test_break:5169
+        test_break:5183
+        test_break:5189
+        test_break:5196
+        test_control_meta_escape_chars_in_regexp__since_31:*
+        test_dedenting_heredoc:336
+        test_dedenting_heredoc:392
+        test_dedenting_heredoc:401
+        test_forwarded_argument_with_kwrestarg:11332
+        test_forwarded_argument_with_restarg:11267
+        test_forwarded_kwrestarg_with_additional_kwarg:11306
+        test_forwarded_kwrestarg:11287
+        test_forwarded_restarg:11249
+        test_hash_pair_value_omission:10364
+        test_hash_pair_value_omission:10376
+        test_if_while_after_class__since_32:11374
+        test_if_while_after_class__since_32:11384
+        test_kwoptarg_with_kwrestarg_and_forwarded_args:11482
+        test_lvar_injecting_match:3819
+        test_newline_in_hash_argument:11427
+        test_next_block:5298
+        test_next:5263
+        test_next:5277
+        test_next:5283
+        test_next:5290
+        test_next:5290
+        test_parser_slash_slash_n_escaping_in_literals:*
+        test_pattern_matching_explicit_array_match:8903
+        test_pattern_matching_explicit_array_match:8928
+        test_pattern_matching_expr_in_paren:9443
+        test_pattern_matching_hash_with_string_keys:*
+        test_pattern_matching_hash_with_string_keys:9264
+        test_pattern_matching_hash:9186
+        test_pattern_matching_implicit_array_match:8796
+        test_pattern_matching_implicit_array_match:8841
+        test_pattern_matching_numbered_parameter:9654
+        test_pattern_matching_single_line_allowed_omission_of_parentheses:9868
+        test_pattern_matching_single_line_allowed_omission_of_parentheses:9898
+        test_redo:5310
+        test_retry:5589
+        test_send_index_asgn_kwarg_legacy:3642
+        test_send_index_asgn_kwarg_legacy:3642
+        test_send_index_asgn_kwarg:3629
+        test_send_index_asgn_kwarg:3629
+        test_slash_newline_in_heredocs:7379
+        test_unary_num_pow_precedence:3519
+        test_yield:3915
+        test_yield:3923
+        test_yield:3929
+        test_yield:3937
       ]
 
-      todo_failures = [
-        "test_dedenting_heredoc:334",
-        "test_dedenting_heredoc:390",
-        "test_dedenting_heredoc:399",
-        "test_slash_newline_in_heredocs:7194",
-        "test_parser_slash_slash_n_escaping_in_literals:*",
-        "test_forwarded_restarg:*",
-        "test_forwarded_kwrestarg:*",
-        "test_forwarded_argument_with_restarg:*",
-        "test_forwarded_argument_with_kwrestarg:*"
-      ]
-
-      current_version = RUBY_VERSION.split(".")[0..1].join(".")
-
-      if current_version <= "2.7"
-        # I'm not sure why this is failing on 2.7.0, but we'll turn it off for
-        # now until we have more time to investigate.
-        todo_failures.push(
+      if Gem::Version.new(RUBY_VERSION) < Gem::Version.new("3.1.0")
+        skips.push(
+          "test_endless_method_forwarded_args_legacy:10139",
+          "test_forward_arg_with_open_args:11114",
+          "test_forward_arg:8090",
+          "test_forward_args_legacy:8054",
+          "test_forward_args_legacy:8066",
+          "test_forward_args_legacy:8078",
           "test_pattern_matching_hash:*",
-          "test_pattern_matching_single_line:9552"
+          "test_pattern_matching_single_line:9839",
+          "test_trailing_forward_arg:8237"
         )
       end
-    
-      if current_version <= "3.0"
-        # In < 3.0, there are some changes to the way the parser gem handles
-        # forwarded args. We should eventually support this, but for now we're
-        # going to mark them as todo.
-        todo_failures.push(
-          "test_forward_arg:*",
-          "test_forward_args_legacy:*",
-          "test_endless_method_forwarded_args_legacy:*",
-          "test_trailing_forward_arg:*",
-          "test_forward_arg_with_open_args:10770",
-        )
-      end
-    
-      if current_version == "3.1"
-        # This test actually fails on 3.1.0, even though it's marked as being
-        # since 3.1. So we're going to skip this test on 3.1, but leave it in
-        # for other versions.
-        known_failures.push(
-          "test_multiple_pattern_matches:11086",
-          "test_multiple_pattern_matches:11102"
-        )
-      end
-
-      if current_version < "3.2" || RUBY_ENGINE == "truffleruby"
-        known_failures.push(
-          "test_if_while_after_class__since_32:11004",
-          "test_if_while_after_class__since_32:11014",
-          "test_newline_in_hash_argument:11057"
-        )
-      end
-
-      all_failures = known_failures + todo_failures
 
       File
         .foreach(File.expand_path("parser.txt", __dir__), chomp: true)
         .slice_before { |line| line.start_with?("!!!") }
         .each do |(prefix, *lines)|
           name = prefix[4..]
-          next if all_failures.any? { |pattern| File.fnmatch?(pattern, name) }
+          next if skips.any? { |skip| File.fnmatch?(skip, name) }
 
           define_method(name) { assert_parses("#{lines.join("\n")}\n") }
         end

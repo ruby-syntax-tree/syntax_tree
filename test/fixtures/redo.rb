@@ -1,4 +1,6 @@
 %
-redo
+tap { redo }
 %
-redo # comment
+tap do
+  redo # comment
+end

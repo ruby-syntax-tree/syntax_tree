@@ -159,7 +159,7 @@ module SyntaxTree
       attr_reader :entries
 
       def initialize(options)
-        super(options)
+        super
         @entries = []
       end
 

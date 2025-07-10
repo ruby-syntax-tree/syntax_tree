@@ -282,9 +282,9 @@ module SyntaxTree
       end
     end
 
-    private
-
     Result = Struct.new(:status, :stdio, :stderr, keyword_init: true)
+
+    private
 
     def run_cli(command, *args, contents: :default)
       tempfile =

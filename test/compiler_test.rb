@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
-return if !defined?(RubyVM::InstructionSequence) || RUBY_VERSION < "3.1"
+return unless defined?(RubyVM::InstructionSequence)
+return if RUBY_VERSION < "3.1" || RUBY_VERSION > "3.3"
+
 require_relative "test_helper"
 
 module SyntaxTree

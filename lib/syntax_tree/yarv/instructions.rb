@@ -759,6 +759,59 @@ module SyntaxTree
 
     # ### Summary
     #
+    # `concattoarray` pops a single value off the stack and attempts to concat
+    # it to the Array on top of the stack. If the value is not an Array, it
+    # will be coerced into one.
+    #
+    # ### Usage
+    #
+    # ~~~ruby
+    # [1, *2]
+    # ~~~
+    #
+    class ConcatToArray < Instruction
+      attr_reader :object
+
+      def initialize(object)
+        @object = object
+      end
+
+      def disasm(fmt)
+        fmt.instruction("concattoarray", [fmt.object(object)])
+      end
+
+      def to_a(_iseq)
+        [:concattoarray, object]
+      end
+
+      def deconstruct_keys(_keys)
+        { object: object }
+      end
+
+      def ==(other)
+        other.is_a?(ConcatToArray) && other.object == object
+      end
+
+      def length
+        2
+      end
+
+      def pops
+        1
+      end
+
+      def pushes
+        1
+      end
+
+      def call(vm)
+        array, value = vm.pop(2)
+        vm.push(array.concat(Array(value)))
+      end
+    end
+
+    # ### Summary
+    #
     # `defineclass` defines a class. First it pops the superclass off the
     # stack, then it pops the object off the stack that the class should be
     # defined under. It has three arguments: the name of the constant, the
@@ -4474,6 +4527,52 @@ module SyntaxTree
 
     # ### Summary
     #
+    # `pushtoarraykwsplat` is used to append a hash literal that is being
+    # splatted onto an array.
+    #
+    # ### Usage
+    #
+    # ~~~ruby
+    # ["string", **{ foo: "bar" }]
+    # ~~~
+    #
+    class PushToArrayKwSplat < Instruction
+      def disasm(fmt)
+        fmt.instruction("pushtoarraykwsplat")
+      end
+
+      def to_a(_iseq)
+        [:pushtoarraykwsplat]
+      end
+
+      def deconstruct_keys(_keys)
+        {}
+      end
+
+      def ==(other)
+        other.is_a?(PushToArrayKwSplat)
+      end
+
+      def length
+        2
+      end
+
+      def pops
+        2
+      end
+
+      def pushes
+        1
+      end
+
+      def call(vm)
+        array, hash = vm.pop(2)
+        vm.push(array << hash)
+      end
+    end
+
+    # ### Summary
+    #
     # `putnil` pushes a global nil object onto the stack.
     #
     # ### Usage
@@ -4756,6 +4855,54 @@ module SyntaxTree
         when OBJECT_CONST_BASE
           vm.push(vm.const_base)
         end
+      end
+    end
+
+    # ### Summary
+    #
+    # `putchilledstring` pushes an unfrozen string literal onto the stack that
+    # acts like a frozen string. This is a migration path to frozen string
+    # literals as the default in the future.
+    #
+    # ### Usage
+    #
+    # ~~~ruby
+    # "foo"
+    # ~~~
+    #
+    class PutChilledString < Instruction
+      attr_reader :object
+
+      def initialize(object)
+        @object = object
+      end
+
+      def disasm(fmt)
+        fmt.instruction("putchilledstring", [fmt.object(object)])
+      end
+
+      def to_a(_iseq)
+        [:putchilledstring, object]
+      end
+
+      def deconstruct_keys(_keys)
+        { object: object }
+      end
+
+      def ==(other)
+        other.is_a?(PutChilledString) && other.object == object
+      end
+
+      def length
+        2
+      end
+
+      def pushes
+        1
+      end
+
+      def call(vm)
+        vm.push(object.dup)
       end
     end
 

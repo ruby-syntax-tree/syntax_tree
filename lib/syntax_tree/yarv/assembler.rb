@@ -408,7 +408,7 @@ module SyntaxTree
       def find_local(iseq, operands)
         name_string, level_string = operands.split(/,\s*/)
         name = name_string.to_sym
-        level = level_string&.to_i || 0
+        level = level_string.to_i
 
         iseq.local_table.plain(name)
         iseq.local_table.find(name, level)
@@ -455,7 +455,7 @@ module SyntaxTree
             CallData::CALL_ARGS_SIMPLE
           end
 
-        YARV.calldata(message.to_sym, argc_value&.to_i || 0, flags)
+        YARV.calldata(message.to_sym, argc_value.to_i, flags)
       end
     end
   end

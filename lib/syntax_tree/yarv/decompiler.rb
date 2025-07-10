@@ -45,7 +45,7 @@ module SyntaxTree
         when Integer
           Int(value.to_s)
         when Symbol
-          SymbolLiteral(Ident(value.to_s))
+          SymbolLiteral(Ident(value.name))
         end
       end
 
@@ -88,10 +88,10 @@ module SyntaxTree
 
             clause << HashLiteral(LBrace("{"), assocs)
           when GetGlobal
-            clause << VarRef(GVar(insn.name.to_s))
+            clause << VarRef(GVar(insn.name.name))
           when GetLocalWC0
             local = iseq.local_table.locals[insn.index]
-            clause << VarRef(Ident(local.name.to_s))
+            clause << VarRef(Ident(local.name.name))
           when Jump
             clause << Assign(block_label.field, node_for(insn.label.name))
             clause << Next(Args([]))
@@ -123,7 +123,7 @@ module SyntaxTree
             left, right = clause.pop(2)
             clause << Binary(left, :"!=", right)
           when OptSendWithoutBlock
-            method = insn.calldata.method.to_s
+            method = insn.calldata.method.name
             argc = insn.calldata.argc
 
             if insn.calldata.flag?(CallData::CALL_FCALL)
@@ -182,7 +182,7 @@ module SyntaxTree
           when PutSelf
             clause << VarRef(Kw("self"))
           when SetGlobal
-            target = GVar(insn.name.to_s)
+            target = GVar(insn.name.name)
             value = clause.pop
 
             clause << if value.is_a?(Binary) && VarRef(target) === value.left
@@ -256,7 +256,7 @@ module SyntaxTree
       def local_name(index, level)
         current = iseq
         level.times { current = current.parent_iseq }
-        current.local_table.locals[index].name.to_s
+        current.local_table.locals[index].name.name
       end
     end
   end

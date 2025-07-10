@@ -1,4 +1,8 @@
 %
-yield
+def foo
+  yield
+end
 %
-yield # comment
+def foo
+  yield # comment
+end

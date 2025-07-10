@@ -70,6 +70,7 @@ module SyntaxTree
           raise CompilationError, query
         end
 
+      raise CompilationError, query if program.nil?
       compile_node(program.statements.body.first.consequent.pattern)
     end
 

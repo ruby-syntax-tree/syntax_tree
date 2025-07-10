@@ -11644,6 +11644,10 @@ module SyntaxTree
           elsif value.is_a?(Array) && (index = value.index(self))
             parent.public_send(key)[index] = replace
             break
+          elsif value.is_a?(Array) &&
+                (index = value.index { |(_k, v)| v == self })
+            parent.public_send(key)[index][1] = replace
+            break
           end
         end
     end

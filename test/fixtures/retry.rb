@@ -1,4 +1,10 @@
 %
-retry
+begin
+rescue StandardError
+  retry
+end
 %
-retry # comment
+begin
+rescue StandardError
+  retry # comment
+end

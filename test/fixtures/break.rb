@@ -1,37 +1,45 @@
 %
-break
+tap { break }
 %
-break foo
+tap { break foo }
 %
-break foo, bar
+tap { break foo, bar }
 %
-break(foo)
+tap { break(foo) }
 %
-break fooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo
+tap { break fooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo }
 -
-break(
-  fooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo
-)
+tap do
+  break(
+    fooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo
+  )
+end
 %
-break(fooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo)
+tap { break(fooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo) }
 -
-break(
-  fooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo
-)
+tap do
+  break(
+    fooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo
+  )
+end
 %
-break (foo), bar
+tap { break (foo), bar }
 %
-break(
-  foo
-  bar
-)
+tap do
+  break(
+    foo
+    bar
+  )
+end
 %
-break foo.bar :baz do |qux| qux end
+tap { break foo.bar :baz do |qux| qux end }
 -
-break(
-  foo.bar :baz do |qux|
-    qux
-  end
-)
+tap do
+  break(
+    foo.bar :baz do |qux|
+      qux
+    end
+  )
+end
 %
-break :foo => "bar"
+tap { break :foo => "bar" }

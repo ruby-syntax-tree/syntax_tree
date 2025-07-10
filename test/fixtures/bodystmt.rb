@@ -36,6 +36,7 @@ ensure
 end
 %
 begin
+rescue StandardError
 else # else
 end
 %

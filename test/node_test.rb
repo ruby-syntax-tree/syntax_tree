@@ -280,7 +280,10 @@ module SyntaxTree
     end
 
     def test_break
-      assert_node(Break, "break value")
+      at = location(chars: 6..17)
+      assert_node(Break, "tap { break value }", at: at) do |node|
+        node.block.bodystmt.body.first
+      end
     end
 
     def test_call
@@ -710,7 +713,10 @@ module SyntaxTree
     end
 
     def test_next
-      assert_node(Next, "next(value)")
+      at = location(chars: 6..17)
+      assert_node(Next, "tap { next(value) }", at: at) do |node|
+        node.block.bodystmt.body.first
+      end
     end
 
     def test_op
@@ -786,7 +792,9 @@ module SyntaxTree
     end
 
     def test_redo
-      assert_node(Redo, "redo")
+      assert_node(Redo, "tap { redo }", at: location(chars: 6..10)) do |node|
+        node.block.bodystmt.body.first
+      end
     end
 
     def test_regexp_literal
@@ -833,7 +841,10 @@ module SyntaxTree
     end
 
     def test_retry
-      assert_node(Retry, "retry")
+      at = location(chars: 15..20)
+      assert_node(Retry, "begin; rescue; retry; end", at: at) do |node|
+        node.bodystmt.rescue_clause.statements.body.first
+      end
     end
 
     def test_return
@@ -949,8 +960,8 @@ module SyntaxTree
 
     guard_version("3.1.0") do
       def test_pinned_var_ref
-        source = "foo in ^bar"
-        at = location(chars: 7..11)
+        source = "bar = 1; foo in ^bar"
+        at = location(chars: 16..20)
 
         assert_node(PinnedVarRef, source, at: at, &:pattern)
       end
@@ -1013,11 +1024,17 @@ module SyntaxTree
     end
 
     def test_yield
-      assert_node(YieldNode, "yield value")
+      at = location(lines: 2..2, chars: 10..21)
+      assert_node(YieldNode, "def foo\n  yield value\nend\n", at: at) do |node|
+        node.bodystmt.statements.body.first
+      end
     end
 
     def test_yield0
-      assert_node(YieldNode, "yield")
+      at = location(lines: 2..2, chars: 10..15)
+      assert_node(YieldNode, "def foo\n  yield\nend\n", at: at) do |node|
+        node.bodystmt.statements.body.first
+      end
     end
 
     def test_zsuper
