@@ -33,7 +33,7 @@ module SyntaxTree
 
     def test_errors_on_missing_token_with_location
       error = assert_raises(Parser::ParseError) { SyntaxTree.parse("f+\"foo") }
-      assert_equal(2, error.column)
+      assert_equal(3, error.column)
     end
 
     def test_errors_on_missing_end_with_location
@@ -45,7 +45,7 @@ module SyntaxTree
       error =
         assert_raises(Parser::ParseError) { SyntaxTree.parse("a =~ /foo") }
 
-      assert_equal(5, error.column)
+      assert_equal(6, error.column)
     end
 
     def test_errors_on_missing_token_without_location
