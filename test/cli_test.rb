@@ -10,6 +10,10 @@ module SyntaxTree
         source * 2
       end
 
+      def format(source, _print_width, **)
+        "Formatted #{source}"
+      end
+
       def read(filepath)
         File.read(filepath)
       end
@@ -200,6 +204,28 @@ module SyntaxTree
     def test_multiple_inline_scripts
       stdio, = capture_io { SyntaxTree::CLI.run(%w[format -e 1+1 -e 2+2]) }
       assert_equal(["1 + 1", "2 + 2"], stdio.split("\n").sort)
+    end
+
+    def test_format_script_with_custom_handler
+      SyntaxTree.register_handler(".test", TestHandler.new)
+      stdio, =
+        capture_io do
+          SyntaxTree::CLI.run(%w[format --extension=test -e <test>])
+        end
+      assert_equal("Formatted <test>\n", stdio)
+    ensure
+      SyntaxTree::HANDLERS.delete(".test")
+    end
+
+    def test_format_stdin_with_custom_handler
+      SyntaxTree.register_handler(".test", TestHandler.new)
+      stdin = $stdin
+      $stdin = StringIO.new("<test>")
+      stdio, = capture_io { SyntaxTree::CLI.run(%w[format --extension=test]) }
+      assert_equal("Formatted <test>\n", stdio)
+    ensure
+      $stdin = stdin
+      SyntaxTree::HANDLERS.delete(".test")
     end
 
     def test_generic_error
