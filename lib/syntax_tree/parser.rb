@@ -2871,6 +2871,7 @@ module SyntaxTree
     alias on_assign_error on_parse_error
     alias on_class_name_error on_parse_error
     alias on_param_error on_parse_error
+    alias compile_error on_parse_error
 
     # :call-seq:
     #   on_period: (String value) -> Period
