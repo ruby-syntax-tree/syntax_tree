@@ -308,6 +308,48 @@ module SyntaxTree
       end
     end
 
+    def test_config_file_custom_path
+      with_plugin_directory do |directory|
+        plugin = directory.plugin("puts 'Custom config!'")
+        config = <<~TXT
+        --print-width=80
+        --plugins=#{plugin}
+        TXT
+
+        filepath = File.join(Dir.tmpdir, "#{SecureRandom.hex}.streerc")
+        with_config_file(config, filepath) do
+          contents = "#{"a" * 30} + #{"b" * 30}\n"
+          result = run_cli("format", "--config=#{filepath}", contents: contents)
+
+          assert_equal("Custom config!\n#{contents}", result.stdio)
+        end
+      end
+    end
+
+    def test_config_file_custom_path_space_separated
+      with_plugin_directory do |directory|
+        plugin = directory.plugin("puts 'Custom config space!'")
+        config = <<~TXT
+        --print-width=80
+        --plugins=#{plugin}
+        TXT
+
+        filepath = File.join(Dir.tmpdir, "#{SecureRandom.hex}.streerc")
+        with_config_file(config, filepath) do
+          contents = "#{"a" * 30} + #{"b" * 30}\n"
+          result = run_cli("format", "--config", filepath, contents: contents)
+
+          assert_equal("Custom config space!\n#{contents}", result.stdio)
+        end
+      end
+    end
+
+    def test_config_file_nonexistent_path
+      assert_raises(ArgumentError) do
+        run_cli("format", "--config=/nonexistent/path.streerc")
+      end
+    end
+
     Result = Struct.new(:status, :stdio, :stderr, keyword_init: true)
 
     private
@@ -342,8 +384,8 @@ module SyntaxTree
       tempfile.unlink
     end
 
-    def with_config_file(contents)
-      filepath = File.join(Dir.pwd, SyntaxTree::CLI::ConfigFile::FILENAME)
+    def with_config_file(contents, filepath = nil)
+      filepath ||= File.join(Dir.pwd, SyntaxTree::CLI::ConfigFile::FILENAME)
       File.write(filepath, contents)
 
       yield
