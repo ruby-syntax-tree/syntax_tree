@@ -455,17 +455,26 @@ module SyntaxTree
       #{Color.bold("stree write [--plugins=...] [--print-width=NUMBER] [-e SCRIPT] FILE")}
         Read, format, and write back the source of the given files
 
+      --ignore-files=...
+        A glob pattern to ignore files when processing. This can be specified
+        multiple times to ignore multiple patterns.
+
       --plugins=...
         A comma-separated list of plugins to load.
 
-      --print-width=NUMBER
+      --print-width=...
         The maximum line width to use when formatting.
 
-      -e SCRIPT
+      -e ...
         Parse an inline string.
 
-      --extension=EXTENSION
-        A file extension matching the content passed in via STDIN or -e. Defaults to 'rb'
+      --extension=...
+        A file extension matching the content passed in via STDIN or -e.
+        Defaults to '.rb'.
+
+      --config=...
+        Path to a configuration file. Defaults to .streerc in the current
+        working directory.
     HELP
 
     # This represents all of the options that can be passed to the CLI. It is
@@ -563,8 +572,16 @@ module SyntaxTree
 
       attr_reader :filepath
 
-      def initialize
-        @filepath = File.join(Dir.pwd, FILENAME)
+      def initialize(filepath = nil)
+        if filepath
+          if File.readable?(filepath)
+            @filepath = filepath
+          else
+            raise ArgumentError, "Invalid configuration file: #{filepath}"
+          end
+        else
+          @filepath = File.join(Dir.pwd, FILENAME)
+        end
       end
 
       def exists?
@@ -582,8 +599,24 @@ module SyntaxTree
       def run(argv)
         name, *arguments = argv
 
-        config_file = ConfigFile.new
-        arguments.unshift(*config_file.arguments)
+        # First, we need to check if there's a --config option specified
+        # so we can use the custom config file path.
+        config_filepath = nil
+        arguments.each_with_index do |arg, index|
+          if arg.start_with?("--config=")
+            config_filepath = arg.split("=", 2)[1]
+            arguments.delete_at(index)
+            break
+          elsif arg == "--config" && arguments[index + 1]
+            config_filepath = arguments[index + 1]
+            arguments.delete_at(index + 1)
+            arguments.delete_at(index)
+            break
+          end
+        end
+
+        config_file = ConfigFile.new(config_filepath)
+        arguments = config_file.arguments.concat(arguments)
 
         options = Options.new
         options.parse(arguments)
