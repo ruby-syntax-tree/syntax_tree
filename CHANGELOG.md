@@ -6,6 +6,20 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 
 ## [Unreleased]
 
+## [6.3.0] - 2025-07-16
+
+### Added
+
+- The `--extension` command line option has been added to the CLI to specify what type of content is coming from stdin.
+- The `--config` command line option has been added to the CLI to specify the path to the configuration file.
+
+### Changed
+
+- Fix formatting of character literals when single quotes is enabled.
+- Pass ignore files option to the language server.
+- Hash keys should remain unchanged when there are any omitted values in the hash.
+- We now properly handle compilation errors in the parser.
+
 ## [6.2.0] - 2023-09-20
 
 ### Added
