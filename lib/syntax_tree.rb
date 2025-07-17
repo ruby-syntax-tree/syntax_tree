@@ -34,7 +34,6 @@ module SyntaxTree
   autoload :Pattern, "syntax_tree/pattern"
   autoload :PrettyPrintVisitor, "syntax_tree/pretty_print_visitor"
   autoload :Search, "syntax_tree/search"
-  autoload :Translation, "syntax_tree/translation"
   autoload :WithScope, "syntax_tree/with_scope"
   autoload :YARV, "syntax_tree/yarv"
 
