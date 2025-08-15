@@ -24,12 +24,14 @@ module SyntaxTree
       attr_reader :quote,
                   :trailing_comma,
                   :disable_auto_ternary,
+                  :compact_empty_hash,
                   :target_ruby_version
 
       def initialize(
         quote: :default,
         trailing_comma: :default,
         disable_auto_ternary: :default,
+        compact_empty_hash: :default,
         target_ruby_version: :default
       )
         @quote =
@@ -65,6 +67,17 @@ module SyntaxTree
             disable_auto_ternary
           end
 
+        @compact_empty_hash =
+          if compact_empty_hash == :default
+            # We ship with a compact empty hash plugin that will define this
+            # constant. That constant is responsible for determining the default
+            # compact empty hash value. If it's defined, then we default to true.
+            # Otherwise we default to false.
+            defined?(COMPACT_EMPTY_HASH)
+          else
+            compact_empty_hash
+          end
+
         @target_ruby_version =
           if target_ruby_version == :default
             # The default target Ruby version is the current version of Ruby.
@@ -87,10 +100,12 @@ module SyntaxTree
     attr_reader :quote,
                 :trailing_comma,
                 :disable_auto_ternary,
+                :compact_empty_hash,
                 :target_ruby_version
 
     alias trailing_comma? trailing_comma
     alias disable_auto_ternary? disable_auto_ternary
+    alias compact_empty_hash? compact_empty_hash
 
     def initialize(source, *args, options: Options.new)
       super(*args)
@@ -102,6 +117,7 @@ module SyntaxTree
       @quote = options.quote
       @trailing_comma = options.trailing_comma
       @disable_auto_ternary = options.disable_auto_ternary
+      @compact_empty_hash = options.compact_empty_hash
       @target_ruby_version = options.target_ruby_version
     end
 
