@@ -159,92 +159,6 @@ module SyntaxTree
       end
     end
 
-    # An action of the CLI that generates ctags for the given source.
-    class CTags < Action
-      attr_reader :entries
-
-      def initialize(options)
-        super
-        @entries = []
-      end
-
-      def run(item)
-        lines = item.source.lines(chomp: true)
-
-        SyntaxTree
-          .index(item.source)
-          .each do |entry|
-            line = lines[entry.location.line - 1]
-            pattern = "/^#{line.gsub("\\", "\\\\\\\\").gsub("/", "\\/")}$/;\""
-
-            entries << case entry
-            when SyntaxTree::Index::ModuleDefinition
-              parts = [entry.name, item.filepath, pattern, "m"]
-
-              if entry.nesting != [[entry.name]]
-                parts << "class:#{entry.nesting.flatten.tap(&:pop).join(".")}"
-              end
-
-              parts.join("\t")
-            when SyntaxTree::Index::ClassDefinition
-              parts = [entry.name, item.filepath, pattern, "c"]
-
-              if entry.nesting != [[entry.name]]
-                parts << "class:#{entry.nesting.flatten.tap(&:pop).join(".")}"
-              end
-
-              unless entry.superclass.empty?
-                inherits = entry.superclass.join(".").delete_prefix(".")
-                parts << "inherits:#{inherits}"
-              end
-
-              parts.join("\t")
-            when SyntaxTree::Index::MethodDefinition
-              parts = [entry.name, item.filepath, pattern, "f"]
-
-              unless entry.nesting.empty?
-                parts << "class:#{entry.nesting.flatten.join(".")}"
-              end
-
-              parts.join("\t")
-            when SyntaxTree::Index::SingletonMethodDefinition
-              parts = [entry.name, item.filepath, pattern, "F"]
-
-              unless entry.nesting.empty?
-                parts << "class:#{entry.nesting.flatten.join(".")}"
-              end
-
-              parts.join("\t")
-            when SyntaxTree::Index::AliasMethodDefinition
-              parts = [entry.name, item.filepath, pattern, "a"]
-
-              unless entry.nesting.empty?
-                parts << "class:#{entry.nesting.flatten.join(".")}"
-              end
-
-              parts.join("\t")
-            when SyntaxTree::Index::ConstantDefinition
-              parts = [entry.name, item.filepath, pattern, "C"]
-
-              unless entry.nesting.empty?
-                parts << "class:#{entry.nesting.flatten.join(".")}"
-              end
-
-              parts.join("\t")
-            end
-          end
-      end
-
-      def success
-        puts(<<~HEADER)
-          !_TAG_FILE_FORMAT	2	/extended format; --format=1 will not append ;" to lines/
-          !_TAG_FILE_SORTED	1	/0=unsorted, 1=sorted, 2=foldcase/
-        HEADER
-
-        entries.sort.each { |entry| puts(entry) }
-      end
-    end
-
     # An action of the CLI that formats the source twice to check if the first
     # format is not idempotent.
     class Debug < Action
@@ -417,9 +331,6 @@ module SyntaxTree
 
       #{Color.bold("stree check [--plugins=...] [--print-width=NUMBER] [-e SCRIPT] FILE")}
         Check that the given files are formatted as syntax tree would format them
-
-      #{Color.bold("stree ctags [-e SCRIPT] FILE")}
-        Print out a ctags-compatible index of the given files
 
       #{Color.bold("stree debug [--plugins=...] [--print-width=NUMBER] [-e SCRIPT] FILE")}
         Check that the given files can be formatted idempotently
@@ -627,8 +538,6 @@ module SyntaxTree
             AST.new(options)
           when "c", "check"
             Check.new(options)
-          when "ctags"
-            CTags.new(options)
           when "debug"
             Debug.new(options)
           when "doc"
