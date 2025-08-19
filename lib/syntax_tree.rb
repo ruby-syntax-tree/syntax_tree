@@ -34,7 +34,6 @@ module SyntaxTree
   autoload :Pattern, "syntax_tree/pattern"
   autoload :PrettyPrintVisitor, "syntax_tree/pretty_print_visitor"
   autoload :Search, "syntax_tree/search"
-  autoload :WithScope, "syntax_tree/with_scope"
 
   # This holds references to objects that respond to both #parse and #format
   # so that we can use them in the CLI.

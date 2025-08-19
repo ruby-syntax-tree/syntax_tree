@@ -45,7 +45,6 @@ It is built with only standard library dependencies. It additionally ships with 
   - [visit_methods](#visit_methods)
   - [BasicVisitor](#basicvisitor)
   - [MutationVisitor](#mutationvisitor)
-  - [WithScope](#withscope)
 - [Language server](#language-server)
   - [textDocument/formatting](#textdocumentformatting)
   - [textDocument/inlayHint](#textdocumentinlayhint)
@@ -619,26 +618,6 @@ SyntaxTree::Formatter.format(source, program)
 
 SyntaxTree::Formatter.format(source, program.accept(visitor))
 # => "if (a = 1)\nend\n"
-```
-
-### WithScope
-
-The `WithScope` module can be included in visitors to automatically keep track of local variables and arguments defined inside each scope. A `current_scope` accessor is made available to the request, allowing it to find all usages and definitions of a local.
-
-```ruby
-class MyVisitor < Visitor
-  prepend WithScope
-
-  def visit_ident(node)
-    # find_local will return a Local for any local variables or arguments
-    # present in the current environment or nil if the identifier is not a local
-    local = current_scope.find_local(node)
-
-    puts local.type # the type of the local (:variable or :argument)
-    puts local.definitions # the array of locations where this local is defined
-    puts local.usages # the array of locations where this local occurs
-  end
-end
 ```
 
 ## Language server
