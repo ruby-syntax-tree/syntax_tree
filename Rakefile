@@ -4,8 +4,6 @@ require "bundler/gem_tasks"
 require "rake/testtask"
 require "syntax_tree/rake_tasks"
 
-Rake.add_rakelib "tasks"
-
 Rake::TestTask.new(:test) do |t|
   t.libs << "test"
   t.libs << "lib"
