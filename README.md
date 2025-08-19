@@ -20,7 +20,6 @@ It is built with only standard library dependencies. It additionally ships with 
   - [Globbing](#globbing)
 - [Language server](#language-server)
   - [textDocument/formatting](#textdocumentformatting)
-  - [textDocument/inlayHint](#textdocumentinlayhint)
 - [Customization](#customization)
   - [Ignoring code](#ignoring-code)
   - [Plugins](#plugins)
@@ -176,31 +175,13 @@ stree write "**/{[!schema]*,*}.rb"
 
 ## Language server
 
-Syntax Tree additionally ships with a language server conforming to the [language server protocol](https://microsoft.github.io/language-server-protocol/). It can be invoked through the CLI by running:
+Syntax Tree additionally ships with a minimal language server conforming to the [language server protocol](https://microsoft.github.io/language-server-protocol/) that registers a formatter for the Ruby language. It can be invoked through the CLI by running:
 
 ```sh
 stree lsp
 ```
 
-By default, the language server is relatively minimal, mostly meant to provide a registered formatter for the Ruby language. However there are a couple of additional niceties baked in. There are related projects that configure and use this language server within IDEs. For example, to use this code with VSCode, see [ruby-syntax-tree/vscode-syntax-tree](https://github.com/ruby-syntax-tree/vscode-syntax-tree).
-
-### textDocument/formatting
-
-As mentioned above, the language server responds to formatting requests with the formatted document. It typically responds on the order of tens of milliseconds, so it should be fast enough for any IDE.
-
-### textDocument/inlayHint
-
-The language server also responds to the relatively new inlay hints request. This request allows the language server to define additional information that should exist in the source code as helpful hints to the developer. In our case we use it to display things like implicit parentheses. For example, if you had the following code:
-
-```ruby
-1 + 2 * 3
-```
-
-Implicitly, the `2 * 3` is going to be executed first because the `*` operator has higher precedence than the `+` operator. To ease mental overhead, our language server includes small parentheses to make this explicit, as in:
-
-```ruby
-1 + ₍2 * 3₎
-```
+There are related projects that configure and use this language server within IDEs. For example, to use this code with VSCode, see [ruby-syntax-tree/vscode-syntax-tree](https://github.com/ruby-syntax-tree/vscode-syntax-tree).
 
 ## Customization
 
