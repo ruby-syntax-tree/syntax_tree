@@ -17,21 +17,7 @@ require_relative "syntax_tree/version"
 # tools necessary to inspect and manipulate that syntax tree. It can be used to
 # build formatters, linters, language servers, and more.
 module SyntaxTree
-  # Syntax Tree the library has many features that aren't always used by the
-  # CLI. Requiring those features takes time, so we autoload as many constants
-  # as possible in order to keep the CLI as fast as possible.
-
-  autoload :FieldVisitor, "syntax_tree/field_visitor"
-  autoload :Index, "syntax_tree/index"
-  autoload :JSONVisitor, "syntax_tree/json_visitor"
   autoload :LanguageServer, "syntax_tree/language_server"
-  autoload :MatchVisitor, "syntax_tree/match_visitor"
-  autoload :Mermaid, "syntax_tree/mermaid"
-  autoload :MermaidVisitor, "syntax_tree/mermaid_visitor"
-  autoload :MutationVisitor, "syntax_tree/mutation_visitor"
-  autoload :Pattern, "syntax_tree/pattern"
-  autoload :PrettyPrintVisitor, "syntax_tree/pretty_print_visitor"
-  autoload :Search, "syntax_tree/search"
 
   # This holds references to objects that respond to both #parse and #format
   # so that we can use them in the CLI.
@@ -92,37 +78,11 @@ module SyntaxTree
     formatter.output.join
   end
 
-  # Indexes the given source code to return a list of all class, module, and
-  # method definitions. Used to quickly provide indexing capability for IDEs or
-  # documentation generation.
-  def self.index(source)
-    Index.index(source)
-  end
-
-  # Indexes the given file to return a list of all class, module, and method
-  # definitions. Used to quickly provide indexing capability for IDEs or
-  # documentation generation.
-  def self.index_file(filepath)
-    Index.index_file(filepath)
-  end
-
-  # A convenience method for creating a new mutation visitor.
-  def self.mutation
-    visitor = MutationVisitor.new
-    yield visitor
-    visitor
-  end
-
   # Parses the given source and returns the syntax tree.
   def self.parse(source)
     parser = Parser.new(source)
     response = parser.parse
     response unless parser.error?
-  end
-
-  # Parses the given file and returns the syntax tree.
-  def self.parse_file(filepath)
-    parse(read(filepath))
   end
 
   # Returns the source from the given filepath taking into account any potential
@@ -144,20 +104,5 @@ module SyntaxTree
   # handler for a particular file type.
   def self.register_handler(extension, handler)
     HANDLERS[extension] = handler
-  end
-
-  # Searches through the given source using the given pattern and yields each
-  # node in the tree that matches the pattern to the given block.
-  def self.search(source, query, &block)
-    pattern = Pattern.new(query).compile
-    program = parse(source)
-
-    Search.new(pattern).scan(program, &block)
-  end
-
-  # Searches through the given file using the given pattern and yields each
-  # node in the tree that matches the pattern to the given block.
-  def self.search_file(filepath, query, &block)
-    search(read(filepath), query, &block)
   end
 end

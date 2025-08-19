@@ -769,14 +769,8 @@ module SyntaxTree
       assert_equal 1, statements.size
       assert_kind_of(VCall, statements.first)
 
-      json = JSON.parse(program.to_json)
-      io = StringIO.new
-      PP.singleline_pp(program, io)
-
       assert_kind_of(Program, program)
       assert_equal(location(chars: 0..8), program.location)
-      assert_equal("program", json["type"])
-      assert_match(/^\(program.*\)$/, io.string)
     end
 
     def test_qsymbols

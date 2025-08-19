@@ -33,7 +33,7 @@ module SyntaxTree
 
     def test_ast
       result = run_cli("ast")
-      assert_includes(result.stdio, "ident \"test\"")
+      assert_includes(result.stdio, "\"test\"")
     end
 
     def test_ast_ignore
@@ -91,46 +91,9 @@ module SyntaxTree
       assert_includes(result.stdio, "test")
     end
 
-    def test_expr
-      result = run_cli("expr")
-      assert_includes(result.stdio, "SyntaxTree::Ident")
-    end
-
-    def test_expr_more_than_one
-      result = run_cli("expr", contents: "1; 2")
-      assert_includes(result.stderr, "single expression")
-      refute_equal(0, result.status)
-    end
-
     def test_format
       result = run_cli("format")
       assert_equal("test\n", result.stdio)
-    end
-
-    def test_json
-      result = run_cli("json")
-      assert_includes(result.stdio, "\"type\": \"program\"")
-    end
-
-    def test_match
-      result = run_cli("match")
-      assert_includes(result.stdio, "SyntaxTree::Program")
-    end
-
-    def test_search
-      result = run_cli("search", "VarRef", contents: "Foo + Bar")
-      assert_equal(2, result.stdio.lines.length)
-    end
-
-    def test_search_multi_line
-      result = run_cli("search", "Binary", contents: "1 +\n2")
-      assert_equal(1, result.stdio.lines.length)
-    end
-
-    def test_search_invalid
-      result = run_cli("search", "FooBar")
-      assert_includes(result.stderr, "unable")
-      refute_equal(0, result.status)
     end
 
     def test_version

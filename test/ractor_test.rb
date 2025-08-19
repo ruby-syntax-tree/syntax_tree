@@ -1,5 +1,8 @@
 # frozen_string_literal: true
 
+# Do not run this test locally, as it messes up coverage.
+return unless ENV["CI"]
+
 # Don't run this test if we're in a version of Ruby that doesn't have Ractors.
 return unless defined?(Ractor)
 

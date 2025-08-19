@@ -114,23 +114,6 @@ module SyntaxTree
       end
     end
 
-    class SyntaxTreeVisualizing
-      attr_reader :id, :uri
-
-      def initialize(id, uri)
-        @id = id
-        @uri = uri
-      end
-
-      def to_hash
-        {
-          method: "syntaxTree/visualizing",
-          id: id,
-          params: { textDocument: { uri: uri } }
-        }
-      end
-    end
-
     def test_formatting
       responses = run_server([
         Initialize.new(1),
@@ -246,27 +229,6 @@ module SyntaxTree
 
       assert_operator(shape, :===, responses)
       assert_equal(0, responses.dig(1, :result).size)
-    end
-
-    def test_visualizing
-      responses = run_server([
-        Initialize.new(1),
-        TextDocumentDidOpen.new("file:///path/to/file.rb", "1 + 2"),
-        SyntaxTreeVisualizing.new(2, "file:///path/to/file.rb"),
-        Shutdown.new(3)
-      ])
-
-      shape = LanguageServer::Request[[
-        { id: 1, result: { capabilities: Hash } },
-        { id: 2, result: :any },
-        { id: 3, result: {} }
-      ]]
-
-      assert_operator(shape, :===, responses)
-      assert_equal(
-        "(program (statements ((binary (int \"1\") + (int \"2\")))))\n",
-        responses.dig(1, :result)
-      )
     end
 
     def test_reading_file

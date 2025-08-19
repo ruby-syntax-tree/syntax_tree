@@ -267,9 +267,6 @@ module SyntaxTree
           uri = request.dig(:params, :textDocument, :uri)
           contents = store[uri]
           write(id: request[:id], result: contents ? inlay_hints(contents) : nil)
-        when Request[method: "syntaxTree/visualizing", id: :any, params: { textDocument: { uri: :any } }]
-          uri = request.dig(:params, :textDocument, :uri)
-          write(id: request[:id], result: PP.pp(SyntaxTree.parse(store[uri]), +""))
         when Request[method: %r{\$/.+}]
           # ignored
         when Request[method: "textDocument/documentColor", params: { textDocument: { uri: :any } }]
@@ -334,10 +331,6 @@ module SyntaxTree
       response = value.merge(jsonrpc: "2.0").to_json
       output.print("Content-Length: #{response.bytesize}\r\n\r\n#{response}")
       output.flush
-    end
-
-    def log(message)
-      write(method: "window/logMessage", params: { type: 4, message: message })
     end
   end
 end

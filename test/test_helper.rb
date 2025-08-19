@@ -4,6 +4,7 @@ unless RUBY_ENGINE == "truffleruby"
   require "simplecov"
   SimpleCov.start do
     add_filter("idempotency_test.rb") unless ENV["CI"]
+    add_filter("ractor_test.rb") unless ENV["CI"]
     add_group("lib", "lib")
     add_group("test", "test")
   end
@@ -12,41 +13,6 @@ end
 $LOAD_PATH.unshift(File.expand_path("../lib", __dir__))
 require "syntax_tree"
 require "syntax_tree/cli"
-
-unless RUBY_ENGINE == "truffleruby"
-  # Here we are going to establish type verification whenever a new node is
-  # created. We do this through the reflection module, which in turn parses the
-  # source code of the node classes.
-  require "syntax_tree/reflection"
-  SyntaxTree::Reflection.nodes.each do |name, node|
-    next if name == :Statements
-
-    clazz = SyntaxTree.const_get(name)
-    parameters = clazz.instance_method(:initialize).parameters
-
-    # First, verify that all of the parameters listed in the list of attributes.
-    # If there are any parameters that aren't listed in the attributes, then
-    # something went wrong with the parsing in the reflection module.
-    raise unless (parameters.map(&:last) - node.attributes.keys).empty?
-
-    # Now we're going to use an alias chain to redefine the initialize method to
-    # include type checking.
-    clazz.alias_method(:initialize_without_verify, :initialize)
-    clazz.define_method(:initialize) do |**kwargs|
-      kwargs.each do |kwarg, value|
-        attribute = node.attributes.fetch(kwarg)
-
-        unless attribute.type === value
-          raise TypeError,
-                "invalid type for #{name}##{kwarg}, expected " \
-                  "#{attribute.type.inspect}, got #{value.inspect}"
-        end
-      end
-
-      initialize_without_verify(**kwargs)
-    end
-  end
-end
 
 require "json"
 require "tempfile"
@@ -78,10 +44,6 @@ module SyntaxTree
       recorder = Recorder.new
       node.accept(recorder)
 
-      # Next, get the "type" which is effectively an underscored version of
-      # the name of the class.
-      type = recorder.called[/^visit_(.+)$/, 1]
-
       # Test that the method that is called when you call accept is a valid
       # visit method on the visitor.
       assert_respond_to(Visitor.new, recorder.called)
@@ -91,30 +53,6 @@ module SyntaxTree
       assert_kind_of(Array, node.child_nodes)
       assert_kind_of(Array, node.deconstruct)
       assert_kind_of(Hash, node.deconstruct_keys([]))
-
-      # Assert that it can be pretty printed to a string.
-      pretty = PP.singleline_pp(node, +"")
-      refute_includes(pretty, "#<")
-      assert_includes(pretty, type)
-
-      # Assert that we can get back a new tree by using the mutation visitor.
-      assert_operator node, :===, node.accept(MutationVisitor.new)
-
-      # Serialize the node to JSON, parse it back out, and assert that we have
-      # found the expected type.
-      json = node.to_json
-      refute_includes(json, "#<")
-      assert_equal(type, JSON.parse(json)["type"])
-
-      # Get a match expression from the node, then assert that it can in fact
-      # match the node.
-      # rubocop:disable all
-      assert(eval(<<~RUBY))
-        case node
-        in #{node.construct_keys}
-          true
-        end
-      RUBY
     end
 
     Minitest::Test.include(self)

@@ -211,21 +211,6 @@ module SyntaxTree
       end
     end
 
-    # An action of the CLI that outputs a pattern-matching Ruby expression that
-    # would match the first expression of the input given.
-    class Expr < Action
-      def run(item)
-        program = item.handler.parse(item.source)
-
-        if (expressions = program.statements.body) && expressions.size == 1
-          puts expressions.first.construct_keys
-        else
-          warn("The input to `stree expr` must be a single expression.")
-          exit(1)
-        end
-      end
-    end
-
     # An action of the CLI that formats the input source and prints it out.
     class Format < Action
       def run(item)
@@ -237,61 +222,6 @@ module SyntaxTree
           )
 
         puts formatted
-      end
-    end
-
-    # An action of the CLI that converts the source into its equivalent JSON
-    # representation.
-    class Json < Action
-      def run(item)
-        object = item.handler.parse(item.source).accept(JSONVisitor.new)
-        puts JSON.pretty_generate(object)
-      end
-    end
-
-    # An action of the CLI that outputs a pattern-matching Ruby expression that
-    # would match the input given.
-    class Match < Action
-      def run(item)
-        puts item.handler.parse(item.source).construct_keys
-      end
-    end
-
-    # An action of the CLI that searches for the given pattern matching pattern
-    # in the given files.
-    class Search < Action
-      attr_reader :search
-
-      def initialize(query)
-        query = File.read(query) if File.readable?(query)
-        pattern =
-          begin
-            Pattern.new(query).compile
-          rescue Pattern::CompilationError => error
-            warn(error.message)
-            exit(1)
-          end
-
-        @search = SyntaxTree::Search.new(pattern)
-      end
-
-      def run(item)
-        search.scan(item.handler.parse(item.source)) do |node|
-          location = node.location
-          line = location.start_line
-
-          bold_range =
-            if line == location.end_line
-              location.start_column...location.end_column
-            else
-              location.start_column..
-            end
-
-          source = item.source.lines[line - 1].chomp
-          source[bold_range] = Color.bold(source[bold_range]).to_s
-
-          puts("#{item.filepath}:#{line}:#{location.start_column}: #{source}")
-        end
       end
     end
 
@@ -338,27 +268,14 @@ module SyntaxTree
       #{Color.bold("stree doc [--plugins=...] [-e SCRIPT] FILE")}
         Print out the doc tree that would be used to format the given files
 
-      #{Color.bold("stree expr [-e SCRIPT] FILE")}
-        Print out a pattern-matching Ruby expression that would match the first
-        expression of the given files
-
       #{Color.bold("stree format [--plugins=...] [--print-width=NUMBER] [-e SCRIPT] FILE")}
         Print out the formatted version of the given files
-
-      #{Color.bold("stree json [--plugins=...] [-e SCRIPT] FILE")}
-        Print out the JSON representation of the given files
-
-      #{Color.bold("stree match [--plugins=...] [-e SCRIPT] FILE")}
-        Print out a pattern-matching Ruby expression that would match the given files
 
       #{Color.bold("stree help")}
         Display this help message
 
       #{Color.bold("stree lsp [--plugins=...] [--print-width=NUMBER]")}
         Run syntax tree in language server mode
-
-      #{Color.bold("stree search PATTERN [-e SCRIPT] FILE")}
-        Search for the given pattern in the given files
 
       #{Color.bold("stree version")}
         Output the current version of syntax tree
@@ -542,25 +459,17 @@ module SyntaxTree
             Debug.new(options)
           when "doc"
             Doc.new(options)
-          when "e", "expr"
-            Expr.new(options)
           when "f", "format"
             Format.new(options)
           when "help"
             puts HELP
             return 0
-          when "j", "json"
-            Json.new(options)
           when "lsp"
             LanguageServer.new(
               print_width: options.print_width,
               ignore_files: options.ignore_files
             ).run
             return 0
-          when "m", "match"
-            Match.new(options)
-          when "s", "search"
-            Search.new(arguments.shift)
           when "version"
             puts SyntaxTree::VERSION
             return 0

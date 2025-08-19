@@ -133,22 +133,6 @@ module SyntaxTree
     def end_char
       location.end_char
     end
-
-    def pretty_print(q)
-      accept(PrettyPrintVisitor.new(q))
-    end
-
-    def to_json(*opts)
-      accept(JSONVisitor.new).to_json(*opts)
-    end
-
-    def to_mermaid
-      accept(MermaidVisitor.new)
-    end
-
-    def construct_keys
-      PrettierPrint.format(+"") { |q| accept(MatchVisitor.new(q)) }
-    end
   end
 
   # When we're implementing the === operator for a node, we oftentimes need to
