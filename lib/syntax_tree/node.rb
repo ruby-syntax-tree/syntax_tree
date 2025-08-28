@@ -5766,7 +5766,7 @@ module SyntaxTree
       q.format(lbrace)
 
       if assocs.empty?
-        q.breakable_empty
+        q.breakable_empty unless q.compact_empty_hash?
       else
         q.indent do
           q.breakable_space
