@@ -40,16 +40,14 @@ module SyntaxTree
     # type should be able to handle. It's here so that we can use it in a bunch
     # of tests.
     def assert_syntax_tree(node)
-      # First, get the visit method name.
       recorder = Recorder.new
       node.accept(recorder)
 
-      # Test that the method that is called when you call accept is a valid
-      # visit method on the visitor.
-      assert_respond_to(Visitor.new, recorder.called)
+      visitor = Parser::Visitor.new
+      assert_respond_to(visitor, recorder.called)
 
-      # Test that you can call child_nodes and the pattern matching methods on
-      # this class.
+      assert_kind_of(node.class, node.copy)
+      assert_operator(node, :===, node)
       assert_kind_of(Array, node.child_nodes)
       assert_kind_of(Array, node.deconstruct)
       assert_kind_of(Hash, node.deconstruct_keys([]))
@@ -106,8 +104,9 @@ module Fixtures
           # If there's a comment starting with >= that starts after the % that
           # delineates the test, then we're going to check if the version
           # satisfies that constraint.
-          if comment&.start_with?(">=")
-            next if ruby_version < Gem::Version.new(comment.split[1])
+          if comment&.start_with?(">=") &&
+               ruby_version < Gem::Version.new(comment.split[1])
+            next
           end
 
           name = :"#{fixture}_#{index}"

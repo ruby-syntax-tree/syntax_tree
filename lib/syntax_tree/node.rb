@@ -529,10 +529,6 @@ module SyntaxTree
     def ===(other)
       other.is_a?(AliasNode) && left === other.left && right === other.right
     end
-
-    def var_alias?
-      left.is_a?(GVar)
-    end
   end
 
   # ARef represents when you're pulling a value out of a collection at a
