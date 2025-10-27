@@ -6,7 +6,7 @@ require "bundler/inline"
 gemfile do
   source "https://rubygems.org"
   gem "stackprof"
-  gem "prettier_print"
+  gem "prism"
 end
 
 $:.unshift(File.expand_path("../lib", __dir__))
@@ -14,7 +14,7 @@ require "syntax_tree"
 
 StackProf.run(mode: :cpu, out: "tmp/profile.dump", raw: true) do
   Dir[File.join(RbConfig::CONFIG["libdir"], "**/*.rb")].each do |filepath|
-    SyntaxTree.format(SyntaxTree.read(filepath))
+    SyntaxTree.format_file(filepath)
   end
 end
 

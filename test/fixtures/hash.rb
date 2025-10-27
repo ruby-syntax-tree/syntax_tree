@@ -17,7 +17,7 @@
 %
 { bar => bar, "baz": baz }
 -
-{ bar => bar, :"baz" => baz }
+{ bar => bar, :baz => baz }
 %
 { bar: barrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr, baz: bazzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz }
 -

@@ -5,7 +5,7 @@ AllCops:
   DisplayStyleGuide: true
   NewCops: enable
   SuggestExtensions: false
-  TargetRubyVersion: 2.7
+  TargetRubyVersion: 3.2
   Exclude:
   - '{.git,.github,.ruby-lsp,bin,coverage,doc,pkg,sorbet,spec,test/fixtures,vendor,tmp}/**/*'
   - test.rb
@@ -14,7 +14,7 @@ Gemspec/DevelopmentDependencies:
   Enabled: false
 
 Layout/LineLength:
-  Max: 80
+  Max: 100
 
 Lint/AmbiguousBlockAssociation:
   Enabled: false
@@ -70,6 +70,9 @@ Naming/MethodName:
 Naming/MethodParameterName:
   Enabled: false
 
+Naming/PredicateMethod:
+  Enabled: false
+
 Naming/RescuedExceptionsVariableName:
   PreferredName: error
 
@@ -79,10 +82,16 @@ Naming/VariableNumber:
 Security/Eval:
   Enabled: false
 
+Style/AccessModifierDeclarations:
+  Enabled: false
+
 Style/AccessorGrouping:
   Enabled: false
 
 Style/Alias:
+  Enabled: false
+
+Style/BlockDelimiters:
   Enabled: false
 
 Style/CaseEquality:
@@ -149,6 +158,9 @@ Style/Next:
   Enabled: false
 
 Style/NumericPredicate:
+  Enabled: false
+
+Style/OptionalBooleanParameter:
   Enabled: false
 
 Style/ParallelAssignment:

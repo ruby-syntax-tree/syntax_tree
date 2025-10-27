@@ -15,7 +15,7 @@ foo(bar => bar, :baz => baz)
 %
 foo(bar => bar, "baz": baz)
 -
-foo(bar => bar, :"baz" => baz)
+foo(bar => bar, :baz => baz)
 %
 foo(bar: barrrrrrrrrrrrrrrrrrrrrrrrrrrrrr, baz: bazzzzzzzzzzzzzzzzzzzzzzzzzzzzzz)
 -

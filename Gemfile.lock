@@ -2,23 +2,21 @@ PATH
   remote: .
   specs:
     syntax_tree (6.3.0)
-      prettier_print (>= 1.2.0)
+      prism
 
 GEM
   remote: https://rubygems.org/
   specs:
     ast (2.4.3)
     docile (1.4.1)
-    fiddle (1.1.8)
-    json (2.15.1)
+    json (2.15.2)
     language_server-protocol (3.17.0.5)
     lint_roller (1.1.0)
     minitest (5.26.0)
     parallel (1.27.0)
-    parser (3.3.9.0)
+    parser (3.3.10.0)
       ast (~> 2.4.1)
       racc
-    prettier_print (1.2.1)
     prism (1.6.0)
     racc (1.8.1)
     rainbow (3.1.1)
@@ -43,22 +41,19 @@ GEM
       docile (~> 1.1)
       simplecov-html (~> 0.11)
       simplecov_json_formatter (~> 0.1)
-    simplecov-html (0.13.1)
+    simplecov-html (0.13.2)
     simplecov_json_formatter (0.1.4)
     unicode-display_width (3.2.0)
       unicode-emoji (~> 4.1)
     unicode-emoji (4.1.0)
 
 PLATFORMS
-  arm64-darwin-21
-  ruby
-  x86_64-darwin-19
-  x86_64-darwin-21
+  arm64-darwin-23
+  x64-mingw-ucrt
   x86_64-linux
 
 DEPENDENCIES
   bundler
-  fiddle
   minitest
   rake
   rubocop
@@ -66,4 +61,4 @@ DEPENDENCIES
   syntax_tree!
 
 BUNDLED WITH
-   2.3.6
+   2.4.19

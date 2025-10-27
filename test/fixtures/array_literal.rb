@@ -87,5 +87,7 @@ fooooooooooooooooo = 1
 [:foo, "bar"]
 %
 [:foo, :"bar"]
+-
+%i[foo bar]
 %
 [foo, bar] # comment

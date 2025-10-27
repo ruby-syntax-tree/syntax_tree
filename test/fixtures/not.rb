@@ -1,5 +1,7 @@
 %
 not()
+-
+not ()
 %
 not ()
 %
@@ -14,8 +16,6 @@ if foo
 else
   baz
 end
--
-foo ? not(bar) : baz
 %
 if foooooooooooooooooooooooooooooooooooooooooo
   not bar

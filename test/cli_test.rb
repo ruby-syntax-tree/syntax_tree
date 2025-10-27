@@ -25,27 +25,10 @@ module SyntaxTree
       file = Tempfile.new(%w[test- .test])
       file.puts("test")
 
-      result = run_cli("ast", contents: file)
-      assert_equal("\"test\\n\" + \"test\\n\"\n", result.stdio)
+      result = run_cli("format", contents: file)
+      assert_equal("Formatted test\n", result.stdio)
     ensure
-      SyntaxTree::HANDLERS.delete(".test")
-    end
-
-    def test_ast
-      result = run_cli("ast")
-      assert_includes(result.stdio, "\"test\"")
-    end
-
-    def test_ast_ignore
-      result = run_cli("ast", "--ignore-files='*/test*'")
-      assert_equal(0, result.status)
-      assert_empty(result.stdio)
-    end
-
-    def test_ast_syntax_error
-      result = run_cli("ast", contents: "foo\n<>\nbar\n")
-      assert_includes(result.stderr, "syntax error")
-      refute_equal(0, result.status)
+      SyntaxTree.unregister_handler(".test")
     end
 
     def test_check
@@ -65,11 +48,6 @@ module SyntaxTree
       assert_includes(result.stdio, "match")
     end
 
-    def test_check_target_ruby_version
-      result = run_cli("check", "--target-ruby-version=2.6.0")
-      assert_includes(result.stdio, "match")
-    end
-
     def test_debug
       result = run_cli("debug")
       assert_includes(result.stdio, "idempotently")
@@ -84,11 +62,6 @@ module SyntaxTree
         assert_includes(result.stderr, "idempotently")
         refute_equal(0, result.status)
       end
-    end
-
-    def test_doc
-      result = run_cli("doc")
-      assert_includes(result.stdio, "test")
     end
 
     def test_format
@@ -117,7 +90,7 @@ module SyntaxTree
 
     def test_write_script
       args = ["write", "-e", "1 + 2"]
-      stdout, stderr = capture_io { SyntaxTree::CLI.run(args) }
+      stdout, stderr = capture_cli_io { SyntaxTree::CLI.run(args) }
 
       assert_includes stdout, "script"
       assert_empty stderr
@@ -128,7 +101,7 @@ module SyntaxTree
       $stdin = StringIO.new("1 + 2")
 
       begin
-        stdout, stderr = capture_io { SyntaxTree::CLI.run(["write"]) }
+        stdout, stderr = capture_cli_io { SyntaxTree::CLI.run(["write"]) }
 
         assert_includes stdout, "stdin"
         assert_empty stderr
@@ -138,13 +111,13 @@ module SyntaxTree
     end
 
     def test_help
-      stdio, = capture_io { SyntaxTree::CLI.run(["help"]) }
+      stdio, = capture_cli_io { SyntaxTree::CLI.run(["help"]) }
       assert_includes(stdio, "stree help")
     end
 
     def test_help_default
       status = 0
-      *, stderr = capture_io { status = SyntaxTree::CLI.run(["foobar"]) }
+      *, stderr = capture_cli_io { status = SyntaxTree::CLI.run(["foobar"]) }
       assert_includes(stderr, "stree help")
       refute_equal(0, status)
     end
@@ -153,42 +126,39 @@ module SyntaxTree
       stdin = $stdin
       $stdin = StringIO.new("1+1")
 
-      stdio, = capture_io { SyntaxTree::CLI.run(["format"]) }
+      stdio, = capture_cli_io { SyntaxTree::CLI.run(["format"]) }
       assert_equal("1 + 1\n", stdio)
     ensure
       $stdin = stdin
     end
 
     def test_inline_script
-      stdio, = capture_io { SyntaxTree::CLI.run(%w[format -e 1+1]) }
+      stdio, = capture_cli_io { SyntaxTree::CLI.run(%w[format -e 1+1]) }
       assert_equal("1 + 1\n", stdio)
     end
 
     def test_multiple_inline_scripts
-      stdio, = capture_io { SyntaxTree::CLI.run(%w[format -e 1+1 -e 2+2]) }
+      stdio, = capture_cli_io { SyntaxTree::CLI.run(%w[format -e 1+1 -e 2+2]) }
       assert_equal(["1 + 1", "2 + 2"], stdio.split("\n").sort)
     end
 
     def test_format_script_with_custom_handler
       SyntaxTree.register_handler(".test", TestHandler.new)
-      stdio, =
-        capture_io do
-          SyntaxTree::CLI.run(%w[format --extension=test -e <test>])
-        end
+      stdio, = capture_cli_io { SyntaxTree::CLI.run(%w[format --extension=test -e <test>]) }
       assert_equal("Formatted <test>\n", stdio)
     ensure
-      SyntaxTree::HANDLERS.delete(".test")
+      SyntaxTree.unregister_handler(".test")
     end
 
     def test_format_stdin_with_custom_handler
       SyntaxTree.register_handler(".test", TestHandler.new)
       stdin = $stdin
       $stdin = StringIO.new("<test>")
-      stdio, = capture_io { SyntaxTree::CLI.run(%w[format --extension=test]) }
+      stdio, = capture_cli_io { SyntaxTree::CLI.run(%w[format --extension=test]) }
       assert_equal("Formatted <test>\n", stdio)
     ensure
       $stdin = stdin
-      SyntaxTree::HANDLERS.delete(".test")
+      SyntaxTree.unregister_handler(".test")
     end
 
     def test_generic_error
@@ -208,13 +178,12 @@ module SyntaxTree
       end
     end
 
-    def test_language_server
+    def test_lsp
       prev_stdin = $stdin
       prev_stdout = $stdout
 
       request = { method: "shutdown" }.merge(jsonrpc: "2.0").to_json
-      $stdin =
-        StringIO.new("Content-Length: #{request.bytesize}\r\n\r\n#{request}")
+      $stdin = StringIO.new("Content-Length: #{request.bytesize}\r\n\r\n#{request}")
       $stdout = StringIO.new
 
       assert_equal(0, SyntaxTree::CLI.run(["lsp"]))
@@ -308,9 +277,7 @@ module SyntaxTree
     end
 
     def test_config_file_nonexistent_path
-      assert_raises(ArgumentError) do
-        run_cli("format", "--config=/nonexistent/path.streerc")
-      end
+      assert_raises(ArgumentError) { run_cli("format", "--config=/nonexistent/path.streerc") }
     end
 
     Result = Struct.new(:status, :stdio, :stderr, keyword_init: true)
@@ -332,7 +299,7 @@ module SyntaxTree
 
       status = nil
       stdio, stderr =
-        capture_io do
+        capture_cli_io do
           status =
             begin
               SyntaxTree::CLI.run([command, *args, tempfile.path])
@@ -345,6 +312,12 @@ module SyntaxTree
     ensure
       tempfile.close
       tempfile.unlink
+    end
+
+    if Process.respond_to?(:fork)
+      alias capture_cli_io capture_subprocess_io
+    else
+      alias capture_cli_io capture_io
     end
 
     def with_config_file(contents, filepath = nil)

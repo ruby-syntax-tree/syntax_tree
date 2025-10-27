@@ -23,3 +23,5 @@ undef foo,
 undef foo, bar # comment
 %
 undef :"foo", :"bar"
+-
+undef foo, bar

@@ -2,14 +2,12 @@
   <img alt="Syntax Tree" height="400px" src="./doc/logo.svg">
 </div>
 
-# SyntaxTree
+# Syntax Tree
 
 [![Build Status](https://github.com/ruby-syntax-tree/syntax_tree/actions/workflows/main.yml/badge.svg)](https://github.com/ruby-syntax-tree/syntax_tree/actions/workflows/main.yml)
 [![Gem Version](https://img.shields.io/gem/v/syntax_tree.svg)](https://rubygems.org/gems/syntax_tree)
 
-Syntax Tree is a suite of tools built on top of the internal CRuby parser. It provides the ability to generate a syntax tree from source, as well as the tools necessary to inspect and manipulate that syntax tree. It can be used to build formatters, linters, language servers, and more.
-
-It is built with only standard library dependencies. It additionally ships with a plugin system so that you can build your own syntax trees from other languages and incorporate these tools.
+Syntax Tree is fast Ruby parser built on top of the [prism](https://github.com/ruby/prism) Ruby parser. It is built with only standard library dependencies.
 
 - [Installation](#installation)
 - [CLI](#cli)
@@ -19,11 +17,9 @@ It is built with only standard library dependencies. It additionally ships with 
   - [Configuration](#configuration)
   - [Globbing](#globbing)
 - [Language server](#language-server)
-  - [textDocument/formatting](#textdocumentformatting)
 - [Customization](#customization)
   - [Ignoring code](#ignoring-code)
   - [Plugins](#plugins)
-  - [Languages](#languages)
 - [Integration](#integration)
   - [Rake](#rake)
   - [RuboCop](#rubocop)
@@ -144,16 +140,28 @@ stree write --ignore-files='db/**/*.rb' '**/*.rb'
 
 ### Configuration
 
-Any of the above CLI commands can also read configuration options from a `.streerc` file in the directory where the commands are executed.
+All of the above commands accept additional configuration options. Those are:
 
-This should be a text file with each argument on a separate line.
+- `--print-width=?` - The print width is the suggested line length that should be used when formatting the source. Note that this is not a hard limit like a linter. Instead, it is used as a guideline for how long lines _should_ be. For example, if you have the following code:
+
+```ruby
+foo do
+  bar
+end
+```
+
+In this case, the formatter will see that the block fits into the print width and will rewrite it using the `{}` syntax. This will actually make the line longer than originally written. This is why it is helpful to think of it as a suggestion, rather than a limit.
+- `--preferred-quote=?` - The quote to use for string and character literals. This can be either `"` or `'`. It is "preferred" because in the case that the formatter encounters a string that contains interpolation or certain escape sequences, it will not attempt to change the quote style to avoid accidentally changing the semantic meaning of the code.
+- `--[no-]trailing-comma` - Whether or not to add trailing commas to multiline array literals, hash literals, and method calls that can support trailing commas.
+
+Any of the above CLI commands can also read configuration options from a `.streerc` file in the directory where the commands are executed. This should be a text file with each argument on a separate line.
 
 ```txt
 --print-width=100
---plugins=plugin/trailing_comma
+--trailing-comma
 ```
 
-If this file is present, it will _always_ be used for CLI commands. You can also pass options from the command line as in the examples above. The options in the `.streerc` file are passed to the CLI first, then the arguments from the command line. In the case of exclusive options (e.g. `--print-width`), this means that the command line options override what's in the config file. In the case of options that can take multiple inputs (e.g. `--plugins`), the effect is additive. That is, the plugins passed from the command line will be loaded _in addition to_ the plugins in the config file.
+If this file is present, it will _always_ be used for CLI commands. The options in the `.streerc` file are passed to the CLI first, then the arguments from the command line. In the case of exclusive options (e.g. `--print-width`), this means that the command line options override what's in the config file. In the case of options that can take multiple inputs (e.g. `--plugins`), the effect is additive. That is, the plugins passed from the command line will be loaded _in addition to_ the plugins in the config file.
 
 ### Globbing
 
@@ -220,32 +228,8 @@ To register plugins, define a file somewhere in your load path named `syntax_tre
 
 * `plugin/single_quotes` - This will change all of your string literals to use single quotes instead of the default double quotes.
 * `plugin/trailing_comma` - This will put trailing commas into multiline array literals, hash literals, and method calls that can support trailing commas.
-* `plugin/disable_auto_ternary` - This will prevent the automatic conversion of `if ... else` to ternary expressions.
 
-If you're using Syntax Tree as a library, you can require those files directly or manually pass those options to the formatter initializer through the `SyntaxTree::Formatter::Options` class.
-
-### Languages
-
-To register a new language, call:
-
-```ruby
-SyntaxTree.register_handler(".mylang", MyLanguage)
-```
-
-In this case, whenever the CLI encounters a filepath that ends with the given extension, it will invoke methods on `MyLanguage` instead of `SyntaxTree` itself. To make sure your object conforms to each of the necessary APIs, it should implement:
-
-* `MyLanguage.read(filepath)` - usually this is just an alias to `File.read(filepath)`, but if you need anything else that hook is here.
-* `MyLanguage.parse(source)` - this should return the syntax tree corresponding to the given source. Those objects should implement the `pretty_print` interface.
-* `MyLanguage.format(source)` - this should return the formatted version of the given source.
-
-Below are listed all of the "official" language plugins hosted under the same GitHub organization, which can be used as references for how to implement other plugins.
-
-* [bf](https://github.com/ruby-syntax-tree/syntax_tree-bf) for the [brainf*** language](https://esolangs.org/wiki/Brainfuck).
-* [css](https://github.com/ruby-syntax-tree/syntax_tree-css) for the [CSS stylesheet language](https://www.w3.org/Style/CSS/).
-* [haml](https://github.com/ruby-syntax-tree/syntax_tree-haml) for the [Haml template language](https://haml.info/).
-* [json](https://github.com/ruby-syntax-tree/syntax_tree-json) for the [JSON notation language](https://www.json.org/).
-* [rbs](https://github.com/ruby-syntax-tree/syntax_tree-rbs) for the [RBS type language](https://github.com/ruby/rbs).
-* [xml](https://github.com/ruby-syntax-tree/syntax_tree-xml) for the [XML markup language](https://www.w3.org/XML/).
+If you're using Syntax Tree as a library, you can require those files directly or manually pass those options to the formatter initializer through the `SyntaxTree::Options` class.
 
 ## Integration
 
@@ -256,12 +240,12 @@ Syntax Tree's goal is to seamlessly integrate into your workflow. To this end, i
 Syntax Tree ships with the ability to define [rake](https://github.com/ruby/rake) tasks that will trigger runs of the CLI. To define them in your application, add the following configuration to your `Rakefile`:
 
 ```ruby
-require "syntax_tree/rake_tasks"
+require "syntax_tree/rake"
 SyntaxTree::Rake::CheckTask.new
 SyntaxTree::Rake::WriteTask.new
 ```
 
-These calls will define `rake stree:check` and `rake stree:write` (equivalent to calling `stree check` and `stree write` with the CLI respectively). You can configure them by either passing arguments to the `new` method or by using a block.
+These calls will define `rake stree:check` and `rake stree:write` (equivalent to calling `stree check` and `stree write` with the CLI respectively). You can configure them by either passing arguments to the `new` method or by using a block. In addition to the regular configuration options used for the formatter, there are a few additional options specific to the rake tasks.
 
 #### `name`
 
@@ -289,26 +273,6 @@ If you want to ignore certain file patterns when running the command, you can pa
 SyntaxTree::Rake::WriteTask.new do |t|
   t.source_files = "**/*.rb"
   t.ignore_files = "db/**/*.rb"
-end
-```
-
-#### `print_width`
-
-If you want to use a different print width from the default (80), you can pass that to the `print_width` field, as in:
-
-```ruby
-SyntaxTree::Rake::WriteTask.new do |t|
-  t.print_width = 100
-end
-```
-
-#### `plugins`
-
-If you're running Syntax Tree with plugins (either your own or the pre-built ones), you can pass that to the `plugins` field, as in:
-
-```ruby
-SyntaxTree::Rake::WriteTask.new do |t|
-  t.plugins = ["plugin/single_quotes"]
 end
 ```
 
