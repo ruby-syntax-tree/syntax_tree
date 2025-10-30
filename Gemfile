@@ -4,4 +4,8 @@ source "https://rubygems.org"
 
 gemspec
 
-gem "fiddle"
+gem "bundler"
+gem "minitest"
+gem "rake"
+gem "rubocop"
+gem "simplecov"

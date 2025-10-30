@@ -68,14 +68,6 @@ b
 ->(; a, b) {}
 %
 ->(a = (b; c)) {}
--
-->(
-  a = (
-    b
-    c
-  )
-) do
-end
 %
 -> do # comment1
   # comment2

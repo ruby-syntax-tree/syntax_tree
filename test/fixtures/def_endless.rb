@@ -28,7 +28,7 @@ def a()
 =end
 =1
 -
-def a() =
+def a()
 =begin
 =end
-  1
+= 1

@@ -10,3 +10,11 @@
 "#{foo; bar}"
 %
 "#{if foo; foooooooooooooooooooooooooooooooooooooo; else; barrrrrrrrrrrrrrrr; end}"
+-
+"#{
+  if foo
+    foooooooooooooooooooooooooooooooooooooo
+  else
+    barrrrrrrrrrrrrrrr
+  end
+}"

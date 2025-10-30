@@ -47,8 +47,6 @@ if not(a)
 else
   c
 end
--
-not(a) ? b : c
 %
 (if foo then bar else baz end)
 -

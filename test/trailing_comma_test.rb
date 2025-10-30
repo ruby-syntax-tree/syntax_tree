@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative "../test_helper"
+require_relative "test_helper"
 
 module SyntaxTree
   class TrailingCommaTest < Minitest::Test
@@ -80,12 +80,8 @@ module SyntaxTree
     private
 
     def assert_format(expected, source = expected)
-      options = Formatter::Options.new(trailing_comma: true)
-      formatter = Formatter.new(source, [], options: options)
-      SyntaxTree.parse(source).format(formatter)
-    
-      formatter.flush
-      assert_equal(expected, formatter.output.join)
+      options = SyntaxTree.options(print_width: 80, trailing_comma: true)
+      assert_equal(expected, SyntaxTree.format(source, options))
     end
   end
 end

@@ -2,13 +2,25 @@
 case foo
 in ** then
 end
+-
+case foo
+in { ** }
+end
 %
 case foo
 in bar:
 end
+-
+case foo
+in { bar: }
+end
 %
 case foo
 in bar: bar
+end
+-
+case foo
+in { bar: bar }
 end
 %
 case foo
@@ -29,6 +41,10 @@ end
 %
 case foo
 in **bar
+end
+-
+case foo
+in { **bar }
 end
 % # >= 2.7.3
 case foo
@@ -74,6 +90,10 @@ end
 case foo
 in **nil
 end
+-
+case foo
+in { **nil }
+end
 %
 case foo
 in bar, { baz:, **nil }
@@ -82,5 +102,5 @@ end
 -
 case foo
 in [bar, { baz:, **nil }]
-in qux:
+in { qux: }
 end

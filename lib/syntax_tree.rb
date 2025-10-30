@@ -1,166 +1,141 @@
 # frozen_string_literal: true
 
-require "prettier_print"
-require "pp"
-require "ripper"
+require "thread"
+require "syntax_tree/format"
 
-require_relative "syntax_tree/node"
-require_relative "syntax_tree/basic_visitor"
-require_relative "syntax_tree/visitor"
-
-require_relative "syntax_tree/formatter"
-require_relative "syntax_tree/parser"
-require_relative "syntax_tree/version"
-
-# Syntax Tree is a suite of tools built on top of the internal CRuby parser. It
-# provides the ability to generate a syntax tree from source, as well as the
-# tools necessary to inspect and manipulate that syntax tree. It can be used to
-# build formatters, linters, language servers, and more.
+# Syntax Tree is a formatter built on top of the internal CRuby parser.
 module SyntaxTree
-  # Syntax Tree the library has many features that aren't always used by the
-  # CLI. Requiring those features takes time, so we autoload as many constants
-  # as possible in order to keep the CLI as fast as possible.
+  autoload :CLI, "syntax_tree/cli"
+  autoload :LSP, "syntax_tree/lsp"
+  autoload :Rake, "syntax_tree/rake"
+  autoload :Version, "syntax_tree/version"
 
-  autoload :Database, "syntax_tree/database"
-  autoload :DSL, "syntax_tree/dsl"
-  autoload :FieldVisitor, "syntax_tree/field_visitor"
-  autoload :Index, "syntax_tree/index"
-  autoload :JSONVisitor, "syntax_tree/json_visitor"
-  autoload :LanguageServer, "syntax_tree/language_server"
-  autoload :MatchVisitor, "syntax_tree/match_visitor"
-  autoload :Mermaid, "syntax_tree/mermaid"
-  autoload :MermaidVisitor, "syntax_tree/mermaid_visitor"
-  autoload :MutationVisitor, "syntax_tree/mutation_visitor"
-  autoload :Pattern, "syntax_tree/pattern"
-  autoload :PrettyPrintVisitor, "syntax_tree/pretty_print_visitor"
-  autoload :Search, "syntax_tree/search"
-  autoload :WithScope, "syntax_tree/with_scope"
-
-  # This holds references to objects that respond to both #parse and #format
-  # so that we can use them in the CLI.
-  HANDLERS = {}
-  HANDLERS.default = SyntaxTree
-
-  # This is the default print width when formatting. It can be overridden in the
-  # CLI by passing the --print-width option or here in the API by passing the
-  # optional second argument to ::format.
-  DEFAULT_PRINT_WIDTH = 80
-
-  # This is the default ruby version that we're going to target for formatting.
-  # It shouldn't really be changed except in very niche circumstances.
-  DEFAULT_RUBY_VERSION = Formatter::SemanticVersion.new(RUBY_VERSION).freeze
-
-  # The default indentation level for formatting. We allow changing this so
-  # that Syntax Tree can format arbitrary parts of a document.
-  DEFAULT_INDENTATION = 0
-
-  # Parses the given source and returns the formatted source.
-  def self.format(
-    source,
-    maxwidth = DEFAULT_PRINT_WIDTH,
-    base_indentation = DEFAULT_INDENTATION,
-    options: Formatter::Options.new
-  )
-    format_node(
-      source,
-      parse(source),
-      maxwidth,
-      base_indentation,
-      options: options
-    )
+  # Raised when an error is encountered while parsing the source to be
+  # formatted through the #format or #format_file methods.
+  class ParseError < StandardError
   end
 
-  # Parses the given file and returns the formatted source.
-  def self.format_file(
-    filepath,
-    maxwidth = DEFAULT_PRINT_WIDTH,
-    base_indentation = DEFAULT_INDENTATION,
-    options: Formatter::Options.new
-  )
-    format(read(filepath), maxwidth, base_indentation, options: options)
+  # We want to minimize as much as possible the number of options that are
+  # available in the formatter. For the most part, if users want non-default
+  # formatting, they should override the visit methods below. However, because
+  # of some history with prettier and the fact that folks have become entrenched
+  # in their ways, we decided to provide a small amount of configurability.
+  class Options
+    # The print width is the suggested line length that should be used when
+    # formatting the source. Note that this is not a hard limit like a linter.
+    # Instead, it is used as a guideline for how long lines _should_ be. For
+    # example, if you have the following code:
+    #
+    #     foo do
+    #       bar
+    #     end
+    #
+    # In this case, the formatter will see that the block fits into the print
+    # width and will rewrite it using the `{}` syntax. This will actually make
+    # the line longer than originally written. This is why it is helpful to
+    # think of it as a suggestion, rather than a limit.
+    attr_accessor :print_width
+
+    # The quote style to use when formatting string literals. This can be
+    # either a single quote (`'`) or a double quote (`"`). This is a
+    # preference, but not a hard rule. If a string contains interpolation,
+    # the formatter will leave it as it is in the source to avoid changing the
+    # meaning of the code.
+    attr_accessor :preferred_quote
+
+    # Trailing commas can be used in multi-line collection literals and when
+    # specifying arguments to a method call, in most cases (there are a few
+    # rare exceptions). This option controls whether or not they should be
+    # used.
+    attr_accessor :trailing_comma
+
+    def initialize(print_width: 100, preferred_quote: '"', trailing_comma: false)
+      @print_width = print_width
+      @preferred_quote = preferred_quote
+      @trailing_comma = trailing_comma
+    end
   end
 
-  # Accepts a node in the tree and returns the formatted source.
-  def self.format_node(
-    source,
-    node,
-    maxwidth = DEFAULT_PRINT_WIDTH,
-    base_indentation = DEFAULT_INDENTATION,
-    options: Formatter::Options.new
-  )
-    formatter = Formatter.new(source, [], maxwidth, options: options)
-    node.format(formatter)
+  # Mutex to synchronize modifications to the module configuration.
+  @lock = Mutex.new
 
-    formatter.flush(base_indentation)
-    formatter.output.join
+  # The default formatting options used by the formatter when an options object
+  # is not explicitly provided.
+  @options = Options.new.freeze
+
+  # Configure the default formatting options that will be used when options are
+  # not explicitly provided.
+  def self.configure
+    @lock.synchronize do
+      options = @options.dup
+      yield options
+      @options = options.freeze
+    end
   end
 
-  # Indexes the given source code to return a list of all class, module, and
-  # method definitions. Used to quickly provide indexing capability for IDEs or
-  # documentation generation.
-  def self.index(source)
-    Index.index(source)
+  # Create a new set of options that falls back to the default options for any
+  # unspecified values.
+  def self.options(print_width: :default, preferred_quote: :default, trailing_comma: :default)
+    options = @lock.synchronize { @options.dup }
+    options.print_width = print_width unless print_width == :default
+    options.preferred_quote = preferred_quote unless preferred_quote == :default
+    options.trailing_comma = trailing_comma unless trailing_comma == :default
+    options.freeze
   end
 
-  # Indexes the given file to return a list of all class, module, and method
-  # definitions. Used to quickly provide indexing capability for IDEs or
-  # documentation generation.
-  def self.index_file(filepath)
-    Index.index_file(filepath)
-  end
+  # Options should not be directly used by consumers. Instead they should create
+  # new options object through the SyntaxTree.options method.
+  private_constant :Options
 
-  # A convenience method for creating a new mutation visitor.
-  def self.mutation
-    visitor = MutationVisitor.new
-    yield visitor
-    visitor
-  end
-
-  # Parses the given source and returns the syntax tree.
-  def self.parse(source)
-    parser = Parser.new(source)
-    response = parser.parse
-    response unless parser.error?
-  end
-
-  # Parses the given file and returns the syntax tree.
-  def self.parse_file(filepath)
-    parse(read(filepath))
-  end
-
-  # Returns the source from the given filepath taking into account any potential
-  # magic encoding comments.
-  def self.read(filepath)
-    encoding =
-      File.open(filepath, "r") do |file|
-        break Encoding.default_external if file.eof?
-
-        header = file.readline
-        header += file.readline if !file.eof? && header.start_with?("#!")
-        Ripper.new(header).tap(&:parse).encoding
-      end
-
-    File.read(filepath, encoding: encoding)
-  end
+  # It is possible to extend the formatter to support other languages by
+  # registering extension. An extension is any object that responds to both
+  # the #format and #format_file methods.
+  @handlers = Hash.new(SyntaxTree)
 
   # This is a hook provided so that plugins can register themselves as the
   # handler for a particular file type.
   def self.register_handler(extension, handler)
-    HANDLERS[extension] = handler
+    @lock.synchronize { @handlers[extension] = handler }
   end
 
-  # Searches through the given source using the given pattern and yields each
-  # node in the tree that matches the pattern to the given block.
-  def self.search(source, query, &block)
-    pattern = Pattern.new(query).compile
-    program = parse(source)
-
-    Search.new(pattern).scan(program, &block)
+  # Unregisters the handler for the given file extension.
+  def self.unregister_handler(extension)
+    @lock.synchronize { @handlers.delete(extension) }
   end
 
-  # Searches through the given file using the given pattern and yields each
-  # node in the tree that matches the pattern to the given block.
-  def self.search_file(filepath, query, &block)
-    search(read(filepath), query, &block)
+  # Retrieves the handler registered for the given file extension.
+  def self.handler_for(extension)
+    @lock.synchronize { @handlers[extension] }
+  end
+
+  class << self
+    # Parses the given source and returns the formatted source.
+    def format(source, options = @options)
+      process(Prism.parse(source), options)
+    end
+
+    # Parses the given file and returns the formatted source.
+    def format_file(filepath, options = @options)
+      process(Prism.parse_file(filepath), options)
+    end
+
+    private
+
+    # Processes the result of parsing the source and returns the formatted
+    # source.
+    def process(result, options)
+      raise ParseError, result.errors_format if result.failure?
+      result.attach_comments!
+
+      formatter = Prism::Format.new(result.source.source, options)
+      result.value.accept(formatter)
+
+      if (data_loc = result.data_loc)
+        formatted = formatter.format
+        formatted.empty? ? data_loc.slice : "#{formatted}\n\n#{data_loc.slice}"
+      else
+        "#{formatter.format}\n"
+      end
+    end
   end
 end

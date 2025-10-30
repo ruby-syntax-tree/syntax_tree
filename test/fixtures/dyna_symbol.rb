@@ -1,7 +1,5 @@
 %
 :'foo'
--
-:"foo"
 %
 :"foo"
 %
@@ -10,8 +8,6 @@
 :"foo #{bar}"
 %
 %s[foo #{bar}]
--
-:'foo #{bar}'
 %
 { %s[foo] => bar }
 -

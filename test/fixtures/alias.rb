@@ -13,11 +13,11 @@ alias foo bar
 %
 alias :"foo" :bar
 -
-alias :"foo" bar
+alias foo bar
 %
 alias :foo :"bar"
 -
-alias foo :"bar"
+alias foo bar
 %
 alias foooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooooo bar
 -
@@ -31,3 +31,5 @@ alias foo # comment
 %
 alias foo # comment1
       bar # comment2
+%
+alias :"foo#{1}" :"bar#{1}"

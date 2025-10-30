@@ -29,3 +29,9 @@ def
 =end
 a
 end
+%
+def foo
+rescue StandardError
+else
+ensure
+end
