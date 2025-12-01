@@ -62,3 +62,8 @@ Style/TrailingCommaInArrayLiteral:
 
 Style/TrailingCommaInHashLiteral:
   Enabled: false
+
+# Syntax Tree may rewrite regular expressions using different delimiters
+# than the ones enforced by RuboCop's Style/RegexpLiteral cop.
+Style/RegexpLiteral:
+  Enabled: false
