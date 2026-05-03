@@ -627,7 +627,8 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 
 - 🎉 Initial release! 🎉
 
-[unreleased]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v6.2.0...HEAD
+[unreleased]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v6.3.0...HEAD
+[6.3.0]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v6.2.0...v6.3.0
 [6.2.0]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v6.1.1...v6.2.0
 [6.1.1]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v6.1.0...v6.1.1
 [6.1.0]: https://github.com/ruby-syntax-tree/syntax_tree/compare/v6.0.2...v6.1.0
