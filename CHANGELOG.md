@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/) a
 
 ## [Unreleased]
 
+### Changed
+
+- A comment on its own line before a leading-dot call in a method chain stays on its own line. It is no longer joined to the previous call with the dot moved to a separate line.
+
 ## [6.3.0] - 2025-07-16
 
 ### Added

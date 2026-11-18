@@ -40,6 +40,19 @@ foo
   qux
   .quux
 %
+foo
+  .bar(:a, :b)
+  # comment
+  .baz
+  .qux
+%
+foo
+  .bar
+  # first comment
+  # second comment
+  .baz(:a)
+  .qux
+%
 { a: 1, b: 2 }.fooooooooooooooooo.barrrrrrrrrrrrrrrrrrr.bazzzzzzzzzzzz.quxxxxxxxxxxxx
 -
 { a: 1, b: 2 }.fooooooooooooooooo
