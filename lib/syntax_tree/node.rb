@@ -2860,13 +2860,21 @@ module SyntaxTree
               skip_attached: empty_except_last && children.empty?
             )
 
-            # If the parent call node has a comment on the message then we need
-            # to print the operator trailing in order to keep it working.
+            # If the parent call node has a comment on the message, or a comment
+            # that follows the operator, then we need to print the operator
+            # trailing in order to keep it working. A comment that comes before
+            # a leading operator stays on its own line above the call.
             last_child = children.last
             if last_child.is_a?(CallNode) && last_child.message != :call &&
                  (
                    (last_child.message.comments.any? && last_child.operator) ||
-                     (last_child.operator && last_child.operator.comments.any?)
+                     (
+                       last_child.operator &&
+                         last_child.operator.comments.any? do |comment|
+                           comment.location.start_char >=
+                             last_child.operator.location.end_char
+                         end
+                     )
                  )
               q.format(CallOperatorFormatter.new(last_child.operator))
               skip_operator = true
